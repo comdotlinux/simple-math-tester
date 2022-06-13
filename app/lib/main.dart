@@ -110,68 +110,101 @@ class _MathTesterState extends State<MathTester> {
     );
   }
 
-  List<Row> buildRow(List<Operation> operations) {
+  List<Widget> buildRow(List<Operation> operations) {
     const fontSize = TextStyle(fontSize: 20);
     return operations
         .map(
-          (row) => Row(
+          (operation) => Column(
             children: <Widget>[
               Visibility(
-                visible: !row.inputEntered(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: Text(style: fontSize, row.left),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(left: 10, right: 10),
-                      child: Text(style: fontSize, row.operationType.displayString),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(left: 10, right: 10),
-                      child: Text(style: fontSize, row.right),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.only(left: 10, right: 10),
-                      // ignore: prefer_const_constructors
-                      child: Text(style: fontSize, '='),
-                    ),
-                  ],
-                ),
-              ),
-              Visibility(
-                visible: row.inputEntered(),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                        style: TextStyle(
-                          color: row.inputCorrect() ? Colors.green : Colors.red,
-                          fontSize: 30,
+                visible: !operation.inputEntered(),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(style: fontSize, operation.left),
                         ),
-                        row.toString()),
-                    Icon(
-                      size: 100,
-                      row.inputCorrect() ? Icons.sentiment_satisfied : Icons.sentiment_dissatisfied,
-                      color: row.inputCorrect() ? Colors.green : Colors.red,
-                    ),
-                  ],
+                      ),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(style: fontSize, operation.operationType.displayString),
+                        ),
+                      ),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(style: fontSize, operation.right),
+                        ),
+                      ),
+                      const Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(style: fontSize, '='),
+                        ),
+                      ),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: TextField(
+                          controller: userInputController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            labelText: 'Please Enter Your Answer',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Visibility(
-                visible: !row.inputEntered(),
-                child: Flexible(
-                  fit: FlexFit.tight,
-                  child: TextField(
-                    controller: userInputController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Please Enter Your Answer',
+                visible: operation.inputEntered(),
+                child: Container(
+                  padding: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.lightBlueAccent,
+                      width: 1,
                     ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Text(
+                            style: TextStyle(
+                              color: operation.inputCorrect() ? Colors.green : Colors.red,
+                              fontSize: 30,
+                            ),
+                            operation.toString(),
+                          ),
+                        ),
+                      ),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: FittedBox(
+                          fit: BoxFit.cover,
+                          child: Icon(
+                            size: 100,
+                            operation.inputCorrect() ? Icons.sentiment_satisfied : Icons.sentiment_dissatisfied,
+                            color: operation.inputCorrect() ? Colors.green : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

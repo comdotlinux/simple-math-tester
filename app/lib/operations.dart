@@ -9,6 +9,7 @@ enum OperationType {
   divide('/');
 
   final String displayString;
+
   const OperationType(this.displayString);
 }
 
@@ -31,12 +32,17 @@ class Operation {
   }
 
   String get left => lhs.toString();
+
   String get right => rhs.toString();
+
   bool inputEntered() => _input != null;
+
   bool inputCorrect() => result == _input;
 
+  List<String> get output => toString().split(' ');
+
   @override
-  String toString() => '$lhs ${operationType.displayString} $rhs is $result but you entered $input in ${prettyDuration(stopwatch.elapsed)}';
+  String toString() => '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is Operation && runtimeType == other.runtimeType && lhs == other.lhs && rhs == other.rhs && operationType == other.operationType && result == other.result;
@@ -65,8 +71,6 @@ class Addition implements Operator {
     } while (operation.result > maxValue || operation.result < minValue);
     return operation;
   }
-
-
 }
 
 class Subtraction implements Operator {
