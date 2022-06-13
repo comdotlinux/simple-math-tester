@@ -103,6 +103,7 @@ class _MathTesterState extends State<MathTester> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        autofocus: true,
         onPressed: _nextOperation,
         tooltip: 'Next Operation',
         child: const Icon(Icons.navigate_next_rounded),
