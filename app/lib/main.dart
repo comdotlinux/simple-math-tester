@@ -101,12 +101,6 @@ class _MathTesterState extends State<MathTester> {
           padding: const EdgeInsets.all(20),
           children: buildRow(operations),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        autofocus: true,
-        onPressed: _nextOperation,
-        tooltip: 'Next Operation',
-        child: const Icon(Icons.navigate_next_rounded),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
@@ -161,7 +155,14 @@ class _MathTesterState extends State<MathTester> {
                             border: OutlineInputBorder(),
                             labelText: 'Please Enter Your Answer',
                           ),
+                          keyboardType: TextInputType.number,
                         ),
+                      ),
+                      FloatingActionButton(
+                        autofocus: true,
+                        onPressed: _nextOperation,
+                        tooltip: 'Next Operation',
+                        child: const Icon(Icons.navigate_next_rounded),
                       ),
                     ],
                   ),

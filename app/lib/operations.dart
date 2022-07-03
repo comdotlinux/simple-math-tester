@@ -42,7 +42,7 @@ class Operation {
   List<String> get output => toString().split(' ');
 
   @override
-  String toString() => '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
+  String toString() => '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
 
   @override
   bool operator ==(Object other) => identical(this, other) || other is Operation && runtimeType == other.runtimeType && lhs == other.lhs && rhs == other.rhs && operationType == other.operationType && result == other.result;
