@@ -48,16 +48,10 @@ class Operation {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is Operation &&
-          runtimeType == other.runtimeType &&
-          lhs == other.lhs &&
-          rhs == other.rhs &&
-          operationType == other.operationType &&
-          result == other.result;
+      other is Operation && runtimeType == other.runtimeType && lhs == other.lhs && rhs == other.rhs && operationType == other.operationType && result == other.result;
 
   @override
-  int get hashCode =>
-      lhs.hashCode ^ rhs.hashCode ^ operationType.hashCode ^ result.hashCode;
+  int get hashCode => lhs.hashCode ^ rhs.hashCode ^ operationType.hashCode ^ result.hashCode;
 }
 
 abstract class Operator {
@@ -84,18 +78,18 @@ class Addition implements Operator {
 
 class Subtraction implements Operator {
   final minValue = 0;
-  final maxValue = 1000;
+  final maxResultValue = 1000;
   final random = Random();
 
   @override
   Operation create() {
     Operation operation;
     do {
-      final lhs = random.nextInt(maxValue);
-      final rhs = random.nextInt(maxValue);
+      final lhs = random.nextInt(maxResultValue);
+      final rhs = random.nextInt(maxResultValue);
       final result = lhs - rhs;
       operation = Operation(lhs, rhs, OperationType.minus, result.toDouble());
-    } while (operation.result > maxValue || operation.result < minValue);
+    } while (operation.result > maxResultValue || operation.result < minValue || operation.result != operation.result.abs());
     return operation;
   }
 }
@@ -112,8 +106,7 @@ class Multiplication implements Operator {
       final lhs = random.nextInt(maxValue);
       final rhs = random.nextInt(maxValue);
       final result = lhs * rhs;
-      operation =
-          Operation(lhs, rhs, OperationType.multiply, result.toDouble());
+      operation = Operation(lhs, rhs, OperationType.multiply, result.toDouble());
     } while (operation.result > maxValue || operation.result < minValue);
     return operation;
   }
@@ -131,9 +124,8 @@ class Division implements Operator {
       final lhs = random.nextInt(maxValue);
       final rhs = random.nextInt(maxValue);
       final result = lhs / rhs;
-      operation =
-          Operation(lhs, rhs, OperationType.divide, result.toDouble());
-    } while (operation.result > maxValue || operation.result < minValue);
+      operation = Operation(lhs, rhs, OperationType.divide, result.toDouble());
+    } while (operation.result > maxValue || operation.result < minValue || operation.result is! int);
     return operation;
   }
 }
