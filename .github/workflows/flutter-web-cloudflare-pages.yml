@@ -41,6 +41,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           projectName: 'simple-math-tester'
-          directory: 'build/web'
+          directory: 'app/build/web'
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: app
