@@ -51,7 +51,7 @@ class MathTester extends StatefulWidget {
 }
 
 class _MathTesterState extends State<MathTester> {
-  List<Operator> operators = [Addition(), Subtraction(), Multiplication()];
+  List<Operator> operators = [Addition(), Subtraction(), Multiplication(), Division()];
   final random = Random();
   List<Operation> operations = [Addition().create()];
   var userInputController = TextEditingController();

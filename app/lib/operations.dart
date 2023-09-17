@@ -42,13 +42,22 @@ class Operation {
   List<String> get output => toString().split(' ');
 
   @override
-  String toString() => '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
+  String toString() =>
+      '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
 
   @override
-  bool operator ==(Object other) => identical(this, other) || other is Operation && runtimeType == other.runtimeType && lhs == other.lhs && rhs == other.rhs && operationType == other.operationType && result == other.result;
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Operation &&
+          runtimeType == other.runtimeType &&
+          lhs == other.lhs &&
+          rhs == other.rhs &&
+          operationType == other.operationType &&
+          result == other.result;
 
   @override
-  int get hashCode => lhs.hashCode ^ rhs.hashCode ^ operationType.hashCode ^ result.hashCode;
+  int get hashCode =>
+      lhs.hashCode ^ rhs.hashCode ^ operationType.hashCode ^ result.hashCode;
 }
 
 abstract class Operator {
@@ -57,7 +66,7 @@ abstract class Operator {
 
 class Addition implements Operator {
   final minValue = 0;
-  final maxValue = 100;
+  final maxValue = 1000;
   final random = Random();
 
   @override
@@ -75,7 +84,7 @@ class Addition implements Operator {
 
 class Subtraction implements Operator {
   final minValue = 0;
-  final maxValue = 100;
+  final maxValue = 1000;
   final random = Random();
 
   @override
@@ -93,7 +102,7 @@ class Subtraction implements Operator {
 
 class Multiplication implements Operator {
   final minValue = 0;
-  final maxValue = 100;
+  final maxValue = 1000;
   final random = Random();
 
   @override
@@ -103,7 +112,27 @@ class Multiplication implements Operator {
       final lhs = random.nextInt(maxValue);
       final rhs = random.nextInt(maxValue);
       final result = lhs * rhs;
-      operation = Operation(lhs, rhs, OperationType.multiply, result.toDouble());
+      operation =
+          Operation(lhs, rhs, OperationType.multiply, result.toDouble());
+    } while (operation.result > maxValue || operation.result < minValue);
+    return operation;
+  }
+}
+
+class Division implements Operator {
+  final minValue = 1;
+  final maxValue = 1000;
+  final random = Random();
+
+  @override
+  Operation create() {
+    Operation operation;
+    do {
+      final lhs = random.nextInt(maxValue);
+      final rhs = random.nextInt(maxValue);
+      final result = lhs / rhs;
+      operation =
+          Operation(lhs, rhs, OperationType.divide, result.toDouble());
     } while (operation.result > maxValue || operation.result < minValue);
     return operation;
   }
