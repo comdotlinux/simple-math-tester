@@ -31,8 +31,10 @@ jobs:
       - name: 'Install dependencies'
         run: flutter pub get
       #       - run: flutter test
-      - name: 'Install dependencies'
+        working-directory: app
+      - name: 'Build Web Distribution'
         run: flutter build web
+        working-directory: app
       - name: 'Publish To Cloudflare Pages'
         uses: cloudflare/pages-action@1
         with:
@@ -41,3 +43,4 @@ jobs:
           projectName: 'simple-math-tester'
           directory: 'build/web'
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: app
