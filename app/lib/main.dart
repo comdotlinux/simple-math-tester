@@ -1,36 +1,55 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:simple_math_tester/operations.dart';
 
+import 'home_page.dart';
+
 void main() {
-  runApp(const MyApp());
+  runApp(const MathTesterApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+class MathTesterApp extends StatelessWidget {
+  const MathTesterApp({Key? key}) : super(key: key);
 
   // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Simple Math Test',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
-        primarySwatch: Colors.lightBlue,
+  Widget build(final BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (final context) => MathTesterAppState(),
+      child: MaterialApp(
+        title: 'Math Tester',
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
+        ),
+        home: const MyHomePage(),
       ),
-      home: const MathTester(title: 'Math Tester'),
     );
   }
 }
+
+class MathTesterAppState extends ChangeNotifier {
+  List<Operator> operators = [Addition(), Subtraction(), Multiplication(), Division()];
+  final random = Random();
+  Operation current = Addition().create();
+
+  void generateNextProblem() {
+    current = operators[random.nextInt(operators.length)].create();
+    completedProblems.add(current);
+    notifyListeners();
+  }
+
+  var completedProblems = <Operation>{};
+
+  void checkInput(double userInput) {
+    current.input = userInput;
+    notifyListeners();
+  }
+}
+
+
 
 class MathTester extends StatefulWidget {
   const MathTester({Key? key, required this.title}) : super(key: key);
