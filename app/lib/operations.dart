@@ -20,7 +20,9 @@ class Operation {
   final double result;
   double? _input;
 
-  late Stopwatch stopwatch = Stopwatch()..start();
+  String? _elapsed;
+
+  final Stopwatch stopwatch = Stopwatch()..start();
 
   Operation(this.lhs, this.rhs, this.operationType, this.result);
 
@@ -29,6 +31,7 @@ class Operation {
   set input(double? value) {
     _input = value;
     stopwatch.stop();
+    _elapsed = prettyDuration(stopwatch.elapsed);
   }
 
   String get left => lhs.toString();
@@ -38,6 +41,11 @@ class Operation {
   bool inputEntered() => _input != null;
 
   bool inputCorrect() => result == _input;
+
+  String get userInput => (_input?.toString() ?? 'Not Entered');
+
+  String get elapsed => (_elapsed?.toString() ?? 'Not Available');
+
 
   List<String> get output => toString().split(' ');
 

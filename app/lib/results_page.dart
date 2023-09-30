@@ -1,4 +1,5 @@
-import 'package:flutter/cupertino.dart';
+import 'package:collection/collection.dart';
+import 'package:duration/duration.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/main.dart';
@@ -8,7 +9,7 @@ class ResultsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MathTesterAppState>();
+    var appState = context.watch<MathTesterModel>();
     var theme = Theme.of(context);
     var secondaryStyle = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onSecondary);
     var tertiaryStyle = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onTertiary);
@@ -33,25 +34,30 @@ class ResultsPage extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
-              'You have ${appState.completedProblems.length} results',
+              'You have completed ${appState.completedProblems.length} question(s).',
               style: tertiaryStyle,
             ),
           ),
         ),
-        for (var problem in appState.completedProblems)
-          Card(
-            color: theme.colorScheme.secondary,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: ListTile(
-                leading: Icon(problem.inputCorrect() ? Icons.check_rounded : Icons.clear_rounded),
-                title: Text(
-                  problem.toString(),
-                  style: secondaryStyle,
-                ),
-              ),
-            ),
-          ),
+        DataTable(
+            columns: const [
+              DataColumn(label: Text('Num')),
+              DataColumn(label: Text('Question')),
+              DataColumn(label: Text('Expected Result')),
+              DataColumn(label: Text('Actual Result')),
+              DataColumn(label: Text('Correct')),
+              DataColumn(label: Text('Took')),
+            ],
+            rows: appState.completedProblems
+                .mapIndexed((index, operation) => DataRow(cells: [
+                      DataCell(Text(index.toString())),
+                      DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
+                      DataCell(Text(operation.result.toString())),
+                      DataCell(Text(operation.userInput)),
+                      DataCell(Icon(operation.inputCorrect() ? Icons.check_rounded : Icons.clear_rounded)),
+                      DataCell(Text(operation.elapsed)),
+                    ]))
+                .toList()),
       ],
     );
   }
