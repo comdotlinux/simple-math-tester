@@ -105,7 +105,7 @@ abstract class Operator {
     } while (operation.result > maxResultValue() ||
         operation.result < minResultValue() ||
         !acceptable(operation));
-    debugPrint(operation.toString());
+    // debugPrint(operation.toString());
     return operation;
   }
 }

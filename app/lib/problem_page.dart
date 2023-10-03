@@ -104,13 +104,13 @@ class _BigCardState extends State<BigCard> {
                   controller: userInputController,
                   onTapOutside: (_) {
                     final userInput = double.tryParse(userInputController.value.text);
-                    debugPrint('changed value : $userInput');
+                    // debugPrint('changed value : $userInput');
                     appState.setInput(userInput);
                     userInputController.clear();
                   },
                   onSubmitted: (value) {
                     final userInput = double.tryParse(value);
-                    debugPrint('value : $userInput');
+                    // debugPrint('value : $userInput');
                     appState.checkInput();
                     userInputController.clear();
                   },
