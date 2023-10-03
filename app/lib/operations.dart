@@ -1,21 +1,38 @@
 import 'dart:math';
 
 import 'package:duration/duration.dart';
+import 'package:flutter/material.dart';
 
 enum OperationType {
-  plus('+'),
-  minus('-'),
-  multiply('*'),
-  divide('/');
+  plus('+', 0),
+  minus('-', 1),
+  multiply('*', 2),
+  divide('/', 3);
 
   final String displayString;
+  final int operationIndex;
 
-  const OperationType(this.displayString);
+  const OperationType(this.displayString, this.operationIndex);
+
+  static OperationType of(int index) => OperationType.values.firstWhere((ot) => ot.operationIndex == index);
+
+  static Operator operator(OperationType operationType) {
+    switch (operationType) {
+      case OperationType.plus:
+        return Addition();
+      case OperationType.minus:
+        return Subtraction();
+      case OperationType.multiply:
+        return Multiplication();
+      case OperationType.divide:
+        return Division();
+    }
+  }
 }
 
 class Operation {
-  final int lhs;
-  final int rhs;
+  final double lhs;
+  final double rhs;
   final OperationType operationType;
   final double result;
   double? _input;
@@ -46,94 +63,143 @@ class Operation {
 
   String get elapsed => (_elapsed?.toString() ?? 'Not Available');
 
-
   List<String> get output => toString().split(' ');
 
   @override
   String toString() =>
       '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Operation && runtimeType == other.runtimeType && lhs == other.lhs && rhs == other.rhs && operationType == other.operationType && result == other.result;
-
-  @override
-  int get hashCode => lhs.hashCode ^ rhs.hashCode ^ operationType.hashCode ^ result.hashCode;
 }
 
 abstract class Operator {
-  Operation create();
-}
+  OperationType operationType();
 
-class Addition implements Operator {
-  final minValue = 0;
-  final maxValue = 1000;
-  final random = Random();
+  double minOperandValue();
 
-  @override
+  double maxOperandValue();
+
+  double minResultValue();
+
+  double maxResultValue();
+
+  double calculateResult(double lhs, double rhs);
+
+  bool acceptable(Operation operation);
+
+  final _random = Random();
+
+  double _nextValue() {
+    double nextValue;
+    do {
+      nextValue = minOperandValue() + _random.nextInt(maxOperandValue().toInt());
+    } while (nextValue > maxOperandValue() || nextValue < minOperandValue());
+
+    return nextValue;
+  }
+
   Operation create() {
     Operation operation;
     do {
-      final lhs = random.nextInt(maxValue);
-      final rhs = random.nextInt(maxValue);
-      final result = lhs + rhs;
-      operation = Operation(lhs, rhs, OperationType.plus, result.toDouble());
-    } while (operation.result > maxValue || operation.result < minValue);
+      final lhs = _nextValue();
+      final rhs = _nextValue();
+      operation = Operation(lhs, rhs, operationType(), calculateResult(lhs, rhs));
+    } while (operation.result > maxResultValue() ||
+        operation.result < minResultValue() ||
+        !acceptable(operation));
+    debugPrint(operation.toString());
     return operation;
   }
 }
 
-class Subtraction implements Operator {
-  final minValue = 0;
-  final maxResultValue = 1000;
-  final random = Random();
+class Addition extends Operator {
+  @override
+  OperationType operationType() => OperationType.plus;
 
   @override
-  Operation create() {
-    Operation operation;
-    do {
-      final lhs = random.nextInt(maxResultValue);
-      final rhs = random.nextInt(maxResultValue);
-      final result = lhs - rhs;
-      operation = Operation(lhs, rhs, OperationType.minus, result.toDouble());
-    } while (operation.result > maxResultValue || operation.result < minValue || operation.result != operation.result.abs());
-    return operation;
-  }
+  double minOperandValue() => 2;
+
+  @override
+  double maxOperandValue() => 10000;
+
+  @override
+  double minResultValue() => 3;
+
+  @override
+  double maxResultValue() => 10000;
+
+  @override
+  bool acceptable(Operation operation) => operation.result <= maxResultValue() && operation.result >= minResultValue();
+
+  @override
+  double calculateResult(double lhs, double rhs) => lhs + rhs;
 }
 
-class Multiplication implements Operator {
-  final minValue = 0;
-  final maxValue = 1000;
-  final random = Random();
+class Subtraction extends Operator {
 
   @override
-  Operation create() {
-    Operation operation;
-    do {
-      final lhs = random.nextInt(maxValue);
-      final rhs = random.nextInt(maxValue);
-      final result = lhs * rhs;
-      operation = Operation(lhs, rhs, OperationType.multiply, result.toDouble());
-    } while (operation.result > maxValue || operation.result < minValue);
-    return operation;
-  }
+  bool acceptable(Operation operation) => operation.result == operation.result.abs();
+
+  @override
+  double calculateResult(double lhs, double rhs) => lhs - rhs;
+
+  @override
+  double maxOperandValue() => 10000;
+
+  @override
+  double minOperandValue() => 2;
+
+  @override
+  double minResultValue() => 0;
+
+  @override
+  double maxResultValue() => 10000;
+
+  @override
+  OperationType operationType() => OperationType.minus;
+
 }
 
-class Division implements Operator {
-  final minValue = 1;
-  final maxValue = 1000;
-  final random = Random();
+class Multiplication extends Operator {
+  @override
+  bool acceptable(Operation operation) => true;
 
   @override
-  Operation create() {
-    Operation operation;
-    do {
-      final lhs = random.nextInt(maxValue);
-      final rhs = random.nextInt(maxValue);
-      final result = lhs / rhs;
-      operation = Operation(lhs, rhs, OperationType.divide, result.toDouble());
-    } while (operation.result > maxValue || operation.result < minValue || operation.result is! int);
-    return operation;
-  }
+  double calculateResult(double lhs, double rhs) => lhs * rhs;
+
+  @override
+  double minOperandValue() => 2;
+
+  @override
+  double maxOperandValue() => 500;
+
+  @override
+  double maxResultValue() => 1000;
+
+  @override
+  double minResultValue() => 10;
+
+  @override
+  OperationType operationType() => OperationType.multiply;
+}
+
+class Division extends Operator {
+  @override
+  bool acceptable(Operation operation) => operation.result is! int;
+
+  @override
+  double calculateResult(double lhs, double rhs) => lhs / rhs;
+
+  @override
+  double minOperandValue() => 3;
+
+  @override
+  double maxOperandValue() => 1000;
+
+  @override
+  double minResultValue() => 2;
+
+  @override
+  double maxResultValue() => 1000;
+
+  @override
+  OperationType operationType() => OperationType.divide;
 }

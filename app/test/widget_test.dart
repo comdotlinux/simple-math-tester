@@ -7,24 +7,34 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:simple_math_tester/keys.dart';
 
 import 'package:simple_math_tester/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('Can Find The Problem and Result Pages By Their Keys', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MathTesterApp());
-
+    await tester.pumpWidget(
+        MultiProvider(
+          providers: [ChangeNotifierProvider(create: (_) => MathTesterModel()),],
+          child: const MathTesterApp()
+        )
+    );
+    await tester.pump();
     // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byKey(materialAppKey), findsOneWidget);
+    expect(find.byKey(homePageKey), findsOneWidget);
+    expect(find.byKey(problemsPageKey), findsOneWidget);
+
+    expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
 
     // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    await tester.tap(find.byIcon(Icons.question_answer_rounded));
     await tester.pump();
 
     // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
+    expect(find.byKey(questionOnProblemsPageKey), findsNothing);
   });
 }

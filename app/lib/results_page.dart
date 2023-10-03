@@ -1,8 +1,9 @@
 import 'package:collection/collection.dart';
-import 'package:duration/duration.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/main.dart';
+
+import 'keys.dart';
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
@@ -16,10 +17,11 @@ class ResultsPage extends StatelessWidget {
     if (appState.completedProblems.isEmpty) {
       return Center(
         child: Card(
-          color: theme.colorScheme.secondary,
+          color: theme.colorScheme.primary,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Text(
+              key: noResultsOnResultsPageKey,
               'No Results yet.',
               style: secondaryStyle,
             ),
@@ -30,33 +32,30 @@ class ResultsPage extends StatelessWidget {
     return ListView(
       children: [
         Card(
-          color: theme.colorScheme.tertiary,
+          color: theme.colorScheme.primary,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text(
-              'You have completed ${appState.completedProblems.length} question(s).',
-              style: tertiaryStyle,
-            ),
+            child: Text('Completed ${appState.completedProblems.length} question(s).', style: tertiaryStyle),
           ),
         ),
         DataTable(
+            horizontalMargin: 10,
             columns: const [
               DataColumn(label: Text('Num')),
               DataColumn(label: Text('Question')),
-              DataColumn(label: Text('Expected Result')),
-              DataColumn(label: Text('Actual Result')),
-              DataColumn(label: Text('Correct')),
+              DataColumn(label: Text('Expected Vs Actual')),
               DataColumn(label: Text('Took')),
             ],
             rows: appState.completedProblems
-                .mapIndexed((index, operation) => DataRow(cells: [
-                      DataCell(Text(index.toString())),
-                      DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
-                      DataCell(Text(operation.result.toString())),
-                      DataCell(Text(operation.userInput)),
-                      DataCell(Icon(operation.inputCorrect() ? Icons.check_rounded : Icons.clear_rounded)),
-                      DataCell(Text(operation.elapsed)),
-                    ]))
+                .mapIndexed((index, operation) => DataRow(
+                      color: MaterialStateProperty.resolveWith((states) => (operation.inputCorrect() ? theme.colorScheme.primary : theme.colorScheme.error).withOpacity(0.3)),
+                      cells: [
+                        DataCell(Text((index + 1).toString())),
+                        DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
+                        DataCell(Text('${operation.result} Vs ${operation.userInput}')),
+                        DataCell(Text(operation.elapsed)),
+                      ],
+                    ))
                 .toList()),
       ],
     );

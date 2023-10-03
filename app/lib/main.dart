@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:simple_math_tester/operations.dart';
 
 import 'home_page.dart';
+import 'keys.dart';
 
 void main() {
   runApp(MultiProvider(
@@ -20,19 +21,24 @@ class MathTesterApp extends StatelessWidget {
   @override
   Widget build(final BuildContext context) {
     return MaterialApp(
+      key: materialAppKey,
       title: 'Math Tester',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
       ),
-      home: const MyHomePage(),
+      home: const MyHomePage(key: homePageKey),
     );
   }
 }
 
 class MathTesterModel extends ChangeNotifier {
-
-  List<Operator> operators = [Addition(), Subtraction(), Multiplication(), Division()];
+  Map<OperationType, Operator> operators = {
+    OperationType.plus: Addition(),
+    OperationType.minus: Subtraction(),
+    OperationType.multiply: Multiplication(),
+    OperationType.divide: Division()
+  };
   final random = Random();
 
   var completedProblems = <Operation>{};
@@ -45,7 +51,7 @@ class MathTesterModel extends ChangeNotifier {
 
   void generateNextProblem() {
     completedProblems.add(current);
-    current = operators[random.nextInt(operators.length)].create();
+    current = operators[OperationType.of(random.nextInt(operators.length))]!.create();
     notifyListeners();
   }
 
@@ -58,6 +64,7 @@ class MathTesterModel extends ChangeNotifier {
     _input = userInput;
     notifyListeners();
   }
+
   int get currentPage => _currentPage;
 
   void setCurrentPage(int value) {

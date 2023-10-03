@@ -4,6 +4,8 @@ import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/problem_page.dart';
 import 'package:simple_math_tester/results_page.dart';
 
+import 'keys.dart';
+
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
@@ -13,10 +15,10 @@ class MyHomePage extends StatelessWidget {
     Widget page;
     switch (modelProvider.currentPage) {
       case 0:
-        page = const ProblemPage();
+        page = const ProblemPage(key: problemsPageKey);
         break;
       case 1:
-        page = const ResultsPage();
+        page = const ResultsPage(key: resultsPageKey);
         break;
       // case 2:
       //   page = const StaticOpenLibrarySearchWidget();
@@ -26,11 +28,12 @@ class MyHomePage extends StatelessWidget {
     }
     return LayoutBuilder(builder: (context, constraints) {
       return Scaffold(
+        resizeToAvoidBottomInset: true,
         body: Row(
           children: [
             SafeArea(
               child: NavigationRail(
-                  extended: constraints.maxWidth > 600,
+                  extended: constraints.maxWidth > 800,
                   destinations: const [
                     NavigationRailDestination(
                       icon: Icon(Icons.question_mark),
