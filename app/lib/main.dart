@@ -39,7 +39,9 @@ class MathTesterModel extends ChangeNotifier {
     OperationType.multiply: Multiplication(),
     OperationType.divide: Division()
   };
-  final random = Random();
+  final _random = Random();
+
+  OperationType _nextRandomOperation() => OperationType.of(_random.nextInt(operators.length));
 
   var completedProblems = <Operation>{};
 
@@ -51,7 +53,7 @@ class MathTesterModel extends ChangeNotifier {
 
   void generateNextProblem() {
     completedProblems.add(current);
-    current = operators[OperationType.of(random.nextInt(operators.length))]!.create();
+    current = operators[_nextRandomOperation()]!.create();
     notifyListeners();
   }
 

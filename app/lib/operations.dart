@@ -130,7 +130,7 @@ class Addition extends Operator {
   bool acceptable(Operation operation) => operation.result <= maxResultValue() && operation.result >= minResultValue();
 
   @override
-  double calculateResult(double lhs, double rhs) => lhs + rhs;
+  double calculateResult(double lhs, double rhs) => (lhs + rhs).toInt().toDouble();
 }
 
 class Subtraction extends Operator {
@@ -139,7 +139,7 @@ class Subtraction extends Operator {
   bool acceptable(Operation operation) => operation.result == operation.result.abs();
 
   @override
-  double calculateResult(double lhs, double rhs) => lhs - rhs;
+  double calculateResult(double lhs, double rhs) => (lhs - rhs).toInt().toDouble();
 
   @override
   double maxOperandValue() => 10000;
@@ -183,7 +183,7 @@ class Multiplication extends Operator {
 
 class Division extends Operator {
   @override
-  bool acceptable(Operation operation) => operation.result is! int;
+  bool acceptable(Operation operation) => operation.result is int || operation.result == operation.result.toInt();
 
   @override
   double calculateResult(double lhs, double rhs) => lhs / rhs;
