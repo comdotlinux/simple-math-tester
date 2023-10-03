@@ -9,6 +9,9 @@ on:
           - dev
           - prod
           - test
+  push:
+    branches:
+      - main
 
 jobs:
   deploy:
