@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:duration/duration.dart';
-import 'package:flutter/material.dart';
 
 enum OperationType {
   plus('+', 0),
@@ -30,12 +29,12 @@ enum OperationType {
   }
 }
 
-class Operation {
-  final double lhs;
-  final double rhs;
+class Operation<P extends num, R extends num> {
+  final P lhs;
+  final P rhs;
   final OperationType operationType;
-  final double result;
-  double? _input;
+  final R result;
+  R? _input;
 
   String? _elapsed;
 
@@ -43,9 +42,9 @@ class Operation {
 
   Operation(this.lhs, this.rhs, this.operationType, this.result);
 
-  double? get input => _input;
+  R? get input => _input;
 
-  set input(double? value) {
+  set input(R? value) {
     _input = value;
     stopwatch.stop();
     _elapsed = prettyDuration(stopwatch.elapsed);
@@ -70,34 +69,34 @@ class Operation {
       '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
 }
 
-abstract class Operator {
+abstract class Operator<P extends num, R extends num> {
   OperationType operationType();
 
-  double minOperandValue();
+  P minOperandValue();
 
-  double maxOperandValue();
+  P maxOperandValue();
 
-  double minResultValue();
+  R minResultValue();
 
-  double maxResultValue();
+  R maxResultValue();
 
-  double calculateResult(double lhs, double rhs);
+  R calculateResult(P lhs, P rhs);
 
-  bool acceptable(Operation operation);
+  bool acceptable(Operation<P, R> operation);
 
   final _random = Random();
 
-  double _nextValue() {
-    double nextValue;
+  P _nextValue() {
+    P nextValue;
     do {
-      nextValue = minOperandValue() + _random.nextInt(maxOperandValue().toInt());
+      nextValue = (minOperandValue() + _random.nextInt(maxOperandValue().toInt())) as P;
     } while (nextValue > maxOperandValue() || nextValue < minOperandValue());
 
     return nextValue;
   }
 
-  Operation create() {
-    Operation operation;
+  Operation<P, R> create() {
+    Operation<P, R> operation;
     do {
       final lhs = _nextValue();
       final rhs = _nextValue();
@@ -110,89 +109,89 @@ abstract class Operator {
   }
 }
 
-class Addition extends Operator {
+class Addition extends Operator<int, int> {
   @override
   OperationType operationType() => OperationType.plus;
 
   @override
-  double minOperandValue() => 2;
+  int minOperandValue() => 2;
 
   @override
-  double maxOperandValue() => 10000;
+  int maxOperandValue() => 10000;
 
   @override
-  double minResultValue() => 3;
+  int minResultValue() => 3;
 
   @override
-  double maxResultValue() => 10000;
+  int maxResultValue() => 10000;
 
   @override
   bool acceptable(Operation operation) => operation.result <= maxResultValue() && operation.result >= minResultValue();
 
   @override
-  double calculateResult(double lhs, double rhs) => (lhs + rhs).toInt().toDouble();
+  int calculateResult(int lhs, int rhs) => lhs + rhs;
 }
 
-class Subtraction extends Operator {
+class Subtraction extends Operator<int, int> {
 
   @override
   bool acceptable(Operation operation) => operation.result == operation.result.abs();
 
   @override
-  double calculateResult(double lhs, double rhs) => (lhs - rhs).toInt().toDouble();
+  int calculateResult(int lhs, int rhs) => lhs - rhs;
 
   @override
-  double maxOperandValue() => 10000;
+  int maxOperandValue() => 10000;
 
   @override
-  double minOperandValue() => 2;
+  int minOperandValue() => 2;
 
   @override
-  double minResultValue() => 0;
+  int minResultValue() => 0;
 
   @override
-  double maxResultValue() => 10000;
+  int maxResultValue() => 10000;
 
   @override
   OperationType operationType() => OperationType.minus;
 
 }
 
-class Multiplication extends Operator {
+class Multiplication extends Operator<int, int> {
   @override
   bool acceptable(Operation operation) => true;
 
   @override
-  double calculateResult(double lhs, double rhs) => lhs * rhs;
+  int calculateResult(int lhs, int rhs) => lhs * rhs;
 
   @override
-  double minOperandValue() => 2;
+  int minOperandValue() => 2;
 
   @override
-  double maxOperandValue() => 500;
+  int maxOperandValue() => 500;
 
   @override
-  double maxResultValue() => 1000;
+  int maxResultValue() => 1000;
 
   @override
-  double minResultValue() => 10;
+  int minResultValue() => 10;
 
   @override
   OperationType operationType() => OperationType.multiply;
 }
 
-class Division extends Operator {
+class Division extends Operator<int, double> {
   @override
   bool acceptable(Operation operation) => operation.result is int || operation.result == operation.result.toInt();
 
   @override
-  double calculateResult(double lhs, double rhs) => lhs / rhs;
+  double calculateResult(int lhs, int rhs) => lhs / rhs;
 
   @override
-  double minOperandValue() => 3;
+  int minOperandValue() => 3;
 
   @override
-  double maxOperandValue() => 1000;
+  int maxOperandValue() => 1000;
 
   @override
   double minResultValue() => 2;
