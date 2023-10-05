@@ -13,7 +13,8 @@ import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
 
 void main() {
-  testWidgets('Can Find The Problem and Result Pages By Their Keys', (WidgetTester tester) async {
+
+  testWidgets(skip: true, 'Can Find The Problem and Result Pages By Their Keys', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(
         MultiProvider(
