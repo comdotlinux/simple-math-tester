@@ -18,7 +18,7 @@ class ProblemPage extends StatelessWidget {
     return Center(
       widthFactor: 100.0,
       child: SizedBox(
-        width: screenSize.width > 800 ? 400 : 300,
+        width: screenSize.width > 800 ? 600 : 300,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -95,25 +95,22 @@ class _BigCardState extends State<BigCard> {
                   style: style,
                   semanticsLabel: "Second Operand is ${appState.current.right}",
                 ),
-                SizedBox(
-                  width: 300,
-                  child: TextField(
-                    keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-                    style: style,
-                    controller: userInputController,
-                    onTapOutside: (_) {
-                      final userInput = double.tryParse(userInputController.value.text);
-                      // debugPrint('changed value : $userInput');
-                      appState.setInput(userInput);
-                      userInputController.clear();
-                    },
-                    onSubmitted: (value) {
-                      final userInput = double.tryParse(value);
-                      // debugPrint('value : $userInput');
-                      appState.checkInput();
-                      userInputController.clear();
-                    },
-                  ),
+                TextField(
+                  keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                  style: style,
+                  controller: userInputController,
+                  onTapOutside: (_) {
+                    final userInput = double.tryParse(userInputController.value.text);
+                    // debugPrint('changed value : $userInput');
+                    appState.setInput(userInput);
+                    userInputController.clear();
+                  },
+                  onSubmitted: (value) {
+                    final userInput = double.tryParse(value);
+                    // debugPrint('value : $userInput');
+                    appState.checkInput();
+                    userInputController.clear();
+                  },
                 ),
               ],
             ),
