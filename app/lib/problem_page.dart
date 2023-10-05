@@ -16,22 +16,24 @@ class ProblemPage extends StatelessWidget {
     var screenSize = MediaQuery.of(context).size;
 
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          const BigCard(key: questionOnProblemsPageKey),
-          SizedBox(
-            width: screenSize.width > 800 ? 600 : 800,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+      widthFactor: 100.0,
+      child: SizedBox(
+        width: screenSize.width > 800 ? 400 : 300,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            const BigCard(key: questionOnProblemsPageKey),
+            Row(
+              mainAxisSize: MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 ElevatedButton.icon(onPressed: appState.checkInput, icon: checkButtonIcon(appState.current), label: Text(checkButtonText(appState.current))),
                 ElevatedButton.icon(onPressed: appState.generateNextProblem, icon: const Icon(Icons.navigate_next), label: const Text('Next')),
               ],
-            ),
-          )
-        ],
+            )
+          ],
+        ),
       ),
     );
   }
@@ -68,7 +70,7 @@ class _BigCardState extends State<BigCard> {
     var style = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onPrimary);
     return Column(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Text(
           'Simple Math Questions.',
@@ -80,8 +82,8 @@ class _BigCardState extends State<BigCard> {
             padding: const EdgeInsets.all(8.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
                   appState.current.left,
@@ -89,31 +91,29 @@ class _BigCardState extends State<BigCard> {
                   semanticsLabel: "First Operand is ${appState.current.left}",
                 ),
                 Text(
-                  appState.current.operationType.displayString,
-                  style: style,
-                  semanticsLabel: "Operation is ${appState.current.operationType.displayString}",
-                ),
-                Text(
-                  appState.current.right,
+                  '${appState.current.operationType.displayString} ${appState.current.right}',
                   style: style,
                   semanticsLabel: "Second Operand is ${appState.current.right}",
                 ),
-                TextField(
-                  keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-                  style: style,
-                  controller: userInputController,
-                  onTapOutside: (_) {
-                    final userInput = double.tryParse(userInputController.value.text);
-                    // debugPrint('changed value : $userInput');
-                    appState.setInput(userInput);
-                    userInputController.clear();
-                  },
-                  onSubmitted: (value) {
-                    final userInput = double.tryParse(value);
-                    // debugPrint('value : $userInput');
-                    appState.checkInput();
-                    userInputController.clear();
-                  },
+                SizedBox(
+                  width: 300,
+                  child: TextField(
+                    keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                    style: style,
+                    controller: userInputController,
+                    onTapOutside: (_) {
+                      final userInput = double.tryParse(userInputController.value.text);
+                      // debugPrint('changed value : $userInput');
+                      appState.setInput(userInput);
+                      userInputController.clear();
+                    },
+                    onSubmitted: (value) {
+                      final userInput = double.tryParse(value);
+                      // debugPrint('value : $userInput');
+                      appState.checkInput();
+                      userInputController.clear();
+                    },
+                  ),
                 ),
               ],
             ),
