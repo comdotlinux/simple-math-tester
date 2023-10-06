@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:simple_math_tester/main.dart';
 
 import 'keys.dart';
+import 'package:simple_math_tester/operations.dart';
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
@@ -35,29 +36,58 @@ class ResultsPage extends StatelessWidget {
           color: theme.colorScheme.primary,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Text('Completed ${appState.completedProblems.length} question(s).', style: tertiaryStyle),
+            child: Text(
+              'Completed ${appState.completedProblems.length} question(s).',
+              style: tertiaryStyle,
+            ),
           ),
         ),
-        DataTable(
-            horizontalMargin: 10,
-            columns: const [
-              DataColumn(label: Text('Num')),
-              DataColumn(label: Text('Question')),
-              DataColumn(label: Text('Expected Vs Actual')),
-              DataColumn(label: Text('Took')),
-            ],
-            rows: appState.completedProblems
-                .mapIndexed((index, operation) => DataRow(
-                      color: MaterialStateProperty.resolveWith((states) => (operation.inputCorrect() ? theme.colorScheme.primary : theme.colorScheme.error).withOpacity(0.3)),
-                      cells: [
-                        DataCell(Text((index + 1).toString())),
-                        DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
-                        DataCell(Text('${operation.result} Vs ${operation.userInput}')),
-                        DataCell(Text(operation.elapsed)),
-                      ],
-                    ))
-                .toList()),
+        SingleChildScrollView(
+          child: DataTable(
+              horizontalMargin: 10,
+              columns: dataColumns(MediaQuery.of(context)),
+              rows: appState.completedProblems
+                  .mapIndexed((index, operation) => DataRow(
+                        color: MaterialStateProperty.resolveWith((states) => (operation.inputCorrect() ? theme.colorScheme.primary : theme.colorScheme.error).withOpacity(0.3)),
+                        cells: dataRows(MediaQuery.of(context), index, operation),
+                      ))
+                  .toList()),
+        ),
       ],
     );
+  }
+
+  List<DataCell> dataRows(MediaQueryData mediaQuery, int index, Operation<num, num> operation) {
+    final row = [
+      DataCell(Text((index + 1).toString())),
+      DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
+      DataCell(Text('${operation.result} Vs ${operation.userInput}')),
+      DataCell(Text(operation.elapsed)),
+    ];
+    if (mediaQuery.size.width < 800 && mediaQuery.size.width > 600) {
+      return row..removeAt(0);
+    } else if (mediaQuery.size.width < 600) {
+      return row
+        ..removeAt(0)
+        ..removeLast();
+    }
+    return row;
+  }
+
+  List<DataColumn> dataColumns(MediaQueryData mediaQuery) {
+    final header = [
+      const DataColumn(label: Text('Num')),
+      const DataColumn(label: Text('Question')),
+      const DataColumn(label: Text('Expected Vs Actual')),
+      const DataColumn(label: Text('Took')),
+    ];
+    if (mediaQuery.size.width < 800 && mediaQuery.size.width > 600) {
+      return header..removeAt(0);
+    } else if (mediaQuery.size.width < 600) {
+      return header
+        ..removeAt(0)
+        ..removeLast();
+    }
+    return header;
   }
 }

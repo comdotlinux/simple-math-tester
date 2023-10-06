@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,6 +22,7 @@ class MathTesterApp extends StatelessWidget {
   @override
   Widget build(final BuildContext context) {
     return MaterialApp(
+      scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
       title: 'Math Tester',
       theme: ThemeData(
@@ -74,3 +76,13 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+class CustomScrollBehavior extends MaterialScrollBehavior {
+  // Override behavior methods and getters like dragDevices
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+  };
+}
+
