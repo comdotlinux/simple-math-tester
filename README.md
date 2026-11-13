@@ -37,8 +37,9 @@ and correct answers, optional steps, navigation, and correct/incorrect/skipped
 history. On a headless Linux host, prefix it with `xvfb-run -a`.
 
 CI runs web checks first, then Linux integration. Cloudflare deployment, Android
-and iOS builds then run in parallel. Branch pushes skip deployment; `main` pushes
-and manual runs deploy after the prerequisite checks pass.
+and iOS builds then run in parallel. Deployment downloads the tested web artifact
+instead of repeating tests or compilation. Branch pushes skip deployment; `main`
+pushes and manual runs deploy after the prerequisite checks pass.
 
 CI uploads the Linux release bundle, Android APK, and unsigned iOS app as build
 artifacts with 3-day retention.
