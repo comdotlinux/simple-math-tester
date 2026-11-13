@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
+import 'solution_steps.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -102,7 +103,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     onSubmitted: (_) => model.submitAnswer(),
                   ),
                   const SizedBox(height: 12),
-                  _AnswerFeedback(model: model),
+                  _AnswerFeedback(key: ValueKey(model.current), model: model),
                   const SizedBox(height: 12),
                   Wrap(
                     alignment: WrapAlignment.center,
@@ -131,13 +132,27 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 }
 
-class _AnswerFeedback extends StatelessWidget {
-  const _AnswerFeedback({required this.model});
+class _AnswerFeedback extends StatefulWidget {
+  const _AnswerFeedback({super.key, required this.model});
 
   final MathTesterModel model;
 
   @override
+  State<_AnswerFeedback> createState() => _AnswerFeedbackState();
+}
+
+class _AnswerFeedbackState extends State<_AnswerFeedback> {
+  bool _showSteps = false;
+
+  @override
+  void didUpdateWidget(covariant _AnswerFeedback oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.model.answerCorrect != true) _showSteps = false;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final model = widget.model;
     final message =
         model.validationMessage ??
         switch (model.answerCorrect) {
@@ -162,6 +177,7 @@ class _AnswerFeedback extends StatelessWidget {
         ? Icons.check_circle
         : Icons.lightbulb_outline;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final showSteps = model.answerCorrect == false || (correct && _showSteps);
 
     return AnimatedSwitcher(
       duration: reduceMotion
@@ -187,23 +203,82 @@ class _AnswerFeedback extends StatelessWidget {
                   color: background,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(icon, color: foreground),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: foreground,
-                          fontWeight: FontWeight.w700,
+                    Row(
+                      children: [
+                        Icon(icon, color: foreground),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            message,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: foreground,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (correct)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () =>
+                              setState(() => _showSteps = !_showSteps),
+                          icon: Icon(
+                            _showSteps
+                                ? Icons.expand_less
+                                : Icons.menu_book_outlined,
+                          ),
+                          label: Text(_showSteps ? 'Hide steps' : 'Show steps'),
                         ),
                       ),
-                    ),
+                    if (showSteps) ...[
+                      const SizedBox(height: 16),
+                      _SolutionSteps(model: model),
+                    ],
                   ],
                 ),
               ),
             ),
+    );
+  }
+}
+
+class _SolutionSteps extends StatelessWidget {
+  const _SolutionSteps({required this.model});
+
+  final MathTesterModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = solutionSteps(model.current);
+    final textStyle = Theme.of(context).textTheme.bodyMedium;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Let’s work it out',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        for (var index = 0; index < steps.length; index++) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 28,
+                child: Text('${index + 1}.', style: textStyle),
+              ),
+              Expanded(child: Text(steps[index], style: textStyle)),
+            ],
+          ),
+          if (index < steps.length - 1) const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

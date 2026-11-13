@@ -24,12 +24,17 @@ macOS and Xcode. Android builds require an Android SDK and accepted licenses.
 Run all Flutter and Dart commands through `mise` from `app/`:
 
 ```sh
-mise exec -- dart format --output=none --set-exit-if-changed lib test
+mise exec -- dart format --output=none --set-exit-if-changed lib test integration_test
 mise exec -- flutter analyze
 mise exec -- flutter test
+mise exec -- flutter test integration_test -d linux
 mise exec -- flutter build web --release
 mise exec -- flutter build apk --release
 ```
+
+The integration command builds and launches the real Linux app, then tests wrong
+and correct answers, optional steps, navigation, and correct/incorrect/skipped
+history. On a headless Linux host, prefix it with `xvfb-run -a`.
 
 On macOS, also run:
 

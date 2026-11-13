@@ -124,6 +124,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Wrong answers show steps and correct answers offer them', (
+    tester,
+  ) async {
+    await launch(
+      tester,
+      size: const Size(320, 500),
+      scale: 2,
+      keyboardInset: 180,
+    );
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '14');
+    await tester.ensureVisible(find.text('Check answer'));
+    await tester.tap(find.text('Check answer'));
+    await tester.pumpAndSettle();
+    expect(find.text('Let’s work it out'), findsOneWidget);
+    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
+    expect(tester.takeException(), isNull);
+
+    await tester.ensureVisible(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), '15');
+    await tester.ensureVisible(find.text('Check answer'));
+    await tester.tap(find.text('Check answer'));
+    await tester.pumpAndSettle();
+    expect(find.text('You got it!'), findsOneWidget);
+    expect(find.text('Let’s work it out'), findsNothing);
+
+    await tester.ensureVisible(find.text('Show steps'));
+    await tester.tap(find.text('Show steps'));
+    await tester.pumpAndSettle();
+    expect(find.text('Let’s work it out'), findsOneWidget);
+    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
+
+    await tester.ensureVisible(find.text('Hide steps'));
+    await tester.tap(find.text('Hide steps'));
+    await tester.pumpAndSettle();
+    expect(find.text('Let’s work it out'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
     await launch(tester, disableAnimations: true);
     await tester.enterText(find.byType(TextField), '15');

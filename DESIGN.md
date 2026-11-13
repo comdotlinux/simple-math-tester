@@ -66,8 +66,9 @@ short viewports, keyboard insets and 200% text scale. Results wrap, never clip.
 
 ## Interaction states
 Initial: a clear question with an empty labeled answer field. Invalid: inline hint,
-no timer stop or submission. Correct: encouraging confirmation; wrong: invitation
-to try again; Next remains available for skipping. Next archives once and clears
+no timer stop or submission. Correct: encouraging confirmation with optional
+steps; wrong: invitation to try again with steps shown automatically. Next
+remains available for skipping. Next archives once and clears
 the draft. Results: useful empty state, then correct/incorrect/skipped rows.
 No data-loading placeholders: computation and history are local. Installed native
 app requires no network for practice; initial web asset loading is separate.
