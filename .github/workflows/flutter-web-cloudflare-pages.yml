@@ -1,59 +1,20 @@
+name: Cloudflare Pages (manual compatibility)
+
 on:
   workflow_dispatch:
     inputs:
       environment-name:
-        description: 'Environment to Deploy to'
+        description: 'Environment to deploy to'
         required: true
         type: choice
         options:
           - dev
           - prod
           - test
-  push:
-    branches:
-      - main
 
 jobs:
-  checks:
-    uses: ./.github/workflows/flutter-checks.yml
-
   deploy:
-    needs: checks
-    environment: ${{ github.event.inputs.environment-name }}
-    runs-on: ubuntu-26.04
-    permissions:
-      contents: read
-      deployments: write
-    name: Deploy to Cloudflare Pages
-    steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v7
-
-      - name: 'Setup Flutter'
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.50.0'
-          channel: 'stable'
-          cache: true
-          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
-          cache-path: '${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:'
-
-      - name: 'Install dependencies'
-        run: flutter pub get --enforce-lockfile
-        working-directory: app
-
-      - name: 'Test'
-        run: flutter test
-        working-directory: app
-
-      - name: 'Build Web Distribution'
-        run: flutter build web --release
-        working-directory: app
-
-      - name: 'Publish To Cloudflare Pages'
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy app/build/web --project-name=simple-math-tester
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+    uses: ./.github/workflows/flutter-checks.yml
+    with:
+      environment-name: ${{ github.event.inputs.environment-name }}
+    secrets: inherit

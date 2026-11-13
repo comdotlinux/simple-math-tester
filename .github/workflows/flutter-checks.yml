@@ -1,11 +1,27 @@
-name: Flutter checks
+name: Flutter checks and Cloudflare Pages
 
 on:
   push:
-    branches-ignore:
-      - main
   workflow_dispatch:
+    inputs:
+      environment-name:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+          - test
   workflow_call:
+    inputs:
+      environment-name:
+        required: false
+        type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: false
+      CLOUDFLARE_ACCOUNT_ID:
+        required: false
 
 permissions:
   contents: read
@@ -36,6 +52,7 @@ jobs:
 
   linux-integration:
     name: Launch Linux app and test user journeys
+    needs: web
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     defaults:
@@ -66,6 +83,7 @@ jobs:
 
   android:
     name: Build Android release APK
+    needs: linux-integration
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -95,6 +113,7 @@ jobs:
 
   ios:
     name: Build unsigned iOS release
+    needs: linux-integration
     runs-on: macos-26
     timeout-minutes: 30
     defaults:
@@ -116,3 +135,36 @@ jobs:
           path: app/build/ios/iphoneos/Runner.app
           retention-days: 3
           if-no-files-found: error
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    needs: linux-integration
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_call' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    environment: ${{ github.event.inputs.environment-name }}
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+        working-directory: app
+      - run: flutter test
+        working-directory: app
+      - run: flutter build web --release
+        working-directory: app
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy app/build/web --project-name=simple-math-tester
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

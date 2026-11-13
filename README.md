@@ -36,9 +36,12 @@ The integration command builds and launches the real Linux app, then tests wrong
 and correct answers, optional steps, navigation, and correct/incorrect/skipped
 history. On a headless Linux host, prefix it with `xvfb-run -a`.
 
+CI runs web checks first, then Linux integration. Cloudflare deployment, Android
+and iOS builds then run in parallel. Branch pushes skip deployment; `main` pushes
+and manual runs deploy after the prerequisite checks pass.
+
 CI uploads the Linux release bundle, Android APK, and unsigned iOS app as build
-artifacts with 3-day retention. The same uploads occur when the reusable checks
-run after a merge to `main`; merging alone does not create artifacts.
+artifacts with 3-day retention.
 
 On macOS, also run:
 
