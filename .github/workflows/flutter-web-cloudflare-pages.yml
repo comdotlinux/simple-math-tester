@@ -51,10 +51,9 @@ jobs:
         working-directory: app
 
       - name: 'Publish To Cloudflare Pages'
-        uses: cloudflare/pages-action@1
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: 'simple-math-tester'
-          directory: 'app/build/web'
+          command: pages deploy app/build/web --project-name=simple-math-tester
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
