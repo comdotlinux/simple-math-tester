@@ -14,7 +14,11 @@ on:
       - main
 
 jobs:
+  checks:
+    uses: ./.github/workflows/flutter-checks.yml
+
   deploy:
+    needs: checks
     environment: ${{ github.event.inputs.environment-name }}
     runs-on: ubuntu-latest
     permissions:
@@ -23,18 +27,19 @@ jobs:
     name: Deploy to Cloudflare Pages
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: 'Setup Flutter'
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.50.0'
           channel: 'stable'
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
           cache-path: '${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:'
 
       - name: 'Install dependencies'
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
         working-directory: app
 
       - name: 'Test'
@@ -42,7 +47,7 @@ jobs:
         working-directory: app
 
       - name: 'Build Web Distribution'
-        run: flutter build web
+        run: flutter build web --release
         working-directory: app
 
       - name: 'Publish To Cloudflare Pages'

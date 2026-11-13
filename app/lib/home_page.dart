@@ -1,64 +1,78 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_math_tester/main.dart';
-import 'package:simple_math_tester/problem_page.dart';
-import 'package:simple_math_tester/results_page.dart';
 
 import 'keys.dart';
+import 'math_tester_model.dart';
+import 'problem_page.dart';
+import 'results_page.dart';
 
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final modelProvider = context.watch<MathTesterModel>();
-    Widget page;
-    switch (modelProvider.currentPage) {
-      case 0:
-        page = const ProblemPage(key: problemsPageKey);
-        break;
-      case 1:
-        page = const ResultsPage(key: resultsPageKey);
-        break;
-      // case 2:
-      //   page = const StaticOpenLibrarySearchWidget();
-      //   break;
-      default:
-        throw UnimplementedError('no widget for ${modelProvider.currentPage}');
-    }
-    return LayoutBuilder(builder: (context, constraints) {
-      return Scaffold(
-        resizeToAvoidBottomInset: true,
-        body: Row(
-          children: [
-            SafeArea(
-              child: NavigationRail(
-                  extended: constraints.maxWidth > 800,
+    final model = context.watch<MathTesterModel>();
+    final page = model.currentPage == 0
+        ? const ProblemPage(key: problemsPageKey)
+        : const ResultsPage(key: resultsPageKey);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact =
+            constraints.maxWidth < 800 ||
+            MediaQuery.textScalerOf(context).scale(1) > 1;
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            child: compact
+                ? page
+                : Row(
+                    children: [
+                      NavigationRail(
+                        extended: constraints.maxWidth >= 1000,
+                        labelType: constraints.maxWidth >= 1000
+                            ? null
+                            : NavigationRailLabelType.all,
+                        destinations: const [
+                          NavigationRailDestination(
+                            icon: Icon(Icons.calculate_outlined),
+                            selectedIcon: Icon(Icons.calculate),
+                            label: Text('Practice'),
+                          ),
+                          NavigationRailDestination(
+                            icon: Icon(Icons.checklist_outlined),
+                            selectedIcon: Icon(Icons.checklist),
+                            label: Text('My answers'),
+                          ),
+                        ],
+                        selectedIndex: model.currentPage,
+                        onDestinationSelected: model.setCurrentPage,
+                      ),
+                      const VerticalDivider(width: 1),
+                      Expanded(child: page),
+                    ],
+                  ),
+          ),
+          bottomNavigationBar: compact
+              ? NavigationBar(
                   destinations: const [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.question_mark),
-                      label: Text('Questions'),
+                    NavigationDestination(
+                      icon: Icon(Icons.calculate_outlined),
+                      selectedIcon: Icon(Icons.calculate),
+                      label: 'Practice',
                     ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.question_answer_rounded),
-                      label: Text('Answers'),
+                    NavigationDestination(
+                      icon: Icon(Icons.checklist_outlined),
+                      selectedIcon: Icon(Icons.checklist),
+                      label: 'My answers',
                     ),
                   ],
-                  selectedIndex: modelProvider.currentPage,
-                  onDestinationSelected: (value) {
-                    // debugPrint('Selected Index Changed to $value');
-                    modelProvider.setCurrentPage(value);
-                  }),
-            ),
-            Expanded(
-              child: Container(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                child: page,
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+                  selectedIndex: model.currentPage,
+                  onDestinationSelected: model.setCurrentPage,
+                )
+              : null,
+        );
+      },
+    );
   }
 }

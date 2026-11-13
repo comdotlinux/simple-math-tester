@@ -1,40 +1,169 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
-
 import 'package:simple_math_tester/main.dart';
+import 'package:simple_math_tester/math_tester_model.dart';
+import 'package:simple_math_tester/operations.dart';
 
 void main() {
-  testWidgets(skip: true, 'Can Find The Problem and Result Pages By Their Keys', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  Future<MathTesterModel> launch(
+    WidgetTester tester, {
+    Size size = const Size(1000, 900),
+    double scale = 1,
+    double keyboardInset = 0,
+    bool disableAnimations = false,
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboardInset);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
+    final model = MathTesterModel();
+    model.current = Operation(12, 3, OperationType.plus, 15);
     await tester.pumpWidget(
-        MultiProvider(
-          providers: [ChangeNotifierProvider(create: (_) => MathTesterModel()),],
-          child: const MathTesterApp()
-        )
+      ChangeNotifierProvider.value(
+        value: model,
+        child: MediaQuery(
+          data: MediaQueryData(
+            size: size,
+            textScaler: TextScaler.linear(scale),
+            viewInsets: EdgeInsets.only(bottom: keyboardInset),
+            disableAnimations: disableAnimations,
+          ),
+          child: const MathTesterApp(),
+        ),
+      ),
     );
-    await tester.pump();
-    // Verify that our counter starts at 0.
-    expect(find.byKey(materialAppKey), findsOneWidget);
-    expect(find.byKey(homePageKey), findsOneWidget);
-    expect(find.byKey(problemsPageKey), findsOneWidget);
+    await tester.pumpAndSettle();
+    addTearDown(model.dispose);
+    return model;
+  }
 
+  testWidgets('Practice and results remain navigable', (tester) async {
+    await launch(tester);
     expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.question_answer_rounded));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
+    await tester.tap(find.text('My answers').last);
+    await tester.pumpAndSettle();
     expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
-    expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+    await tester.tap(find.text('Practice').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
   });
+
+  for (final useKeyboard in [false, true]) {
+    testWidgets(
+      'Submit visible answer via ${useKeyboard ? 'keyboard' : 'button'}',
+      (tester) async {
+        final model = await launch(tester);
+        await tester.enterText(find.byType(TextField), '15');
+        if (useKeyboard) {
+          await tester.testTextInput.receiveAction(TextInputAction.done);
+        } else {
+          await tester.tap(find.text('Check answer'));
+        }
+        await tester.pumpAndSettle();
+        expect(model.current.inputCorrect(), isTrue);
+        expect(find.text('You got it!'), findsOneWidget);
+        await tester.tap(find.text('Next question'));
+        await tester.pumpAndSettle();
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          '',
+        );
+        await tester.tap(find.text('Check answer'));
+        await tester.pumpAndSettle();
+        expect(model.current.inputEntered(), isFalse);
+        expect(find.text('Enter a number first.'), findsOneWidget);
+      },
+    );
+  }
+
+  testWidgets(
+    'Draft survives navigation and results distinguish skipped answers',
+    (tester) async {
+      final model = await launch(tester);
+      await tester.enterText(find.byType(TextField), '42');
+      await tester.tap(find.text('My answers').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Practice').first);
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '42',
+      );
+      await tester.tap(find.text('Next question'));
+      await tester.pumpAndSettle();
+      expect(model.completedProblems.length, 1);
+      await tester.tap(find.text('My answers').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Skipped'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Short viewport and keyboard inset keep practice usable', (
+    tester,
+  ) async {
+    final model = await launch(
+      tester,
+      size: const Size(390, 500),
+      scale: 2,
+      keyboardInset: 180,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.enterText(find.byType(TextField), '15');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('You got it!'), findsOneWidget);
+    await tester.ensureVisible(find.text('Next question'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Next question'));
+    await tester.pumpAndSettle();
+    expect(model.completedProblems.length, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Reduced motion suppresses feedback animation', (tester) async {
+    await launch(tester, disableAnimations: true);
+    await tester.enterText(find.byType(TextField), '15');
+    await tester.tap(find.text('Check answer'));
+    await tester.pumpAndSettle();
+    final feedback = find.ancestor(
+      of: find.text('You got it!'),
+      matching: find.byType(AnimatedSwitcher),
+    );
+    expect(feedback, findsOneWidget);
+    expect(tester.widget<AnimatedSwitcher>(feedback).duration, Duration.zero);
+  });
+
+  testWidgets('Practice controls meet 48px touch targets', (tester) async {
+    await launch(tester, size: const Size(390, 844));
+    for (final finder in [
+      find.byType(FilledButton),
+      find.byType(OutlinedButton),
+      find.byType(TextField),
+    ]) {
+      final size = tester.getSize(finder);
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
+    }
+  });
+
+  for (final width in [320.0, 390.0, 600.0, 768.0, 800.0, 1440.0]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('Responsive $width at text scale $scale', (tester) async {
+        final model = await launch(
+          tester,
+          size: Size(width, 900),
+          scale: scale,
+        );
+        expect(tester.takeException(), isNull);
+        model.generateNextProblem();
+        model.setCurrentPage(1);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
 }

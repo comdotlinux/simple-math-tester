@@ -1,0 +1,5 @@
+[tools]
+"asdf:mise-plugins/mise-flutter" = "3.50.0-stable"
+github-cli = "2.34.0"
+node = "26.13.0"
+"npm:oh-my-codex" = "0.22.6"

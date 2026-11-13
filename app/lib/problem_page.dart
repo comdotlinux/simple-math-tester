@@ -1,128 +1,209 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_math_tester/main.dart';
-import 'package:simple_math_tester/operations.dart';
 
+import 'app_theme.dart';
 import 'keys.dart';
+import 'math_tester_model.dart';
 
-class ProblemPage extends StatelessWidget {
-  const ProblemPage({
-    super.key,
-  });
+class ProblemPage extends StatefulWidget {
+  const ProblemPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final appState = context.watch<MathTesterModel>();
-    var screenSize = MediaQuery.of(context).size;
-
-    return Center(
-      widthFactor: 100.0,
-      child: SizedBox(
-        width: screenSize.width > 800 ? 600 : 300,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            const BigCard(key: questionOnProblemsPageKey),
-            Row(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(onPressed: appState.checkInput, icon: checkButtonIcon(appState.current), label: Text(checkButtonText(appState.current))),
-                ElevatedButton.icon(onPressed: appState.generateNextProblem, icon: const Icon(Icons.navigate_next), label: const Text('Next')),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Icon checkButtonIcon(Operation currentOperation) {
-    if (!currentOperation.inputEntered()) {
-      return const Icon(Icons.question_mark);
-    }
-    return Icon(currentOperation.inputCorrect() ? Icons.check_rounded : Icons.clear_rounded);
-  }
-
-  String checkButtonText(Operation currentOperation) {
-    if (!currentOperation.inputEntered()) {
-      return 'Check Input';
-    }
-    return currentOperation.inputCorrect() ? 'Correct' : 'Incorrect';
-  }
+  State<ProblemPage> createState() => _ProblemPageState();
 }
 
-class BigCard extends StatefulWidget {
-  const BigCard({super.key});
+class _ProblemPageState extends State<ProblemPage> {
+  late final MathTesterModel _model;
+  late final TextEditingController _controller;
 
   @override
-  State<BigCard> createState() => _BigCardState();
-}
+  void initState() {
+    super.initState();
+    _model = context.read<MathTesterModel>();
+    _controller = TextEditingController(text: _model.draftInput);
+    _model.addListener(_syncDraft);
+  }
 
-class _BigCardState extends State<BigCard> {
-  var userInputController = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    final appState = context.watch<MathTesterModel>();
-    var theme = Theme.of(context);
-    var style = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onPrimary);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text(
-          'Simple Math Questions.',
-          style: theme.textTheme.displayLarge!.copyWith(color: theme.colorScheme.onPrimaryContainer),
-        ),
-        Card(
-          color: theme.colorScheme.primary,
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
-                  appState.current.left,
-                  style: style,
-                  semanticsLabel: "First Operand is ${appState.current.left}",
-                ),
-                Text(
-                  '${appState.current.operationType.displayString} ${appState.current.right}',
-                  style: style,
-                  semanticsLabel: "Second Operand is ${appState.current.right}",
-                ),
-                TextField(
-                  keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
-                  style: style,
-                  controller: userInputController,
-                  onTapOutside: (_) {
-                    final userInput = double.tryParse(userInputController.value.text);
-                    // debugPrint('changed value : $userInput');
-                    appState.setInput(userInput);
-                    userInputController.clear();
-                  },
-                  onSubmitted: (value) {
-                    final userInput = double.tryParse(value);
-                    // debugPrint('value : $userInput');
-                    appState.checkInput();
-                    userInputController.clear();
-                  },
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
+  void _syncDraft() {
+    if (_controller.text == _model.draftInput) return;
+    _controller.value = TextEditingValue(
+      text: _model.draftInput,
+      selection: TextSelection.collapsed(offset: _model.draftInput.length),
     );
   }
 
   @override
   void dispose() {
+    _model.removeListener(_syncDraft);
+    _controller.dispose();
     super.dispose();
-    userInputController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final model = context.watch<MathTesterModel>();
+    final theme = Theme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.symmetric(
+            horizontal: constraints.maxWidth < 600 ? 16 : 24,
+            vertical: 24,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Let’s practice', style: theme.textTheme.displaySmall),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Take your time and give it a try.',
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 24),
+                  Card(
+                    color: AppColors.mint,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 32,
+                      ),
+                      child: Text(
+                        '${model.current.left} '
+                        '${model.current.operationType.displayString} '
+                        '${model.current.right}',
+                        key: questionOnProblemsPageKey,
+                        textAlign: TextAlign.center,
+                        semanticsLabel:
+                            'Math question: ${model.current.left} '
+                            '${model.current.operationType.displayString} '
+                            '${model.current.right}',
+                        style: theme.textTheme.displaySmall,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _controller,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: true,
+                      decimal: true,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    style: theme.textTheme.titleLarge,
+                    decoration: const InputDecoration(
+                      labelText: 'Your answer',
+                      hintText: 'Type a number',
+                    ),
+                    onChanged: model.setDraftInput,
+                    onSubmitted: (_) => model.submitAnswer(),
+                  ),
+                  const SizedBox(height: 12),
+                  _AnswerFeedback(model: model),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: model.submitAnswer,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Check answer'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: model.generateNextProblem,
+                        icon: const Icon(Icons.navigate_next),
+                        label: const Text('Next question'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AnswerFeedback extends StatelessWidget {
+  const _AnswerFeedback({required this.model});
+
+  final MathTesterModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final message =
+        model.validationMessage ??
+        switch (model.answerCorrect) {
+          null => null,
+          true => 'You got it!',
+          false => 'Not quite. Try another answer.',
+        };
+    final correct = model.answerCorrect ?? false;
+    final foreground = model.answerCorrect == null
+        ? AppColors.error
+        : correct
+        ? AppColors.teal
+        : AppColors.error;
+    final background = model.answerCorrect == null
+        ? AppColors.peach
+        : correct
+        ? AppColors.mint
+        : AppColors.peach;
+    final icon = model.answerCorrect == null
+        ? Icons.info_outline
+        : correct
+        ? Icons.check_circle
+        : Icons.lightbulb_outline;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    return AnimatedSwitcher(
+      duration: reduceMotion
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: .96, end: 1).animate(animation),
+          child: child,
+        ),
+      ),
+      child: message == null
+          ? const SizedBox.shrink(key: ValueKey('no-feedback'))
+          : Semantics(
+              key: ValueKey(message),
+              container: true,
+              liveRegion: true,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(icon, color: foreground),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
   }
 }

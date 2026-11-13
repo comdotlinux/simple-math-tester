@@ -1,11 +1,11 @@
 {
-    "name": "simple_math_tester",
-    "short_name": "simple_math_tester",
+    "name": "Simple Math Tester",
+    "short_name": "Math Tester",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F5EE",
+    "theme_color": "#226453",
+    "description": "Friendly arithmetic practice for curious minds.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
