@@ -1,93 +1,227 @@
 import 'package:collection/collection.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_math_tester/main.dart';
 
+import 'app_theme.dart';
 import 'keys.dart';
-import 'package:simple_math_tester/operations.dart';
+import 'math_tester_model.dart';
+import 'operations.dart';
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    var appState = context.watch<MathTesterModel>();
-    var theme = Theme.of(context);
-    var secondaryStyle = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onSecondary);
-    var tertiaryStyle = theme.textTheme.displayMedium!.copyWith(color: theme.colorScheme.onTertiary);
-    if (appState.completedProblems.isEmpty) {
-      return Center(
-        child: Card(
-          color: theme.colorScheme.primary,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Text(
+    final model = context.watch<MathTesterModel>();
+    final theme = Theme.of(context);
+    final operations = model.completedProblems.toList();
+    final useCards = MediaQuery.sizeOf(context).width < 800;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: constraints.maxWidth < 600 ? 16 : 24,
+            vertical: 24,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('My answers', style: theme.textTheme.displaySmall),
+                  const SizedBox(height: 24),
+                  if (operations.isEmpty)
+                    _emptyState(context)
+                  else ...[
+                    Text(
+                      operations.length == 1
+                          ? '1 question completed.'
+                          : '${operations.length} questions completed.',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 24),
+                    if (useCards)
+                      ...operations.mapIndexed(
+                        (index, operation) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _resultCard(context, index, operation),
+                        ),
+                      )
+                    else
+                      _resultsTable(context, operations),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _emptyState(BuildContext context) {
+    final model = context.read<MathTesterModel>();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Icon(Icons.auto_awesome, size: 48, color: AppColors.teal),
+            const SizedBox(height: 16),
+            Text(
+              'No answers yet.',
               key: noResultsOnResultsPageKey,
-              'No Results yet.',
-              style: secondaryStyle,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-          ),
+            const SizedBox(height: 12),
+            Text(
+              'Try a question, then come back to see your work here.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => model.setCurrentPage(0),
+                icon: const Icon(Icons.calculate_outlined),
+                label: const Text('Practice'),
+              ),
+            ),
+          ],
         ),
-      );
-    }
-    return ListView(
+      ),
+    );
+  }
+
+  Widget _resultCard(BuildContext context, int index, Operation operation) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Question ${index + 1}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _question(operation),
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 16),
+            _status(operation),
+            const SizedBox(height: 12),
+            _answerDetails(operation),
+            const SizedBox(height: 8),
+            Text('Time: ${operation.elapsed}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _resultsTable(BuildContext context, List<Operation> operations) {
+    final headerStyle = Theme.of(context).textTheme.bodyMedium
+        ?.copyWith(fontWeight: FontWeight.w700);
+    return Table(
+      columnWidths: const {
+        0: FlexColumnWidth(.55),
+        1: FlexColumnWidth(1.6),
+        2: FlexColumnWidth(2.5),
+        3: FlexColumnWidth(1.35),
+      },
+      defaultVerticalAlignment: TableCellVerticalAlignment.top,
+      border: const TableBorder(
+        horizontalInside: BorderSide(color: AppColors.border),
+      ),
       children: [
-        Card(
-          color: theme.colorScheme.primary,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Text(
-              'Completed ${appState.completedProblems.length} question(s).',
-              style: tertiaryStyle,
-            ),
-          ),
+        TableRow(
+          children: [
+            _tableCell(Text('#', style: headerStyle)),
+            _tableCell(Text('Question', style: headerStyle)),
+            _tableCell(Text('Answer', style: headerStyle)),
+            _tableCell(Text('Time', style: headerStyle)),
+          ],
         ),
-        SingleChildScrollView(
-          child: DataTable(
-              horizontalMargin: 10,
-              columns: dataColumns(MediaQuery.of(context)),
-              rows: appState.completedProblems
-                  .mapIndexed((index, operation) => DataRow(
-                        color: MaterialStateProperty.resolveWith((states) => (operation.inputCorrect() ? theme.colorScheme.primary : theme.colorScheme.error).withOpacity(0.3)),
-                        cells: dataRows(MediaQuery.of(context), index, operation),
-                      ))
-                  .toList()),
+        ...operations.mapIndexed(
+          (index, operation) => TableRow(
+            children: [
+              _tableCell(Text('${index + 1}')),
+              _tableCell(Text(_question(operation))),
+              _tableCell(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _status(operation),
+                    const SizedBox(height: 8),
+                    _answerDetails(operation),
+                  ],
+                ),
+              ),
+              _tableCell(Text(operation.elapsed)),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  List<DataCell> dataRows(MediaQueryData mediaQuery, int index, Operation<num, num> operation) {
-    final row = [
-      DataCell(Text((index + 1).toString())),
-      DataCell(Text('${operation.left} ${operation.operationType.displayString} ${operation.right}')),
-      DataCell(Text('${operation.result} Vs ${operation.userInput}')),
-      DataCell(Text(operation.elapsed)),
-    ];
-    if (mediaQuery.size.width < 800 && mediaQuery.size.width > 600) {
-      return row..removeAt(0);
-    } else if (mediaQuery.size.width < 600) {
-      return row
-        ..removeAt(0)
-        ..removeLast();
-    }
-    return row;
+  Widget _tableCell(Widget child) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+    child: child,
+  );
+
+  String _question(Operation operation) =>
+      '${operation.left} ${operation.operationType.displayString} '
+      '${operation.right}';
+
+  Widget _status(Operation operation) {
+    final skipped = !operation.inputEntered();
+    final correct = !skipped && operation.inputCorrect();
+    final color = skipped
+        ? AppColors.muted
+        : correct
+        ? AppColors.teal
+        : AppColors.error;
+    final label = skipped
+        ? 'Skipped'
+        : correct
+        ? 'Correct'
+        : 'Incorrect';
+    final icon = skipped
+        ? Icons.remove_circle_outline
+        : correct
+        ? Icons.check_circle
+        : Icons.refresh;
+    return Row(
+      children: [
+        Icon(icon, color: color),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
   }
 
-  List<DataColumn> dataColumns(MediaQueryData mediaQuery) {
-    final header = [
-      const DataColumn(label: Text('Num')),
-      const DataColumn(label: Text('Question')),
-      const DataColumn(label: Text('Expected Vs Actual')),
-      const DataColumn(label: Text('Took')),
-    ];
-    if (mediaQuery.size.width < 800 && mediaQuery.size.width > 600) {
-      return header..removeAt(0);
-    } else if (mediaQuery.size.width < 600) {
-      return header
-        ..removeAt(0)
-        ..removeLast();
-    }
-    return header;
-  }
+  Widget _answerDetails(Operation operation) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        operation.inputEntered()
+            ? 'Your answer: ${operation.userInput}'
+            : 'No answer entered',
+      ),
+      const SizedBox(height: 4),
+      Text('Expected answer: ${operation.result}'),
+    ],
+  );
 }

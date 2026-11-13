@@ -1,88 +1,41 @@
-import 'dart:math';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
-import 'package:simple_math_tester/operations.dart';
 
+import 'app_theme.dart';
 import 'home_page.dart';
 import 'keys.dart';
+import 'math_tester_model.dart';
 
 void main() {
-  runApp(MultiProvider(
-    providers: [ChangeNotifierProvider(create: (_) => MathTesterModel())],
-    child: const MathTesterApp(),
-  ));
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => MathTesterModel())],
+      child: const MathTesterApp(),
+    ),
+  );
 }
 
 class MathTesterApp extends StatelessWidget {
-  const MathTesterApp({Key? key}) : super(key: key);
+  const MathTesterApp({super.key});
 
-  // This widget is the root of your application.
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
       title: 'Math Tester',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
-      ),
+      theme: buildAppTheme(),
       home: const MyHomePage(key: homePageKey),
     );
   }
 }
 
-class MathTesterModel extends ChangeNotifier {
-  Map<OperationType, Operator> operators = {
-    OperationType.plus: Addition(),
-    OperationType.minus: Subtraction(),
-    OperationType.multiply: Multiplication(),
-    OperationType.divide: Division()
-  };
-  final _random = Random();
-
-  OperationType _nextRandomOperation() => OperationType.of(_random.nextInt(operators.length));
-
-  var completedProblems = <Operation>{};
-
-  Operation current = Addition().create();
-
-  double? _input;
-
-  int _currentPage = 0;
-
-  void generateNextProblem() {
-    completedProblems.add(current);
-    current = operators[_nextRandomOperation()]!.create();
-    notifyListeners();
-  }
-
-  void checkInput() {
-    current.input = _input;
-    notifyListeners();
-  }
-
-  void setInput(double? userInput) {
-    _input = userInput;
-    notifyListeners();
-  }
-
-  int get currentPage => _currentPage;
-
-  void setCurrentPage(int value) {
-    _currentPage = value;
-    notifyListeners();
-  }
-}
-
 class CustomScrollBehavior extends MaterialScrollBehavior {
-  // Override behavior methods and getters like dragDevices
   @override
   Set<PointerDeviceKind> get dragDevices => {
     PointerDeviceKind.touch,
     PointerDeviceKind.mouse,
   };
 }
-

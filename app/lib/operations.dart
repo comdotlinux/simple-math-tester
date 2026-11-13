@@ -13,7 +13,8 @@ enum OperationType {
 
   const OperationType(this.displayString, this.operationIndex);
 
-  static OperationType of(int index) => OperationType.values.firstWhere((ot) => ot.operationIndex == index);
+  static OperationType of(int index) =>
+      OperationType.values.firstWhere((ot) => ot.operationIndex == index);
 
   static Operator operator(OperationType operationType) {
     switch (operationType) {
@@ -34,7 +35,7 @@ class Operation<P extends num, R extends num> {
   final P rhs;
   final OperationType operationType;
   final R result;
-  R? _input;
+  num? _input;
 
   String? _elapsed;
 
@@ -42,12 +43,17 @@ class Operation<P extends num, R extends num> {
 
   Operation(this.lhs, this.rhs, this.operationType, this.result);
 
-  R? get input => _input;
+  num? get input => _input;
 
-  set input(R? value) {
+  set input(num? value) {
+    if (value != null && !value.isFinite) {
+      throw ArgumentError.value(value, 'input', 'Answer must be finite');
+    }
     _input = value;
-    stopwatch.stop();
-    _elapsed = prettyDuration(stopwatch.elapsed);
+    if (value != null && _elapsed == null) {
+      stopwatch.stop();
+      _elapsed = prettyDuration(stopwatch.elapsed);
+    }
   }
 
   String get left => lhs.toString();
@@ -66,7 +72,7 @@ class Operation<P extends num, R extends num> {
 
   @override
   String toString() =>
-      '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input?.toInt() ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
+      '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
 }
 
 abstract class Operator<P extends num, R extends num> {
@@ -89,7 +95,8 @@ abstract class Operator<P extends num, R extends num> {
   P _nextValue() {
     P nextValue;
     do {
-      nextValue = (minOperandValue() + _random.nextInt(maxOperandValue().toInt())) as P;
+      nextValue =
+          (minOperandValue() + _random.nextInt(maxOperandValue().toInt())) as P;
     } while (nextValue > maxOperandValue() || nextValue < minOperandValue());
 
     return nextValue;
@@ -100,11 +107,15 @@ abstract class Operator<P extends num, R extends num> {
     do {
       final lhs = _nextValue();
       final rhs = _nextValue();
-      operation = Operation(lhs, rhs, operationType(), calculateResult(lhs, rhs));
+      operation = Operation(
+        lhs,
+        rhs,
+        operationType(),
+        calculateResult(lhs, rhs),
+      );
     } while (operation.result > maxResultValue() ||
         operation.result < minResultValue() ||
         !acceptable(operation));
-    // debugPrint(operation.toString());
     return operation;
   }
 }
@@ -126,16 +137,18 @@ class Addition extends Operator<int, int> {
   int maxResultValue() => 10000;
 
   @override
-  bool acceptable(Operation operation) => operation.result <= maxResultValue() && operation.result >= minResultValue();
+  bool acceptable(Operation operation) =>
+      operation.result <= maxResultValue() &&
+      operation.result >= minResultValue();
 
   @override
   int calculateResult(int lhs, int rhs) => lhs + rhs;
 }
 
 class Subtraction extends Operator<int, int> {
-
   @override
-  bool acceptable(Operation operation) => operation.result == operation.result.abs();
+  bool acceptable(Operation operation) =>
+      operation.result == operation.result.abs();
 
   @override
   int calculateResult(int lhs, int rhs) => lhs - rhs;
@@ -154,7 +167,6 @@ class Subtraction extends Operator<int, int> {
 
   @override
   OperationType operationType() => OperationType.minus;
-
 }
 
 class Multiplication extends Operator<int, int> {
@@ -182,7 +194,8 @@ class Multiplication extends Operator<int, int> {
 
 class Division extends Operator<int, double> {
   @override
-  bool acceptable(Operation operation) => operation.result is int || operation.result == operation.result.toInt();
+  bool acceptable(Operation operation) =>
+      operation.result is int || operation.result == operation.result.toInt();
 
   @override
   double calculateResult(int lhs, int rhs) => lhs / rhs;
