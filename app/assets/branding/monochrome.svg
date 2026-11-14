@@ -15,10 +15,12 @@
       </g>
     </mask>
   </defs>
+  <g transform="translate(54 54) scale(0.76) translate(-54 -54)">
   <g mask="url(#m)" fill="#000">
     <rect x="22.8" y="21.3" width="29.4" height="29.4" rx="7.2"/>
     <rect x="55.8" y="21.3" width="29.4" height="29.4" rx="7.2"/>
     <rect x="22.8" y="54.3" width="29.4" height="29.4" rx="7.2"/>
     <rect x="55.8" y="54.3" width="29.4" height="29.4" rx="7.2"/>
+  </g>
   </g>
 </svg>

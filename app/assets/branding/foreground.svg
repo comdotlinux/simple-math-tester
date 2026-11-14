@@ -1,5 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108">
-  <!-- Android adaptive foreground. Content stays inside the centre 66 of 108. -->
+  <!-- Android adaptive foreground. Content stays inside the 66 diameter safe circle. -->
+  <g transform="translate(54 54) scale(0.76) translate(-54 -54)">
   <g id="tiles" stroke-linejoin="round">
     <g transform="translate(24 22.5)">
       <rect y="3" width="27" height="27" rx="6" fill="#18213B"/>
@@ -23,5 +24,6 @@
       <circle cx="13.5" cy="6.9" r="2.3" fill="#18213B"/>
       <circle cx="13.5" cy="20.1" r="2.3" fill="#18213B"/>
     </g>
+  </g>
   </g>
 </svg>

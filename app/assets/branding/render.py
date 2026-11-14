@@ -15,7 +15,8 @@ HERE = Path(__file__).resolve().parent
 APP = HERE.parents[1]
 ROOT = APP.parent
 FG = (HERE / "foreground.svg").read_text()
-tiles_inner = FG[FG.index('<g id="tiles"'):FG.rindex("</svg>")]
+# the tiles group without the safe-zone scale wrapped around it in foreground.svg
+tiles_inner = FG[FG.index('<g id="tiles"'):FG.rindex("</g>")].rstrip() + "\n"
 tile_list = re.findall(r'<g transform="translate\([^)]*\)">.*?\n    </g>', tiles_inner, re.S)
 assert len(tile_list) == 4
 BG = '<rect width="108" height="108" fill="#FFC83A"/>'
@@ -32,7 +33,8 @@ def write(name, text):
 
 # Full bleed (iOS, store), maskable (web), rounded (legacy Android, web, Windows).
 write("icon.svg", f"{OPEN}{BG}{scaled(1.3)}</svg>\n")
-write("icon-maskable.svg", f"{OPEN}{BG}{scaled(1.15)}</svg>\n")
+# maskable: all content inside the 40% radius safe circle
+write("icon-maskable.svg", f"{OPEN}{BG}{scaled(1.0)}</svg>\n")
 write(
     "icon-rounded.svg",
     f'{OPEN}<clipPath id="r"><rect width="108" height="108" rx="24"/></clipPath>'
