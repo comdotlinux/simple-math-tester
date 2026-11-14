@@ -71,6 +71,9 @@ void main() {
     bool canSave = true,
     List<Attempt> history = const [],
     Future<bool> Function(Uri)? openLink,
+    // Phones start with the system keyboard; this opens the pad as a
+    // player does, with the keyboard button.
+    bool usePad = false,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -111,6 +114,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     addTearDown(model.dispose);
+    if (usePad && pad.evaluate().isEmpty) {
+      await tester.ensureVisible(find.byKey(keyboardSwitchKey));
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -490,10 +498,7 @@ void main() {
         brightness: brightness,
       );
       expect(tester.takeException(), isNull);
-      // The system keyboard is in use only after the keyboard switch.
-      await tester.ensureVisible(find.byKey(keyboardSwitchKey));
-      await tester.tap(find.byKey(keyboardSwitchKey));
-      await tester.pumpAndSettle();
+      // A phone starts with the system keyboard.
       expect(find.byKey(numberPadKey), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.enterText(find.byType(TextField), '15');
@@ -663,7 +668,11 @@ void main() {
     testWidgets('criterion 5: the last selected chip stays selected', (
       tester,
     ) async {
-      final model = await launch(tester, size: const Size(390, 844));
+      final model = await launch(
+        tester,
+        size: const Size(390, 844),
+        usePad: true,
+      );
       for (final type in OperationType.values) {
         expect(
           tester.getSemantics(chip(type)),
@@ -802,7 +811,12 @@ void main() {
 
     testWidgets('Practice controls meet 48px touch targets, '
         '${brightness.name} theme', (tester) async {
-      await launch(tester, size: const Size(390, 844), brightness: brightness);
+      await launch(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        usePad: true,
+      );
       for (final finder in [
         find.byKey(checkAnswerButtonKey),
         find.byKey(nextQuestionButtonKey),
@@ -822,6 +836,47 @@ void main() {
         expect(size.height, greaterThanOrEqualTo(48));
       }
     });
+
+    // The compact docked phone page, with the pad and with the system
+    // keyboard.
+    for (final size in const [Size(360, 640), Size(412, 720)]) {
+      for (final scale in const [1.0, 1.3]) {
+        testWidgets('Docked phone controls meet 48px touch targets at '
+            '${size.width.toInt()}x${size.height.toInt()}, text scale '
+            '$scale, ${brightness.name} theme', (tester) async {
+          void expectTargets(List<Finder> finders) {
+            for (final finder in finders) {
+              final size = tester.getSize(finder);
+              expect(size.width, greaterThanOrEqualTo(48), reason: '$finder');
+              expect(size.height, greaterThanOrEqualTo(48), reason: '$finder');
+            }
+          }
+
+          final shared = [
+            find.byKey(nextQuestionButtonKey),
+            find.byKey(sprintButtonKey),
+            find.byKey(keyboardSwitchKey),
+            for (final type in OperationType.values)
+              find.byWidgetPredicate(
+                (widget) => widget is Tooltip && widget.message == type.label,
+              ),
+          ];
+          await launch(
+            tester,
+            size: size,
+            scale: scale,
+            brightness: brightness,
+          );
+          expect(pad, findsNothing);
+          expectTargets([...shared, find.byKey(checkAnswerButtonKey)]);
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await tester.pumpAndSettle();
+          expect(pad, findsOneWidget);
+          expectTargets([...shared, ...padKeys()]);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
 
     for (final width in [320.0, 390.0, 600.0, 768.0, 800.0, 1440.0]) {
       for (final scale in [1.0, 2.0]) {
@@ -1707,8 +1762,11 @@ void main() {
           model.submitAnswer();
           await collect('correct answer');
           await tester.tap(find.byKey(keyboardSwitchKey));
-          await collect('keyboard switched, Check button');
+          // A phone starts with the system keyboard, so there the switch
+          // opens the pad; elsewhere it shows the Check button.
+          await collect('keyboard button pressed once');
           await tester.tap(find.byKey(keyboardSwitchKey));
+          await tester.pumpAndSettle();
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -1876,7 +1934,11 @@ void main() {
     testWidgets(
       'the pad Check key checks, then reads Next and moves on',
       (tester) async {
-        final model = await launch(tester, size: const Size(390, 844));
+        final model = await launch(
+          tester,
+          size: const Size(390, 844),
+          usePad: true,
+        );
         final first = model.current;
         final check = find.byKey(checkAnswerButtonKey);
         for (final digit in formatNumber(first.result).split('')) {
@@ -1959,7 +2021,11 @@ void main() {
 
     testWidgets('criterion 35: hardware typing and Enter check, pad keys edit '
         'the same field, the switch hides the pad, one Check', (tester) async {
-      final model = await launch(tester, size: const Size(390, 844));
+      final model = await launch(
+        tester,
+        size: const Size(390, 844),
+        usePad: true,
+      );
       expect(pad, findsOneWidget);
       expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
       expect(find.text('Check answer'), findsOneWidget);
@@ -2012,7 +2078,11 @@ void main() {
       expect(inputType(tester)['name'], 'TextInputType.number');
       expect(fieldText(tester), '72');
       expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
-      expect(find.text('Check answer'), findsOneWidget);
+      // Beside the docked field of a phone page it reads "Check".
+      expect(
+        tester.getSemantics(find.byKey(checkAnswerButtonKey)),
+        isSemantics(label: 'Check answer', isButton: true),
+      );
       expect(
         tester.getSemantics(find.byKey(keyboardSwitchKey)),
         isSemantics(tooltip: 'Use the number pad', isButton: true),
@@ -2029,10 +2099,104 @@ void main() {
       expect(model.history, hasLength(2));
     });
 
+    String switchTooltip(WidgetTester tester) =>
+        tester.widget<IconButton>(find.byKey(keyboardSwitchKey)).tooltip!;
+
+    for (final (size, phone) in const [
+      (Size(360, 640), true),
+      (Size(412, 720), true),
+      (Size(390, 844), true),
+      (Size(844, 390), true),
+      (Size(800, 1000), false),
+      (Size(1024, 768), false),
+      (Size(1440, 900), false),
+    ]) {
+      testWidgets('starts with the ${phone ? 'system keyboard' : 'pad'} at '
+          '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+        await launch(tester, size: size);
+        expect(pad, phone ? findsNothing : findsOneWidget);
+        expect(
+          inputType(tester)['name'],
+          phone ? 'TextInputType.number' : 'TextInputType.none',
+        );
+        expect(
+          switchTooltip(tester),
+          phone ? 'Use the number pad' : 'Use the keyboard',
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('on a phone the keyboard button opens the pad and brings '
+        'the system keyboard back', (tester) async {
+      final model = await launch(tester, size: const Size(360, 640));
+      expect(pad, findsNothing);
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(pad, findsOneWidget);
+      expect(inputType(tester)['name'], 'TextInputType.none');
+      expect(switchTooltip(tester), 'Use the keyboard');
+      await tapPad(tester, '1');
+      await tapPad(tester, '5');
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+      expect(model.history.single.correct, isTrue);
+
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(pad, findsNothing);
+      expect(inputType(tester)['name'], 'TextInputType.number');
+      expect(switchTooltip(tester), 'Use the number pad');
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the default follows the size until the player picks, then '
+        'the pick stays', (tester) async {
+      final model = await launch(tester, size: const Size(390, 844));
+      Future<void> resize(Size size) async {
+        tester.view.physicalSize = size;
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: model,
+            child: MediaQuery(
+              data: MediaQueryData(size: size),
+              child: const MathTesterApp(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      expect(pad, findsNothing);
+      // Turning a phone keeps its shortest side.
+      await resize(const Size(844, 390));
+      expect(pad, findsNothing);
+      // A window widened past a phone takes the pad while nothing is
+      // picked.
+      await resize(const Size(1000, 900));
+      expect(pad, findsOneWidget);
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(pad, findsNothing);
+      await resize(const Size(390, 844));
+      expect(pad, findsNothing);
+      await resize(const Size(1000, 900));
+      expect(pad, findsNothing, reason: 'the player picked the keyboard');
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('pasted or typed non-digits are dropped from the answer', (
       tester,
     ) async {
-      final model = await launch(tester, size: const Size(390, 844));
+      final model = await launch(
+        tester,
+        size: const Size(390, 844),
+        usePad: true,
+      );
       // A paste arrives as one editing update.
       tester.testTextInput.enterText('1 5 apples');
       await tester.pump();
@@ -2062,7 +2226,7 @@ void main() {
     });
 
     testWidgets('criterion 36: pad keys have semantics labels', (tester) async {
-      await launch(tester, size: const Size(390, 844));
+      await launch(tester, size: const Size(390, 844), usePad: true);
       for (final label in [
         for (var digit = 0; digit <= 9; digit++) '$digit',
         'Delete',
@@ -2090,6 +2254,7 @@ void main() {
       final model = await launch(
         tester,
         size: const Size(390, 844),
+        usePad: true,
         game: const GameState(xp: 90),
       );
       await tapPad(tester, '9');
@@ -2125,6 +2290,7 @@ void main() {
         final model = await launch(
           tester,
           size: const Size(390, 844),
+          usePad: true,
           haptic: felt.add,
           haptics: on,
           game: const GameState(xp: 90),
@@ -2223,7 +2389,13 @@ void main() {
             'safe area ${padding.top.toInt()}/${padding.bottom.toInt()}', (
           tester,
         ) async {
-          await launch(tester, size: size, scale: scale, padding: padding);
+          await launch(
+            tester,
+            size: size,
+            scale: scale,
+            padding: padding,
+            usePad: true,
+          );
           expect(tester.takeException(), isNull);
           final safe = padding.deflateRect(Offset.zero & size);
           for (final key in padKeys()) {
@@ -2239,7 +2411,13 @@ void main() {
             // At normal text size the question, the field and the whole pad
             // are in view together, with no scrolling by the player. (A
             // phone with 59/34 insets is taller than 640.)
-            await launch(tester, size: size, scale: scale, padding: padding);
+            await launch(
+              tester,
+              size: size,
+              scale: scale,
+              padding: padding,
+              usePad: true,
+            );
             for (final finder in [
               find.byKey(questionOnProblemsPageKey),
               find.byType(TextField),

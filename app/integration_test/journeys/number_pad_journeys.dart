@@ -17,6 +17,7 @@ void numberPadJourneys() {
   group('number pad', () {
     testWidgets('each digit key types its digit', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
 
       for (final digit in '1234567890'.split('')) {
         await tapVisible(tester, padKey(digit));
@@ -28,6 +29,7 @@ void numberPadJourneys() {
 
     testWidgets('Delete removes the last digit', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
       await tapVisible(tester, padKey('4'));
       await tapVisible(tester, padKey('2'));
 
@@ -43,6 +45,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
 
       await tapVisible(
         tester,
@@ -60,6 +63,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
       final model = modelOf(tester);
 
       for (final digit in formatNumber(model.current.result).split('')) {
@@ -79,6 +83,7 @@ void numberPadJourneys() {
 
     testWidgets('pressing Check twice checks, then moves on', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
       final model = modelOf(tester);
       final first = model.current;
       final check = find.descendant(
@@ -110,7 +115,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
-      expect(find.byKey(numberPadKey), findsOneWidget);
+      await openPad(tester);
       expect(_switchTooltip(tester), 'Use the keyboard');
 
       await tapKey(tester, keyboardSwitchKey);
@@ -133,8 +138,8 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await closePad(tester);
       final model = modelOf(tester);
-      await tapKey(tester, keyboardSwitchKey);
       await typeAnswer(tester, formatNumber(model.current.result));
 
       // The field's action is done; Enter on a keyboard sends the same one.
@@ -156,6 +161,7 @@ void numberPadJourneys() {
     testWidgets('with the pad, tapping the answer field opens no system '
         'keyboard; the keyboard button asks for one', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
       EditableText editable() =>
           tester.widget<EditableText>(find.byType(EditableText));
       // A soft keyboard takes a moment to slide in; real time, not frames.
@@ -189,6 +195,70 @@ void numberPadJourneys() {
       expect(modelOf(tester).draftInput, '125');
     });
 
+    testWidgets('a phone starts with the system keyboard, a larger screen '
+        'with the pad', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final phone = isPhone(tester);
+
+      expect(find.byKey(numberPadKey), phone ? findsNothing : findsOneWidget);
+      expect(
+        tester.widget<EditableText>(find.byType(EditableText)).keyboardType,
+        phone ? TextInputType.number : TextInputType.none,
+      );
+      expect(await answerFocused(tester), isTrue);
+    });
+
+    testWidgets('on a phone with the system keyboard, Enter checks, Enter '
+        'again moves on, and question, answer, feedback and Next stay above '
+        'the keyboard', (tester) async {
+      // A 360 x 640 phone, as below; the keyboard is the device's own where
+      // it has a soft one (the Android emulator), else no inset.
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 3;
+      const insets = FakeViewPadding(top: 20 * 3);
+      tester.view.padding = insets;
+      tester.view.viewPadding = insets;
+      addTearDown(tester.view.reset);
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      final first = model.current;
+      expect(find.byKey(numberPadKey), findsNothing);
+
+      await typeAnswer(tester, formatNumber(first.result + 1));
+      await pressEnter(tester);
+      // A soft keyboard takes a moment to slide in; real time, not frames.
+      await Future<void>.delayed(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      final size = tester.view.physicalSize / 3;
+      final above =
+          Offset.zero &
+          Size(size.width, size.height - tester.view.viewInsets.bottom / 3);
+      for (final finder in [
+        find.byKey(questionOnProblemsPageKey),
+        find.byType(TextField),
+        find.text('Not quite. Try another answer.'),
+        find.byKey(nextQuestionButtonKey),
+        find.byKey(checkAnswerButtonKey),
+      ]) {
+        final rect = tester.getRect(finder);
+        expect(
+          above.intersect(rect).size,
+          rect.size,
+          reason: '$finder at $rect is not fully above the keyboard: $above',
+        );
+      }
+      expect(await answerFocused(tester), isTrue);
+
+      await typeAnswer(tester, formatNumber(first.result));
+      await pressEnter(tester);
+      expect(find.text('You got it!'), findsOneWidget);
+      await pressEnter(tester);
+      expect(model.current, isNot(same(first)));
+      expect(model.history, hasLength(1));
+      expect(await answerFocused(tester), isTrue);
+    });
+
     testWidgets('on a phone a check keeps question, answer, feedback and Next '
         'on screen', (tester) async {
       // A 360 x 640 phone: below 700 px the field, the feedback and a dense
@@ -203,6 +273,7 @@ void numberPadJourneys() {
       tester.view.viewPadding = insets;
       addTearDown(tester.view.reset);
       await startWith(tester, Progress(tier: Tier.easy));
+      await openPad(tester);
       final model = modelOf(tester);
 
       await submit(tester, model.current.result + 1);

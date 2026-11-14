@@ -61,11 +61,16 @@ void main() {
     Tier? tier = Tier.easy,
     StreamController<void>? ticks,
     GameState game = game,
+    // A simulated system keyboard this tall covers the bottom, drawn as a
+    // plain block.
+    double keyboard = 0,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: const Problem(48, 27, OperationType.plus, 75, level: 3),
       progress: Progress(tier: tier, game: game),
@@ -76,14 +81,32 @@ void main() {
     await tester.pumpWidget(
       RepaintBoundary(
         key: boundary,
-        child: ChangeNotifierProvider.value(
-          // A new key per model, so no state carries over between launches.
-          key: ObjectKey(model),
-          value: model,
-          child: MediaQuery(
-            data: MediaQueryData(size: size, platformBrightness: brightness),
-            child: const MathTesterApp(),
-          ),
+        child: Stack(
+          textDirection: TextDirection.ltr,
+          children: [
+            ChangeNotifierProvider.value(
+              // A new key per model, so no state carries over between
+              // launches.
+              key: ObjectKey(model),
+              value: model,
+              child: MediaQuery(
+                data: MediaQueryData(
+                  size: size,
+                  platformBrightness: brightness,
+                  viewInsets: EdgeInsets.only(bottom: keyboard),
+                ),
+                child: const MathTesterApp(),
+              ),
+            ),
+            if (keyboard > 0)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: keyboard,
+                child: const ColoredBox(color: Color(0xFF9E9E9E)),
+              ),
+          ],
         ),
       ),
     );
@@ -132,8 +155,9 @@ void main() {
         practice.toggleOperation(OperationType.divide);
         await shoot(tester, '$tag-1-practice');
 
+        // Phones start with the system keyboard, so there this shows the pad.
         await tester.tap(find.byKey(keyboardSwitchKey));
-        await shoot(tester, '$tag-1b-keyboard');
+        await shoot(tester, '$tag-1b-switched');
         await tester.tap(find.byKey(keyboardSwitchKey));
         await tester.pumpAndSettle();
 
@@ -234,6 +258,16 @@ void main() {
         await shoot(tester, '$tag-9-settings');
         await tester.ensureVisible(find.byKey(themeModeKey(ThemeMode.dark)));
         await shoot(tester, '$tag-9b-settings-theme');
+
+        // A phone with its own number keyboard up.
+        if (size.shortestSide < 600 && size.height < 800) {
+          await launch(tester, size, brightness, keyboard: 260);
+          await shoot(tester, '$tag-10-system-keyboard');
+          await check(tester, '65');
+          await shoot(tester, '$tag-10b-system-keyboard-wrong');
+          await check(tester, '75');
+          await shoot(tester, '$tag-10c-system-keyboard-correct');
+        }
       });
     }
   }
