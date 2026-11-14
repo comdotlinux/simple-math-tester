@@ -119,6 +119,7 @@ void main() {
   for (final brightness in Brightness.values) {
     for (final size in const [
       Size(360, 640),
+      Size(412, 720),
       Size(360, 800),
       Size(800, 1000),
       Size(1280, 900),

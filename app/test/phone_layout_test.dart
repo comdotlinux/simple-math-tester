@@ -46,6 +46,91 @@ void main() {
     );
   }
 
+  // A phone browser (412x720 once the address and system bars take their
+  // share) and a small phone, before any check, at normal and large text.
+  for (final scale in const [1.0, 1.3]) {
+    for (final size in const [Size(412, 720), Size(360, 640)]) {
+      final tag = '${size.width.toInt()}x${size.height.toInt()}, text $scale';
+
+      Future<void> launch(WidgetTester tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final model = MathTesterModel(
+          initialProblem: const Problem(48, 27, OperationType.plus, 75),
+          progress: Progress(tier: Tier.easy),
+        );
+        addTearDown(model.dispose);
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: model,
+            child: MediaQuery(
+              data: MediaQueryData(
+                size: size,
+                textScaler: TextScaler.linear(scale),
+              ),
+              child: const MathTesterApp(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          Scrollable.maybeOf(tester.element(pad)),
+          isNull,
+          reason: 'the pad is docked, outside the page scroll',
+        );
+      }
+
+      testWidgets('the question, Skip, the field, the pad and Check are on '
+          'screen without overlapping at $tag', (tester) async {
+        await launch(tester);
+        final shown = [
+          find.byKey(questionOnProblemsPageKey),
+          find.byKey(nextQuestionButtonKey),
+          find.byType(TextField),
+          pad,
+        ];
+        for (final finder in [...shown, find.byKey(checkAnswerButtonKey)]) {
+          expectOnScreen(tester, finder, size);
+        }
+        for (var i = 0; i < shown.length; i++) {
+          for (var j = i + 1; j < shown.length; j++) {
+            final overlap = tester
+                .getRect(shown[i])
+                .intersect(tester.getRect(shown[j]));
+            expect(
+              overlap.width <= 0 || overlap.height <= 0,
+              isTrue,
+              reason: '${shown[i]} overlaps ${shown[j]}',
+            );
+          }
+        }
+      });
+
+      testWidgets('the last control on the page scrolls fully above the '
+          'dock at $tag', (tester) async {
+        await launch(tester);
+        final page = find.ancestor(
+          of: find.byKey(questionOnProblemsPageKey),
+          matching: find.byType(Scrollable),
+        );
+        final position = tester.state<ScrollableState>(page).position;
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        final last = find.byKey(revealStepButtonKey);
+        expectOnScreen(tester, last, size);
+        expect(
+          tester.getRect(last).bottom,
+          lessThan(tester.getRect(find.byType(TextField)).top),
+          reason: 'above the docked field',
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   for (final brightness in Brightness.values) {
     for (final size in const [Size(320, 568), Size(360, 640), Size(390, 844)]) {
       final tag =
