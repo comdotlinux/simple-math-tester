@@ -195,9 +195,12 @@ uploaded by hand, walkthrough row 8, done 2026-11-14):
 2. IAM and admin, Service accounts: create a service account (for example
    `play-upload`) with no project roles. Keys, Add key, JSON: save the file outside
    the repository.
-3. Play Console, Users and permissions, Invite new users: enter the service
-   account's e-mail, add the app Simple Math Tester, and give it **Release to
-   testing tracks** (nothing else). Send the invitation.
+3. Play Console, Users and permissions, Invite new users: enter the **service
+   account's** e-mail, not your own. It looks like
+   `play-upload@<project-id>.iam.gserviceaccount.com`; copy it from `client_email`
+   in the JSON key or from the Email column of the service account list. Add the app
+   Simple Math Tester, give it **Release to testing tracks** (nothing else), and send
+   the invitation. Nobody has to accept it.
 4. Store the key without printing it:
    `gh secret set PLAY_SERVICE_ACCOUNT_JSON --repo comdotlinux/simple-math-tester < <key file>`.
    Then keep the key file somewhere safe or move it out of Downloads.
