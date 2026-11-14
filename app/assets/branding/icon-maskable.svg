@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108"><rect width="108" height="108" fill="#FFC83A"/><g transform="translate(54 54) scale(1.0) translate(-54 -54)"><g id="tiles" stroke-linejoin="round">
+    <g transform="translate(24 22.5)">
+      <rect y="3" width="27" height="27" rx="6" fill="#18213B"/>
+      <rect width="27" height="27" rx="6" fill="#5B9DFF" stroke="#18213B" stroke-width="2.4"/>
+      <path fill="#18213B" d="M6.5 11.8h14v3.4h-14zM11.8 6.5h3.4v14h-3.4z"/>
+    </g>
+    <g transform="translate(57 22.5)">
+      <rect y="3" width="27" height="27" rx="6" fill="#18213B"/>
+      <rect width="27" height="27" rx="6" fill="#FF6B57" stroke="#18213B" stroke-width="2.4"/>
+      <path fill="#18213B" d="M6.5 11.8h14v3.4h-14z"/>
+    </g>
+    <g transform="translate(24 55.5)">
+      <rect y="3" width="27" height="27" rx="6" fill="#18213B"/>
+      <rect width="27" height="27" rx="6" fill="#35D07F" stroke="#18213B" stroke-width="2.4"/>
+      <path fill="#18213B" transform="rotate(45 13.5 13.5)" d="M6.5 11.8h14v3.4h-14zM11.8 6.5h3.4v14h-3.4z"/>
+    </g>
+    <g transform="translate(57 55.5)">
+      <rect y="3" width="27" height="27" rx="6" fill="#18213B"/>
+      <rect width="27" height="27" rx="6" fill="#FFFFFF" stroke="#18213B" stroke-width="2.4"/>
+      <path fill="#18213B" d="M6.5 11.8h14v3.4h-14z"/>
+      <circle cx="13.5" cy="6.9" r="2.3" fill="#18213B"/>
+      <circle cx="13.5" cy="20.1" r="2.3" fill="#18213B"/>
+    </g>
+  </g>
+</g></svg>
