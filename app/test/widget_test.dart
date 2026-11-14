@@ -61,18 +61,18 @@ void main() {
         if (useKeyboard) {
           await tester.testTextInput.receiveAction(TextInputAction.done);
         } else {
-          await tester.tap(find.text('Check answer'));
+          await tester.tap(find.byKey(checkAnswerButtonKey));
         }
         await tester.pumpAndSettle();
         expect(model.current.inputCorrect(), isTrue);
         expect(find.text('You got it!'), findsOneWidget);
-        await tester.tap(find.text('Next question'));
+        await tester.tap(find.byKey(nextQuestionButtonKey));
         await tester.pumpAndSettle();
         expect(
           tester.widget<TextField>(find.byType(TextField)).controller!.text,
           '',
         );
-        await tester.tap(find.text('Check answer'));
+        await tester.tap(find.byKey(checkAnswerButtonKey));
         await tester.pumpAndSettle();
         expect(model.current.inputEntered(), isFalse);
         expect(find.text('Enter a number first.'), findsOneWidget);
@@ -93,7 +93,7 @@ void main() {
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
         '42',
       );
-      await tester.tap(find.text('Next question'));
+      await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
       expect(model.completedProblems.length, 1);
       await tester.tap(find.text('My answers').last);
@@ -116,9 +116,9 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
     expect(find.text('You got it!'), findsOneWidget);
-    await tester.ensureVisible(find.text('Next question'));
+    await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Next question'));
+    await tester.tap(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();
     expect(model.completedProblems.length, 1);
     expect(tester.takeException(), isNull);
@@ -135,8 +135,8 @@ void main() {
     );
     await tester.ensureVisible(find.byType(TextField));
     await tester.enterText(find.byType(TextField), '14');
-    await tester.ensureVisible(find.text('Check answer'));
-    await tester.tap(find.text('Check answer'));
+    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
+    await tester.tap(find.byKey(checkAnswerButtonKey));
     await tester.pumpAndSettle();
     expect(find.text('Let’s work it out'), findsOneWidget);
     expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
@@ -144,8 +144,8 @@ void main() {
 
     await tester.ensureVisible(find.byType(TextField));
     await tester.enterText(find.byType(TextField), '15');
-    await tester.ensureVisible(find.text('Check answer'));
-    await tester.tap(find.text('Check answer'));
+    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
+    await tester.tap(find.byKey(checkAnswerButtonKey));
     await tester.pumpAndSettle();
     expect(find.text('You got it!'), findsOneWidget);
     expect(find.text('Let’s work it out'), findsNothing);
@@ -166,7 +166,7 @@ void main() {
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
     await launch(tester, disableAnimations: true);
     await tester.enterText(find.byType(TextField), '15');
-    await tester.tap(find.text('Check answer'));
+    await tester.tap(find.byKey(checkAnswerButtonKey));
     await tester.pumpAndSettle();
     final feedback = find.ancestor(
       of: find.text('You got it!'),
@@ -179,8 +179,8 @@ void main() {
   testWidgets('Practice controls meet 48px touch targets', (tester) async {
     await launch(tester, size: const Size(390, 844));
     for (final finder in [
-      find.byType(FilledButton),
-      find.byType(OutlinedButton),
+      find.byKey(checkAnswerButtonKey),
+      find.byKey(nextQuestionButtonKey),
       find.byType(TextField),
     ]) {
       final size = tester.getSize(finder);

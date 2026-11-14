@@ -68,7 +68,7 @@ class ResultsPage extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Icon(Icons.auto_awesome, size: 48, color: AppColors.teal),
+            Icon(Icons.auto_awesome, size: 48, color: context.tokens.teal),
             const SizedBox(height: 16),
             Text(
               'No answers yet.',
@@ -114,7 +114,7 @@ class ResultsPage extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 16),
-            _status(operation),
+            _status(context, operation),
             const SizedBox(height: 12),
             _answerDetails(operation),
             const SizedBox(height: 8),
@@ -136,8 +136,8 @@ class ResultsPage extends StatelessWidget {
         3: FlexColumnWidth(1.35),
       },
       defaultVerticalAlignment: TableCellVerticalAlignment.top,
-      border: const TableBorder(
-        horizontalInside: BorderSide(color: AppColors.border),
+      border: TableBorder(
+        horizontalInside: BorderSide(color: context.tokens.border),
       ),
       children: [
         TableRow(
@@ -157,7 +157,7 @@ class ResultsPage extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _status(operation),
+                    _status(context, operation),
                     const SizedBox(height: 8),
                     _answerDetails(operation),
                   ],
@@ -180,14 +180,14 @@ class ResultsPage extends StatelessWidget {
       '${operation.left} ${operation.operationType.displayString} '
       '${operation.right}';
 
-  Widget _status(Operation operation) {
+  Widget _status(BuildContext context, Operation operation) {
     final skipped = !operation.inputEntered();
     final correct = !skipped && operation.inputCorrect();
     final color = skipped
-        ? AppColors.muted
+        ? context.tokens.muted
         : correct
-        ? AppColors.teal
-        : AppColors.error;
+        ? context.tokens.teal
+        : context.tokens.error;
     final label = skipped
         ? 'Skipped'
         : correct
