@@ -167,8 +167,24 @@ void numberPadJourneys() {
       await submit(tester, model.current.result + 1);
 
       final screen = Offset.zero & tester.view.physicalSize / 3;
+      bool fullyOnScreen(Finder finder) {
+        final rect = tester.getRect(finder);
+        return screen.intersect(rect).size == rect.size;
+      }
+
+      // The device keeps its safe-area insets (the iOS simulator's notch and
+      // home bar), so the question card can scroll away; the pinned copy at
+      // the top then shows the question.
+      final question = fullyOnScreen(find.byKey(questionOnProblemsPageKey))
+          ? find.byKey(questionOnProblemsPageKey)
+          : find.byKey(pinnedQuestionKey);
+      expect(
+        tester.widget<Text>(question).data,
+        model.current.question,
+        reason: 'the question shown is the current one',
+      );
       for (final finder in [
-        find.byKey(questionOnProblemsPageKey),
+        question,
         find.byType(TextField),
         find.text('Not quite. Try another answer.'),
         find.byKey(nextQuestionButtonKey),
