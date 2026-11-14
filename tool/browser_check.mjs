@@ -128,6 +128,30 @@ try {
     await context.close();
   }
 
+  // A new deploy whose worker cannot install leaves the first build's cache
+  // untouched, even after the new deploy's files were fetched online.
+  const firstCache = await expectedCache(firstBuild);
+  stopServer = await serve(secondBuild);
+  await context.route('**/precache_manifest.json', (route) => route.abort());
+  await openApp(page, '/');
+  const online = await page.evaluate(() => fetch('version.json').then((r) => r.json()));
+  check(online.build_number === '2', 'online load with a failing install sees build 2');
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    await registration.update();
+    while (registration.installing) await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  await context.unroute('**/precache_manifest.json');
+  await stopServer();
+  await openApp(page, '/');
+  await expectHistory(page, 4);
+  const offline = await page.evaluate(() => fetch('version.json').then((r) => r.json()));
+  const kept = await appCaches(page);
+  check(
+    offline.build_number === '1' && kept.join() === firstCache,
+    `failed install keeps build 1 offline in ${kept}`,
+  );
+
   // A new deploy is picked up online, then still works offline.
   stopServer = await serve(secondBuild);
   const secondCache = await expectedCache(secondBuild);
