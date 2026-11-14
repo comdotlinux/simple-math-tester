@@ -147,6 +147,8 @@ class CelebrationPainter extends CustomPainter {
     for (var i = 0; i < _count; i++) {
       final side = 9 + 9 * random.nextDouble();
       final spin = (random.nextDouble() - .5) * 4 * pi;
+      // Random, not i.isEven: that would make each burst point one shape.
+      final round = random.nextBool();
       final position = all[i];
       final shrink = t < .7 ? 1.0 : (1 - t) / .3;
       final rect = Rect.fromCenter(
@@ -154,15 +156,15 @@ class CelebrationPainter extends CustomPainter {
         width: side * shrink,
         height: side * shrink,
       );
-      // Not i % length: with eight points and eight colours, each point
-      // would throw a single colour.
+      // Each burst point cycles through every colour in turn (i % length
+      // would give each of the eight points a single colour).
       final fill = Paint()
-        ..color = colors[random.nextInt(colors.length)];
+        ..color = colors[(i ~/ origins.length) % colors.length];
       canvas
         ..save()
         ..translate(position.dx, position.dy)
         ..rotate(spin * t);
-      if (i.isEven) {
+      if (round) {
         canvas
           ..drawOval(rect, fill)
           ..drawOval(rect, edge);
