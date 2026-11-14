@@ -100,6 +100,28 @@ void main() {
     }
   });
 
+  test('keyboard focus thickens every button edge to ink', () {
+    for (final MapEntry(key: brightness, value: tokens) in themes.entries) {
+      final theme = buildAppTheme(brightness);
+      for (final style in [
+        theme.filledButtonTheme.style!,
+        theme.outlinedButtonTheme.style!,
+        theme.textButtonTheme.style!,
+        theme.iconButtonTheme.style!,
+      ]) {
+        final focused = style.side!.resolve({WidgetState.focused})!;
+        expect(focused.color, tokens.ink);
+        expect(focused.width, 4);
+        expect(
+          style.side!.resolve({})!.width,
+          lessThan(focused.width),
+          reason: '$brightness',
+        );
+      }
+      expect(theme.inputDecorationTheme.focusedBorder!.borderSide.width, 4);
+    }
+  });
+
   test('no widget hard-codes a colour outside app_theme.dart', () {
     final literal = RegExp(r'Color\(0x|Colors\.');
     for (final file in libFiles()) {

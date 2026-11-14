@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
@@ -28,6 +29,7 @@ void main() {
     DateTime Function()? clock,
     EdgeInsets padding = EdgeInsets.zero,
     Stream<void> Function()? ticker,
+    Brightness brightness = Brightness.light,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -51,6 +53,7 @@ void main() {
             textScaler: TextScaler.linear(scale),
             viewInsets: EdgeInsets.only(bottom: keyboardInset),
             disableAnimations: disableAnimations,
+            platformBrightness: brightness,
           ),
           child: const MathTesterApp(),
         ),
@@ -188,27 +191,29 @@ void main() {
     });
   }
 
-  testWidgets('Short viewport and keyboard inset keep practice usable', (
-    tester,
-  ) async {
-    final model = await launch(
-      tester,
-      size: const Size(390, 500),
-      scale: 2,
-      keyboardInset: 180,
-    );
-    expect(tester.takeException(), isNull);
-    await tester.enterText(find.byType(TextField), '15');
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(find.text('You got it!'), findsOneWidget);
-    await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(nextQuestionButtonKey));
-    await tester.pumpAndSettle();
-    expect(model.history.length, 1);
-    expect(tester.takeException(), isNull);
-  });
+  for (final brightness in Brightness.values) {
+    testWidgets('Short viewport and keyboard inset keep practice usable, '
+        '${brightness.name} theme', (tester) async {
+      final model = await launch(
+        tester,
+        size: const Size(390, 500),
+        scale: 2,
+        keyboardInset: 180,
+        brightness: brightness,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.enterText(find.byType(TextField), '15');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.text('You got it!'), findsOneWidget);
+      await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(nextQuestionButtonKey));
+      await tester.pumpAndSettle();
+      expect(model.history.length, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   group('hints', () {
     const steps = [
@@ -450,55 +455,62 @@ void main() {
     }
   });
 
-  testWidgets('Reduced motion suppresses feedback animation', (tester) async {
-    await launch(tester, disableAnimations: true);
-    await tester.enterText(find.byType(TextField), '15');
-    await tester.tap(find.byKey(checkAnswerButtonKey));
-    await tester.pumpAndSettle();
-    final feedback = find.ancestor(
-      of: find.text('You got it!'),
-      matching: find.byType(AnimatedSwitcher),
-    );
-    expect(feedback, findsOneWidget);
-    expect(tester.widget<AnimatedSwitcher>(feedback).duration, Duration.zero);
-  });
+  for (final brightness in Brightness.values) {
+    testWidgets('Reduced motion suppresses feedback animation, '
+        '${brightness.name} theme', (tester) async {
+      await launch(tester, disableAnimations: true, brightness: brightness);
+      await tester.enterText(find.byType(TextField), '15');
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+      final feedback = find.ancestor(
+        of: find.text('You got it!'),
+        matching: find.byType(AnimatedSwitcher),
+      );
+      expect(feedback, findsOneWidget);
+      expect(tester.widget<AnimatedSwitcher>(feedback).duration, Duration.zero);
+    });
 
-  testWidgets('Practice controls meet 48px touch targets', (tester) async {
-    await launch(tester, size: const Size(390, 844));
-    for (final finder in [
-      find.byKey(checkAnswerButtonKey),
-      find.byKey(nextQuestionButtonKey),
-      find.byKey(revealStepButtonKey),
-      find.byType(TextField),
-      find.byKey(settingsButtonKey),
-      find.byKey(sprintButtonKey),
-      for (final type in OperationType.values)
-        find.byWidgetPredicate(
-          (widget) => widget is Tooltip && widget.message == type.label,
-        ),
-    ]) {
-      final size = tester.getSize(finder);
-      expect(size.width, greaterThanOrEqualTo(48));
-      expect(size.height, greaterThanOrEqualTo(48));
-    }
-  });
+    testWidgets('Practice controls meet 48px touch targets, '
+        '${brightness.name} theme', (tester) async {
+      await launch(tester, size: const Size(390, 844), brightness: brightness);
+      for (final finder in [
+        find.byKey(checkAnswerButtonKey),
+        find.byKey(nextQuestionButtonKey),
+        find.byKey(revealStepButtonKey),
+        find.byType(TextField),
+        find.byKey(settingsButtonKey),
+        find.byKey(sprintButtonKey),
+        for (final type in OperationType.values)
+          find.byWidgetPredicate(
+            (widget) => widget is Tooltip && widget.message == type.label,
+          ),
+      ]) {
+        final size = tester.getSize(finder);
+        expect(size.width, greaterThanOrEqualTo(48));
+        expect(size.height, greaterThanOrEqualTo(48));
+      }
+    });
 
-  for (final width in [320.0, 390.0, 600.0, 768.0, 800.0, 1440.0]) {
-    for (final scale in [1.0, 2.0]) {
-      testWidgets('Responsive $width at text scale $scale', (tester) async {
-        final model = await launch(
-          tester,
-          size: Size(width, 900),
-          scale: scale,
-        );
-        expect(tester.takeException(), isNull);
-        expect(find.byKey(hudKey), findsOneWidget);
-        model.generateNextProblem();
-        model.setCurrentPage(1);
-        await tester.pumpAndSettle();
-        expect(find.byKey(hudKey), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      });
+    for (final width in [320.0, 390.0, 600.0, 768.0, 800.0, 1440.0]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('Responsive $width at text scale $scale, '
+            '${brightness.name} theme', (tester) async {
+          final model = await launch(
+            tester,
+            size: Size(width, 900),
+            scale: scale,
+            brightness: brightness,
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.byType(TextField), findsOneWidget);
+          expect(find.byKey(hudKey), findsOneWidget);
+          model.generateNextProblem();
+          model.setCurrentPage(1);
+          await tester.pumpAndSettle();
+          expect(find.byKey(hudKey), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        });
+      }
     }
   }
 
@@ -1041,4 +1053,160 @@ void main() {
       });
     }
   });
+
+  group('themes', () {
+    for (final brightness in Brightness.values) {
+      testWidgets('the app follows a ${brightness.name} platform setting', (
+        tester,
+      ) async {
+        await launch(tester, brightness: brightness);
+        final context = tester.element(find.byKey(questionOnProblemsPageKey));
+        final expected = brightness == Brightness.light
+            ? AppTokens.light
+            : AppTokens.dark;
+        expect(Theme.of(context).brightness, brightness);
+        expect(context.tokens, expected);
+        expect(
+          tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor ??
+              Theme.of(context).scaffoldBackgroundColor,
+          expected.surface,
+        );
+      });
+    }
+
+    // Disabled text (alpha below 1) is exempt from contrast rules.
+    Set<Color> textColors(WidgetTester tester) => {
+      for (final element in find.byType(RichText).evaluate())
+        ...() {
+          final colors = <Color>[];
+          (element.widget as RichText).text.visitChildren((span) {
+            if (span.style?.color case final color?) colors.add(color);
+            return true;
+          });
+          return colors;
+        }(),
+      for (final element in find.byType(EditableText).evaluate())
+        (element.widget as EditableText).style.color!,
+    }.where((color) => color.a == 1).toSet();
+
+    for (final brightness in Brightness.values) {
+      for (final width in [400.0, 1000.0]) {
+        testWidgets('criterion 33: every text and icon colour is a paired '
+            'foreground token, ${brightness.name} theme at $width', (
+          tester,
+        ) async {
+          final tokens = brightness == Brightness.light
+              ? AppTokens.light
+              : AppTokens.dark;
+          final foregrounds = {
+            for (final (foreground, _) in AppTokens.contrastPairs)
+              tokens.colors[foreground]!,
+          };
+          final seen = <Color>{};
+          Future<void> collect() async {
+            await tester.pumpAndSettle();
+            seen.addAll(textColors(tester));
+          }
+
+          final model = await launch(
+            tester,
+            size: Size(width, 2000),
+            brightness: brightness,
+            tier: null,
+            ticker: () => const Stream.empty(),
+          );
+          await collect();
+          model.setCurrentPage(1);
+          await collect();
+          model.setCurrentPage(0);
+          model.chooseTier(Tier.easy);
+          await collect();
+          model.submitAnswer();
+          await collect();
+          model.setDraftInput('14');
+          model.submitAnswer();
+          model.revealStep();
+          await collect();
+          model.setDraftInput('15');
+          model.submitAnswer();
+          await collect();
+          await tester.tap(find.byKey(settingsButtonKey));
+          await collect();
+          Navigator.of(tester.element(find.byKey(settingsSheetKey))).pop();
+          model.startSprint();
+          await collect();
+          model.endSprint();
+          await collect();
+          model.setCurrentPage(1);
+          await collect();
+
+          // The walk did reach text on the page and on a fill.
+          expect(
+            seen,
+            containsAll({tokens.ink, tokens.inkMuted, tokens.onPrimary}),
+          );
+          for (final color in seen) {
+            expect(foregrounds, contains(color), reason: '$color');
+          }
+        });
+      }
+    }
+  });
+
+  for (final width in [360.0, 800.0]) {
+    testWidgets('criterion 38: every control lies inside the safe area at '
+        '$width', (tester) async {
+      const top = 59.0, bottom = 34.0, height = 800.0;
+      final model = await launch(
+        tester,
+        size: Size(width, height),
+        padding: const EdgeInsets.only(top: top, bottom: bottom),
+        ticker: () => const Stream.empty(),
+      );
+      final safe = Rect.fromLTRB(0, top, width, height - bottom);
+
+      Future<void> expectInside(String state) async {
+        await tester.pumpAndSettle();
+        final controls = find.byWidgetPredicate(
+          (widget) => widget is InkResponse || widget is EditableText,
+        );
+        var checked = 0;
+        for (final element in controls.evaluate()) {
+          final box = element.renderObject! as RenderBox;
+          var rect = box.localToGlobal(Offset.zero) & box.size;
+          // Inside a scroll view only the part in its viewport is on screen.
+          if (Scrollable.maybeOf(element) case final scrollable?) {
+            final view = scrollable.context.findRenderObject()! as RenderBox;
+            final viewRect = view.localToGlobal(Offset.zero) & view.size;
+            if (!rect.overlaps(viewRect)) continue;
+            rect = rect.intersect(viewRect);
+          }
+          checked++;
+          expect(
+            rect.left >= safe.left - .01 &&
+                rect.top >= safe.top - .01 &&
+                rect.right <= safe.right + .01 &&
+                rect.bottom <= safe.bottom + .01,
+            isTrue,
+            reason: '$state: ${element.widget.runtimeType} at $rect',
+          );
+        }
+        expect(checked, greaterThanOrEqualTo(2), reason: state);
+      }
+
+      await expectInside('practice');
+      model.setDraftInput('14');
+      model.submitAnswer();
+      await expectInside('wrong answer with a hint');
+      await tester.tap(find.byKey(settingsButtonKey));
+      await expectInside('settings sheet');
+      Navigator.of(tester.element(find.byKey(settingsSheetKey))).pop();
+      model.startSprint();
+      await expectInside('sprint');
+      model.endSprint();
+      await expectInside('sprint result');
+      model.setCurrentPage(1);
+      await expectInside('my answers');
+    });
+  }
 }
