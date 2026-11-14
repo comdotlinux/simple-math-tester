@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/keys.dart';
@@ -212,13 +213,18 @@ void numberPadJourneys() {
         'again moves on, and question, answer, feedback and Next stay above '
         'the keyboard', (tester) async {
       // A 360 x 640 phone, as below; the keyboard is the device's own where
-      // it has a soft one (the Android emulator), else no inset.
-      tester.view.physicalSize = const Size(1080, 1920);
-      tester.view.devicePixelRatio = 3;
-      const insets = FakeViewPadding(top: 20 * 3);
-      tester.view.padding = insets;
-      tester.view.viewPadding = insets;
-      addTearDown(tester.view.reset);
+      // it has a soft one (the Android emulator and the iOS simulator), else
+      // no inset. The iOS simulator keeps its own screen: its keyboard is the
+      // simulated iPhone's (308 px on an iPhone 17 Pro), and no iPhone pairs
+      // a keyboard that tall with a 640 px screen.
+      if (defaultTargetPlatform != TargetPlatform.iOS) {
+        tester.view.physicalSize = const Size(1080, 1920);
+        tester.view.devicePixelRatio = 3;
+        const insets = FakeViewPadding(top: 20 * 3);
+        tester.view.padding = insets;
+        tester.view.viewPadding = insets;
+        addTearDown(tester.view.reset);
+      }
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
       final first = model.current;
@@ -230,10 +236,11 @@ void numberPadJourneys() {
       await Future<void>.delayed(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
-      final size = tester.view.physicalSize / 3;
+      final ratio = tester.view.devicePixelRatio;
+      final size = tester.view.physicalSize / ratio;
       final above =
           Offset.zero &
-          Size(size.width, size.height - tester.view.viewInsets.bottom / 3);
+          Size(size.width, size.height - tester.view.viewInsets.bottom / ratio);
       for (final finder in [
         find.byKey(questionOnProblemsPageKey),
         find.byType(TextField),
