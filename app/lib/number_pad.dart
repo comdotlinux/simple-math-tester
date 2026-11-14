@@ -50,7 +50,7 @@ class NumberPad extends StatelessWidget {
 
   /// Grows with the text, so a 200% digit still fits its key.
   static double keyHeight(TextScaler scaler, {bool dense = false}) =>
-      max(dense ? 48 : 52, scaler.scale(28) * 1.2 + 16);
+      max(dense ? 48 : 52, scaler.scale(28) * 1.2 + (dense ? 12 : 16));
 
   static double _gap(bool dense) => dense ? 6 : 8;
 

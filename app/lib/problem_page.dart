@@ -27,6 +27,10 @@ class _ProblemPageState extends State<ProblemPage> {
   late final TextEditingController _controller;
   final _focus = FocusNode();
   final _answerKey = GlobalKey();
+
+  /// Skip under the question card, which a docked phone page keeps in view
+  /// with it.
+  final _skipKey = GlobalKey();
   final _scroll = ScrollController();
 
   /// Whether a phone page with the docked field repeats the question over
@@ -131,7 +135,7 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// Keeps the field and its feedback in view above a docked pad, as the
   /// system keyboard does, whenever the problem or the feedback changes.
-  void _revealAnswer(MathTesterModel model, bool docked) {
+  void _revealAnswer(MathTesterModel model, bool docked, bool compact) {
     final shown = (
       model.current,
       model.answerCorrect,
@@ -142,15 +146,24 @@ class _ProblemPageState extends State<ProblemPage> {
     // The page opens in place; later changes scroll there.
     final jump = _revealed == null || MediaQuery.disableAnimationsOf(context);
     _revealed = shown;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final answer = _answerKey.currentContext;
-      if (answer == null || !answer.mounted) return;
-      Scrollable.ensureVisible(
-        answer,
+    final duration = jump ? Duration.zero : const Duration(milliseconds: 200);
+    Future<void> reveal(GlobalKey key) async {
+      final target = key.currentContext;
+      if (target == null || !target.mounted) return;
+      await Scrollable.ensureVisible(
+        target,
         alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-        duration: jump ? Duration.zero : const Duration(milliseconds: 200),
+        duration: duration,
       );
-    });
+    }
+
+    // On a phone Skip first, then the answer, which wins when both do not
+    // fit.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => (compact ? reveal(_skipKey) : Future<void>.value()).then(
+        (_) => reveal(_answerKey),
+      ),
+    );
   }
 
   @override
@@ -191,7 +204,7 @@ class _ProblemPageState extends State<ProblemPage> {
             side ||
             showPad && constraints.maxHeight - dockHeight >= (phone ? 80 : 260);
         final compact = docked && phone;
-        _revealAnswer(model, docked);
+        _revealAnswer(model, docked, compact);
         const sideWidth = 300.0;
         final width = side
             ? constraints.maxWidth - sideWidth - 2 * 16
@@ -200,6 +213,12 @@ class _ProblemPageState extends State<ProblemPage> {
         // Next sits in the feedback strip while a result shows there.
         final nextInStrip =
             compact && !sprinting && model.answerCorrect != null;
+        // The docked phone page packs its column tighter, so the question
+        // and Skip fit above the dock on a short screen.
+        final gap = compact ? 12.0 : 24.0;
+        final button = compact
+            ? const WidgetStatePropertyAll(Size(48, 48))
+            : null;
         final field = _CheckMotion(
           key: _fieldKey,
           check: model.lastCheck,
@@ -249,7 +268,7 @@ class _ProblemPageState extends State<ProblemPage> {
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(
             horizontal: width < 600 ? 16 : 24,
-            vertical: 24,
+            vertical: gap,
           ),
           child: Center(
             child: ConstrainedBox(
@@ -258,12 +277,16 @@ class _ProblemPageState extends State<ProblemPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: compact
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
                           sprinting ? 'Sprint' : 'Let’s practice',
-                          style: theme.textTheme.displaySmall,
+                          style: compact
+                              ? theme.textTheme.headlineMedium
+                              : theme.textTheme.displaySmall,
                         ),
                       ),
                       // A tier change would move levels during a round.
@@ -286,27 +309,31 @@ class _ProblemPageState extends State<ProblemPage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    sprinting
-                        ? 'Answer as many as you can in '
-                              '${sprintLength.inSeconds} seconds.'
-                        : 'Take your time and give it a try.',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: tokens.inkMuted,
+                  // The encouragement gives way to the question on a short
+                  // phone; the sprint rules stay.
+                  if (sprinting || !compact) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      sprinting
+                          ? 'Answer as many as you can in '
+                                '${sprintLength.inSeconds} seconds.'
+                          : 'Take your time and give it a try.',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: tokens.inkMuted,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                  ],
+                  SizedBox(height: gap),
                   if (model.tier == null)
                     const _TierPicker()
                   else ...[
                     if (model.lastSprint case final result?) ...[
                       _SprintResult(result: result),
-                      const SizedBox(height: 24),
+                      SizedBox(height: gap),
                     ],
                     if (sprinting) ...[
                       _SprintStatus(score: model.sprintScore),
-                      const SizedBox(height: 24),
+                      SizedBox(height: gap),
                     ],
                     Row(
                       children: [
@@ -317,12 +344,13 @@ class _ProblemPageState extends State<ProblemPage> {
                               type: type,
                               selected: model.selectedOperations.contains(type),
                               onPressed: () => model.toggleOperation(type),
+                              compact: compact,
                             ),
                           ),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: gap),
                     KeyedSubtree(
                       key: compact ? _answerKey : null,
                       child: _QuestionCard(
@@ -361,7 +389,7 @@ class _ProblemPageState extends State<ProblemPage> {
                       ),
                     ],
                     if (!sprinting) ...[
-                      const SizedBox(height: 16),
+                      SizedBox(height: compact ? 12 : 16),
                       // Side by side when both fit, else full-width rows.
                       Flex(
                         direction: wide ? Axis.horizontal : Axis.vertical,
@@ -374,11 +402,13 @@ class _ProblemPageState extends State<ProblemPage> {
                             _flexed(
                               wide,
                               Slab(
+                                key: _skipKey,
                                 pressable: true,
                                 radius: AppTokens.radiusControl,
                                 child: OutlinedButton.icon(
                                   key: nextQuestionButtonKey,
                                   onPressed: model.generateNextProblem,
+                                  style: ButtonStyle(minimumSize: button),
                                   // Before a check, moving on skips it.
                                   icon: Icon(
                                     model.answerChecked
@@ -404,7 +434,7 @@ class _ProblemPageState extends State<ProblemPage> {
                                 style: FilledButton.styleFrom(
                                   backgroundColor: tokens.sprint,
                                   foregroundColor: tokens.onSprint,
-                                ),
+                                ).copyWith(minimumSize: button),
                                 icon: const Icon(Icons.timer_outlined),
                                 label: Text(
                                   '${sprintLength.inSeconds}-second sprint',
@@ -620,7 +650,7 @@ class _QuestionCard extends StatelessWidget {
               ),
             Padding(
               padding: compact
-                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
+                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
                   : const EdgeInsets.fromLTRB(20, 36, 20, 44),
               child: compact
                   // One line that shrinks to fit rather than wrapping.
@@ -1070,11 +1100,15 @@ class _OperationToggle extends StatelessWidget {
     required this.type,
     required this.selected,
     required this.onPressed,
+    this.compact = false,
   });
 
   final OperationType type;
   final bool selected;
   final VoidCallback onPressed;
+
+  /// Shorter, still a full touch target, for the docked phone page.
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -1099,6 +1133,7 @@ class _OperationToggle extends StatelessWidget {
                   onPressed: onPressed,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 4),
+                    minimumSize: compact ? const Size(48, 48) : null,
                     backgroundColor: selected
                         ? tokens.operation
                         : tokens.surfaceSunken,
@@ -1107,8 +1142,8 @@ class _OperationToggle extends StatelessWidget {
                   child: Text(
                     type.displayString,
                     semanticsLabel: type.label,
-                    style: const TextStyle(
-                      fontSize: 30,
+                    style: TextStyle(
+                      fontSize: compact ? 26 : 30,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
