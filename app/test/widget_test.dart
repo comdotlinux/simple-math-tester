@@ -234,6 +234,7 @@ void main() {
         scale: scale,
         history: answers(30),
       );
+      final semantics = tester.ensureSemantics();
       model.setCurrentPage(1);
       await tester.pumpAndSettle();
       final position = tester
@@ -255,6 +256,16 @@ void main() {
       expect(pinned.top, greaterThanOrEqualTo(0));
       expect(pinned.height, lessThan(640 / 5));
       expect(find.byKey(statsCardKey), findsNothing);
+      // The bar shows numbers only; screen readers hear the full labels.
+      // (The daily streak is left out: the header reads it too.)
+      for (final label in [
+        'Best streak: 0',
+        'Best sprint: 0',
+        'Total XP: 0',
+        'Player level: 1',
+      ]) {
+        expect(find.semantics.byLabel(label), findsOne, reason: label);
+      }
 
       // Rows move under the bar; the bar stays put.
       final rowLabel = find.text(
@@ -274,8 +285,42 @@ void main() {
       expect(find.byKey(statsCardKey), findsOneWidget);
       expect(find.text('Accuracy'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      semantics.dispose();
     });
   }
+
+  testWidgets('Resizing while scrolled down keeps the header whole', (
+    tester,
+  ) async {
+    final model = await launch(
+      tester,
+      size: const Size(360, 640),
+      history: answers(30),
+    );
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(resultsPageKey),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    position.jumpTo(1500);
+    await tester.pumpAndSettle();
+    expect(find.byKey(compactStatsKey), findsOneWidget);
+
+    // The header's measured heights are one frame old after each change.
+    for (final size in [const Size(640, 360), const Size(240, 640)]) {
+      tester.view.physicalSize = size;
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: '$size');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: '$size');
+      expect(find.byKey(compactStatsKey), findsOneWidget);
+    }
+  });
 
   testWidgets('My answers loads 20 rows at a time, then shows the end', (
     tester,
@@ -302,7 +347,18 @@ void main() {
         position.jumpTo(min(position.pixels + 300, position.maxScrollExtent));
         await tester.pump();
       }
-      if (loading.evaluate().isNotEmpty) await tester.pump();
+      if (loading.evaluate().isNotEmpty) {
+        final spinner = find.descendant(
+          of: loading,
+          matching: find.byType(CircularProgressIndicator, skipOffstage: false),
+          skipOffstage: false,
+        );
+        expect(
+          tester.widget<CircularProgressIndicator>(spinner).semanticsLabel,
+          'Loading more answers',
+        );
+        await tester.pump();
+      }
     }
 
     // Answer rows the list can build, plus the loading row or end marker.
@@ -337,6 +393,10 @@ void main() {
     );
     expect(find.text('Question 1'), findsOneWidget);
     expect(find.text("That's all your answers"), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    await tester.pump();
+    expect(find.semantics.byLabel("That's all your answers"), findsOne);
+    semantics.dispose();
     expect(tester.takeException(), isNull);
   });
 

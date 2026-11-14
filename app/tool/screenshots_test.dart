@@ -203,6 +203,24 @@ void main() {
         history.setCurrentPage(1);
         await shoot(tester, '$tag-7-answers');
 
+        // Scrolled down a long list, the stats are a pinned compact bar.
+        for (var i = 0; i < 26; i++) {
+          history.setDraftInput('${history.current.result + i % 2}');
+          history.submitAnswer();
+          history.generateNextProblem();
+        }
+        await tester.pumpAndSettle();
+        tester
+            .state<ScrollableState>(
+              find.descendant(
+                of: find.byKey(resultsPageKey),
+                matching: find.byType(Scrollable),
+              ),
+            )
+            .position
+            .jumpTo(1200);
+        await shoot(tester, '$tag-7b-answers-scrolled');
+
         final empty = await launch(tester, size, brightness);
         empty.setCurrentPage(1);
         await shoot(tester, '$tag-8-answers-empty');

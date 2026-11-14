@@ -491,39 +491,45 @@ class _Stats extends StatelessWidget {
       IconData icon,
       Color color,
       Color onColor,
-    ) => Container(
-      padding: compact
-          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
-          : const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
-        border: Border.all(
-          color: tokens.outline,
-          width: AppTokens.outlineWidth,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: compact ? 4 : 8,
-        children: [
-          Icon(icon, size: compact ? 16 : 20, color: onColor),
-          Flexible(
-            child: Text(
-              compact ? value : text,
-              key: compact ? null : key,
-              semanticsLabel: text,
-              style: (compact ? textTheme.labelMedium : const TextStyle())
-                  ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
-            ),
+    ) => Semantics(
+      // One node per chip, so each label is read on its own.
+      container: true,
+      child: Container(
+        padding: compact
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+            : const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+          border: Border.all(
+            color: tokens.outline,
+            width: AppTokens.outlineWidth,
           ),
-        ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: compact ? 4 : 8,
+          children: [
+            Icon(icon, size: compact ? 16 : 20, color: onColor),
+            Flexible(
+              child: Text(
+                compact ? value : text,
+                key: compact ? null : key,
+                semanticsLabel: text,
+                style: (compact ? textTheme.labelMedium : const TextStyle())
+                    ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
       ),
     );
 
     final chips = Wrap(
       spacing: compact ? 6 : 10,
       runSpacing: compact ? 6 : 8,
+      // Centred, so a wide screen does not leave the bar empty on one side.
+      alignment: compact ? WrapAlignment.center : WrapAlignment.start,
       children: [
         chip(
           'Daily streak: $streak',
@@ -665,19 +671,19 @@ class _StatsHeader extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    // Rows scroll under the bar, so it paints the page colour.
+    // Rows scroll under the bar, so it paints the page colour. Both states
+    // are clipped: for the one frame after a resize or text-scale change the
+    // measured extents are stale, and a clip cannot overflow.
     return ColoredBox(
       color: color,
-      child: maxExtent - shrinkOffset <= minExtent
-          ? collapsed
-          : ClipRect(
-              child: OverflowBox(
-                alignment: Alignment.topCenter,
-                minHeight: 0,
-                maxHeight: double.infinity,
-                child: expanded,
-              ),
-            ),
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: 0,
+          maxHeight: double.infinity,
+          child: maxExtent - shrinkOffset <= minExtent ? collapsed : expanded,
+        ),
+      ),
     );
   }
 

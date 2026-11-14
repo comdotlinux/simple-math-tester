@@ -243,6 +243,10 @@ void historyJourneys() {
       final screen = tester.getRect(find.byKey(resultsPageKey));
       expect(tester.getRect(bar).top, greaterThanOrEqualTo(screen.top));
       expect(tester.getRect(bar).bottom, lessThan(screen.bottom));
+      // The bar shows numbers only; screen readers hear the full labels.
+      expect(semanticsNodesLabelled(tester, 'Total XP: 0'), 1);
+      expect(semanticsNodesLabelled(tester, 'Player level: 1'), 1);
+      expect(semanticsNodesLabelled(tester, "That's all your answers"), 1);
 
       tester
           .state<ScrollableState>(
