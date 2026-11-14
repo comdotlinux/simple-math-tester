@@ -266,7 +266,11 @@ void settingsJourneys() {
       await tapKey(tester, layoutModeKey(LayoutMode.comfortable));
       await closeSettings(tester);
       await openHistory(tester);
-      expect(inRow('Your answer: 125'), findsOneWidget);
+      // Each visit starts at the top; a phone builds row 0 once scrolled to.
+      expect(
+        await inHistory(tester, inRow('Your answer: 125')),
+        findsOneWidget,
+      );
       await waitForSaved((p) => p.layoutMode == LayoutMode.comfortable);
     });
   });
