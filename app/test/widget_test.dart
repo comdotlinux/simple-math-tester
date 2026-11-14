@@ -227,6 +227,52 @@ void main() {
     });
   });
 
+  group('operation chips', () {
+    Finder chip(OperationType type) => find.widgetWithText(
+      FilterChip,
+      '${type.label} (${type.displayString})',
+    );
+
+    testWidgets('criterion 5: the last selected chip stays selected', (
+      tester,
+    ) async {
+      final model = await launch(tester, size: const Size(390, 844));
+      for (final type in OperationType.values) {
+        expect(
+          tester.getSemantics(chip(type)),
+          isSemantics(isSelected: true, hasSelectedState: true),
+        );
+      }
+      for (final type in [
+        OperationType.plus,
+        OperationType.minus,
+        OperationType.divide,
+      ]) {
+        await tester.tap(chip(type));
+        await tester.pumpAndSettle();
+      }
+      expect(
+        tester.getSemantics(chip(OperationType.plus)),
+        isSemantics(isSelected: false, hasSelectedState: true),
+      );
+
+      await tester.tap(chip(OperationType.multiply));
+      await tester.pumpAndSettle();
+      expect(model.selectedOperations, {OperationType.multiply});
+      expect(
+        tester.widget<FilterChip>(chip(OperationType.multiply)).selected,
+        isTrue,
+      );
+      expect(
+        tester.getSemantics(chip(OperationType.multiply)),
+        isSemantics(isSelected: true, hasSelectedState: true),
+      );
+      // Deselecting kinds kept the problem on screen and recorded nothing.
+      expect(find.text('12 + 3'), findsOneWidget);
+      expect(model.history, isEmpty);
+    });
+  });
+
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
     await launch(tester, disableAnimations: true);
     await tester.enterText(find.byType(TextField), '15');

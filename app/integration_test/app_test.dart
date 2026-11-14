@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart' as app;
 import 'package:simple_math_tester/math_tester_model.dart';
+import 'package:simple_math_tester/operations.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -99,6 +100,16 @@ void main() {
     expect(model.answerCorrect, isTrue);
     final correctInput = model.history.last.firstAnswer;
 
+    // Practise multiplication only, from the next question on.
+    for (final label in ['Addition (+)', 'Subtraction (-)', 'Division (/)']) {
+      final chip = find.widgetWithText(FilterChip, label);
+      await tester.ensureVisible(chip);
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
+    expect(model.selectedOperations, {OperationType.multiply});
+    expect(currentQuestion(), secondQuestion);
+    expect(model.history, hasLength(2));
     await nextQuestion();
     await openHistory();
     expect(find.text('2 questions completed.'), findsOneWidget);
@@ -109,11 +120,13 @@ void main() {
 
     await returnToPractice();
     final thirdQuestion = currentQuestion();
+    expect(model.current.kind, OperationType.multiply);
     await tapKey(hintButtonKey);
     await tapKey(nextStepButtonKey);
     expect(visibleSteps(), 2);
     expect(find.byKey(nextStepButtonKey), findsNothing);
     await nextQuestion();
+    expect(model.current.kind, OperationType.multiply);
     expect(model.history.last.hintsUsed, 2);
     await openHistory();
     expect(find.text('3 questions completed.'), findsOneWidget);

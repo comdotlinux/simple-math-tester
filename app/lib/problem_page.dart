@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
+import 'operations.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -64,6 +65,20 @@ class _ProblemPageState extends State<ProblemPage> {
                     style: theme.textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final type in OperationType.values)
+                        FilterChip(
+                          label: Text('${type.label} (${type.displayString})'),
+                          selected: model.selectedOperations.contains(type),
+                          onSelected: (_) => model.toggleOperation(type),
+                          materialTapTargetSize: MaterialTapTargetSize.padded,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Card(
                     color: context.tokens.mint,
                     child: Padding(
