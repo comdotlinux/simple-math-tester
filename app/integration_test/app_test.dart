@@ -42,8 +42,13 @@ void main() {
     expect(model.canSave, isTrue);
     expect(model.selectedOperations, {OperationType.multiply});
     expect(model.history, hasLength(3));
+    // The first problem and the next both follow the saved selection.
+    expect(model.current.kind, OperationType.multiply);
+    expect(
+      tester.widget<Text>(find.byKey(questionOnProblemsPageKey)).data,
+      contains('×'),
+    );
 
-    // The next problem follows the saved selection.
     await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
     await tester.tap(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();

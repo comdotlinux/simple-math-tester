@@ -22,7 +22,7 @@ class MathTesterModel extends ChangeNotifier {
        _clock = clock ?? DateTime.now,
        _store = store ?? MemoryProgressStore(),
        _progress = progress ?? Progress() {
-    _show(initialProblem ?? OperationType.plus.generate(_random));
+    _show(initialProblem ?? _draw());
   }
 
   final Random _random;
@@ -94,14 +94,7 @@ class MathTesterModel extends ChangeNotifier {
 
   void generateNextProblem() {
     _record(null);
-    final kinds = OperationType.values.where(selectedOperations.contains);
-    _show(
-      nextProblem?.call() ??
-          kinds.elementAt(_random.nextInt(kinds.length)).generate(_random),
-    );
-    _draftInput = '';
-    _validationMessage = null;
-    _answerCorrect = null;
+    _showNext();
     notifyListeners();
   }
 
@@ -153,11 +146,28 @@ class MathTesterModel extends ChangeNotifier {
     if (!loaded.canSave) return;
     _progress = loaded.progress;
     _canSave = true;
+    // The problem on screen came from the default selection; it is not
+    // recorded, as after any reload.
+    _showNext();
     notifyListeners();
   }
 
   void _save() {
     if (_canSave) _writer.save(_progress.encode());
+  }
+
+  /// A problem of one of the selected operations.
+  Problem _draw() {
+    final kinds = OperationType.values.where(selectedOperations.contains);
+    return nextProblem?.call() ??
+        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random);
+  }
+
+  void _showNext() {
+    _show(_draw());
+    _draftInput = '';
+    _validationMessage = null;
+    _answerCorrect = null;
   }
 
   void _show(Problem problem) {

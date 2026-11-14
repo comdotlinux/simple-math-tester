@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -46,6 +48,45 @@ void main() {
         model.generateNextProblem();
       }
       await pumpEventQueue();
+    }
+
+    for (final type in OperationType.values) {
+      test('the first problem is a saved-selection $type, over 20 seeds', () {
+        for (var seed = 0; seed < 20; seed++) {
+          final model = MathTesterModel(
+            progress: Progress(selectedOperations: {type}),
+            random: Random(seed),
+          );
+          expect(model.current.kind, type, reason: 'seed $seed');
+          model.dispose();
+        }
+      });
+
+      test(
+        'a successful retry shows a saved-selection $type problem',
+        () async {
+          final previous = FlutterError.onError;
+          FlutterError.onError = (_) {};
+          addTearDown(() => FlutterError.onError = previous);
+          for (var seed = 0; seed < 20; seed++) {
+            final store = FakeStore({
+              progressKey: Progress(selectedOperations: {type}).encode(),
+            })..readFailures = 1;
+            final loaded = await loadProgress(store);
+            final model = MathTesterModel(
+              store: store,
+              progress: loaded.progress,
+              canSave: loaded.canSave,
+              random: Random(seed),
+            );
+            model.handleLifecycle(AppLifecycleState.resumed);
+            await pumpEventQueue();
+            expect(model.canSave, isTrue);
+            expect(model.current.kind, type, reason: 'seed $seed');
+            model.dispose();
+          }
+        },
+      );
     }
 
     test('answers and selection changes are saved', () async {
