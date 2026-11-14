@@ -31,7 +31,8 @@ void main() {
   });
 
   final at = DateTime(2026, 11, 14, 9);
-  // Oldest first: right, wrong, skipped, right.
+  // Oldest first: right, wrong, skipped, right, then a wrong one with
+  // numbers long enough to fill a phone's line.
   final history = [
     Attempt(
       const Problem(80, 36, OperationType.plus, 116),
@@ -55,6 +56,12 @@ void main() {
       const Problem(4, 5, OperationType.multiply, 20),
       firstAnswer: 20,
       elapsedMs: 3000,
+      answeredAt: at,
+    ),
+    Attempt(
+      const Problem(9876, 8765, OperationType.plus, 18641, level: 5),
+      firstAnswer: 18651,
+      elapsedMs: 12000,
       answeredAt: at,
     ),
   ];
@@ -201,9 +208,20 @@ void main() {
       'Expected answer: 121, Time: 8 seconds',
     );
     // What a sighted player reads on the rows.
-    expect(find.text('75 + 46 = 121'), findsOneWidget);
-    expect(find.text('You said 125'), findsOneWidget);
-    expect(find.text('No answer entered'), findsOneWidget);
+    Finder inRow(int index, Finder finder) =>
+        find.descendant(of: find.byKey(historyRowKey(index)), matching: finder);
+    expect(
+      inRow(1, find.text('75 + 46 = 121   said 125', findRichText: true)),
+      findsOneWidget,
+    );
+    expect(
+      inRow(2, find.text('9 − 3 = 6   no answer', findRichText: true)),
+      findsOneWidget,
+    );
+    // The full words, on long press or hover.
+    expect(inRow(1, find.byTooltip('You said 125')), findsOneWidget);
+    expect(inRow(2, find.byTooltip('No answer entered')), findsOneWidget);
+    expect(inRow(3, find.byType(Tooltip)), findsNothing);
     semantics.dispose();
   });
 
@@ -214,7 +232,9 @@ void main() {
             '${brightness.name}, ${size.width.toInt()}x'
             '${size.height.toInt()}, text $scale';
 
-        testWidgets('compact answers are 3x shorter, $tag', (tester) async {
+        testWidgets('compact answers are one line each, 3x shorter, $tag', (
+          tester,
+        ) async {
           final comfortable = await launch(
             tester,
             size: size,
@@ -235,9 +255,13 @@ void main() {
           );
           compact.setCurrentPage(1);
           await tester.pumpAndSettle();
-          expect(await rowHeight(tester, 3) * 3, lessThanOrEqualTo(card));
-          // A wrong answer's extra line still keeps it far below a card.
-          expect(await rowHeight(tester, 1) * 2, lessThanOrEqualTo(card));
+          // Newest first: long wrong, right, skipped, wrong, right.
+          final heights = [
+            for (var i = history.length - 1; i >= 0; i--)
+              await rowHeight(tester, i),
+          ];
+          expect(heights.toSet(), hasLength(1), reason: '$heights');
+          expect(heights.first * 3, lessThanOrEqualTo(card));
           expect(tester.takeException(), isNull);
         });
 
@@ -305,5 +329,36 @@ void main() {
 
     final comfortable = await header(LayoutMode.comfortable);
     expect(await header(LayoutMode.compact), lessThan(comfortable));
+  });
+
+  testWidgets('scrolled down, the compact pinned bar is smaller too', (
+    tester,
+  ) async {
+    final long = [
+      for (var i = 0; i < 30; i++)
+        Attempt(
+          Problem(i, 2, OperationType.plus, i + 2),
+          firstAnswer: i + 2,
+          elapsedMs: 1000,
+          answeredAt: at,
+        ),
+    ];
+    Future<double> bar(LayoutMode layout) async {
+      final model = await launch(
+        tester,
+        progress: Progress(tier: Tier.easy, history: long, layoutMode: layout),
+      );
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      await tester.drag(find.byKey(resultsPageKey), const Offset(0, -1500));
+      await tester.pumpAndSettle();
+      final rect = tester.getRect(find.byKey(compactStatsKey));
+      expect(rect.top, greaterThanOrEqualTo(0));
+      expect(tester.takeException(), isNull);
+      return rect.height;
+    }
+
+    final comfortable = await bar(LayoutMode.comfortable);
+    expect(await bar(LayoutMode.compact), lessThan(comfortable));
   });
 }

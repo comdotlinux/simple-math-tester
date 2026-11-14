@@ -248,8 +248,13 @@ void settingsJourneys() {
       await closeSettings(tester);
       await openHistory(tester);
       expect(await rowHeight(), lessThan(card));
-      expect(inRow('75 + 46 = 121'), findsOneWidget);
-      expect(inRow('You said 125'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(historyRowKey(0)),
+          matching: find.text('75 + 46 = 121   said 125', findRichText: true),
+        ),
+        findsOneWidget,
+      );
 
       await restartWhenSaved(tester, (p) => p.layoutMode == LayoutMode.compact);
       expect(modelOf(tester).layoutMode, LayoutMode.compact);

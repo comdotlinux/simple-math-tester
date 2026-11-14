@@ -366,92 +366,91 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
-  /// One dense line per answer: number, problem = expected answer, a mark
-  /// and the time; a wrong or skipped answer adds what was entered. Screen
-  /// readers hear the same facts as on the full card.
+  /// One line per answer, the same height whatever the verdict: number,
+  /// problem = expected answer, what a wrong or skipped answer entered
+  /// (cut short first when the line is full; the tooltip has it whole), a
+  /// mark and the time. Screen readers hear the same facts as on the card.
   Widget _compactRow(BuildContext context, int index, Attempt attempt) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    final (status, color, onColor, icon) = attempt.skipped
-        ? (
-            'Skipped',
-            tokens.surfaceSunken,
-            tokens.ink,
-            Icons.remove_circle_outline,
-          )
-        : attempt.correct
-        ? ('Correct', tokens.correct, tokens.onCorrect, Icons.check)
-        : ('Incorrect', tokens.wrong, tokens.onWrong, Icons.refresh);
+    final (status, color, onColor, icon) = _verdict(tokens, attempt);
     final expected = formatNumber(attempt.problem.result);
     final entered = attempt.skipped
         ? 'No answer entered'
         : 'Your answer: ${formatNumber(attempt.firstAnswer!)}';
+    final said = attempt.skipped
+        ? 'no answer'
+        : attempt.correct
+        ? null
+        : 'said ${formatNumber(attempt.firstAnswer!)}';
+    final muted = textTheme.bodyMedium?.copyWith(color: tokens.inkMuted);
+    final row = Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            spacing: 10,
+            children: [
+              Text('${index + 1}', style: muted),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: '${_question(attempt)} = $expected',
+                    style: textTheme.titleMedium,
+                    children: [
+                      if (said != null)
+                        TextSpan(text: '   $said', style: muted),
+                    ],
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  // The smaller "said" part must not change the line height.
+                  strutStyle: StrutStyle.fromTextStyle(
+                    textTheme.titleMedium!,
+                    forceStrutHeight: true,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: tokens.outline,
+                    width: AppTokens.outlineWidth,
+                  ),
+                ),
+                child: Icon(icon, size: 16, color: onColor),
+              ),
+              if (!attempt.skipped)
+                Text(
+                  prettyDuration(
+                    Duration(milliseconds: attempt.elapsedMs),
+                    abbreviated: true,
+                  ),
+                  style: muted,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
     return Semantics(
       container: true,
       label:
           'Question ${index + 1}, ${_question(attempt)}, $status, $entered, '
           'Expected answer: $expected, Time: ${_elapsed(attempt)}',
       child: ExcludeSemantics(
-        child: Slab(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    spacing: 10,
-                    children: [
-                      Text(
-                        '${index + 1}',
-                        style: textTheme.labelMedium?.copyWith(
-                          color: tokens.inkMuted,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          '${_question(attempt)} = $expected',
-                          style: textTheme.titleMedium,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: tokens.outline,
-                            width: AppTokens.outlineWidth,
-                          ),
-                        ),
-                        child: Icon(icon, size: 16, color: onColor),
-                      ),
-                      if (!attempt.skipped)
-                        Text(
-                          prettyDuration(
-                            Duration(milliseconds: attempt.elapsedMs),
-                            abbreviated: true,
-                          ),
-                          style: textTheme.bodyMedium?.copyWith(
-                            color: tokens.inkMuted,
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (attempt.skipped || !attempt.correct)
-                    Text(
-                      attempt.skipped
-                          ? 'No answer entered'
-                          : 'You said ${formatNumber(attempt.firstAnswer!)}',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: tokens.inkMuted,
-                      ),
-                    ),
-                ],
+        child: said == null
+            ? row
+            : Tooltip(
+                message: attempt.skipped
+                    ? 'No answer entered'
+                    : 'You said ${formatNumber(attempt.firstAnswer!)}',
+                child: row,
               ),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -513,19 +512,25 @@ class _ResultsPageState extends State<ResultsPage> {
       ? 'Not Available'
       : prettyDuration(Duration(milliseconds: attempt.elapsedMs));
 
+  /// The verdict's word, role colours and icon, shared by card and row.
+  static (String, Color, Color, IconData) _verdict(
+    AppTokens tokens,
+    Attempt attempt,
+  ) => attempt.skipped
+      ? (
+          'Skipped',
+          tokens.surfaceSunken,
+          tokens.ink,
+          Icons.remove_circle_outline,
+        )
+      : attempt.correct
+      ? ('Correct', tokens.correct, tokens.onCorrect, Icons.check_circle)
+      : ('Incorrect', tokens.wrong, tokens.onWrong, Icons.refresh);
+
   /// The verdict as a word and an icon on a block of its role colour.
   Widget _status(BuildContext context, Attempt attempt) {
     final tokens = context.tokens;
-    final (background, foreground, label, icon) = attempt.skipped
-        ? (
-            tokens.surfaceSunken,
-            tokens.ink,
-            'Skipped',
-            Icons.remove_circle_outline,
-          )
-        : attempt.correct
-        ? (tokens.correct, tokens.onCorrect, 'Correct', Icons.check_circle)
-        : (tokens.wrong, tokens.onWrong, 'Incorrect', Icons.refresh);
+    final (label, background, foreground, icon) = _verdict(tokens, attempt);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -591,6 +596,7 @@ class _Stats extends StatelessWidget {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final headerStyle = textTheme.labelMedium?.copyWith(color: tokens.inkMuted);
+    final small = compact || dense;
 
     Widget cell(Widget child) => Padding(
       padding: EdgeInsets.symmetric(vertical: dense ? 3 : 6),
@@ -608,7 +614,7 @@ class _Stats extends StatelessWidget {
       // One node per chip, so each label is read on its own.
       container: true,
       child: Container(
-        padding: compact || dense
+        padding: small
             ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
             : const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
@@ -621,19 +627,16 @@ class _Stats extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          spacing: compact || dense ? 4 : 8,
+          spacing: small ? 4 : 8,
           children: [
-            Icon(icon, size: compact || dense ? 16 : 20, color: onColor),
+            Icon(icon, size: small ? 16 : 20, color: onColor),
             Flexible(
               child: Text(
                 compact ? value : text,
                 key: compact ? null : key,
                 semanticsLabel: text,
-                style:
-                    (compact || dense
-                            ? textTheme.labelMedium
-                            : const TextStyle())
-                        ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
+                style: (small ? textTheme.labelMedium : const TextStyle())
+                    ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -642,8 +645,8 @@ class _Stats extends StatelessWidget {
     );
 
     final chips = Wrap(
-      spacing: compact || dense ? 6 : 10,
-      runSpacing: compact || dense ? 4 : 8,
+      spacing: small ? 6 : 10,
+      runSpacing: small ? 4 : 8,
       // Centred, so a wide screen does not leave the bar empty on one side.
       alignment: compact ? WrapAlignment.center : WrapAlignment.start,
       children: [

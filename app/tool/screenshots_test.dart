@@ -65,6 +65,7 @@ void main() {
     // plain block.
     double keyboard = 0,
     LayoutMode layout = LayoutMode.comfortable,
+    List<Attempt> history = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -74,7 +75,12 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: const Problem(48, 27, OperationType.plus, 75, level: 3),
-      progress: Progress(tier: tier, game: game, layoutMode: layout),
+      progress: Progress(
+        tier: tier,
+        game: game,
+        layoutMode: layout,
+        history: history,
+      ),
       clock: () => now,
       ticker: ticks == null ? null : () => ticks.stream,
     );
@@ -270,12 +276,35 @@ void main() {
 
         // The compact layout setting.
         const compact = LayoutMode.compact;
-        final dense = await launch(tester, size, brightness, layout: compact);
+        // Long numbers, so the "said" part is cut short on a small phone.
+        Attempt big(int lhs, int rhs, OperationType kind, int result, int? a) =>
+            Attempt(
+              Problem(lhs, rhs, kind, result, level: 5),
+              firstAnswer: a,
+              elapsedMs: 12000,
+              answeredAt: now,
+            );
+        final dense = await launch(
+          tester,
+          size,
+          brightness,
+          layout: compact,
+          history: [
+            big(9876, 8765, OperationType.plus, 18641, 18651),
+            big(4321, 1234, OperationType.minus, 3087, null),
+            big(29, 87, OperationType.multiply, 2523, 2523),
+            big(8642, 9753, OperationType.plus, 18395, 18359),
+          ],
+        );
         dense.toggleOperation(OperationType.divide);
         await shoot(tester, '$tag-11-compact-practice');
-        answer(dense);
         dense.setCurrentPage(1);
         await shoot(tester, '$tag-11b-compact-answers');
+        // The long rows just under the pinned bar.
+        await tester.pumpAndSettle();
+        scrollAnswers(tester, 300);
+        await shoot(tester, '$tag-11b2-compact-answers-long');
+        scrollAnswers(tester, 0);
         answer(dense, more: 22);
         await tester.pumpAndSettle();
         scrollAnswers(tester, 600);
