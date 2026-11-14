@@ -79,14 +79,20 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
-    .details-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      margin-top: 0.9rem;
-    }
+    .details-head { margin-top: 0.9rem; }
     .details-head + .details { margin-top: 0.4rem; }
+    .consent {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin-top: 0.9rem;
+      padding: 0.8rem 0.9rem;
+      background: var(--sunken);
+      border: 2px solid var(--outline);
+      border-radius: 0.9rem;
+      cursor: pointer;
+    }
+    .consent input { width: 1.25rem; height: 1.25rem; margin: 0.15rem 0 0; flex: none; accent-color: var(--primary); }
     .label {
       font: 600 0.75rem/1 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       letter-spacing: 0.08em;
@@ -104,7 +110,6 @@
       cursor: pointer;
     }
     button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--outline); }
-    button.small { font-size: 0.8rem; padding: 0.35rem 0.7rem; box-shadow: 0 2px 0 var(--outline); }
     #status { display: flex; align-items: center; gap: 0.6rem; }
     #status::before {
       content: "";
@@ -116,6 +121,7 @@
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
+    #status.waiting::before { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { #status::before { animation: none; } }
     .cf-turnstile { margin-top: 0.9rem; min-height: 65px; }
@@ -143,6 +149,11 @@
       <h2 id="provider-heading">Provider</h2>
       <p class="muted">Information under § 5 DDG (German Digital Services Act) about who
         provides this app and website, and how to reach them.</p>
+      <label class="consent">
+        <input type="checkbox" id="consent" onchange="maybeLoad()">
+        <span>I will use these details only to contact the provider, and I will not
+          publish, share, sell or otherwise misuse them.</span>
+      </label>
       <p id="status">A short automatic check keeps bots away from the provider details.</p>
       <!-- Public site key of the "impressum" Turnstile widget (math.munich-tech.de, simple-math-tester.pages.dev); its secret is TURNSTILE_SECRET_KEY on the Pages Production environment. -->
       <div class="cf-turnstile"
@@ -153,7 +164,6 @@
       <div id="details" hidden>
         <div class="details-head">
           <span class="label">Provider details</span>
-          <button type="button" class="small" id="copy" onclick="copyDetails()">Copy</button>
         </div>
         <pre class="details" id="text"></pre>
       </div>
@@ -192,7 +202,10 @@
     const details = document.getElementById('details');
     const textBox = document.getElementById('text');
     const errorLine = document.getElementById('error');
-    const copyButton = document.getElementById('copy');
+    const consent = document.getElementById('consent');
+    const checkText = statusLine.textContent;
+    // The Turnstile token, kept until the visitor confirms the line above.
+    let pendingToken = null;
 
     function showError() {
       statusLine.hidden = true;
@@ -208,6 +221,9 @@
         location.reload();
         return;
       }
+      pendingToken = null;
+      statusLine.textContent = checkText;
+      statusLine.classList.remove('waiting');
       statusLine.hidden = false;
       turnstile.reset();
     }
@@ -218,17 +234,21 @@
       return true;
     }
 
-    async function copyDetails() {
-      try {
-        await navigator.clipboard.writeText(textBox.textContent);
-        copyButton.textContent = 'Copied';
-      } catch {
-        copyButton.textContent = 'Select and copy';
-      }
-      setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+    function onPassed(token) {
+      pendingToken = token;
+      maybeLoad();
     }
 
-    async function onPassed(token) {
+    // Loads the details only once the check passed and the visitor confirmed.
+    async function maybeLoad() {
+      if (!pendingToken) return;
+      if (!consent.checked) {
+        statusLine.textContent = 'Check passed. Tick the box above to show the details.';
+        statusLine.classList.add('waiting');
+        return;
+      }
+      const token = pendingToken;
+      pendingToken = null;
       try {
         const response = await fetch('/api/impressum', {
           method: 'POST',
@@ -241,6 +261,7 @@
         textBox.textContent = (await response.text()).trim();
         details.hidden = false;
         statusLine.hidden = true;
+        consent.disabled = true;
         document.querySelector('.cf-turnstile').hidden = true;
       } catch {
         showError();
