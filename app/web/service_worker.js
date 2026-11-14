@@ -73,11 +73,14 @@ self.addEventListener('fetch', (event) => {
   ) {
     return;
   }
+  const path = url.pathname.slice(scopePath.length);
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, './'));
+    // The static pages fall back to their own cached copy (the Impressum shell
+    // then shows its error line); every other address gets the app.
+    const page = /^(impressum|privacy)(\.html)?$/.exec(path)?.[1];
+    event.respondWith(networkFirst(request, page ? `${page}.html` : './'));
     return;
   }
-  const path = url.pathname.slice(scopePath.length);
   event.respondWith(
     (async () => {
       const entry = (await manifestEntries()).get(path);

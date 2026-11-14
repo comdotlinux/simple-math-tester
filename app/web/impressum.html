@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Impressum - Simple Math Tester</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: system-ui, sans-serif;
+      line-height: 1.5;
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: 1.5rem 1rem 3rem;
+    }
+    h1 { font-size: 1.6rem; }
+    #text { white-space: pre-line; }
+    button { font: inherit; padding: 0.4rem 1rem; }
+  </style>
+  <!-- No personal data here: the text comes from /api/impressum after the check. -->
+</head>
+<body>
+  <h1>Impressum</h1>
+  <p id="status">A short automatic check keeps bots away from the provider details.</p>
+  <!-- Cloudflare's always-passes test site key; walkthrough row 4b (docs/play-store.md) replaces it with the real widget's site key before merge. -->
+  <div class="cf-turnstile"
+    data-sitekey="1x00000000000000000000AA"
+    data-callback="onPassed"
+    data-expired-callback="retry"
+    data-error-callback="onTurnstileError"></div>
+  <p id="text" hidden></p>
+  <p id="error" hidden>
+    The Impressum could not be loaded. Check the connection and try again.
+    <button type="button" onclick="retry()">Try again</button>
+  </p>
+  <p><a href="/privacy.html">Privacy policy</a></p>
+  <script>
+    const statusLine = document.getElementById('status');
+    const textBox = document.getElementById('text');
+    const errorLine = document.getElementById('error');
+
+    function showError() {
+      statusLine.hidden = true;
+      errorLine.hidden = false;
+    }
+
+    // A token works once, so every attempt needs a fresh check.
+    function retry() {
+      errorLine.hidden = true;
+      if (!window.turnstile) {
+        location.reload();
+        return;
+      }
+      statusLine.hidden = false;
+      turnstile.reset();
+    }
+
+    function onTurnstileError() {
+      showError();
+      // Handled here, so Turnstile does not retry on its own.
+      return true;
+    }
+
+    async function onPassed(token) {
+      try {
+        const response = await fetch('/api/impressum', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+          cache: 'no-store',
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        // Plain text only; line breaks are kept by the pre-line style.
+        textBox.textContent = await response.text();
+        textBox.hidden = false;
+        statusLine.hidden = true;
+        document.querySelector('.cf-turnstile').hidden = true;
+      } catch {
+        showError();
+      }
+    }
+  </script>
+  <!-- After the script above, so showError exists when an offline load fails. -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer
+    onerror="showError()"></script>
+</body>
+</html>
