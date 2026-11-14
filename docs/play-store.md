@@ -129,6 +129,11 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 From plan section 4.6 (research, not legal advice):
 
 - Whether a bot check (Cloudflare Turnstile) in front of the Impressum is acceptable.
+  If not, or if Turnstile or the function is unavailable for long, the fallback is
+  to return the text without the check (a one-line change in
+  `functions/api/impressum.js`) or to publish the text as a static page.
+- Whether the one link out of the app (the Impressum, behind the settings gear)
+  needs a parental gate for the Families Policy.
 - Whether an Impressum is required for an ad-free hobby app, and with which address.
 - Whether non-trader status is right for an ad-free free app.
 

@@ -47,6 +47,8 @@
 
     // A token works once, so every attempt needs a fresh check.
     function retry() {
+      // The token also expires after the text is shown; it is not needed again.
+      if (!textBox.hidden) return;
       errorLine.hidden = true;
       if (!window.turnstile) {
         location.reload();
