@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
@@ -13,6 +14,7 @@ void main() {
     double scale = 1,
     double keyboardInset = 0,
     bool disableAnimations = false,
+    Problem problem = const Problem(12, 3, OperationType.plus, 15),
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -20,8 +22,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    final model = MathTesterModel();
-    model.current = Operation(12, 3, OperationType.plus, 15);
+    final model = MathTesterModel(initialProblem: problem);
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: model,
@@ -64,7 +65,7 @@ void main() {
           await tester.tap(find.byKey(checkAnswerButtonKey));
         }
         await tester.pumpAndSettle();
-        expect(model.current.inputCorrect(), isTrue);
+        expect(model.history.single.correct, isTrue);
         expect(find.text('You got it!'), findsOneWidget);
         await tester.tap(find.byKey(nextQuestionButtonKey));
         await tester.pumpAndSettle();
@@ -74,7 +75,7 @@ void main() {
         );
         await tester.tap(find.byKey(checkAnswerButtonKey));
         await tester.pumpAndSettle();
-        expect(model.current.inputEntered(), isFalse);
+        expect(model.history, hasLength(1));
         expect(find.text('Enter a number first.'), findsOneWidget);
       },
     );
@@ -95,12 +96,78 @@ void main() {
       );
       await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
-      expect(model.completedProblems.length, 1);
+      expect(model.history.length, 1);
       await tester.tap(find.text('My answers').last);
       await tester.pumpAndSettle();
       expect(find.text('Skipped'), findsOneWidget);
     },
   );
+
+  testWidgets('Results rows below the fold appear when scrolled to', (
+    tester,
+  ) async {
+    final model = await launch(tester, size: const Size(360, 640));
+    model.setDraftInput('14');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.setDraftInput('${model.current.result}');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.generateNextProblem();
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    expect(find.text('3 questions completed.'), findsOneWidget);
+    // Rows are built lazily: the last one is not on screen yet.
+    expect(find.text('Skipped'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Skipped'),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(resultsPageKey),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Skipped'), findsOneWidget);
+    expect(find.text('Question 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final width in [390.0, 1000.0]) {
+    testWidgets('Results at width $width show the first answer', (
+      tester,
+    ) async {
+      final model = await launch(tester, size: Size(width, 900));
+      model.setDraftInput('14');
+      model.submitAnswer();
+      model.setDraftInput('15');
+      model.submitAnswer();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      expect(find.text('1 question completed.'), findsOneWidget);
+      expect(find.text('Incorrect'), findsOneWidget);
+      expect(find.text('Your answer: 14'), findsOneWidget);
+      expect(find.text('Expected answer: 15'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Results at width $width drop ".0" but keep decimals', (
+      tester,
+    ) async {
+      final model = await launch(
+        tester,
+        size: Size(width, 900),
+        problem: const Problem(12, 3, OperationType.divide, 4.0),
+      );
+      model.setDraftInput('4.5');
+      model.submitAnswer();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      expect(find.text('Your answer: 4.5'), findsOneWidget);
+      expect(find.text('Expected answer: 4'), findsOneWidget);
+      expect(find.textContaining('4.0'), findsNothing);
+    });
+  }
 
   testWidgets('Short viewport and keyboard inset keep practice usable', (
     tester,
@@ -120,47 +187,248 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();
-    expect(model.completedProblems.length, 1);
+    expect(model.history.length, 1);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Wrong answers show steps and correct answers offer them', (
-    tester,
-  ) async {
-    await launch(
+  group('hints', () {
+    const steps = [
+      'Break 12 into 10 + 2 and 3 into 3.',
+      'Add matching places: 10 + 0 = 10; 2 + 3 = 5.',
+      'Combine the parts: 10 + 5 = 15.',
+    ];
+
+    int visibleSteps() =>
+        steps.where((step) => find.text(step).evaluate().isNotEmpty).length;
+
+    Future<void> tapKey(WidgetTester tester, Key key) async {
+      await tester.ensureVisible(find.byKey(key));
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> check(WidgetTester tester, String answer) async {
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.enterText(find.byType(TextField), answer);
+      await tapKey(tester, checkAnswerButtonKey);
+    }
+
+    Future<MathTesterModel> launchNarrow(WidgetTester tester) => launch(
       tester,
       size: const Size(320, 500),
       scale: 2,
       keyboardInset: 180,
     );
-    await tester.ensureVisible(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), '14');
-    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
-    await tester.tap(find.byKey(checkAnswerButtonKey));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsOneWidget);
-    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
-    expect(tester.takeException(), isNull);
 
-    await tester.ensureVisible(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), '15');
-    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
-    await tester.tap(find.byKey(checkAnswerButtonKey));
-    await tester.pumpAndSettle();
-    expect(find.text('You got it!'), findsOneWidget);
-    expect(find.text('Let’s work it out'), findsNothing);
+    final revealControl = find.byKey(revealStepButtonKey);
 
-    await tester.ensureVisible(find.text('Show steps'));
-    await tester.tap(find.text('Show steps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsOneWidget);
-    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
+    bool canReveal(WidgetTester tester) =>
+        tester.widget<ButtonStyleButton>(revealControl).enabled;
 
-    await tester.ensureVisible(find.text('Hide steps'));
-    await tester.tap(find.text('Hide steps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsNothing);
-    expect(tester.takeException(), isNull);
+    Finder revealLabel(String label) =>
+        find.descendant(of: revealControl, matching: find.text(label));
+
+    testWidgets('criterion 7: steps reveal one at a time', (tester) async {
+      final model = await launchNarrow(tester);
+      expect(model.steps, steps);
+      expect(visibleSteps(), 0);
+      expect(find.text('Let’s work it out'), findsNothing);
+      expect(revealLabel('Hint'), findsOneWidget);
+      expect(canReveal(tester), isTrue);
+
+      await tapKey(tester, revealStepButtonKey);
+      expect(visibleSteps(), 1);
+      expect(find.text(steps[0]), findsOneWidget);
+      expect(find.text('Let’s work it out'), findsOneWidget);
+      expect(revealLabel('Hint'), findsNothing);
+      expect(revealLabel('Next step'), findsOneWidget);
+
+      await tapKey(tester, revealStepButtonKey);
+      expect(visibleSteps(), 2);
+      // The final step states the answer and needs a valid check first.
+      expect(canReveal(tester), isFalse);
+      expect(revealLabel('Next step'), findsOneWidget);
+      await tapKey(tester, revealStepButtonKey);
+      expect(visibleSteps(), 2);
+      expect(find.text(steps.last), findsNothing);
+
+      await check(tester, '15');
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(visibleSteps(), 2);
+      expect(canReveal(tester), isTrue);
+      await tapKey(tester, revealStepButtonKey);
+      expect(visibleSteps(), 3);
+      expect(find.text(steps.last), findsOneWidget);
+      expect(canReveal(tester), isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('criterion 8: a wrong first check without hints shows 1 step', (
+      tester,
+    ) async {
+      await launchNarrow(tester);
+      await check(tester, '14');
+      expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      expect(visibleSteps(), 1);
+      expect(find.text(steps[0]), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('criterion 8: a wrong first check keeps 2 opened steps', (
+      tester,
+    ) async {
+      await launchNarrow(tester);
+      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, revealStepButtonKey);
+      await check(tester, '14');
+      expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      expect(visibleSteps(), 2);
+      expect(find.text(steps.last), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('keyboard focus stays on the reveal control', (tester) async {
+      await launch(tester);
+      Focus.of(
+        tester.element(
+          find.descendant(of: revealControl, matching: find.text('Hint')),
+        ),
+      ).requestFocus();
+      await tester.pumpAndSettle();
+      final focused = FocusManager.instance.primaryFocus;
+      expect(focused, isNotNull);
+
+      for (var i = 0; i < 2; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus, same(focused));
+      }
+      expect(visibleSteps(), 2);
+      expect(canReveal(tester), isFalse);
+      expect(revealLabel('Next step'), findsOneWidget);
+      expect(
+        find.ancestor(of: revealControl, matching: find.byType(Card)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the newest step is announced through a live region', (
+      tester,
+    ) async {
+      await launch(tester);
+      await tapKey(tester, revealStepButtonKey);
+      expect(
+        tester.getSemantics(find.text(steps[0])),
+        isSemantics(isLiveRegion: true),
+      );
+      await tapKey(tester, revealStepButtonKey);
+      expect(
+        tester.getSemantics(find.text(steps[1])),
+        isSemantics(isLiveRegion: true),
+      );
+      expect(
+        tester.getSemantics(find.text(steps[0])),
+        isSemantics(isLiveRegion: false),
+      );
+    });
+  });
+
+  group('operation chips', () {
+    // flutter_test's byTooltip matches Flutter's own Tooltip, not material_ui's.
+    Finder tooltip(String message) => find.byWidgetPredicate(
+      (widget) => widget is Tooltip && widget.message == message,
+    );
+
+    // The sign is the visible label; its semantics node is the whole chip.
+    Finder chip(OperationType type) => find.text(type.displayString);
+
+    testWidgets('criterion 5: the last selected chip stays selected', (
+      tester,
+    ) async {
+      final model = await launch(tester, size: const Size(390, 844));
+      for (final type in OperationType.values) {
+        expect(
+          tester.getSemantics(chip(type)),
+          isSemantics(isSelected: true, hasSelectedState: true),
+        );
+      }
+      for (final type in [
+        OperationType.plus,
+        OperationType.minus,
+        OperationType.divide,
+      ]) {
+        await tester.tap(chip(type));
+        await tester.pumpAndSettle();
+      }
+      expect(
+        tester.getSemantics(chip(OperationType.plus)),
+        isSemantics(isSelected: false, hasSelectedState: true),
+      );
+
+      await tester.tap(chip(OperationType.multiply));
+      await tester.pumpAndSettle();
+      expect(model.selectedOperations, {OperationType.multiply});
+      expect(
+        tester.getSemantics(chip(OperationType.multiply)),
+        isSemantics(
+          label: 'Multiplication',
+          isSelected: true,
+          hasSelectedState: true,
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      // Deselecting kinds kept the problem on screen and recorded nothing.
+      expect(find.text('12 + 3'), findsOneWidget);
+      expect(model.history, isEmpty);
+    });
+
+    testWidgets('chips show only the sign and name the operation', (
+      tester,
+    ) async {
+      await launch(tester);
+      for (final (type, sign, name) in [
+        (OperationType.plus, '+', 'Addition'),
+        (OperationType.minus, '\u2212', 'Subtraction'),
+        (OperationType.multiply, '\u00d7', 'Multiplication'),
+        (OperationType.divide, '\u00f7', 'Division'),
+      ]) {
+        expect(find.text(sign), findsOneWidget);
+        expect(tooltip(name), findsOneWidget);
+        expect(
+          tester.getSemantics(chip(type)),
+          isSemantics(label: name, isSelected: true, hasSelectedState: true),
+        );
+      }
+    });
+
+    for (final width in [320.0, 390.0, 800.0, 1440.0]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('chips stay on one line at $width, text scale $scale', (
+          tester,
+        ) async {
+          await launch(tester, size: Size(width, 900), scale: scale);
+          final rects = [
+            for (final type in OperationType.values)
+              tester.getRect(tooltip(type.label)),
+          ];
+          final card = tester.getRect(
+            find.ancestor(
+              of: find.byKey(questionOnProblemsPageKey),
+              matching: find.byType(Card),
+            ),
+          );
+          for (final rect in rects) {
+            expect(rect.top, rects.first.top);
+            expect(rect.height, greaterThanOrEqualTo(48));
+            expect(rect.width, moreOrLessEquals(rects.first.width));
+          }
+          expect(rects.first.left, moreOrLessEquals(card.left));
+          expect(rects.last.right, moreOrLessEquals(card.right));
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
   });
 
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
@@ -181,7 +449,12 @@ void main() {
     for (final finder in [
       find.byKey(checkAnswerButtonKey),
       find.byKey(nextQuestionButtonKey),
+      find.byKey(revealStepButtonKey),
       find.byType(TextField),
+      for (final type in OperationType.values)
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == type.label,
+        ),
     ]) {
       final size = tester.getSize(finder);
       expect(size.width, greaterThanOrEqualTo(48));

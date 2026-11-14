@@ -1,217 +1,100 @@
 import 'dart:math';
 
-import 'package:duration/duration.dart';
+import 'solution_steps.dart';
 
+num _add(int lhs, int rhs) => lhs + rhs;
+num _subtract(int lhs, int rhs) => lhs - rhs;
+num _multiply(int lhs, int rhs) => lhs * rhs;
+num _divide(int lhs, int rhs) => lhs / rhs;
+
+/// The registry of operation kinds: each kind declares its generator ranges,
+/// its calculation and its step writer here and nowhere else.
 enum OperationType {
-  plus('+', 0),
-  minus('-', 1),
-  multiply('*', 2),
-  divide('/', 3);
+  plus('+', 'Addition', 2, 10000, 3, 10000, _add, additionSteps),
+  minus('−', 'Subtraction', 2, 10000, 0, 10000, _subtract, subtractionSteps),
+  multiply(
+    '×',
+    'Multiplication',
+    2,
+    500,
+    10,
+    1000,
+    _multiply,
+    multiplicationSteps,
+  ),
+  divide('÷', 'Division', 3, 1000, 2, 1000, _divide, divisionSteps);
 
   final String displayString;
-  final int operationIndex;
+  final String label;
+  final int minOperand;
+  final int maxOperand;
+  final num minResult;
+  final num maxResult;
+  final num Function(int lhs, int rhs) calculate;
+  final List<String> Function(Problem problem) steps;
 
-  const OperationType(this.displayString, this.operationIndex);
+  const OperationType(
+    this.displayString,
+    this.label,
+    this.minOperand,
+    this.maxOperand,
+    this.minResult,
+    this.maxResult,
+    this.calculate,
+    this.steps,
+  );
 
-  static OperationType of(int index) =>
-      OperationType.values.firstWhere((ot) => ot.operationIndex == index);
-
-  static Operator operator(OperationType operationType) {
-    switch (operationType) {
-      case OperationType.plus:
-        return Addition();
-      case OperationType.minus:
-        return Subtraction();
-      case OperationType.multiply:
-        return Multiplication();
-      case OperationType.divide:
-        return Division();
+  /// Draws operands uniformly until the result is a whole number in range.
+  Problem generate(Random random) {
+    while (true) {
+      final lhs = minOperand + random.nextInt(maxOperand - minOperand + 1);
+      final rhs = minOperand + random.nextInt(maxOperand - minOperand + 1);
+      final result = calculate(lhs, rhs);
+      if (result >= minResult &&
+          result <= maxResult &&
+          result == result.truncate()) {
+        return Problem(lhs, rhs, this, result);
+      }
     }
   }
 }
 
-class Operation<P extends num, R extends num> {
-  final P lhs;
-  final P rhs;
-  final OperationType operationType;
-  final R result;
-  num? _input;
+/// A whole number without a decimal part ("4", not "4.0"); others as is.
+String formatNumber(num value) =>
+    value == value.toInt() ? value.toInt().toString() : value.toString();
 
-  String? _elapsed;
+class Problem {
+  const Problem(this.lhs, this.rhs, this.kind, this.result, {this.level = 1});
 
-  final Stopwatch stopwatch = Stopwatch()..start();
+  final int lhs;
+  final int rhs;
+  final OperationType kind;
+  final num result;
+  final int level;
 
-  Operation(this.lhs, this.rhs, this.operationType, this.result);
-
-  num? get input => _input;
-
-  set input(num? value) {
-    if (value != null && !value.isFinite) {
-      throw ArgumentError.value(value, 'input', 'Answer must be finite');
-    }
-    _input = value;
-    if (value != null && _elapsed == null) {
-      stopwatch.stop();
-      _elapsed = prettyDuration(stopwatch.elapsed);
-    }
-  }
-
-  String get left => lhs.toString();
-
-  String get right => rhs.toString();
-
-  bool inputEntered() => _input != null;
-
-  bool inputCorrect() => result == _input;
-
-  String get userInput => (_input?.toString() ?? 'Not Entered');
-
-  String get elapsed => (_elapsed?.toString() ?? 'Not Available');
-
-  List<String> get output => toString().split(' ');
-
-  @override
-  String toString() =>
-      '$lhs ${operationType.displayString} $rhs Gives $result ${inputCorrect() ? 'and' : 'but'} you entered ${input ?? 'nothing'}. Took ${prettyDuration(stopwatch.elapsed)}';
+  String get question => '$lhs ${kind.displayString} $rhs';
 }
 
-abstract class Operator<P extends num, R extends num> {
-  OperationType operationType();
+class Attempt {
+  const Attempt(
+    this.problem, {
+    required this.firstAnswer,
+    required this.elapsedMs,
+    required this.answeredAt,
+    this.hintsUsed = 0,
+    this.sprint = false,
+  });
 
-  P minOperandValue();
+  final Problem problem;
 
-  P maxOperandValue();
+  /// Null means the problem was skipped.
+  final num? firstAnswer;
+  final int elapsedMs;
+  final DateTime answeredAt;
+  final int hintsUsed;
+  final bool sprint;
 
-  R minResultValue();
+  bool get skipped => firstAnswer == null;
 
-  R maxResultValue();
-
-  R calculateResult(P lhs, P rhs);
-
-  bool acceptable(Operation<P, R> operation);
-
-  final _random = Random();
-
-  P _nextValue() {
-    P nextValue;
-    do {
-      nextValue =
-          (minOperandValue() + _random.nextInt(maxOperandValue().toInt())) as P;
-    } while (nextValue > maxOperandValue() || nextValue < minOperandValue());
-
-    return nextValue;
-  }
-
-  Operation<P, R> create() {
-    Operation<P, R> operation;
-    do {
-      final lhs = _nextValue();
-      final rhs = _nextValue();
-      operation = Operation(
-        lhs,
-        rhs,
-        operationType(),
-        calculateResult(lhs, rhs),
-      );
-    } while (operation.result > maxResultValue() ||
-        operation.result < minResultValue() ||
-        !acceptable(operation));
-    return operation;
-  }
-}
-
-class Addition extends Operator<int, int> {
-  @override
-  OperationType operationType() => OperationType.plus;
-
-  @override
-  int minOperandValue() => 2;
-
-  @override
-  int maxOperandValue() => 10000;
-
-  @override
-  int minResultValue() => 3;
-
-  @override
-  int maxResultValue() => 10000;
-
-  @override
-  bool acceptable(Operation operation) =>
-      operation.result <= maxResultValue() &&
-      operation.result >= minResultValue();
-
-  @override
-  int calculateResult(int lhs, int rhs) => lhs + rhs;
-}
-
-class Subtraction extends Operator<int, int> {
-  @override
-  bool acceptable(Operation operation) =>
-      operation.result == operation.result.abs();
-
-  @override
-  int calculateResult(int lhs, int rhs) => lhs - rhs;
-
-  @override
-  int maxOperandValue() => 10000;
-
-  @override
-  int minOperandValue() => 2;
-
-  @override
-  int minResultValue() => 0;
-
-  @override
-  int maxResultValue() => 10000;
-
-  @override
-  OperationType operationType() => OperationType.minus;
-}
-
-class Multiplication extends Operator<int, int> {
-  @override
-  bool acceptable(Operation operation) => true;
-
-  @override
-  int calculateResult(int lhs, int rhs) => lhs * rhs;
-
-  @override
-  int minOperandValue() => 2;
-
-  @override
-  int maxOperandValue() => 500;
-
-  @override
-  int maxResultValue() => 1000;
-
-  @override
-  int minResultValue() => 10;
-
-  @override
-  OperationType operationType() => OperationType.multiply;
-}
-
-class Division extends Operator<int, double> {
-  @override
-  bool acceptable(Operation operation) =>
-      operation.result is int || operation.result == operation.result.toInt();
-
-  @override
-  double calculateResult(int lhs, int rhs) => lhs / rhs;
-
-  @override
-  int minOperandValue() => 3;
-
-  @override
-  int maxOperandValue() => 1000;
-
-  @override
-  double minResultValue() => 2;
-
-  @override
-  double maxResultValue() => 1000;
-
-  @override
-  OperationType operationType() => OperationType.divide;
+  bool get correct => firstAnswer == problem.result;
 }

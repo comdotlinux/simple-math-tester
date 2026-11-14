@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
-import 'solution_steps.dart';
+import 'operations.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -65,6 +65,21 @@ class _ProblemPageState extends State<ProblemPage> {
                     style: theme.textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      for (final type in OperationType.values) ...[
+                        if (type.index > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: _OperationToggle(
+                            type: type,
+                            selected: model.selectedOperations.contains(type),
+                            onPressed: () => model.toggleOperation(type),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   Card(
                     color: context.tokens.mint,
                     child: Padding(
@@ -73,15 +88,11 @@ class _ProblemPageState extends State<ProblemPage> {
                         vertical: 32,
                       ),
                       child: Text(
-                        '${model.current.left} '
-                        '${model.current.operationType.displayString} '
-                        '${model.current.right}',
+                        model.current.question,
                         key: questionOnProblemsPageKey,
                         textAlign: TextAlign.center,
                         semanticsLabel:
-                            'Math question: ${model.current.left} '
-                            '${model.current.operationType.displayString} '
-                            '${model.current.right}',
+                            'Math question: ${model.current.question}',
                         style: theme.textTheme.displaySmall,
                       ),
                     ),
@@ -103,7 +114,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     onSubmitted: (_) => model.submitAnswer(),
                   ),
                   const SizedBox(height: 12),
-                  _AnswerFeedback(key: ValueKey(model.current), model: model),
+                  _AnswerFeedback(model: model),
                   const SizedBox(height: 12),
                   Wrap(
                     alignment: WrapAlignment.center,
@@ -124,6 +135,8 @@ class _ProblemPageState extends State<ProblemPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  _Hints(model: model),
                 ],
               ),
             ),
@@ -134,27 +147,54 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 }
 
-class _AnswerFeedback extends StatefulWidget {
-  const _AnswerFeedback({super.key, required this.model});
+class _OperationToggle extends StatelessWidget {
+  const _OperationToggle({
+    required this.type,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final OperationType type;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: type.label,
+      excludeFromSemantics: true,
+      // One node: the button's tap action, the name and the selected state.
+      child: MergeSemantics(
+        child: Semantics(
+          selected: selected,
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              backgroundColor: selected ? tokens.teal : null,
+              foregroundColor: selected ? tokens.paper : tokens.ink,
+              side: BorderSide(color: selected ? tokens.teal : tokens.muted),
+            ),
+            child: Text(
+              type.displayString,
+              semanticsLabel: type.label,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnswerFeedback extends StatelessWidget {
+  const _AnswerFeedback({required this.model});
 
   final MathTesterModel model;
 
   @override
-  State<_AnswerFeedback> createState() => _AnswerFeedbackState();
-}
-
-class _AnswerFeedbackState extends State<_AnswerFeedback> {
-  bool _showSteps = false;
-
-  @override
-  void didUpdateWidget(covariant _AnswerFeedback oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.model.answerCorrect != true) _showSteps = false;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final model = widget.model;
     final message =
         model.validationMessage ??
         switch (model.answerCorrect) {
@@ -179,7 +219,6 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
         ? Icons.check_circle
         : Icons.lightbulb_outline;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final showSteps = model.answerCorrect == false || (correct && _showSteps);
 
     return AnimatedSwitcher(
       duration: reduceMotion
@@ -205,43 +244,19 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
                   color: background,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(icon, color: foreground),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            message,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: foreground,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (correct)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () =>
-                              setState(() => _showSteps = !_showSteps),
-                          icon: Icon(
-                            _showSteps
-                                ? Icons.expand_less
-                                : Icons.menu_book_outlined,
-                          ),
-                          label: Text(_showSteps ? 'Hide steps' : 'Show steps'),
+                    Icon(icon, color: foreground),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    if (showSteps) ...[
-                      const SizedBox(height: 16),
-                      _SolutionSteps(model: model),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -250,36 +265,75 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
   }
 }
 
-class _SolutionSteps extends StatelessWidget {
-  const _SolutionSteps({required this.model});
+class _Hints extends StatelessWidget {
+  const _Hints({required this.model});
 
   final MathTesterModel model;
 
   @override
   Widget build(BuildContext context) {
-    final steps = solutionSteps(model.current);
+    final revealed = model.revealedSteps;
     final textStyle = Theme.of(context).textTheme.bodyMedium;
+
+    // The reveal control stays last and keeps one key, so it keeps its
+    // element and keyboard focus while its label changes and steps appear.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Let’s work it out',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        for (var index = 0; index < steps.length; index++) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 28,
-                child: Text('${index + 1}.', style: textStyle),
+        if (revealed > 0)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Let’s work it out',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  for (var index = 0; index < revealed; index++) ...[
+                    const SizedBox(height: 12),
+                    Semantics(
+                      container: true,
+                      liveRegion: index == revealed - 1,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            child: Text('${index + 1}.', style: textStyle),
+                          ),
+                          Expanded(
+                            child: Text(model.steps[index], style: textStyle),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              Expanded(child: Text(steps[index], style: textStyle)),
-            ],
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          // Directional mode keeps a disabled button focusable, so reaching
+          // the last allowed step does not drop keyboard focus.
+          child: MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(navigationMode: NavigationMode.directional),
+            child: TextButton.icon(
+              key: revealStepButtonKey,
+              onPressed: model.canRevealStep ? model.revealStep : null,
+              icon: Icon(
+                revealed == 0 ? Icons.lightbulb_outline : Icons.navigate_next,
+              ),
+              label: Text(revealed == 0 ? 'Hint' : 'Next step'),
+            ),
           ),
-          if (index < steps.length - 1) const SizedBox(height: 12),
-        ],
+        ),
       ],
     );
   }
