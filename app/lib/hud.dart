@@ -75,7 +75,7 @@ class Hud extends StatelessWidget {
                           value: min(daily, dailyGoal) / dailyGoal,
                           strokeWidth: 6,
                           strokeCap: StrokeCap.round,
-                          color: tokens.correct,
+                          color: tokens.goalRing,
                         ),
                       ),
                       Text('$daily/$dailyGoal', style: strong),
@@ -130,7 +130,7 @@ class Hud extends StatelessWidget {
                                       (shown - start) /
                                       (xpForLevel(level + 1) - start),
                                   minHeight: 10,
-                                  color: tokens.xp,
+                                  color: tokens.xpBar,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                               ),

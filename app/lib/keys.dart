@@ -20,3 +20,4 @@ const numberPadKey = Key('number-pad');
 const keyboardSwitchKey = Key('keyboard-switch');
 const soundSwitchKey = Key('sound-switch');
 const hapticsSwitchKey = Key('haptics-switch');
+const pinnedQuestionKey = Key('pinned-question');

@@ -215,14 +215,19 @@ void main() {
         matching: find.byType(Scrollable),
       ),
     );
-    await tester.ensureVisible(
-      find.ancestor(of: find.text('Question 1'), matching: find.byType(Card)),
+    final row = find.ancestor(
+      of: find.text('Question 1'),
+      matching: find.byType(Card),
     );
+    await tester.ensureVisible(row);
     await tester.pumpAndSettle();
-    // The whole first row is on screen at once.
-    expect(find.text('Question 1').hitTestable(), findsOneWidget);
-    expect(find.text('12 + 3').hitTestable(), findsOneWidget);
-    expect(find.text('Your answer: 14').hitTestable(), findsOneWidget);
+    // The whole first row is on screen at once. Searched inside that row,
+    // because the random second problem can also have 14 as its answer.
+    Finder inRow(String text) =>
+        find.descendant(of: row, matching: find.text(text)).hitTestable();
+    expect(inRow('Question 1'), findsOneWidget);
+    expect(inRow('12 + 3'), findsOneWidget);
+    expect(inRow('Your answer: 14'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
