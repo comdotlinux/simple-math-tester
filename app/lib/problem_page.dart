@@ -6,6 +6,7 @@ import 'keys.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
 import 'rules.dart';
+import 'slab.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -45,9 +46,11 @@ class _ProblemPageState extends State<ProblemPage> {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final theme = Theme.of(context);
+    final tokens = context.tokens;
     final sprinting = model.inSprint;
     return LayoutBuilder(
       builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 520;
         return SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(
@@ -71,13 +74,17 @@ class _ProblemPageState extends State<ProblemPage> {
                       ),
                       // A tier change would move levels during a round.
                       if (!sprinting)
-                        IconButton(
-                          key: settingsButtonKey,
-                          tooltip: 'Settings',
-                          onPressed: () => _showSettings(context),
-                          icon: const Icon(
-                            Icons.settings_outlined,
-                            semanticLabel: 'Settings',
+                        Slab(
+                          pressable: true,
+                          radius: AppTokens.radiusControl,
+                          child: IconButton(
+                            key: settingsButtonKey,
+                            tooltip: 'Settings',
+                            onPressed: () => _showSettings(context),
+                            icon: const Icon(
+                              Icons.settings_outlined,
+                              semanticLabel: 'Settings',
+                            ),
                           ),
                         ),
                     ],
@@ -88,7 +95,9 @@ class _ProblemPageState extends State<ProblemPage> {
                         ? 'Answer as many as you can in '
                               '${sprintLength.inSeconds} seconds.'
                         : 'Take your time and give it a try.',
-                    style: theme.textTheme.bodyLarge,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: tokens.inkMuted,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   if (model.tier == null)
@@ -96,16 +105,16 @@ class _ProblemPageState extends State<ProblemPage> {
                   else ...[
                     if (model.lastSprint case final result?) ...[
                       _SprintResult(result: result),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                     ],
                     if (sprinting) ...[
                       _SprintStatus(score: model.sprintScore),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                     ],
                     Row(
                       children: [
                         for (final type in OperationType.values) ...[
-                          if (type.index > 0) const SizedBox(width: 8),
+                          if (type.index > 0) const SizedBox(width: 10),
                           Expanded(
                             child: _OperationToggle(
                               type: type,
@@ -116,25 +125,9 @@ class _ProblemPageState extends State<ProblemPage> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Card(
-                      color: context.tokens.mint,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 32,
-                        ),
-                        child: Text(
-                          model.current.question,
-                          key: questionOnProblemsPageKey,
-                          textAlign: TextAlign.center,
-                          semanticsLabel:
-                              'Math question: ${model.current.question}',
-                          style: theme.textTheme.displaySmall,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 24),
+                    _QuestionCard(problem: model.current),
+                    const SizedBox(height: 28),
                     TextField(
                       controller: _controller,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -142,7 +135,7 @@ class _ProblemPageState extends State<ProblemPage> {
                         decimal: true,
                       ),
                       textInputAction: TextInputAction.done,
-                      style: theme.textTheme.titleLarge,
+                      style: theme.textTheme.headlineMedium,
                       decoration: const InputDecoration(
                         labelText: 'Your answer',
                         hintText: 'Type a number',
@@ -152,38 +145,62 @@ class _ProblemPageState extends State<ProblemPage> {
                     ),
                     const SizedBox(height: 12),
                     _AnswerFeedback(model: model),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        FilledButton.icon(
-                          key: checkAnswerButtonKey,
-                          onPressed: model.submitAnswer,
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Check answer'),
-                        ),
-                        if (!sprinting) ...[
-                          OutlinedButton.icon(
-                            key: nextQuestionButtonKey,
-                            onPressed: model.generateNextProblem,
-                            icon: const Icon(Icons.navigate_next),
-                            label: const Text('Next question'),
+                    const SizedBox(height: 16),
+                    Slab(
+                      pressable: true,
+                      radius: AppTokens.radiusControl,
+                      child: FilledButton.icon(
+                        key: checkAnswerButtonKey,
+                        onPressed: model.submitAnswer,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Check answer'),
+                      ),
+                    ),
+                    if (!sprinting) ...[
+                      const SizedBox(height: 16),
+                      // Side by side when both fit, else full-width rows.
+                      Flex(
+                        direction: wide ? Axis.horizontal : Axis.vertical,
+                        crossAxisAlignment: wide
+                            ? CrossAxisAlignment.center
+                            : CrossAxisAlignment.stretch,
+                        spacing: 16,
+                        children: [
+                          _flexed(
+                            wide,
+                            Slab(
+                              pressable: true,
+                              radius: AppTokens.radiusControl,
+                              child: OutlinedButton.icon(
+                                key: nextQuestionButtonKey,
+                                onPressed: model.generateNextProblem,
+                                icon: const Icon(Icons.navigate_next),
+                                label: const Text('Next question'),
+                              ),
+                            ),
                           ),
-                          OutlinedButton.icon(
-                            key: sprintButtonKey,
-                            onPressed: model.startSprint,
-                            icon: const Icon(Icons.timer_outlined),
-                            label: Text(
-                              '${sprintLength.inSeconds}-second sprint',
+                          _flexed(
+                            wide,
+                            Slab(
+                              pressable: true,
+                              radius: AppTokens.radiusControl,
+                              child: FilledButton.icon(
+                                key: sprintButtonKey,
+                                onPressed: model.startSprint,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: tokens.sprint,
+                                  foregroundColor: tokens.onSprint,
+                                ),
+                                icon: const Icon(Icons.timer_outlined),
+                                label: Text(
+                                  '${sprintLength.inSeconds}-second sprint',
+                                ),
+                              ),
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                    if (!sprinting) ...[
-                      const SizedBox(height: 12),
+                      ),
+                      const SizedBox(height: 16),
                       _Hints(model: model),
                     ],
                   ],
@@ -197,6 +214,76 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 }
 
+Widget _flexed(bool row, Widget child) => row ? Expanded(child: child) : child;
+
+/// The hero: the operation's name on a colour band over the question.
+class _QuestionCard extends StatelessWidget {
+  const _QuestionCard({required this.problem});
+
+  final Problem problem;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    return Slab(
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The question's own label already names the operation.
+            ExcludeSemantics(
+              child: _Band(
+                color: tokens.operation,
+                child: Text(
+                  problem.kind.label,
+                  style: textTheme.labelMedium?.copyWith(
+                    color: tokens.onOperation,
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 36, 20, 44),
+              child: Text(
+                problem.question,
+                key: questionOnProblemsPageKey,
+                textAlign: TextAlign.center,
+                semanticsLabel: 'Math question: ${problem.question}',
+                style: textTheme.displayLarge,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A colour block across the top of a card, ruled off from its body.
+class _Band extends StatelessWidget {
+  const _Band({required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+    decoration: BoxDecoration(
+      color: color,
+      border: Border(
+        bottom: BorderSide(
+          color: context.tokens.outline,
+          width: AppTokens.outlineWidth,
+        ),
+      ),
+    ),
+    child: child,
+  );
+}
+
 /// The score so far and the countdown of a running round.
 class _SprintStatus extends StatelessWidget {
   const _SprintStatus({required this.score});
@@ -206,30 +293,44 @@ class _SprintStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final style = Theme.of(context).textTheme.titleLarge;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: tokens.paper,
-        border: Border.all(color: tokens.border),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    final style = Theme.of(context).textTheme.headlineMedium
+        ?.copyWith(color: tokens.onSprint);
+    return Slab(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: tokens.sprint,
+          border: Border.all(
+            color: tokens.outline,
+            width: AppTokens.outlineWidth,
+          ),
+          borderRadius: BorderRadius.circular(AppTokens.radiusCard),
+        ),
         child: Wrap(
           spacing: 24,
           runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            // Only this rebuilds on a tick: a plain number, no animation.
-            ValueListenableBuilder<int>(
-              valueListenable: context
-                  .read<MathTesterModel>()
-                  .sprintSecondsLeft,
-              builder: (context, seconds, _) => Text(
-                '$seconds s left',
-                key: sprintCountdownKey,
-                semanticsLabel: '$seconds seconds left',
-                style: style,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [
+                Icon(Icons.timer_outlined, size: 32, color: tokens.onSprint),
+                // Only this rebuilds on a tick: a plain number, no animation.
+                Flexible(
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: context
+                        .read<MathTesterModel>()
+                        .sprintSecondsLeft,
+                    builder: (context, seconds, _) => Text(
+                      '$seconds s left',
+                      key: sprintCountdownKey,
+                      semanticsLabel: '$seconds seconds left',
+                      style: style,
+                    ),
+                  ),
+                ),
+              ],
             ),
             Text('Score: $score', style: style),
           ],
@@ -247,43 +348,74 @@ class _SprintResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final mix = [
       for (var level = 1; level <= result.levels.length; level++)
         if (result.levels[level - 1] > 0)
           'level $level: ${result.levels[level - 1]}',
     ];
-    return Card(
-      key: sprintResultKey,
-      color: context.tokens.mint,
-      child: Semantics(
-        container: true,
-        liveRegion: true,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
+    Widget tile(String text) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: tokens.surfaceSunken,
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+      ),
+      child: Text(text, style: textTheme.titleLarge),
+    );
+    return Slab(
+      child: Card(
+        key: sprintResultKey,
+        clipBehavior: Clip.antiAlias,
+        child: Semantics(
+          container: true,
+          liveRegion: true,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Sprint over', style: textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 24,
-                runSpacing: 4,
-                children: [
-                  Text('Score: ${result.score}', style: textTheme.titleMedium),
-                  Text(
-                    'Personal best: ${result.best}',
-                    style: textTheme.titleMedium,
-                  ),
-                ],
+              _Band(
+                color: tokens.sprint,
+                child: Row(
+                  spacing: 10,
+                  children: [
+                    Icon(Icons.emoji_events, color: tokens.onSprint),
+                    Expanded(
+                      child: Text(
+                        'Sprint over',
+                        style: textTheme.titleLarge?.copyWith(
+                          color: tokens.onSprint,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              // Scores at different levels are weighted, so the mix is shown.
-              Text(
-                mix.isEmpty
-                    ? 'No answers this round.'
-                    : 'Answers by difficulty: ${mix.join(', ')}',
-                style: textTheme.bodyMedium,
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        tile('Score: ${result.score}'),
+                        tile('Personal best: ${result.best}'),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Scores at different levels are weighted, so the mix is
+                    // shown.
+                    Text(
+                      mix.isEmpty
+                          ? 'No answers this round.'
+                          : 'Answers by difficulty: ${mix.join(', ')}',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: tokens.inkMuted,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -301,36 +433,48 @@ class _TierPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = context.read<MathTesterModel>();
+    final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    return Card(
-      key: tierPickerKey,
-      color: context.tokens.paper,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                'How hard should it start?',
-                style: textTheme.titleLarge,
+    return Slab(
+      child: Card(
+        key: tierPickerKey,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Semantics(
+                header: true,
+                child: Text(
+                  'How hard should it start?',
+                  style: textTheme.headlineMedium,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Questions get easier or harder as you answer. '
-              'You can change this later in settings.',
-              style: textTheme.bodyMedium,
-            ),
-            for (final tier in Tier.values) ...[
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => model.chooseTier(tier),
-                child: Text(tier.label),
+              const SizedBox(height: 8),
+              Text(
+                'Questions get easier or harder as you answer. '
+                'You can change this later in settings.',
+                style: textTheme.bodyMedium?.copyWith(color: tokens.inkMuted),
               ),
+              for (final tier in Tier.values) ...[
+                const SizedBox(height: 16),
+                Slab(
+                  pressable: true,
+                  radius: AppTokens.radiusControl,
+                  child: OutlinedButton(
+                    onPressed: () => model.chooseTier(tier),
+                    child: Row(
+                      spacing: 12,
+                      children: [
+                        Expanded(child: Text(tier.label)),
+                        const Icon(Icons.arrow_forward),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -349,9 +493,10 @@ void _showSettings(BuildContext context) {
       return SafeArea(
         child: SingleChildScrollView(
           key: settingsSheetKey,
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            spacing: 4,
             children: [
               ListTile(
                 title: Semantics(
@@ -370,7 +515,9 @@ void _showSettings(BuildContext context) {
                 ListTile(
                   title: Text(tier.label),
                   selected: tier == model.tier,
-                  trailing: tier == model.tier ? const Icon(Icons.check) : null,
+                  trailing: tier == model.tier
+                      ? const Icon(Icons.check_circle)
+                      : null,
                   onTap: () {
                     if (tier != model.tier) model.chooseTier(tier);
                     Navigator.pop(context);
@@ -384,6 +531,8 @@ void _showSettings(BuildContext context) {
   );
 }
 
+/// Selected stands up on its slab with a check; unselected sits flat on a
+/// sunken fill, so the state reads without colour.
 class _OperationToggle extends StatelessWidget {
   const _OperationToggle({
     required this.type,
@@ -398,6 +547,7 @@ class _OperationToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
+    final foreground = selected ? tokens.onOperation : tokens.inkMuted;
     return Tooltip(
       message: type.label,
       excludeFromSemantics: true,
@@ -405,18 +555,44 @@ class _OperationToggle extends StatelessWidget {
       child: MergeSemantics(
         child: Semantics(
           selected: selected,
-          child: OutlinedButton(
-            onPressed: onPressed,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              backgroundColor: selected ? tokens.teal : null,
-              foregroundColor: selected ? tokens.paper : tokens.ink,
-              side: BorderSide(color: selected ? tokens.teal : tokens.muted),
-            ),
-            child: Text(
-              type.displayString,
-              semanticsLabel: type.label,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+          child: Slab(
+            pressable: true,
+            down: !selected,
+            radius: AppTokens.radiusControl,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                OutlinedButton(
+                  onPressed: onPressed,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    backgroundColor: selected
+                        ? tokens.operation
+                        : tokens.surfaceSunken,
+                    foregroundColor: foreground,
+                  ),
+                  child: Text(
+                    type.displayString,
+                    semanticsLabel: type.label,
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  PositionedDirectional(
+                    top: 5,
+                    end: 5,
+                    child: IgnorePointer(
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 16,
+                        color: foreground,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -432,6 +608,7 @@ class _AnswerFeedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final message =
         model.validationMessage ??
         switch (model.answerCorrect) {
@@ -439,22 +616,11 @@ class _AnswerFeedback extends StatelessWidget {
           true => 'You got it!',
           false => 'Not quite. Try another answer.',
         };
-    final correct = model.answerCorrect ?? false;
-    final foreground = model.answerCorrect == null
-        ? context.tokens.error
-        : correct
-        ? context.tokens.teal
-        : context.tokens.error;
-    final background = model.answerCorrect == null
-        ? context.tokens.peach
-        : correct
-        ? context.tokens.mint
-        : context.tokens.peach;
-    final icon = model.answerCorrect == null
-        ? Icons.info_outline
-        : correct
-        ? Icons.check_circle
-        : Icons.lightbulb_outline;
+    final (background, foreground, icon) = switch (model.answerCorrect) {
+      null => (tokens.primary, tokens.onPrimary, Icons.info_outline),
+      true => (tokens.correct, tokens.onCorrect, Icons.check_circle),
+      false => (tokens.wrong, tokens.onWrong, Icons.lightbulb_outline),
+    };
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return AnimatedSwitcher(
@@ -476,22 +642,27 @@ class _AnswerFeedback extends StatelessWidget {
               liveRegion: true,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: background,
-                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: tokens.outline,
+                    width: AppTokens.outlineWidth,
+                  ),
+                  borderRadius: BorderRadius.circular(AppTokens.radiusControl),
                 ),
                 child: Row(
                   children: [
-                    Icon(icon, color: foreground),
+                    Icon(icon, size: 28, color: foreground),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         message,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: foreground,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: foreground),
                       ),
                     ),
                   ],
@@ -509,8 +680,9 @@ class _Hints extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
     final revealed = model.revealedSteps;
-    final textStyle = Theme.of(context).textTheme.bodyMedium;
 
     // The reveal control stays last and keeps one key, so it keeps its
     // element and keyboard focus while its label changes and steps appear.
@@ -518,36 +690,60 @@ class _Hints extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (revealed > 0)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Let’s work it out',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  for (var index = 0; index < revealed; index++) ...[
-                    const SizedBox(height: 12),
-                    Semantics(
-                      container: true,
-                      liveRegion: index == revealed - 1,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 28,
-                            child: Text('${index + 1}.', style: textStyle),
-                          ),
-                          Expanded(
-                            child: Text(model.steps[index], style: textStyle),
-                          ),
-                        ],
+          Slab(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Let’s work it out', style: textTheme.titleLarge),
+                    for (var index = 0; index < revealed; index++) ...[
+                      const SizedBox(height: 14),
+                      Semantics(
+                        container: true,
+                        liveRegion: index == revealed - 1,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 12,
+                          children: [
+                            Container(
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: tokens.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: tokens.outline,
+                                  width: AppTokens.outlineWidth,
+                                ),
+                              ),
+                              child: Text(
+                                '${index + 1}.',
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: tokens.onPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  model.steps[index],
+                                  style: textTheme.bodyLarge,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           )

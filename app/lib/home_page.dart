@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'app_theme.dart';
 import 'hud.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
@@ -62,7 +63,10 @@ class MyHomePage extends StatelessWidget {
                         selectedIndex: model.currentPage,
                         onDestinationSelected: model.setCurrentPage,
                       ),
-                      const VerticalDivider(width: 1),
+                      const VerticalDivider(
+                        width: AppTokens.outlineWidth,
+                        thickness: AppTokens.outlineWidth,
+                      ),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,21 +80,31 @@ class MyHomePage extends StatelessWidget {
                   ),
           ),
           bottomNavigationBar: compact
-              ? NavigationBar(
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.calculate_outlined),
-                      selectedIcon: Icon(Icons.calculate),
-                      label: 'Practice',
+              ? DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: context.tokens.outline,
+                        width: AppTokens.outlineWidth,
+                      ),
                     ),
-                    NavigationDestination(
-                      icon: Icon(Icons.checklist_outlined),
-                      selectedIcon: Icon(Icons.checklist),
-                      label: 'My answers',
-                    ),
-                  ],
-                  selectedIndex: model.currentPage,
-                  onDestinationSelected: model.setCurrentPage,
+                  ),
+                  child: NavigationBar(
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.calculate_outlined),
+                        selectedIcon: Icon(Icons.calculate),
+                        label: 'Practice',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.checklist_outlined),
+                        selectedIcon: Icon(Icons.checklist),
+                        label: 'My answers',
+                      ),
+                    ],
+                    selectedIndex: model.currentPage,
+                    onDestinationSelected: model.setCurrentPage,
+                  ),
                 )
               : null,
         );

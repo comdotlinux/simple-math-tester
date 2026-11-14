@@ -66,7 +66,9 @@ class _MathTesterAppState extends State<MathTesterApp> {
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
       title: 'Math Tester',
-      theme: buildAppTheme(),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const MyHomePage(key: homePageKey),
     );
   }
