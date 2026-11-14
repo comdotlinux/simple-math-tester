@@ -193,4 +193,72 @@ void main() {
     expect(() => model.setCurrentPage(2), throwsRangeError);
     expect(model.currentPage, 0);
   });
+
+  group('selected operations', () {
+    MathTesterModel drawingModel(int seed) {
+      final model = MathTesterModel(
+        initialProblem: addition,
+        random: Random(seed),
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    test('all four operations are selected by default', () {
+      expect(drawingModel(1).selectedOperations, OperationType.values.toSet());
+    });
+
+    test('criterion 4: only multiplication selected draws 200 products', () {
+      final model = drawingModel(42);
+      for (final type in [
+        OperationType.plus,
+        OperationType.minus,
+        OperationType.divide,
+      ]) {
+        model.toggleOperation(type);
+      }
+      expect(model.selectedOperations, {OperationType.multiply});
+      for (var i = 0; i < 200; i++) {
+        model.generateNextProblem();
+        expect(model.current.kind, OperationType.multiply);
+      }
+    });
+
+    test('criterion 4: deselecting the on-screen kind keeps the problem', () {
+      final model = drawingModel(7);
+      model.toggleOperation(OperationType.plus);
+      expect(model.current, same(addition));
+      expect(model.history, isEmpty);
+      expect(model.selectedOperations, isNot(contains(OperationType.plus)));
+      model.setDraftInput('5');
+      model.submitAnswer();
+      expect(model.history.single.problem, same(addition));
+    });
+
+    test('criterion 5: the last selected operation cannot be deselected', () {
+      final model = drawingModel(3);
+      var notifications = 0;
+      model.addListener(() => notifications++);
+      for (final type in [
+        OperationType.plus,
+        OperationType.minus,
+        OperationType.multiply,
+      ]) {
+        model.toggleOperation(type);
+      }
+      final selection = model.selectedOperations;
+      expect(notifications, 3);
+
+      model.toggleOperation(OperationType.divide);
+      expect(model.selectedOperations, {OperationType.divide});
+      expect(model.selectedOperations, same(selection));
+      expect(notifications, 3);
+
+      model.toggleOperation(OperationType.plus);
+      expect(model.selectedOperations, {
+        OperationType.plus,
+        OperationType.divide,
+      });
+    });
+  });
 }

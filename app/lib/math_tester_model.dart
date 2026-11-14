@@ -26,6 +26,9 @@ class MathTesterModel extends ChangeNotifier {
   late DateTime _shownAt;
   bool _checked = false;
   List<Attempt> _history = List.unmodifiable(const <Attempt>[]);
+  Set<OperationType> _selectedOperations = Set.unmodifiable(
+    OperationType.values,
+  );
   String _draftInput = '';
   String? _validationMessage;
   bool? _answerCorrect;
@@ -35,6 +38,7 @@ class MathTesterModel extends ChangeNotifier {
 
   /// Replaced, never mutated, so `context.select` sees every change.
   List<Attempt> get history => _history;
+  Set<OperationType> get selectedOperations => _selectedOperations;
   String get draftInput => _draftInput;
   String? get validationMessage => _validationMessage;
   bool? get answerCorrect => _answerCorrect;
@@ -67,15 +71,30 @@ class MathTesterModel extends ChangeNotifier {
 
   void generateNextProblem() {
     _record(null);
+    final kinds = OperationType.values.where(_selectedOperations.contains);
     _current =
         nextProblem?.call() ??
-        OperationType.values[_random.nextInt(OperationType.values.length)]
-            .generate(_random);
+        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random);
     _shownAt = _clock();
     _checked = false;
     _draftInput = '';
     _validationMessage = null;
     _answerCorrect = null;
+    notifyListeners();
+  }
+
+  /// Refuses to deselect the last selected operation. The problem on screen
+  /// is kept; the selection applies from the next problem.
+  void toggleOperation(OperationType type) {
+    if (!_selectedOperations.contains(type)) {
+      _selectedOperations = Set.unmodifiable({..._selectedOperations, type});
+    } else if (_selectedOperations.length > 1) {
+      _selectedOperations = Set.unmodifiable(
+        _selectedOperations.where((selected) => selected != type),
+      );
+    } else {
+      return;
+    }
     notifyListeners();
   }
 
