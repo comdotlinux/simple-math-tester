@@ -156,17 +156,51 @@ command line or printed. Rows 1 to 3 start only after the push run of
 | 7 | Owner | Fill the store listing: texts from this file, graphics from `docs/play-store/`. |
 | 8 | Owner | Testing, Internal testing: create a release, upload the `.aab`, accept Play App Signing, roll out; install on one device and confirm the app starts. |
 | 9 | Owner | Testing, Closed testing: create a track, add 15 or more testers by e-mail list (12 are required; the extra ones cover opt-outs, which would restart the count for that tester), roll out, and send them the opt-in link. They must stay opted in for 14 consecutive days. |
-| 10 | Implementer | For every later change: run `play-bundle.yml` again (each run gets a higher build number, run number x 10 + run attempt) and hand over the new `.aab`; the owner uploads it to the closed track. |
+| 10 | Owner | For every later version: publish a GitHub release (see "Releasing to Play" below). The build lands on the internal testing track; promote it to closed testing in Play Console. |
 | 11 | Owner | After 14 days: "Apply for production access", answer the questions about the test, then create the production release. |
 
 ## How the bundle is built
 
-`.github/workflows/play-bundle.yml` runs on every push to `main` and by hand
-("Run workflow", no inputs). With the four `ANDROID_*` secrets it signs the
-bundle with the upload key and uploads it as an artifact; without them it signs
-with a throwaway key made in the job and uploads nothing. Both paths fail if the
-bundle carries the Android debug certificate, and both check 16 KB page support
-of the APKs built from the bundle.
+`.github/workflows/play-bundle.yml` runs on every push to `main`, by hand ("Run
+workflow", no inputs) and when a GitHub release is published. With the four
+`ANDROID_*` secrets it signs the bundle with the upload key; without them it signs
+with a throwaway key made in the job. Every run fails if the bundle carries the
+Android debug certificate and checks 16 KB page support of the APKs built from
+the bundle. Pull requests build no Android or iOS app. On `main` the bundle (and
+the APK and iOS app in `flutter-checks.yml`) is built, checked and discarded.
+
+## Releasing to Play
+
+A published GitHub release builds the bundle with the release's version and
+uploads it to the **internal testing** track; the `.aab` is not attached to the
+release. The build number stays run number x 10 + run attempt, so it always grows.
+
+One-time setup (owner, about 20 minutes; the first `.aab` must already have been
+uploaded by hand, walkthrough row 8):
+
+1. In Google Cloud Console, create a project (for example `simple-math-tester-play`)
+   and enable the **Google Play Android Developer API** for it.
+2. IAM and admin, Service accounts: create a service account (for example
+   `play-upload`) with no project roles. Keys, Add key, JSON: save the file outside
+   the repository.
+3. Play Console, Users and permissions, Invite new users: enter the service
+   account's e-mail, add the app Simple Math Tester, and give it **Release to
+   testing tracks** (nothing else). Send the invitation.
+4. Store the key without printing it:
+   `gh secret set PLAY_SERVICE_ACCOUNT_JSON --repo comdotlinux/simple-math-tester < <key file>`.
+   Then keep the key file somewhere safe or move it out of Downloads.
+
+Each release:
+
+1. GitHub, Releases, Draft a new release. Tag: the version, `v1.0.1` (or `1.0.1`);
+   anything else fails the run. The release text becomes the release notes
+   (500 characters at most are sent).
+2. Publish. The "Play app bundle" run builds, checks and uploads; its last line
+   says which version is on the internal track.
+3. In Play Console, promote the release from internal testing to closed testing or
+   production when ready.
+
+The App Store (iOS) is not set up yet.
 
 Locally, `app/android/key.properties` (git-ignored) selects the upload key:
 

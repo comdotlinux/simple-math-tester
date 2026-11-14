@@ -2,9 +2,14 @@ name: Play app bundle
 
 # Separate from flutter-checks.yml: a manual run of that workflow needs an
 # environment input and deploys the web build.
+# A push to main (or a manual run) builds and checks the bundle, then discards it.
+# A published GitHub release builds it with the release's version and uploads it
+# to the Play internal testing track.
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -87,11 +92,30 @@ jobs:
           # A file, not a step output: outputs holding a secret are dropped.
           printf '%s' "$alias" > "$RUNNER_TEMP/key-alias"
           echo "signing=$signing" >> "$GITHUB_OUTPUT"
+      - name: Require the upload key for a release
+        if: github.event_name == 'release' && steps.key.outputs.signing != 'upload'
+        run: |
+          echo "::error::A release needs the four ANDROID_* keystore secrets"
+          exit 1
       - name: Build app bundle
+        id: build
+        env:
+          TAG: ${{ github.event.release.tag_name }}
         run: |
           build_number=$((GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
-          echo "Build number $build_number"
-          flutter build appbundle --release --build-number="$build_number" | tee "$RUNNER_TEMP/build.log"
+          args=(--build-number="$build_number")
+          if [ "$GITHUB_EVENT_NAME" = release ]; then
+            # The release tag is the version name: v1.2.3 or 1.2.3.
+            if [[ ! "$TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+              echo "::error::Release tag '$TAG' is not v1.2.3 or 1.2.3"
+              exit 1
+            fi
+            args+=(--build-name="${BASH_REMATCH[1]}")
+            echo "version_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
+          echo "Build number $build_number ${args[*]}"
+          flutter build appbundle --release "${args[@]}" | tee "$RUNNER_TEMP/build.log"
           grep -q 'Release signing: upload key from key.properties' "$RUNNER_TEMP/build.log"
       - name: Fail if the bundle carries the Android debug certificate
         run: |
@@ -185,11 +209,44 @@ jobs:
             echo "::error::The APK is signed with the Android debug certificate"
             exit 1
           fi
-      - name: Upload signed app bundle
-        if: steps.key.outputs.signing == 'upload'
-        uses: actions/upload-artifact@v7
+      # Release only: send the bundle to the Play internal testing track. A push to
+      # main stops above and the bundle is discarded with the runner.
+      - name: Authenticate to the Play Developer API
+        id: play-auth
+        if: github.event_name == 'release'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
-          name: simple-math-tester-play-bundle
-          path: app/build/app/outputs/bundle/release/app-release.aab
-          retention-days: 3
-          if-no-files-found: error
+          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+      - name: Upload to the Play internal testing track
+        if: github.event_name == 'release'
+        env:
+          TOKEN: ${{ steps.play-auth.outputs.access_token }}
+          VERSION_NAME: ${{ steps.build.outputs.version_name }}
+          BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          app=androidpublisher/v3/applications/com.linux.simplemathtester
+          api="https://androidpublisher.googleapis.com/$app"
+          upload="https://androidpublisher.googleapis.com/upload/$app"
+          auth=(-H "Authorization: Bearer $TOKEN")
+          edit="$(curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits" | jq -r .id)"
+          code="$(curl -sS --fail-with-body -X POST "${auth[@]}" \
+            -H 'Content-Type: application/octet-stream' \
+            --data-binary @build/app/outputs/bundle/release/app-release.aab \
+            "$upload/edits/$edit/bundles?uploadType=media" \
+            | jq -r .versionCode)"
+          if [ "$code" != "$BUILD_NUMBER" ]; then
+            echo "::error::Play reports version code $code, expected $BUILD_NUMBER"
+            exit 1
+          fi
+          # Play allows 500 characters of release notes per language.
+          notes="${NOTES:-Version $VERSION_NAME}"
+          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:0:500}" \
+            '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
+              releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
+          curl -sS --fail-with-body -X PUT "${auth[@]}" -H 'Content-Type: application/json' \
+            --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
+          curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
+          echo "::notice::Version $VERSION_NAME ($code) is on the Play internal testing track"

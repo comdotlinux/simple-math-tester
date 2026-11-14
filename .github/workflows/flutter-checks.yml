@@ -163,13 +163,6 @@ jobs:
           sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
             | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
           diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
-      - name: Upload Android release APK
-        uses: actions/upload-artifact@v7
-        with:
-          name: simple-math-tester-android
-          path: app/build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 3
-          if-no-files-found: error
 
   ios:
     name: Build unsigned iOS release
@@ -205,13 +198,6 @@ jobs:
             exit 1
           fi
           echo "$manifests"
-      - name: Upload unsigned iOS app
-        uses: actions/upload-artifact@v7
-        with:
-          name: simple-math-tester-ios-unsigned
-          path: app/build/ios/iphoneos/Runner.app
-          retention-days: 3
-          if-no-files-found: error
 
   ios-simulator:
     name: Test user journeys on iOS simulator
