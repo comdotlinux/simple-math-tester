@@ -7,18 +7,58 @@ import 'app_theme.dart';
 import 'home_page.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
+import 'progress_store.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await bootstrap(SharedPreferencesStore());
+}
+
+/// Loads saved progress (and backs up unreadable progress) before the model
+/// exists, so no save can run before the read has finished.
+Future<void> bootstrap(ProgressStore store) async {
+  final loaded = await loadProgress(store);
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => MathTesterModel())],
+      // A new key per load, so a second bootstrap builds a new model.
+      key: ObjectKey(loaded.progress),
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => MathTesterModel(
+            store: store,
+            progress: loaded.progress,
+            canSave: loaded.canSave,
+          ),
+        ),
+      ],
       child: const MathTesterApp(),
     ),
   );
 }
 
-class MathTesterApp extends StatelessWidget {
+class MathTesterApp extends StatefulWidget {
   const MathTesterApp({super.key});
+
+  @override
+  State<MathTesterApp> createState() => _MathTesterAppState();
+}
+
+class _MathTesterAppState extends State<MathTesterApp> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onStateChange: context.read<MathTesterModel>().handleLifecycle,
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

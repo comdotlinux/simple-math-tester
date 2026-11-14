@@ -58,6 +58,13 @@ class _ProblemPageState extends State<ProblemPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (!model.canSave) ...[
+                    Text(
+                      'Progress can’t be saved on this device right now',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   Text('Let’s practice', style: theme.textTheme.displaySmall),
                   const SizedBox(height: 8),
                   Text(
