@@ -28,8 +28,15 @@ createServer(async (req, res) => {
     res.writeHead(308, { Location: target + search }).end();
     return;
   }
+  let decoded;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    res.writeHead(400).end('Bad request');
+    return;
+  }
   // normalize() of a path starting with "/" cannot climb above the root.
-  const local = join(root, normalize(decodeURIComponent(pathname)));
+  const local = join(root, normalize(decoded));
   const path = pathname.split('/').pop() === '_headers' ? null
     : pathname.endsWith('/') ? await file(join(local, 'index.html'))
     : (await file(local)) ?? (await file(`${local}.html`));

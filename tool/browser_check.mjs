@@ -17,6 +17,8 @@ const serverScript = fileURLToPath(new URL('pages_like_server.mjs', import.meta.
 const progressKey = 'progress';
 const seededDocument = {
   schemaVersion: 1,
+  // Without a tier the app shows the tier picker instead of a question.
+  tier: 'easy',
   selectedOperations: ['multiply'],
   history: [3, 4, 5].map((lhs) => ({
     lhs,
@@ -112,7 +114,8 @@ try {
     // The first question follows the seeded multiplication-only selection.
     await page.getByText(/^Math question: \d+ × \d+$/).waitFor();
     check(true, `start ${start}: the first question is a multiplication`);
-    await page.getByRole('textbox').fill('7');
+    // The answer is typed on the app's number pad, as a player does.
+    await page.getByRole('button', { name: '7', exact: true }).click();
     await page.getByRole('button', { name: 'Check answer' }).click();
     await page.waitForFunction(
       (key) => JSON.parse(JSON.parse(localStorage.getItem(key))).history.length === 4,
@@ -139,6 +142,30 @@ try {
     if (start === '/index.html') break;
     await context.close();
   }
+
+  // A new deploy whose worker cannot install leaves the first build's cache
+  // untouched, even after the new deploy's files were fetched online.
+  const firstCache = await expectedCache(firstBuild);
+  stopServer = await serve(secondBuild);
+  await context.route('**/precache_manifest.json', (route) => route.abort());
+  await openApp(page, '/');
+  const online = await page.evaluate(() => fetch('version.json').then((r) => r.json()));
+  check(online.build_number === '2', 'online load with a failing install sees build 2');
+  await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    await registration.update();
+    while (registration.installing) await new Promise((resolve) => setTimeout(resolve, 100));
+  });
+  await context.unroute('**/precache_manifest.json');
+  await stopServer();
+  await openApp(page, '/');
+  await expectHistory(page, 4);
+  const offline = await page.evaluate(() => fetch('version.json').then((r) => r.json()));
+  const kept = await appCaches(page);
+  check(
+    offline.build_number === '1' && kept.join() === firstCache,
+    `failed install keeps build 1 offline in ${kept}`,
+  );
 
   // A new deploy is picked up online, then still works offline.
   stopServer = await serve(secondBuild);
