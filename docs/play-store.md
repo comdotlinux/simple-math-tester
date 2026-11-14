@@ -148,25 +148,26 @@ command line or printed. Rows 1 to 3 start only after the push run of
 | 1 | Owner | Create the upload keystore outside the repository, so the password never appears in a transcript: `keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`. Keep a second copy somewhere safe. |
 | 2 | Implementer | Store the keystore as a repository secret without printing it: `base64 -w0 ~/upload-keystore.jks \| gh secret set ANDROID_KEYSTORE_BASE64`. |
 | 3 | Owner | Enter the two passwords at the hidden prompts: `gh secret set ANDROID_KEYSTORE_PASSWORD` and `gh secret set ANDROID_KEY_PASSWORD`. The implementer sets `ANDROID_KEY_ALIAS` to `upload`. |
-| 4 | Implementer | Run the app bundle workflow (`gh workflow run play-bundle.yml`, then `gh run watch`), download the signed `.aab` (`gh run download`, artifact `simple-math-tester-play-bundle`, kept 3 days) and tell the owner where it is. |
+| 4 | Implementer | Done (2026-11-14): the first signed `.aab` (build 181) was built by `play-bundle.yml` and handed over. The workflow now keeps no `.aab`; later versions go through "Releasing to Play" below. |
 | 4a | Owner | If Play Console asks: complete identity verification and device verification for the personal account. Testing cannot start before this. |
 | 4b | Implementer, then owner | In the second 8a pull request, before it is merged. Implementer: create the Turnstile widget with `cloudflare turnstile widgets create --body '{"name":"impressum","domains":["<site host>"],"mode":"managed"}'`, sending the output to a new file outside the repository and never to the terminal (it contains the widget secret); read only the site key from that file with `jq` and commit it in `impressum.html`; set `TURNSTILE_SECRET_KEY` on the Production environment with `cloudflare pages projects edit simple-math-tester --body <JSON built by jq from that file>` (type `secret_text`), again sending output to a new file. Owner: enter `IMPRESSUM_TEXT` in the Cloudflare dashboard (Pages project, Settings, Variables and Secrets, type Secret, Production). A secret reaches only the next deployment, so both are set before the merge; if one is set later, redeploy `main` with `gh workflow run flutter-checks.yml -f environment-name=prod`. After the deploy, open the live Impressum page and confirm it shows the right details. |
 | 5 | Owner | In Play Console: declare trader status as non-trader when asked (the app is free and has no ads), then create the app (name, default language, "App", "Free") and accept the declarations. |
 | 6 | Owner, with the implementer reading out each answer from this file | Fill "App content": privacy policy URL, ads declaration, app access, content rating questionnaire, target audience (includes children, so the Families Policy answers), Data safety, Advertising ID, and the remaining declarations. |
 | 7 | Owner | Fill the store listing: texts from this file, graphics from `docs/play-store/`. |
-| 8 | Owner | Testing, Internal testing: create a release, upload the `.aab`, accept Play App Signing, roll out; install on one device and confirm the app starts. |
+| 8 | Owner | Done (2026-11-14): build 181 uploaded to Internal testing, Play App Signing accepted, installed from Play. |
 | 9 | Owner | Testing, Closed testing: create a track, add 15 or more testers by e-mail list (12 are required; the extra ones cover opt-outs, which would restart the count for that tester), roll out, and send them the opt-in link. They must stay opted in for 14 consecutive days. |
-| 10 | Implementer | For every later change: run `play-bundle.yml` again (each run gets a higher build number, run number x 10 + run attempt) and hand over the new `.aab`; the owner uploads it to the closed track. |
+| 10 | Owner | For every later version: publish a GitHub release (see "Releasing to Play" below). The build lands on the internal testing track; promote it to closed testing in Play Console. |
 | 11 | Owner | After 14 days: "Apply for production access", answer the questions about the test, then create the production release. |
 
 ## How the bundle is built
 
-`.github/workflows/play-bundle.yml` runs on every push to `main` and by hand
-("Run workflow", no inputs). With the four `ANDROID_*` secrets it signs the
-bundle with the upload key and uploads it as an artifact; without them it signs
-with a throwaway key made in the job and uploads nothing. Both paths fail if the
-bundle carries the Android debug certificate, and both check 16 KB page support
-of the APKs built from the bundle.
+`.github/workflows/play-bundle.yml` runs on every push to `main`, by hand ("Run
+workflow", no inputs) and when a GitHub release is published. With the four
+`ANDROID_*` secrets it signs the bundle with the upload key; without them it signs
+with a throwaway key made in the job. Every run fails if the bundle carries the
+Android debug certificate and checks 16 KB page support of the APKs built from
+the bundle. Pull requests build no Android or iOS app. On `main` the bundle (and
+the APK and iOS app in `flutter-checks.yml`) is built, checked and discarded.
 
 Locally, `app/android/key.properties` (git-ignored) selects the upload key:
 
@@ -179,3 +180,61 @@ keyAlias=upload
 
 Without that file, release builds are debug-signed and Gradle prints
 `Release signing: debug signing (no key.properties)`.
+
+## Releasing to Play
+
+Pushing a version tag releases: `git tag v1.0.1 && git push origin v1.0.1`.
+`play-bundle.yml` then checks the tag (`v1.2.3`, on a commit that is on `main`),
+builds the bundle with that version, uploads it to the **internal testing** track
+and creates the GitHub release. The build number stays run number x 10 + run
+attempt, so it always grows. The `.aab` is not attached to the release.
+
+Release notes:
+
+- GitHub release: GitHub's automatic notes, the pull requests merged since the
+  previous tag.
+- Play: a 2 to 5 line summary of those notes written by DeepSeek for parents and
+  children. Without `DEEPSEEK_API_KEY`, or when the call fails, Play gets the
+  automatic notes instead. Either way `.github/play-release-notes.jq` removes
+  Markdown, HTML, links and "by @user in ..." and keeps whole lines up to Play's
+  500 characters.
+
+One-time setup (owner, about 15 minutes; the first `.aab` must already have been
+uploaded by hand, walkthrough row 8, done 2026-11-14):
+
+1. In Google Cloud Console, create a project (for example `simple-math-tester-play`)
+   and enable the **Google Play Android Developer API** for it.
+2. IAM and admin, Service accounts: create a service account (for example
+   `play-upload`) with no project roles. Keys, Add key, JSON: save the file outside
+   the repository.
+3. Play Console, Users and permissions, Invite new users: enter the **service
+   account's** e-mail, not your own. It looks like
+   `play-upload@<project-id>.iam.gserviceaccount.com`; copy it from `client_email`
+   in the JSON key or from the Email column of the service account list. Add the app
+   Simple Math Tester, give it **Release to testing tracks** (nothing else), and send
+   the invitation. Nobody has to accept it.
+4. Store the key without printing it:
+   `gh secret set PLAY_SERVICE_ACCOUNT_JSON --repo comdotlinux/simple-math-tester < <key file>`.
+   Then keep the key file somewhere safe or move it out of Downloads.
+
+Optional, for the DeepSeek summary (the key is asked for at a hidden prompt):
+
+```
+gh secret set DEEPSEEK_API_KEY --repo comdotlinux/simple-math-tester
+gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deepseek-flash
+```
+
+`DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
+
+Each release:
+
+1. On `main`, pulled: `git tag v1.0.1 && git push origin v1.0.1`.
+2. The "Play app bundle" run builds, uploads and creates the release; its log shows
+   the Play notes, and its last notice says which version is on the internal track.
+   If it fails, fix the cause and re-run the job; nothing is released until the
+   upload worked. A re-run uploads a new build number with the same version.
+   The first tag's GitHub notes list every pull request merged so far.
+3. In Play Console, promote the release from internal testing to closed testing or
+   production when ready.
+
+The App Store (iOS) is not set up yet.
