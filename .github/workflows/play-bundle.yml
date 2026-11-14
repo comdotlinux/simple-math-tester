@@ -211,18 +211,39 @@ jobs:
           fi
       # Release only: send the bundle to the Play internal testing track. A push to
       # main stops above and the bundle is discarded with the runner.
-      - name: Authenticate to the Play Developer API
-        id: play-auth
+      # The service account signs a short-lived JWT and trades it for an access token
+      # (Google's OAuth flow for service accounts); no extra API or role is needed.
+      # The key exists only in a mode 600 file under $RUNNER_TEMP for this step.
+      - name: Get a Play Developer API token
         if: github.event_name == 'release'
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
-        with:
-          credentials_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-          token_format: access_token
-          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::A release needs the PLAY_SERVICE_ACCOUNT_JSON secret"
+            exit 1
+          fi
+          umask 077
+          key="$RUNNER_TEMP/play-key.pem"
+          jq -er .private_key <<< "$PLAY_SERVICE_ACCOUNT_JSON" > "$key"
+          email="$(jq -er .client_email <<< "$PLAY_SERVICE_ACCOUNT_JSON")"
+          token_uri="$(jq -er .token_uri <<< "$PLAY_SERVICE_ACCOUNT_JSON")"
+          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          now="$(date +%s)"
+          header="$(printf '%s' '{"alg":"RS256","typ":"JWT"}' | b64url)"
+          claims="$(jq -cn --arg iss "$email" --arg aud "$token_uri" --argjson iat "$now" \
+            '{iss: $iss, scope: "https://www.googleapis.com/auth/androidpublisher", aud: $aud,
+              iat: $iat, exp: ($iat + 600)}' | b64url)"
+          signature="$(printf '%s.%s' "$header" "$claims" | openssl dgst -sha256 -sign "$key" | b64url)"
+          token="$(curl -sS --fail-with-body "$token_uri" \
+            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer' \
+            --data-urlencode "assertion=$header.$claims.$signature" | jq -er .access_token)"
+          echo "::add-mask::$token"
+          # A file, not a step output: outputs holding a secret are dropped.
+          printf '%s' "$token" > "$RUNNER_TEMP/play-token"
       - name: Upload to the Play internal testing track
         if: github.event_name == 'release'
         env:
-          TOKEN: ${{ steps.play-auth.outputs.access_token }}
           VERSION_NAME: ${{ steps.build.outputs.version_name }}
           BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
           NOTES: ${{ github.event.release.body }}
@@ -230,22 +251,21 @@ jobs:
           app=androidpublisher/v3/applications/com.linux.simplemathtester
           api="https://androidpublisher.googleapis.com/$app"
           upload="https://androidpublisher.googleapis.com/upload/$app"
-          auth=(-H "Authorization: Bearer $TOKEN")
-          edit="$(curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits" | jq -r .id)"
+          auth=(-H "Authorization: Bearer $(cat "$RUNNER_TEMP/play-token")")
+          edit="$(curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits" | jq -er .id)"
           code="$(curl -sS --fail-with-body -X POST "${auth[@]}" \
             -H 'Content-Type: application/octet-stream' \
             --data-binary @build/app/outputs/bundle/release/app-release.aab \
             "$upload/edits/$edit/bundles?uploadType=media" \
-            | jq -r .versionCode)"
+            | jq -er .versionCode)"
           if [ "$code" != "$BUILD_NUMBER" ]; then
             echo "::error::Play reports version code $code, expected $BUILD_NUMBER"
             exit 1
           fi
-          # Play allows 500 characters of release notes per language.
-          notes="${NOTES:-Version $VERSION_NAME}"
-          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:0:500}" \
+          # Play allows 500 characters of release notes per language; jq cuts by character.
+          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${NOTES:-Version $VERSION_NAME}" \
             '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
-              releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
+              releaseNotes: [{language: "en-US", text: $notes[:500]}]}]}' > "$RUNNER_TEMP/track.json"
           curl -sS --fail-with-body -X PUT "${auth[@]}" -H 'Content-Type: application/json' \
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null

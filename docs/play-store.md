@@ -148,7 +148,7 @@ command line or printed. Rows 1 to 3 start only after the push run of
 | 1 | Owner | Create the upload keystore outside the repository, so the password never appears in a transcript: `keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload`. Keep a second copy somewhere safe. |
 | 2 | Implementer | Store the keystore as a repository secret without printing it: `base64 -w0 ~/upload-keystore.jks \| gh secret set ANDROID_KEYSTORE_BASE64`. |
 | 3 | Owner | Enter the two passwords at the hidden prompts: `gh secret set ANDROID_KEYSTORE_PASSWORD` and `gh secret set ANDROID_KEY_PASSWORD`. The implementer sets `ANDROID_KEY_ALIAS` to `upload`. |
-| 4 | Implementer | Run the app bundle workflow (`gh workflow run play-bundle.yml`, then `gh run watch`), download the signed `.aab` (`gh run download`, artifact `simple-math-tester-play-bundle`, kept 3 days) and tell the owner where it is. |
+| 4 | Implementer | Done (2026-11-14): the first signed `.aab` (build 181) was built by `play-bundle.yml` and handed over. Since phase 19 the workflow keeps no `.aab`; later versions go through "Releasing to Play" below. |
 | 4a | Owner | If Play Console asks: complete identity verification and device verification for the personal account. Testing cannot start before this. |
 | 4b | Implementer, then owner | In the second 8a pull request, before it is merged. Implementer: create the Turnstile widget with `cloudflare turnstile widgets create --body '{"name":"impressum","domains":["<site host>"],"mode":"managed"}'`, sending the output to a new file outside the repository and never to the terminal (it contains the widget secret); read only the site key from that file with `jq` and commit it in `impressum.html`; set `TURNSTILE_SECRET_KEY` on the Production environment with `cloudflare pages projects edit simple-math-tester --body <JSON built by jq from that file>` (type `secret_text`), again sending output to a new file. Owner: enter `IMPRESSUM_TEXT` in the Cloudflare dashboard (Pages project, Settings, Variables and Secrets, type Secret, Production). A secret reaches only the next deployment, so both are set before the merge; if one is set later, redeploy `main` with `gh workflow run flutter-checks.yml -f environment-name=prod`. After the deploy, open the live Impressum page and confirm it shows the right details. |
 | 5 | Owner | In Play Console: declare trader status as non-trader when asked (the app is free and has no ads), then create the app (name, default language, "App", "Free") and accept the declarations. |
@@ -175,8 +175,8 @@ A published GitHub release builds the bundle with the release's version and
 uploads it to the **internal testing** track; the `.aab` is not attached to the
 release. The build number stays run number x 10 + run attempt, so it always grows.
 
-One-time setup (owner, about 20 minutes; the first `.aab` must already have been
-uploaded by hand, walkthrough row 8):
+One-time setup (owner, about 15 minutes; the first `.aab` must already have been
+uploaded by hand, walkthrough row 8, done 2026-11-14):
 
 1. In Google Cloud Console, create a project (for example `simple-math-tester-play`)
    and enable the **Google Play Android Developer API** for it.
