@@ -232,7 +232,8 @@ Each release:
 2. The "Play app bundle" run builds, uploads and creates the release; its log shows
    the Play notes, and its last notice says which version is on the internal track.
    If it fails, fix the cause and re-run the job; nothing is released until the
-   upload worked.
+   upload worked. A re-run uploads a new build number with the same version.
+   The first tag's GitHub notes list every pull request merged so far.
 3. In Play Console, promote the release from internal testing to closed testing or
    production when ready.
 

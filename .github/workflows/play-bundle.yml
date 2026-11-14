@@ -40,6 +40,9 @@ jobs:
         with:
           # The tag check below needs main's history.
           fetch-depth: 0
+          # The job's token can write; keep it out of .git/config so the build and
+          # its dependencies never see it. Only the gh steps get it, through GH_TOKEN.
+          persist-credentials: false
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -325,9 +328,15 @@ jobs:
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
           echo "::notice::Version $VERSION_NAME ($code) is on the Play internal testing track"
       # Last, so a failed build or upload leaves no release behind; re-run the job.
+      # A re-run uploads a new build (attempt + 1) with the same version name.
       - name: Create the GitHub release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/github-notes.md"
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists"
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/github-notes.md"
+          fi
