@@ -148,6 +148,40 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('At 360x640 the first row is reachable below the stats card', (
+    tester,
+  ) async {
+    final model = await launch(tester, size: const Size(360, 640));
+    model.setDraftInput('14');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.setDraftInput('${model.current.result}');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.generateNextProblem();
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    expect(find.text('Your stats'), findsOneWidget);
+    expect(find.text('3 questions completed.'), findsOneWidget);
+    // The header and the stats card fill the first screen.
+    expect(find.text('Question 1').hitTestable(), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Question 1').hitTestable(),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(resultsPageKey),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Question 1').hitTestable(), findsOneWidget);
+    expect(find.text('12 + 3').hitTestable(), findsOneWidget);
+    await tester.ensureVisible(find.text('Your answer: 14'));
+    await tester.pumpAndSettle();
+    expect(find.text('Your answer: 14').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [390.0, 1000.0]) {
     testWidgets('Results at width $width show the first answer', (
       tester,
