@@ -20,4 +20,7 @@ const numberPadKey = Key('number-pad');
 const keyboardSwitchKey = Key('keyboard-switch');
 const soundSwitchKey = Key('sound-switch');
 const hapticsSwitchKey = Key('haptics-switch');
+const privacyTileKey = Key('privacy-tile');
+const impressumTileKey = Key('impressum-tile');
+const privacyPageKey = Key('privacy-page');
 const pinnedQuestionKey = Key('pinned-question');
