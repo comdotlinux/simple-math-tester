@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'legal.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
@@ -892,13 +893,14 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
-/// A simple list of settings: the starting tier, the feedback switches and
-/// the theme.
+/// A simple list of settings: the starting tier, the feedback switches, the
+/// theme and the legal pages.
 Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
-  useSafeArea: true,
   isScrollControlled: true,
+  // A full-height sheet would otherwise reach under the status bar.
+  useSafeArea: true,
   builder: (context) {
     final model = context.watch<MathTesterModel>();
     final textTheme = Theme.of(context).textTheme;
@@ -985,12 +987,77 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                 ],
               ),
             ),
+            const SizedBox(height: 8),
+            ListTile(
+              key: privacyTileKey,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy'),
+              subtitle: const Text('What the app stores, and why'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+              ),
+            ),
+            ListTile(
+              key: impressumTileKey,
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('Impressum'),
+              subtitle: const Text('Who makes the app (opens the browser)'),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                // Closed first, so a failure notice is not hidden behind it.
+                Navigator.pop(context);
+                if (!await model.openImpressum()) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('The browser did not open.')),
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   },
 );
+
+/// The bundled privacy policy, readable offline.
+class _PrivacyPage extends StatelessWidget {
+  const _PrivacyPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final [(title, intro), ...sections] = privacyPolicy;
+    return Scaffold(
+      key: privacyPageKey,
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            for (final paragraph in intro) _paragraph(paragraph),
+            for (final (heading, paragraphs) in sections) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 4),
+                child: Semantics(
+                  header: true,
+                  child: Text(heading, style: textTheme.titleMedium),
+                ),
+              ),
+              for (final paragraph in paragraphs) _paragraph(paragraph),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paragraph(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Text(text),
+  );
+}
 
 /// Selected stands up on its slab with a check; unselected sits flat on a
 /// sunken fill, so the state reads without colour.

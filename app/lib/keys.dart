@@ -26,6 +26,9 @@ const numberPadKey = Key('number-pad');
 const keyboardSwitchKey = Key('keyboard-switch');
 const soundSwitchKey = Key('sound-switch');
 const hapticsSwitchKey = Key('haptics-switch');
+const privacyTileKey = Key('privacy-tile');
+const impressumTileKey = Key('impressum-tile');
+const privacyPageKey = Key('privacy-page');
 
 /// One per segment of the settings sheet's theme choice.
 Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');

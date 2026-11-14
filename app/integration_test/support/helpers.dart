@@ -67,7 +67,8 @@ Future<Progress> savedProgress() async =>
 
 /// Runs the real app widget on a model the test builds, for what the real
 /// entry point cannot reach in reasonable time: a clock to move, ticks to
-/// send, and vibrations and sounds to count. Nothing is written through the
+/// send, vibrations and sounds to count, and links to record instead of
+/// opening a browser. Nothing is written through the
 /// plugin.
 Future<MathTesterModel> startHarness(
   WidgetTester tester, {
@@ -76,6 +77,7 @@ Future<MathTesterModel> startHarness(
   Stream<void> Function()? ticker,
   void Function(Haptic)? haptic,
   SoundPlayer sounds = const SilentSoundPlayer(),
+  Future<bool> Function(Uri)? openLink,
   MemoryProgressStore? store,
 }) async {
   final model = MathTesterModel(
@@ -84,6 +86,7 @@ Future<MathTesterModel> startHarness(
     ticker: ticker,
     haptic: haptic,
     sounds: sounds,
+    openLink: openLink,
     store: store ?? MemoryProgressStore(),
   );
   runApp(
