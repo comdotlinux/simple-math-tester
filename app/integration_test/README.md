@@ -34,8 +34,8 @@ copy or layout does not break them. This holds here and in `test/`.
 - `journeys/<feature>_journeys.dart`: one `group('<feature>', ...)` of short
   `testWidgets`, each named as behaviour a player can see.
 - `support/helpers.dart`: starting from a saved document, restarting, release-safe
-  typing, finders for the pad and toggles, `textOf`, `showsNumber`, `showsXp`,
-  `inHistory`, `semanticsNodesLabelled`,
+  typing, finders for the pad and toggles, `openPad`/`closePad`/`isPhone`,
+  `textOf`, `showsNumber`, `showsXp`, `inHistory`, `semanticsNodesLabelled`,
   and `startHarness`.
 
 Every test starts from its own saved document (`startWith` writes it through
@@ -87,6 +87,13 @@ The Chrome job runs a release build, where asserts and debug-only data are gone:
   `ensureVisible` before tapping. Below 700 px of height the field, the
   feedback and a dense pad dock at the bottom, and Next moves into the feedback
   strip after a check, where it reads "Next" (its label is "Next question").
+- Phones (shortest side under 600) start with the system keyboard, larger
+  screens with the pad. A journey that uses the pad calls `openPad` first, one
+  that needs the system keyboard calls `closePad`; both do nothing where that
+  input is already shown, so the same journey runs on the phone-sized
+  emulator and simulator and on desktop-sized Linux and Chrome. With the
+  system keyboard a phone below 700 px docks the field, Check and the
+  feedback at the bottom, above the keyboard.
 - A save is written asynchronously. Read it back with `waitForSaved`, and
   restart with `restartWhenSaved`.
 
@@ -100,9 +107,10 @@ Built from reading `lib/`. Each row needs at least one journey.
 | "Progress can't be saved" notice | `tier_picker_journeys.dart`, `persistence_journeys.dart` | a start without saving shows the can't-be-saved notice; data from a newer version is kept and not overwritten |
 | Practice: check, retry, Next, Skip | `practice_journeys.dart` | a wrong first answer is saved before Next; a retry after a wrong answer can still be right; a correct first answer is saved as correct; Next after a check shows a new question and adds no row; Next without an answer is saved as skipped; answers from play are kept in order: wrong, right, skipped; an empty answer asks for a number and records nothing; typing after feedback clears it |
 | Answer-first flow (Enter, focus, Skip) | `practice_journeys.dart`, `number_pad_journeys.dart`, `settings_journeys.dart`, `history_journeys.dart`, `sprint_journeys.dart`, `hints_journeys.dart` | Enter checks the answer and a second Enter shows the next question; a new answer after a wrong check is checked, not skipped; the answer field keeps the focus after a check and after Skip or Next; the button says Skip before a check and Next question after; pressing Check twice checks, then moves on; closing settings and going back to Practice focus the answer again; in a sprint Enter checks and moves on once; a hint tap keeps the focus on the answer |
+| Default input per screen size | `number_pad_journeys.dart` | a phone starts with the system keyboard, a larger screen with the pad |
 | Number pad | `number_pad_journeys.dart` | each digit key types its digit; Delete removes the last digit; Check with nothing typed says enter a number first; an answer typed on the pad is checked from the pad; only digits reach the answer field |
 | Keyboard switch (pad or system keyboard) | `number_pad_journeys.dart` | the keyboard button swaps the pad for the keyboard and back; with the keyboard, Enter checks the typed answer; with the pad, tapping the answer field opens no system keyboard; the keyboard button asks for one (see below for what each device proves) |
-| Phone layout after a check | `number_pad_journeys.dart` | on a phone a check keeps question, answer, feedback and Next on screen |
+| Phone layout after a check | `number_pad_journeys.dart` | on a phone a check keeps question, answer, feedback and Next on screen (with the pad); on a phone with the system keyboard, Enter checks, Enter again moves on, and question, answer, feedback and Next stay above the keyboard |
 | Hints / solution steps | `hints_journeys.dart` | Hint shows the first step and becomes Next step; before a check every step but the answer can be opened; a wrong first check opens the first step; after a valid check every step, the answer too, can open; hints used before Next are saved with the skip |
 | Operation toggles (+ − × ÷) | `operations_journeys.dart` | only `<signs>`: Next shows only `<signs>` questions (all 15 non-empty selections, 20 draws each); the last selected operation cannot be turned off; turning an operation back on adds it to the draws |
 | My answers page | `history_journeys.dart` | with no answers it shows the empty state and no stats; the empty state's Practice button returns to the question; the stats card shows saved totals once there are answers; the stats table shows each operation's accuracy and level; an incorrect row shows your answer and the expected one; a correct row shows your answer; a skipped row says no answer was entered; a long history loads more on scroll and keeps stats pinned (answers show newest first and load 20 at a time with a loading row, the oldest one is followed by the end marker, scrolled down the stats are a compact bar still on screen, back at the top the full card shows); going back to Practice keeps the current question |
@@ -119,9 +127,17 @@ Built from reading `lib/`. Each row needs at least one journey.
 
 ### What the keyboard journey proves on each device
 
+"a phone starts with the system keyboard, a larger screen with the pad"
+follows the device: the Android emulator and the iOS simulator are phone
+sized, so there it proves the system keyboard default (`number`); Linux and
+Chrome run at desktop size, so there it proves the pad default (`none`). The
+other keyboard journeys open the pad or the keyboard first with
+`openPad`/`closePad`, so they prove the same on every device.
+
 "with the pad, tapping the answer field opens no system keyboard" checks two
 things. The keyboard type (`none` with the pad, `number` without it) is proven
-on every device. The zero keyboard-height check (`viewInsets.bottom == 0`) only
+on every device. On a phone it also proves that the keyboard button closes
+the soft keyboard the app opened at start. The zero keyboard-height check (`viewInsets.bottom == 0`) only
 means something on the Android emulator, which shows a soft keyboard. Linux
 and Chrome have no soft keyboard, and the iOS simulator uses the Mac's
 hardware keyboard by default, so there it passes trivially. The CI emulator
@@ -129,3 +145,11 @@ hardware keyboard by default, so there it passes trivially. The CI emulator
 inputs set) uses the action's defaults: `enable-hw-keyboard: false`, so no
 `hw.keyboard=yes` is written and the soft keyboard shows, and
 `disable-animations: true`, which sets the three animation scales to 0.
+
+"on a phone with the system keyboard ..." measures against the real keyboard
+inset: on the Android emulator the soft keyboard is up, elsewhere the inset
+is 0 and it checks the docked layout without one.
+
+Known limit: on iOS web (Safari) the system keyboard opens only after the
+player taps the answer field, because Safari opens it only for a user
+gesture; the app's autofocus cannot open it. No CI job runs iOS web.

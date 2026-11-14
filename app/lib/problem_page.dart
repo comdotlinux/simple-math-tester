@@ -42,11 +42,20 @@ class _ProblemPageState extends State<ProblemPage> {
   /// the page and the phone dock.
   final _fieldKey = GlobalKey();
   final _padAvailable = padReplacesKeyboard(defaultTargetPlatform);
-  late bool _padShown = _padAvailable;
+
+  /// Phones (shortest side under 600, also in a mobile browser) start with
+  /// the system number keyboard, tablets and desktops with the pad. Until
+  /// the player picks, the default follows the size: the shortest side does
+  /// not change when a phone turns, so only a resized window can move it.
+  /// Known limit: on iOS web the keyboard opens only after a tap on the
+  /// field, because Safari opens it only for a user gesture.
+  bool get _padShown =>
+      _padAvailable &&
+      (_model.padChosen ?? MediaQuery.sizeOf(context).shortestSide >= 600);
 
   /// What the answer block last showed, to bring it back into view only
   /// when that changes.
-  Object? _revealed;
+  (Problem, bool?, String?, bool, bool)? _revealed;
 
   /// The problem and check the field last took focus for.
   Object? _focusedFor;
@@ -106,7 +115,7 @@ class _ProblemPageState extends State<ProblemPage> {
   /// The keyboard button on the field: hides the pad and opens the system
   /// keyboard, or brings the pad back.
   void _toggleKeyboard() {
-    setState(() => _padShown = !_padShown);
+    setState(() => _model.padChosen = !_padShown);
     if (kIsWeb) {
       // The web engine sets the editing element's inputmode only when it
       // creates the element and never clears "none" on a config update, so
@@ -135,12 +144,18 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// Keeps the field and its feedback in view above a docked pad, as the
   /// system keyboard does, whenever the problem or the feedback changes.
-  void _revealAnswer(MathTesterModel model, bool docked, bool compact) {
+  void _revealAnswer(
+    MathTesterModel model,
+    bool docked,
+    bool compact,
+    bool showPad,
+  ) {
     final shown = (
       model.current,
       model.answerCorrect,
       model.validationMessage,
       docked,
+      showPad,
     );
     if (!docked || shown == _revealed) return;
     // The page opens in place; later changes scroll there.
@@ -200,11 +215,22 @@ class _ProblemPageState extends State<ProblemPage> {
                   scaler.scale(28) * 1.2 +
                   128
             : NumberPad.height(scaler) + 2 * 12 + 7;
+        // With the system keyboard a phone docks the field, the feedback and
+        // Check without the pad, so the keyboard below never hides them.
+        final keyDock =
+            !showPad &&
+            model.tier != null &&
+            phone &&
+            MediaQuery.sizeOf(context).shortestSide < 600 &&
+            // Room above the dock for at least the pinned question.
+            constraints.maxHeight - (scaler.scale(28) * 1.2 + 128) >=
+                scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48;
         final docked =
             side ||
+            keyDock ||
             showPad && constraints.maxHeight - dockHeight >= (phone ? 80 : 260);
         final compact = docked && phone;
-        _revealAnswer(model, docked, compact);
+        _revealAnswer(model, docked, compact, showPad);
         const sideWidth = 300.0;
         final width = side
             ? constraints.maxWidth - sideWidth - 2 * 16
@@ -239,7 +265,9 @@ class _ProblemPageState extends State<ProblemPage> {
               contentPadding: compact
                   ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
                   : null,
-              hintText: 'Type a number',
+              // Beside Check the field is too narrow for the hint; the
+              // label and the number keyboard say enough.
+              hintText: keyDock ? null : 'Type a number',
               suffixIcon: _padAvailable
                   ? Padding(
                       padding: const EdgeInsetsDirectional.only(end: 8),
@@ -261,6 +289,21 @@ class _ProblemPageState extends State<ProblemPage> {
             // on and the next answer can be typed straight away.
             onEditingComplete: () {},
             onSubmitted: (_) => model.checkOrNext(),
+          ),
+        );
+        final check = Slab(
+          pressable: true,
+          radius: AppTokens.radiusControl,
+          child: FilledButton.icon(
+            key: checkAnswerButtonKey,
+            onPressed: model.submitAnswer,
+            style: ButtonStyle(minimumSize: button),
+            icon: const Icon(Icons.check_circle_outline),
+            // Beside the docked field a short label leaves the field room.
+            label: Text(
+              keyDock ? 'Check' : 'Check answer',
+              semanticsLabel: 'Check answer',
+            ),
           ),
         );
         final page = SingleChildScrollView(
@@ -375,18 +418,9 @@ class _ProblemPageState extends State<ProblemPage> {
                         ],
                       ),
                     ],
-                    if (!showPad) ...[
+                    if (!showPad && !docked) ...[
                       const SizedBox(height: 16),
-                      Slab(
-                        pressable: true,
-                        radius: AppTokens.radiusControl,
-                        child: FilledButton.icon(
-                          key: checkAnswerButtonKey,
-                          onPressed: model.submitAnswer,
-                          icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Check answer'),
-                        ),
-                      ),
+                      check,
                     ],
                     if (!sprinting) ...[
                       SizedBox(height: compact ? 12 : 16),
@@ -487,7 +521,16 @@ class _ProblemPageState extends State<ProblemPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         spacing: 6,
                         children: [
-                          field,
+                          if (showPad)
+                            field
+                          else
+                            Row(
+                              spacing: 8,
+                              children: [
+                                Expanded(child: field),
+                                check,
+                              ],
+                            ),
                           _AnswerFeedback(
                             model: model,
                             dense: true,
@@ -495,13 +538,14 @@ class _ProblemPageState extends State<ProblemPage> {
                                 ? model.generateNextProblem
                                 : null,
                           ),
-                          NumberPad(
-                            controller: _controller,
-                            onEdited: pad.onEdited,
-                            onCheck: pad.onCheck,
-                            dense: true,
-                            next: pad.next,
-                          ),
+                          if (showPad)
+                            NumberPad(
+                              controller: _controller,
+                              onEdited: pad.onEdited,
+                              onCheck: pad.onCheck,
+                              dense: true,
+                              next: pad.next,
+                            ),
                         ],
                       )
                     : pad,
