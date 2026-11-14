@@ -290,7 +290,8 @@ void main() {
 
     expect(find.text('45 questions completed.'), findsOneWidget);
     expect(rowCount(), 21);
-    expect(find.text('Question 21', skipOffstage: false), findsNothing);
+    // Newest first: the top page holds Questions 45 to 26.
+    expect(find.text('Question 25', skipOffstage: false), findsNothing);
 
     await scrollToEnd();
     expect(rowCount(), 41);
@@ -305,7 +306,7 @@ void main() {
       300,
       scrollable: list,
     );
-    expect(find.text('Question 45'), findsOneWidget);
+    expect(find.text('Question 1'), findsOneWidget);
     expect(find.text("That's all your answers"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

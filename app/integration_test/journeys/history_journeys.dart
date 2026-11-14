@@ -219,9 +219,9 @@ void historyJourneys() {
         Progress(
           tier: Tier.easy,
           history: [
+            attempt(Problem(77, 23, OperationType.plus, 100), 100),
             for (var i = 0; i < 44; i++)
               attempt(Problem(1, 1, OperationType.plus, 2), 2),
-            attempt(Problem(77, 23, OperationType.plus, 100), 100),
           ],
         ),
       );
@@ -231,7 +231,8 @@ void historyJourneys() {
       expect(find.text('45 questions completed.'), findsOneWidget);
       expect(find.byKey(statsCardKey), findsOneWidget);
       expect(find.text('77 + 23'), findsNothing);
-      // The last answer is in the third page of 20, after two loads.
+      // Newest first: the oldest answer is in the third page of 20, after
+      // two loads.
       expect(await inHistory(tester, find.text('77 + 23')), findsOneWidget);
       expect(
         await inHistory(tester, find.byKey(answersEndKey)),

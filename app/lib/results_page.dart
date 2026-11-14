@@ -18,7 +18,7 @@ class ResultsPage extends StatefulWidget {
   State<ResultsPage> createState() => _ResultsPageState();
 }
 
-/// Shows the answers a page at a time: the next page loads when the reader
+/// Shows the answers newest first, a page at a time: the next page loads when the reader
 /// scrolls to the loading row at the end of the list. The stats card is a
 /// pinned header that shrinks to a compact bar as the list scrolls.
 class _ResultsPageState extends State<ResultsPage> {
@@ -151,16 +151,18 @@ class _ResultsPageState extends State<ResultsPage> {
                             ? _loadingRow()
                             : _endMarker(context);
                       }
+                      // Newest first; each row keeps its own number.
+                      final number = history.length - 1 - index;
                       return useCards
                           ? Padding(
                               padding: const EdgeInsets.only(bottom: 20),
                               child: _resultCard(
                                 context,
-                                index,
-                                history[index],
+                                number,
+                                history[number],
                               ),
                             )
-                          : _tableRow(context, index, history[index]);
+                          : _tableRow(context, number, history[number]);
                     },
                   ),
                 ],
