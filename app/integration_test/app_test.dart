@@ -194,7 +194,7 @@ void main() {
     expect(model.history.single.firstAnswer, correctAnswer + 1);
 
     await submit(correctAnswer);
-    expect(model.draftInput, '$correctAnswer');
+    expect(model.draftInput, formatNumber(correctAnswer));
     expect(model.answerCorrect, isTrue);
     expect(find.text('You got it!'), findsOneWidget);
     expect(visibleSteps(), 1);
