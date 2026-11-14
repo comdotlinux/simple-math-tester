@@ -126,7 +126,9 @@ class _ProblemPageState extends State<ProblemPage> {
     // tree hands the engine its element crashes the engine's semantics text
     // editing.
     _focus.unfocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
   }
 
   /// Keeps the field and its feedback in view above a docked pad, as the
