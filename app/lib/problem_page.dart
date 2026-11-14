@@ -462,7 +462,12 @@ class _ProblemPageState extends State<ProblemPage> {
                         top: 0,
                         left: 0,
                         right: 0,
-                        child: _PinnedQuestion(problem: model.current),
+                        // Display only: a control scrolled under the strip
+                        // (e.g. the hint button after ensureVisible) must
+                        // still get its taps.
+                        child: IgnorePointer(
+                          child: _PinnedQuestion(problem: model.current),
+                        ),
                       ),
                   ],
                 ),
