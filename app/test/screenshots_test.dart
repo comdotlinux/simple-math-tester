@@ -55,6 +55,7 @@ void main() {
     Brightness brightness, {
     Tier? tier = Tier.easy,
     StreamController<void>? ticks,
+    GameState game = game,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -85,8 +86,13 @@ void main() {
     return model;
   }
 
-  Future<void> shoot(WidgetTester tester, String name) async {
-    await tester.pumpAndSettle();
+  /// [settle] false keeps a running animation in the picture.
+  Future<void> shoot(
+    WidgetTester tester,
+    String name, {
+    bool settle = true,
+  }) async {
+    if (settle) await tester.pumpAndSettle();
     final render =
         boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
@@ -107,19 +113,26 @@ void main() {
 
   for (final brightness in Brightness.values) {
     for (final size in const [
+      Size(360, 640),
       Size(360, 800),
       Size(800, 1000),
       Size(1280, 900),
     ]) {
-      final tag = '${brightness.name}-${size.width.toInt()}';
+      final tag =
+          '${brightness.name}-${size.width.toInt()}x${size.height.toInt()}';
       testWidgets('screenshots $tag', skip: dir == null, (tester) async {
         final practice = await launch(tester, size, brightness);
         // Shows a switched-off operation next to the switched-on ones.
         practice.toggleOperation(OperationType.divide);
         await shoot(tester, '$tag-1-practice');
 
+        await tester.tap(find.byKey(keyboardSwitchKey));
+        await shoot(tester, '$tag-1b-keyboard');
+        await tester.tap(find.byKey(keyboardSwitchKey));
+        await tester.pumpAndSettle();
+
+        // The page itself keeps the feedback in view.
         await check(tester, '75');
-        await tester.ensureVisible(find.text('You got it!'));
         await shoot(tester, '$tag-2-correct');
 
         final wrong = await launch(tester, size, brightness);
@@ -128,6 +141,25 @@ void main() {
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.byKey(revealStepButtonKey));
         await shoot(tester, '$tag-3-wrong-hints');
+
+        // One answer short of the daily goal: the next correct one bursts.
+        final goal = await launch(
+          tester,
+          size,
+          brightness,
+          game: const GameState(
+            xp: 340,
+            dailyCount: 9,
+            lastActiveDate: '2026-11-14',
+          ),
+        );
+        goal.setDraftInput('75');
+        goal.submitAnswer();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 350));
+        await shoot(tester, '$tag-2b-celebration', settle: false);
+        await tester.pumpAndSettle();
 
         await launch(tester, size, brightness, tier: null);
         await shoot(tester, '$tag-4-tier-picker');
