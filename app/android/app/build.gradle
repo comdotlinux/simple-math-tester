@@ -3,8 +3,25 @@ plugins {
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
+// The upload key is read from app/android/key.properties (git-ignored) when it
+// exists; without it release builds stay debug-signed so CI validation builds work.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+def useUploadKey = keystorePropertiesFile.exists()
+if (useUploadKey) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    def missing = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+        .findAll { !keystoreProperties[it] }
+    if (missing) {
+        throw new GradleException("key.properties is missing: ${missing.join(', ')}")
+    }
+}
+println(useUploadKey
+    ? 'Release signing: upload key from key.properties'
+    : 'Release signing: debug signing (no key.properties)')
+
 android {
-    namespace 'com.example.simple_math_tester'
+    namespace 'com.linux.simplemathtester'
     compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
@@ -14,17 +31,27 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.example.simple_math_tester'
+        applicationId 'com.linux.simplemathtester'
         minSdk flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
         versionName flutter.versionName
     }
 
+    signingConfigs {
+        if (useUploadKey) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Local/CI validation only. Configure production signing before publishing.
-            signingConfig signingConfigs.debug
+            signingConfig useUploadKey ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
