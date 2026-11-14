@@ -81,6 +81,11 @@ jobs:
             echo "keyPassword=${key_password//\\/\\\\}"
             echo "keyAlias=${alias//\\/\\\\}"
           } > android/key.properties
+          # The same key signs the universal APK below; bundletool reads passwords from files.
+          printf '%s' "$store_password" > "$RUNNER_TEMP/ks-pass"
+          printf '%s' "$key_password" > "$RUNNER_TEMP/key-pass"
+          # A file, not a step output: outputs holding a secret are dropped.
+          printf '%s' "$alias" > "$RUNNER_TEMP/key-alias"
           echo "signing=$signing" >> "$GITHUB_OUTPUT"
       - name: Build app bundle
         run: |
@@ -164,7 +169,9 @@ jobs:
           fi
           java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --mode=universal \
             --bundle=build/app/outputs/bundle/release/app-release.aab \
-            --output="$RUNNER_TEMP/universal.apks"
+            --output="$RUNNER_TEMP/universal.apks" \
+            --ks="$RUNNER_TEMP/upload-keystore.jks" --ks-key-alias="$(cat "$RUNNER_TEMP/key-alias")" \
+            --ks-pass="file:$RUNNER_TEMP/ks-pass" --key-pass="file:$RUNNER_TEMP/key-pass"
           unzip -q -o "$RUNNER_TEMP/universal.apks" universal.apk -d "$RUNNER_TEMP/universal"
           apk="$RUNNER_TEMP/universal/universal.apk"
           package="$("$tools/aapt2" dump packagename "$apk")"

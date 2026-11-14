@@ -7,7 +7,7 @@ no personal data, stores progress only on the device, has no accounts, no
 analytics and no ads, and the Android release build requests no internet access
 (`app/android/expected-permissions.txt` lists its only permission). Its one link
 out is the Impressum entry in the settings, which opens
-`https://simple-math-tester.pages.dev/impressum` in the system browser.
+`https://math.munich-tech.de/impressum` in the system browser.
 
 ## Store listing
 
@@ -20,14 +20,13 @@ out is the Impressum entry in the settings, which opens
 | Category | Education |
 | Tags (optional) | Math, Education |
 | Contact e-mail | The owner's developer e-mail (shown publicly on the listing) |
-| Website | `https://simple-math-tester.pages.dev/impressum` (the Impressum; works once walkthrough row 4b is done) |
-| Privacy policy URL | `https://simple-math-tester.pages.dev/privacy.html` (see below) |
+| Website | `https://math.munich-tech.de/impressum` (the Impressum; works once walkthrough row 4b is done) |
+| Privacy policy URL | `https://math.munich-tech.de/privacy.html` (see below) |
 
-The address is the Cloudflare Pages project `simple-math-tester` at its default
-`pages.dev` host. During the walkthrough, open the latest production deployment
-in the Cloudflare dashboard (or the deploy job's log in GitHub Actions) and
-confirm the host before entering it. If a custom domain is added later, update
-both URLs. Cloudflare Pages redirects `/privacy.html` to `/privacy`; both work.
+The address is the custom domain `math.munich-tech.de` of the Cloudflare Pages
+project `simple-math-tester` (also reachable at `simple-math-tester.pages.dev`).
+Only `/impressum` uses the Turnstile check; the app and every other page load
+without it. Cloudflare Pages redirects `/privacy.html` to `/privacy`; both work.
 
 ### Short description (80 characters at most)
 
@@ -67,7 +66,7 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 
 | Declaration | Answer |
 |---|---|
-| Privacy policy | `https://simple-math-tester.pages.dev/privacy.html` |
+| Privacy policy | `https://math.munich-tech.de/privacy.html` |
 | Ads | No, the app does not contain ads. |
 | App access | All functionality is available without special access (no login, no account). |
 | Content rating | See the questionnaire answers below. |

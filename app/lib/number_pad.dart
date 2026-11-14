@@ -30,6 +30,7 @@ class NumberPad extends StatelessWidget {
     required this.onEdited,
     required this.onCheck,
     this.dense = false,
+    this.next = false,
   });
 
   final TextEditingController controller;
@@ -43,6 +44,9 @@ class NumberPad extends StatelessWidget {
 
   /// Smaller keys and gaps, for a phone that also docks the field above.
   final bool dense;
+
+  /// Whether the Check key moves to the next question, after a check.
+  final bool next;
 
   /// Grows with the text, so a 200% digit still fits its key.
   static double keyHeight(TextScaler scaler, {bool dense = false}) =>
@@ -94,6 +98,7 @@ class NumberPad extends StatelessWidget {
 
     Widget digit(int value) => key(
       OutlinedButton(
+        key: padDigitKey('$value'),
         onPressed: () => _edit('$value'),
         style: ButtonStyle(minimumSize: keySize, padding: noPadding),
         child: Text(
@@ -119,6 +124,7 @@ class NumberPad extends StatelessWidget {
         row([
           key(
             OutlinedButton(
+              key: padDeleteKey,
               onPressed: () => _edit(null),
               style: ButtonStyle(
                 minimumSize: keySize,
@@ -138,8 +144,13 @@ class NumberPad extends StatelessWidget {
               key: checkAnswerButtonKey,
               onPressed: onCheck,
               style: ButtonStyle(minimumSize: keySize),
-              icon: const Icon(Icons.check_circle_outline, size: 28),
-              label: const Text('Check answer'),
+              icon: Icon(
+                next ? Icons.navigate_next : Icons.check_circle_outline,
+                size: 28,
+              ),
+              label: next
+                  ? const Text('Next', semanticsLabel: 'Next question')
+                  : const Text('Check answer'),
             ),
           ),
         ]),

@@ -44,12 +44,17 @@ class _ProblemPageState extends State<ProblemPage> {
   /// when that changes.
   Object? _revealed;
 
+  /// The problem and check the field last took focus for.
+  Object? _focusedFor;
+
   @override
   void initState() {
     super.initState();
     _model = context.read<MathTesterModel>();
     _controller = TextEditingController(text: _model.draftInput);
     _model.addListener(_syncDraft);
+    _focusedFor = _answerState;
+    _model.addListener(_keepFocus);
     _scroll.addListener(_pinQuestion);
   }
 
@@ -73,9 +78,21 @@ class _ProblemPageState extends State<ProblemPage> {
     );
   }
 
+  Object? get _answerState =>
+      (_model.current, _model.lastCheck, _model.validationMessage);
+
+  /// The answer comes first: a new problem or a check, also one made from
+  /// a button reached with Tab, puts the focus back on the field.
+  void _keepFocus() {
+    if (_answerState == _focusedFor) return;
+    _focusedFor = _answerState;
+    if (ModalRoute.isCurrentOf(context) ?? true) _focus.requestFocus();
+  }
+
   @override
   void dispose() {
     _model.removeListener(_syncDraft);
+    _model.removeListener(_keepFocus);
     _controller.dispose();
     _focus.dispose();
     _scroll.dispose();
@@ -148,7 +165,8 @@ class _ProblemPageState extends State<ProblemPage> {
         model.setDraftInput(text);
         model.keyPressed();
       },
-      onCheck: model.submitAnswer,
+      onCheck: model.checkOrNext,
+      next: model.answerCorrect != null,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -189,8 +207,8 @@ class _ProblemPageState extends State<ProblemPage> {
             controller: _controller,
             focusNode: _focus,
             // Hardware keys reach the field only while it
-            // has focus, and pad keys never take it.
-            autofocus: _padShown,
+            // has focus.
+            autofocus: true,
             keyboardType: _padShown ? TextInputType.none : TextInputType.number,
             // Every answer is a whole number of 0 or more:
             // pasted or typed text keeps only its digits.
@@ -220,10 +238,10 @@ class _ProblemPageState extends State<ProblemPage> {
                   : null,
             ),
             onChanged: model.setDraftInput,
-            // With the pad, Enter keeps the focus, so the
-            // next answer can be typed straight away.
-            onEditingComplete: _padShown ? () {} : null,
-            onSubmitted: (_) => model.submitAnswer(),
+            // Enter keeps the focus, so a second Enter moves
+            // on and the next answer can be typed straight away.
+            onEditingComplete: () {},
+            onSubmitted: (_) => model.checkOrNext(),
           ),
         );
         final page = SingleChildScrollView(
@@ -256,7 +274,10 @@ class _ProblemPageState extends State<ProblemPage> {
                           child: IconButton(
                             key: settingsButtonKey,
                             tooltip: 'Settings',
-                            onPressed: () => _showSettings(context),
+                            onPressed: () =>
+                                _showSettings(context).whenComplete(() {
+                                  if (mounted) _focus.requestFocus();
+                                }),
                             icon: const Icon(
                               Icons.settings_outlined,
                               semanticLabel: 'Settings',
@@ -358,8 +379,17 @@ class _ProblemPageState extends State<ProblemPage> {
                                 child: OutlinedButton.icon(
                                   key: nextQuestionButtonKey,
                                   onPressed: model.generateNextProblem,
-                                  icon: const Icon(Icons.navigate_next),
-                                  label: const Text('Next question'),
+                                  // Before a check, moving on skips it.
+                                  icon: Icon(
+                                    model.answerChecked
+                                        ? Icons.navigate_next
+                                        : Icons.skip_next,
+                                  ),
+                                  label: Text(
+                                    model.answerChecked
+                                        ? 'Next question'
+                                        : 'Skip',
+                                  ),
                                 ),
                               ),
                             ),
@@ -393,7 +423,9 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
-        if (!docked) return page;
+        // Taps anywhere on the page count as taps on the field, so a
+        // button or pad key press never takes its focus.
+        if (!docked) return TextFieldTapRegion(child: page);
         final edge = BorderSide(
           color: tokens.outline,
           width: AppTokens.outlineWidth,
@@ -436,8 +468,9 @@ class _ProblemPageState extends State<ProblemPage> {
                           NumberPad(
                             controller: _controller,
                             onEdited: pad.onEdited,
-                            onCheck: model.submitAnswer,
+                            onCheck: pad.onCheck,
                             dense: true,
+                            next: pad.next,
                           ),
                         ],
                       )
@@ -446,39 +479,41 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
-        return Flex(
-          direction: side ? Axis.horizontal : Axis.vertical,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              // A sticky header over the page, so the page neither moves nor
-              // loses its scroll position when it shows.
-              child: LayoutBuilder(
-                builder: (context, area) => Stack(
-                  children: [
-                    Positioned.fill(child: page),
-                    // Only while the page keeps room to read below it.
-                    if (compact &&
-                        _questionPinned &&
-                        area.maxHeight >=
-                            scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        // Display only: a control scrolled under the strip
-                        // (e.g. the hint button after ensureVisible) must
-                        // still get its taps.
-                        child: IgnorePointer(
-                          child: _PinnedQuestion(problem: model.current),
+        return TextFieldTapRegion(
+          child: Flex(
+            direction: side ? Axis.horizontal : Axis.vertical,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                // A sticky header over the page, so the page neither moves nor
+                // loses its scroll position when it shows.
+                child: LayoutBuilder(
+                  builder: (context, area) => Stack(
+                    children: [
+                      Positioned.fill(child: page),
+                      // Only while the page keeps room to read below it.
+                      if (compact &&
+                          _questionPinned &&
+                          area.maxHeight >=
+                              scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48)
+                        Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          // Display only: a control scrolled under the strip
+                          // (e.g. the hint button after ensureVisible) must
+                          // still get its taps.
+                          child: IgnorePointer(
+                            child: _PinnedQuestion(problem: model.current),
+                          ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            dock,
-          ],
+              dock,
+            ],
+          ),
         );
       },
     );
@@ -859,102 +894,93 @@ class _TierPicker extends StatelessWidget {
 
 /// A simple list of settings: the starting tier, the feedback switches and
 /// the legal pages.
-void _showSettings(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    showDragHandle: true,
-    isScrollControlled: true,
-    // A full-height sheet would otherwise reach under the status bar.
-    useSafeArea: true,
-    builder: (context) {
-      final model = context.watch<MathTesterModel>();
-      final textTheme = Theme.of(context).textTheme;
-      return SafeArea(
-        child: SingleChildScrollView(
-          key: settingsSheetKey,
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 4,
-            children: [
+Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  // A full-height sheet would otherwise reach under the status bar.
+  useSafeArea: true,
+  builder: (context) {
+    final model = context.watch<MathTesterModel>();
+    final textTheme = Theme.of(context).textTheme;
+    return SafeArea(
+      child: SingleChildScrollView(
+        key: settingsSheetKey,
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 4,
+          children: [
+            ListTile(
+              title: Semantics(
+                header: true,
+                child: Text('Starting difficulty', style: textTheme.titleLarge),
+              ),
+              subtitle: Text(
+                'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
+                'starts every operation again at that difficulty.',
+              ),
+            ),
+            for (final tier in Tier.values)
               ListTile(
-                title: Semantics(
-                  header: true,
-                  child: Text(
-                    'Starting difficulty',
-                    style: textTheme.titleLarge,
-                  ),
-                ),
-                subtitle: Text(
-                  'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
-                  'starts every operation again at that difficulty.',
-                ),
-              ),
-              for (final tier in Tier.values)
-                ListTile(
-                  title: Text(tier.label),
-                  selected: tier == model.tier,
-                  trailing: tier == model.tier
-                      ? const Icon(Icons.check_circle)
-                      : null,
-                  onTap: () {
-                    if (tier != model.tier) model.chooseTier(tier);
-                    Navigator.pop(context);
-                  },
-                ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                key: soundSwitchKey,
-                title: const Text('Sound'),
-                subtitle: const Text(
-                  'A short chime for answers and milestones',
-                ),
-                value: model.sound,
-                onChanged: model.setSound,
-              ),
-              SwitchListTile(
-                key: hapticsSwitchKey,
-                title: const Text('Vibration'),
-                subtitle: const Text('A short buzz on key presses and answers'),
-                value: model.haptics,
-                onChanged: model.setHaptics,
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                key: privacyTileKey,
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: const Text('Privacy'),
-                subtitle: const Text('What the app stores, and why'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
-                ),
-              ),
-              ListTile(
-                key: impressumTileKey,
-                leading: const Icon(Icons.open_in_new),
-                title: const Text('Impressum'),
-                subtitle: const Text('Who makes the app (opens the browser)'),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  // Closed first, so a failure notice is not hidden behind it.
+                title: Text(tier.label),
+                selected: tier == model.tier,
+                trailing: tier == model.tier
+                    ? const Icon(Icons.check_circle)
+                    : null,
+                onTap: () {
+                  if (tier != model.tier) model.chooseTier(tier);
                   Navigator.pop(context);
-                  if (!await model.openImpressum()) {
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('The browser did not open.'),
-                      ),
-                    );
-                  }
                 },
               ),
-            ],
-          ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              key: soundSwitchKey,
+              title: const Text('Sound'),
+              subtitle: const Text('A short chime for answers and milestones'),
+              value: model.sound,
+              onChanged: model.setSound,
+            ),
+            SwitchListTile(
+              key: hapticsSwitchKey,
+              title: const Text('Vibration'),
+              subtitle: const Text('A short buzz on key presses and answers'),
+              value: model.haptics,
+              onChanged: model.setHaptics,
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              key: privacyTileKey,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy'),
+              subtitle: const Text('What the app stores, and why'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+              ),
+            ),
+            ListTile(
+              key: impressumTileKey,
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('Impressum'),
+              subtitle: const Text('Who makes the app (opens the browser)'),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                // Closed first, so a failure notice is not hidden behind it.
+                Navigator.pop(context);
+                if (!await model.openImpressum()) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('The browser did not open.')),
+                  );
+                }
+              },
+            ),
+          ],
         ),
-      );
-    },
-  );
-}
+      ),
+    );
+  },
+);
 
 /// The bundled privacy policy, readable offline.
 class _PrivacyPage extends StatelessWidget {
@@ -1026,6 +1052,7 @@ class _OperationToggle extends StatelessWidget {
               fit: StackFit.passthrough,
               children: [
                 OutlinedButton(
+                  key: operationToggleKey(type),
                   onPressed: onPressed,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 4),

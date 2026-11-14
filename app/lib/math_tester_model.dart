@@ -244,6 +244,17 @@ class MathTesterModel extends ChangeNotifier {
     return true;
   }
 
+  /// Enter and the pad's Check key: a check, or the next problem once the
+  /// answer shown has been checked. Any edit clears [answerCorrect], so a
+  /// new answer after a check is checked again; a sprint never shows one,
+  /// so there every press checks.
+  void checkOrNext() =>
+      answerCorrect == null ? submitAnswer() : generateNextProblem();
+
+  /// Whether the problem shown has a checked answer, so "Next" no longer
+  /// skips it.
+  bool get answerChecked => _checked;
+
   /// "Next"; there is none during a sprint.
   void generateNextProblem() {
     if (inSprint) return;

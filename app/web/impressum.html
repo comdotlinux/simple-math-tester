@@ -23,9 +23,9 @@
 <body>
   <h1>Impressum</h1>
   <p id="status">A short automatic check keeps bots away from the provider details.</p>
-  <!-- Cloudflare's always-passes test site key; walkthrough row 4b (docs/play-store.md) replaces it with the real widget's site key before merge. -->
+  <!-- Public site key of the "impressum" Turnstile widget (math.munich-tech.de, simple-math-tester.pages.dev); its secret is TURNSTILE_SECRET_KEY on the Pages Production environment. -->
   <div class="cf-turnstile"
-    data-sitekey="1x00000000000000000000AA"
+    data-sitekey="0x4AAAAAAGAwdjaKCxdqM7v7"
     data-callback="onPassed"
     data-expired-callback="retry"
     data-error-callback="onTurnstileError"></div>

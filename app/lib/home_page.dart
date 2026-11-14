@@ -56,12 +56,12 @@ class MyHomePage extends StatelessWidget {
                           NavigationRailDestination(
                             icon: Icon(Icons.calculate_outlined),
                             selectedIcon: Icon(Icons.calculate),
-                            label: Text('Practice'),
+                            label: Text('Practice', key: practiceNavKey),
                           ),
                           NavigationRailDestination(
                             icon: Icon(Icons.checklist_outlined),
                             selectedIcon: Icon(Icons.checklist),
-                            label: Text('My answers'),
+                            label: Text('My answers', key: myAnswersNavKey),
                           ),
                         ],
                         selectedIndex: model.currentPage,
@@ -96,11 +96,13 @@ class MyHomePage extends StatelessWidget {
                   child: NavigationBar(
                     destinations: const [
                       NavigationDestination(
+                        key: practiceNavKey,
                         icon: Icon(Icons.calculate_outlined),
                         selectedIcon: Icon(Icons.calculate),
                         label: 'Practice',
                       ),
                       NavigationDestination(
+                        key: myAnswersNavKey,
                         icon: Icon(Icons.checklist_outlined),
                         selectedIcon: Icon(Icons.checklist),
                         label: 'My answers',

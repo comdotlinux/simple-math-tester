@@ -64,7 +64,7 @@ The Chrome job runs a release build, where asserts and debug-only data are gone:
 - Phones hide much of the page. Use `tapVisible`/`tapKey`, which call
   `ensureVisible` before tapping. Below 700 px of height the field, the
   feedback and a dense pad dock at the bottom, and Next moves into the feedback
-  strip after a check.
+  strip after a check, where it reads "Next" (its label is "Next question").
 - A save is written asynchronously. Read it back with `waitForSaved`, and
   restart with `restartWhenSaved`.
 
@@ -76,7 +76,8 @@ Built from reading `lib/`. Each row needs at least one journey.
 | --- | --- | --- |
 | Tier picker on first start | `tier_picker_journeys.dart` | a first start asks how hard to start and hides practice; choosing a tier starts every operation at its level |
 | "Progress can't be saved" notice | `tier_picker_journeys.dart`, `persistence_journeys.dart` | a start without saving shows the can't-be-saved notice; data from a newer version is kept and not overwritten |
-| Practice: check, retry, Next, skip | `practice_journeys.dart` | a wrong first answer is saved before Next; a retry after a wrong answer can still be right; a correct first answer is saved as correct; Next after a check shows a new question and adds no row; Next without an answer is saved as skipped; answers from play are kept in order: wrong, right, skipped; an empty answer asks for a number and records nothing; typing after feedback clears it |
+| Practice: check, retry, Next, Skip | `practice_journeys.dart` | a wrong first answer is saved before Next; a retry after a wrong answer can still be right; a correct first answer is saved as correct; Next after a check shows a new question and adds no row; Next without an answer is saved as skipped; answers from play are kept in order: wrong, right, skipped; an empty answer asks for a number and records nothing; typing after feedback clears it |
+| Answer-first flow (Enter, focus, Skip) | `practice_journeys.dart`, `number_pad_journeys.dart`, `settings_journeys.dart`, `history_journeys.dart`, `sprint_journeys.dart`, `hints_journeys.dart` | Enter checks the answer and a second Enter shows the next question; a new answer after a wrong check is checked, not skipped; the answer field keeps the focus after a check and after Skip or Next; the button says Skip before a check and Next question after; pressing Check twice checks, then moves on; closing settings and going back to Practice focus the answer again; in a sprint Enter checks and moves on once; a hint tap keeps the focus on the answer |
 | Number pad | `number_pad_journeys.dart` | each digit key types its digit; Delete removes the last digit; Check with nothing typed says enter a number first; an answer typed on the pad is checked from the pad; only digits reach the answer field |
 | Keyboard switch (pad or system keyboard) | `number_pad_journeys.dart` | the keyboard button swaps the pad for the keyboard and back; with the keyboard, Enter checks the typed answer; with the pad, tapping the answer field opens no system keyboard; the keyboard button asks for one (see below for what each device proves) |
 | Phone layout after a check | `number_pad_journeys.dart` | on a phone a check keeps question, answer, feedback and Next on screen |

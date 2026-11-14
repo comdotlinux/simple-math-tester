@@ -137,14 +137,44 @@ Future<void> submit(WidgetTester tester, num answer) async {
   await tapKey(tester, checkAnswerButtonKey);
 }
 
+/// Enter in the answer field: the field's action is done, and a keyboard's
+/// Enter sends the same one.
+Future<void> pressEnter(WidgetTester tester) async {
+  tester
+      .state<EditableTextState>(find.byType(EditableText))
+      .performAction(TextInputAction.done);
+  await tester.pumpAndSettle();
+}
+
+/// Whether the answer field has the focus. Check it before [typeAnswer],
+/// which taps the field first. While another window has the desktop's
+/// focus the app is inactive and Flutter holds the focus aside until it
+/// resumes, so the app is resumed first.
+Future<bool> answerFocused(WidgetTester tester) async {
+  if (tester.binding.lifecycleState != AppLifecycleState.resumed) {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+  }
+  return tester
+      .widget<EditableText>(find.byType(EditableText))
+      .focusNode
+      .hasFocus;
+}
+
+/// The text on the Next button: Skip before a check.
+Finder nextButtonText(String text) => find.descendant(
+  of: find.byKey(nextQuestionButtonKey),
+  matching: find.text(text),
+);
+
 Future<void> nextQuestion(WidgetTester tester) =>
     tapKey(tester, nextQuestionButtonKey);
 
 Future<void> openHistory(WidgetTester tester) =>
-    tapVisible(tester, find.text('My answers').last);
+    tapKey(tester, myAnswersNavKey);
 
 Future<void> returnToPractice(WidgetTester tester) =>
-    tapVisible(tester, find.text('Practice').first);
+    tapKey(tester, practiceNavKey);
 
 Future<void> openSettings(WidgetTester tester) =>
     tapKey(tester, settingsButtonKey);
@@ -168,20 +198,11 @@ Finder operationToggle(OperationType type) => find.byWidgetPredicate(
   (widget) => widget is Tooltip && widget.message == type.label,
 );
 
-/// A key of the on-screen number pad.
-Finder padKey(String label) => find.descendant(
-  of: find.byKey(numberPadKey),
-  matching: find.ancestor(
-    of: find.text(label),
-    matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-  ),
-);
+/// A digit key of the on-screen number pad.
+Finder padKey(String digit) => find.byKey(padDigitKey(digit));
 
 /// The number pad's Delete key.
-Finder get padDelete => find.descendant(
-  of: find.byKey(numberPadKey),
-  matching: find.byIcon(Icons.backspace_outlined),
-);
+Finder get padDelete => find.byKey(padDeleteKey);
 
 String answerFieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField)).controller!.text;
