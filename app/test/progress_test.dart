@@ -199,6 +199,25 @@ void main() {
     expect(partial.sprint, isFalse);
   });
 
+  test('the sound and haptics switches default on and round trip off', () {
+    final defaults = Progress.decode('{}');
+    expect([defaults.sound, defaults.haptics], [true, true]);
+    final json = jsonDecode(Progress().encode()) as Map<String, Object?>;
+    expect([json['sound'], json['haptics']], [true, true]);
+
+    final off = Progress.decode(
+      Progress().withSwitches(sound: false, haptics: false).encode(),
+    );
+    expect([off.sound, off.haptics], [false, false]);
+    expect(off.extra, isEmpty);
+    final onlySound = Progress().withSwitches(sound: false);
+    expect([onlySound.sound, onlySound.haptics], [false, true]);
+    expect(
+      () => Progress.decode('{"haptics":"yes"}'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('a selection of only unknown kinds offers every known kind', () {
     final decoded = Progress.decode('{"selectedOperations":["power"]}');
     expect(decoded.selectedOperations, OperationType.values.toSet());

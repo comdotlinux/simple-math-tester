@@ -32,6 +32,8 @@ class Progress {
     Tier? tier,
     Map<OperationType, Difficulty> difficulty = const {},
     GameState game = const GameState(),
+    bool sound = true,
+    bool haptics = true,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
@@ -39,6 +41,8 @@ class Progress {
          tier,
          difficulty,
          game,
+         sound,
+         haptics,
          const {},
          const {},
        );
@@ -50,6 +54,8 @@ class Progress {
     this.tier,
     Map<OperationType, Difficulty> difficulty,
     this.game,
+    this.sound,
+    this.haptics,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -86,6 +92,10 @@ class Progress {
 
   final GameState game;
 
+  /// The settings switches; both default on.
+  final bool sound;
+  final bool haptics;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -105,6 +115,9 @@ class Progress {
 
   Progress withGame(GameState game) => _copy(game: game);
 
+  Progress withSwitches({bool? sound, bool? haptics}) =>
+      _copy(sound: sound, haptics: haptics);
+
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
@@ -119,6 +132,8 @@ class Progress {
     Tier? tier,
     Map<OperationType, Difficulty>? difficulty,
     GameState? game,
+    bool? sound,
+    bool? haptics,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -126,6 +141,8 @@ class Progress {
     tier ?? this.tier,
     difficulty ?? this.difficulty,
     game ?? this.game,
+    sound ?? this.sound,
+    haptics ?? this.haptics,
     _unknownOperations,
     extra,
   );
@@ -166,6 +183,8 @@ class Progress {
     'streak': game.streak,
     'bestStreak': game.bestStreak,
     'bestSprint': game.bestSprint,
+    'sound': sound,
+    'haptics': haptics,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -242,6 +261,8 @@ class Progress {
       'streak',
       'bestStreak',
       'bestSprint',
+      'sound',
+      'haptics',
     };
     return Progress._(
       selected,
@@ -250,6 +271,8 @@ class Progress {
       tier,
       difficulty,
       game,
+      _field<bool>(json, 'sound') ?? true,
+      _field<bool>(json, 'haptics') ?? true,
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)
