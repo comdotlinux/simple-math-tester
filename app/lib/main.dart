@@ -77,7 +77,7 @@ class _MathTesterAppState extends State<MathTesterApp> {
       title: 'Math Tester',
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: context.select((MathTesterModel m) => m.themeMode),
       home: const MyHomePage(key: homePageKey),
     );
   }

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:material_ui/material_ui.dart' show ThemeMode;
+
 import 'operations.dart';
 import 'rules.dart';
 
@@ -34,6 +36,7 @@ class Progress {
     GameState game = const GameState(),
     bool sound = true,
     bool haptics = true,
+    ThemeMode themeMode = ThemeMode.system,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
@@ -43,6 +46,7 @@ class Progress {
          game,
          sound,
          haptics,
+         themeMode,
          const {},
          const {},
        );
@@ -56,6 +60,7 @@ class Progress {
     this.game,
     this.sound,
     this.haptics,
+    this.themeMode,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -96,6 +101,9 @@ class Progress {
   final bool sound;
   final bool haptics;
 
+  /// Light, dark, or following the system (the default).
+  final ThemeMode themeMode;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -118,6 +126,8 @@ class Progress {
   Progress withSwitches({bool? sound, bool? haptics}) =>
       _copy(sound: sound, haptics: haptics);
 
+  Progress withThemeMode(ThemeMode themeMode) => _copy(themeMode: themeMode);
+
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
@@ -134,6 +144,7 @@ class Progress {
     GameState? game,
     bool? sound,
     bool? haptics,
+    ThemeMode? themeMode,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -143,6 +154,7 @@ class Progress {
     game ?? this.game,
     sound ?? this.sound,
     haptics ?? this.haptics,
+    themeMode ?? this.themeMode,
     _unknownOperations,
     extra,
   );
@@ -185,6 +197,7 @@ class Progress {
     'bestSprint': game.bestSprint,
     'sound': sound,
     'haptics': haptics,
+    'themeMode': themeMode.name,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -274,6 +287,7 @@ class Progress {
       'bestSprint',
       'sound',
       'haptics',
+      'themeMode',
     };
     return Progress._(
       selected,
@@ -284,6 +298,9 @@ class Progress {
       game,
       _field<bool>(json, 'sound') ?? true,
       _field<bool>(json, 'haptics') ?? true,
+      // A missing or unknown name follows the system.
+      ThemeMode.values.asNameMap()[_field<String>(json, 'themeMode')] ??
+          ThemeMode.system,
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)
