@@ -8,12 +8,14 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
+import 'package:simple_math_tester/rules.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   // Each test writes its own starting document through the real plugin, so
-  // test order and data left by earlier runs do not matter.
+  // test order and data left by earlier runs do not matter. Both choose a
+  // tier, so the tier picker does not cover the practice page.
   Future<void> startWith(WidgetTester tester, Progress progress) async {
     await SharedPreferencesStore().write(progressKey, progress.encode());
     await app.main();
@@ -21,9 +23,11 @@ void main() {
   }
 
   testWidgets('restart shows the saved history and selection', (tester) async {
+    final today = localDate(DateTime.now());
     await startWith(
       tester,
       Progress(
+        tier: Tier.easy,
         selectedOperations: {OperationType.multiply},
         history: [
           for (final lhs in [3, 4, 5])
@@ -34,6 +38,14 @@ void main() {
               answeredAt: DateTime(2026, 11, 13, 18),
             ),
         ],
+        game: GameState(
+          xp: 250,
+          combo: 2,
+          streak: 3,
+          bestStreak: 5,
+          lastActiveDate: today,
+          lastGoalDate: today,
+        ),
       ),
     );
     final model = tester
@@ -42,6 +54,10 @@ void main() {
     expect(model.canSave, isTrue);
     expect(model.selectedOperations, {OperationType.multiply});
     expect(model.history, hasLength(3));
+    expect(model.game.xp, 250);
+    expect(model.shownStreak, 3);
+    expect(find.bySemanticsLabel('Daily streak: 3'), findsOneWidget);
+    expect(find.text('Level 2 · 250 XP'), findsOneWidget);
     // The first problem and the next both follow the saved selection.
     expect(model.current.kind, OperationType.multiply);
     expect(
@@ -61,12 +77,17 @@ void main() {
     expect(find.text('3 × 6'), findsWidgets);
 
     // The skip is saved through the plugin.
-    final saved = await SharedPreferencesStore().read(progressKey);
-    expect(Progress.decode(saved!).history, hasLength(4));
+    final saved = Progress.decode(
+      (await SharedPreferencesStore().read(progressKey))!,
+    );
+    expect(saved.history, hasLength(4));
+    // A skip awards no XP and ends the combo; the streak is kept.
+    expect([saved.game.xp, saved.game.combo], [250, 0]);
+    expect([saved.game.streak, saved.game.bestStreak], [3, 5]);
   });
 
   testWidgets('real app solution and history journeys', (tester) async {
-    await startWith(tester, Progress());
+    await startWith(tester, Progress(tier: Tier.easy));
 
     final context = tester.element(find.byKey(homePageKey));
     final model = context.read<MathTesterModel>();

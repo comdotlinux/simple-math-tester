@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui' show AppLifecycleState;
 
@@ -18,13 +19,21 @@ class MathTesterModel extends ChangeNotifier {
     ProgressStore? store,
     Progress? progress,
     this._canSave = true,
-  }) : _random = random ?? Random(),
+    Stream<void> Function()? ticker,
+  }) : _ticker = ticker ?? _everySecond,
+       _random = random ?? Random(),
        _clock = clock ?? DateTime.now,
        _store = store ?? MemoryProgressStore(),
        _progress = progress ?? Progress() {
+    _progress = _withDayChange(_progress);
     _show(initialProblem ?? _draw());
   }
 
+  static Stream<void> _everySecond() =>
+      Stream.periodic(const Duration(seconds: 1));
+
+  /// Wakes the sprint countdown; the time itself is read from the clock.
+  final Stream<void> Function() _ticker;
   final Random _random;
   final DateTime Function() _clock;
   final ProgressStore _store;
@@ -44,6 +53,15 @@ class MathTesterModel extends ChangeNotifier {
   String? _validationMessage;
   bool? _answerCorrect;
   int _currentPage = 0;
+  DateTime? _sprintStart;
+  int _sprintStartXp = 0;
+  List<int> _sprintLevels = const [];
+  StreamSubscription<void>? _ticks;
+  ({int score, int best, List<int> levels})? _lastSprint;
+
+  /// Whole seconds left in the sprint; its own notifier, so a tick rebuilds
+  /// only the countdown.
+  final sprintSecondsLeft = ValueNotifier<int>(0);
 
   Problem get current => _current;
 
@@ -56,12 +74,32 @@ class MathTesterModel extends ChangeNotifier {
   List<Attempt> get history => _progress.history;
   Set<OperationType> get selectedOperations => _progress.selectedOperations;
 
+  /// Null until the player picks a starting tier.
+  Tier? get tier => _progress.tier;
+  Map<OperationType, Difficulty> get difficulty => _progress.difficulty;
+  GameState get game => _progress.game;
+
+  /// Read from the clock on every call, so a rebuild after midnight shows
+  /// the new date without any event.
+  int get shownStreak => displayedStreak(game, _clock());
+  int get shownDailyCount => goalRingValue(game, _clock());
+
   /// False in no-write mode: saved data could not be read, so it is kept.
   bool get canSave => _canSave;
   String get draftInput => _draftInput;
   String? get validationMessage => _validationMessage;
   bool? get answerCorrect => _answerCorrect;
   int get currentPage => _currentPage;
+
+  bool get inSprint => _sprintStart != null;
+
+  /// The XP earned in the round so far.
+  int get sprintScore => inSprint ? game.xp - _sprintStartXp : 0;
+
+  /// The last finished round: its score, the best after it, and how many
+  /// answers it had at each difficulty level (index 0 is level 1). Cleared
+  /// by the next practice answer or round.
+  ({int score, int best, List<int> levels})? get lastSprint => _lastSprint;
 
   void setDraftInput(String value) {
     _draftInput = value;
@@ -71,6 +109,12 @@ class MathTesterModel extends ChangeNotifier {
   }
 
   bool submitAnswer() {
+    if (inSprint) {
+      // A check after the time ran out ends the round; that problem is not
+      // recorded.
+      _tick();
+      if (!inSprint) return false;
+    }
     final input = double.tryParse(_draftInput.trim());
     if (input == null || !input.isFinite) {
       _validationMessage = _draftInput.trim().isEmpty
@@ -83,6 +127,12 @@ class MathTesterModel extends ChangeNotifier {
 
     final firstCheck = !_checked;
     _record(input);
+    if (inSprint) {
+      _sprintLevels[_current.level - 1]++;
+      _showNext();
+      notifyListeners();
+      return true;
+    }
     _validationMessage = null;
     _answerCorrect = input == _current.result;
     if (firstCheck && !_answerCorrect!) {
@@ -92,7 +142,9 @@ class MathTesterModel extends ChangeNotifier {
     return true;
   }
 
+  /// "Next"; there is none during a sprint.
   void generateNextProblem() {
+    if (inSprint) return;
     _record(null);
     _showNext();
     notifyListeners();
@@ -100,7 +152,7 @@ class MathTesterModel extends ChangeNotifier {
 
   /// The "Hint" and "Next step" controls.
   void revealStep() {
-    if (!canRevealStep) return;
+    if (inSprint || !canRevealStep) return;
     _revealed = _nextRevealed(HintEvent.reveal);
     notifyListeners();
   }
@@ -122,21 +174,81 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets every operation to the tier's level and shows a new problem at
+  /// that level; the replaced problem is not recorded.
+  void chooseTier(Tier tier) {
+    endSprint();
+    _progress = _progress.withTier(tier);
+    _save();
+    _showNext();
+    notifyListeners();
+  }
+
   void setCurrentPage(int value) {
     RangeError.checkValueInInterval(value, 0, 1, 'page');
+    if (value != 0) endSprint();
     _currentPage = value;
     notifyListeners();
   }
 
-  /// Flushes saves when the app goes to the background; in no-write mode
-  /// the first resume tries to read the saved progress once more.
+  /// Flushes saves when the app goes to the background; a resume runs the
+  /// day change, and in no-write mode the first resume tries to read the
+  /// saved progress once more.
+  /// Starts a sprint round on a new problem; the replaced problem is not
+  /// recorded. Needs a chosen tier.
+  void startSprint() {
+    if (inSprint || tier == null) return;
+    _sprintStart = _clock();
+    _sprintStartXp = game.xp;
+    _sprintLevels = List.filled(maxLevel, 0);
+    _lastSprint = null;
+    _progress = _progress.withGame(sprintStarted(game));
+    _save();
+    _showNext();
+    _ticks = _ticker().listen((_) => _tick());
+    _tick();
+    notifyListeners();
+  }
+
+  /// Ends the round with the score so far and draws a new problem; the
+  /// problem on screen is not recorded.
+  void endSprint() {
+    if (!inSprint) return;
+    _ticks?.cancel();
+    _ticks = null;
+    final score = sprintScore;
+    _progress = _progress.withGame(sprintEnded(game, score));
+    _lastSprint = (
+      score: score,
+      best: game.bestSprint,
+      levels: List.unmodifiable(_sprintLevels),
+    );
+    _sprintStart = null;
+    _save();
+    _showNext();
+    notifyListeners();
+  }
+
+  void _tick() {
+    final start = _sprintStart;
+    if (start == null) return;
+    final left = sprintRemaining(start, _clock());
+    sprintSecondsLeft.value = (left.inMilliseconds + 999) ~/ 1000;
+    if (left == Duration.zero) endSprint();
+  }
+
   void handleLifecycle(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused || AppLifecycleState.hidden:
         if (_canSave) _writer.flush();
-      case AppLifecycleState.resumed when !_canSave && !_retried:
-        _retried = true;
-        _retryLoad();
+      case AppLifecycleState.resumed:
+        _progress = _withDayChange(_progress);
+        notifyListeners();
+        _tick();
+        if (!_canSave && !_retried) {
+          _retried = true;
+          _retryLoad();
+        }
       default:
     }
   }
@@ -144,7 +256,8 @@ class MathTesterModel extends ChangeNotifier {
   Future<void> _retryLoad() async {
     final loaded = await loadProgress(_store, clock: _clock);
     if (!loaded.canSave) return;
-    _progress = loaded.progress;
+    endSprint();
+    _progress = _withDayChange(loaded.progress);
     _canSave = true;
     // The problem on screen came from the default selection; it is not
     // recorded, as after any reload.
@@ -152,15 +265,19 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Progress _withDayChange(Progress progress) =>
+      progress.withGame(dayChanged(progress.game, _clock()));
+
   void _save() {
     if (_canSave) _writer.save(_progress.encode());
   }
 
-  /// A problem of one of the selected operations.
+  /// A problem of one of the selected operations, at that operation's level.
   Problem _draw() {
+    if (nextProblem case final next?) return next();
     final kinds = OperationType.values.where(selectedOperations.contains);
-    return nextProblem?.call() ??
-        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random);
+    final kind = kinds.elementAt(_random.nextInt(kinds.length));
+    return kind.generate(_random, difficulty[kind]!.level);
   }
 
   void _showNext() {
@@ -194,10 +311,23 @@ class MathTesterModel extends ChangeNotifier {
       hintsUsed: _revealed,
       elapsedMs: now.difference(_shownAt).inMilliseconds,
       at: now,
+      sprint: inSprint,
     );
     _checked = true;
     if (attempt == null) return;
-    _progress = _progress.withAttempt(attempt);
+    if (!inSprint) _lastSprint = null;
+    final kind = attempt.problem.kind;
+    _progress = _progress
+        .withAttempt(attempt)
+        .withDifficulty(kind, difficultyAfter(difficulty[kind]!, attempt))
+        .withGame(gameAfter(game, attempt, now));
     _save();
+  }
+
+  @override
+  void dispose() {
+    _ticks?.cancel();
+    sprintSecondsLeft.dispose();
+    super.dispose();
   }
 }

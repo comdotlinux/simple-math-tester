@@ -11,6 +11,7 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
+import 'package:simple_math_tester/rules.dart';
 
 import 'fake_store.dart';
 
@@ -218,6 +219,7 @@ void main() {
       (tester) async {
         final store = FakeStore({
           progressKey: Progress(
+            tier: Tier.easy,
             selectedOperations: {OperationType.minus, OperationType.divide},
             history: [attempt(3), attempt(4), attempt(5)],
           ).encode(),
@@ -258,13 +260,19 @@ void main() {
     ) async {
       await bootstrap(
         FakeStore({
-          progressKey: Progress(history: [attempt(3)]).encode(),
+          progressKey: Progress(
+            tier: Tier.easy,
+            history: [attempt(3)],
+          ).encode(),
         }),
       );
       await tester.pump();
       await bootstrap(
         FakeStore({
-          progressKey: Progress(history: [attempt(8), attempt(9)]).encode(),
+          progressKey: Progress(
+            tier: Tier.easy,
+            history: [attempt(8), attempt(9)],
+          ).encode(),
         }),
       );
       await tester.pump();
@@ -296,7 +304,10 @@ void main() {
       'criterion 12: a failing read shows the notice; a resume loads',
       (tester) async {
         final store = FakeStore({
-          progressKey: Progress(history: [attempt(7)]).encode(),
+          progressKey: Progress(
+            tier: Tier.easy,
+            history: [attempt(7)],
+          ).encode(),
         })..readFailures = 1;
 
         await bootstrap(store);

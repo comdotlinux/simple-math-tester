@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'hud.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'problem_page.dart';
@@ -13,7 +14,14 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final page = model.currentPage == 0
-        ? const ProblemPage(key: problemsPageKey)
+        // The Android back gesture ends a sprint instead of leaving the app.
+        ? PopScope(
+            canPop: !model.inSprint,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) model.endSprint();
+            },
+            child: const ProblemPage(key: problemsPageKey),
+          )
         : const ResultsPage(key: resultsPageKey);
 
     return LayoutBuilder(
@@ -25,7 +33,13 @@ class MyHomePage extends StatelessWidget {
           resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: compact
-                ? page
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Hud(),
+                      Expanded(child: page),
+                    ],
+                  )
                 : Row(
                     children: [
                       NavigationRail(
@@ -49,7 +63,15 @@ class MyHomePage extends StatelessWidget {
                         onDestinationSelected: model.setCurrentPage,
                       ),
                       const VerticalDivider(width: 1),
-                      Expanded(child: page),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Hud(),
+                            Expanded(child: page),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
           ),
