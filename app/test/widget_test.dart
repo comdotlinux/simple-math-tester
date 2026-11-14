@@ -837,6 +837,47 @@ void main() {
       }
     });
 
+    // The compact docked phone page, with the pad and with the system
+    // keyboard.
+    for (final size in const [Size(360, 640), Size(412, 720)]) {
+      for (final scale in const [1.0, 1.3]) {
+        testWidgets('Docked phone controls meet 48px touch targets at '
+            '${size.width.toInt()}x${size.height.toInt()}, text scale '
+            '$scale, ${brightness.name} theme', (tester) async {
+          void expectTargets(List<Finder> finders) {
+            for (final finder in finders) {
+              final size = tester.getSize(finder);
+              expect(size.width, greaterThanOrEqualTo(48), reason: '$finder');
+              expect(size.height, greaterThanOrEqualTo(48), reason: '$finder');
+            }
+          }
+
+          final shared = [
+            find.byKey(nextQuestionButtonKey),
+            find.byKey(sprintButtonKey),
+            find.byKey(keyboardSwitchKey),
+            for (final type in OperationType.values)
+              find.byWidgetPredicate(
+                (widget) => widget is Tooltip && widget.message == type.label,
+              ),
+          ];
+          await launch(
+            tester,
+            size: size,
+            scale: scale,
+            brightness: brightness,
+          );
+          expect(pad, findsNothing);
+          expectTargets([...shared, find.byKey(checkAnswerButtonKey)]);
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await tester.pumpAndSettle();
+          expect(pad, findsOneWidget);
+          expectTargets([...shared, ...padKeys()]);
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+
     for (final width in [320.0, 390.0, 600.0, 768.0, 800.0, 1440.0]) {
       for (final scale in [1.0, 2.0]) {
         testWidgets('Responsive $width at text scale $scale, '

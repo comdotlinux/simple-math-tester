@@ -55,7 +55,7 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// What the answer block last showed, to bring it back into view only
   /// when that changes.
-  (Problem, bool?, String?, bool, bool)? _revealed;
+  (Problem, bool?, String?, bool, bool, bool)? _revealed;
 
   /// The problem and check the field last took focus for.
   Object? _focusedFor;
@@ -155,30 +155,44 @@ class _ProblemPageState extends State<ProblemPage> {
       model.answerCorrect,
       model.validationMessage,
       docked,
+      compact,
       showPad,
     );
     if (!docked || shown == _revealed) return;
     // The page opens in place; later changes scroll there.
     final jump = _revealed == null || MediaQuery.disableAnimationsOf(context);
+    final newProblem = _revealed?.$1 != model.current;
     _revealed = shown;
     final duration = jump ? Duration.zero : const Duration(milliseconds: 200);
-    Future<void> reveal(GlobalKey key) async {
+    Future<void> reveal(
+      GlobalKey key, [
+      ScrollPositionAlignmentPolicy policy =
+          ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    ]) async {
       final target = key.currentContext;
       if (target == null || !target.mounted) return;
       await Scrollable.ensureVisible(
         target,
-        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        alignmentPolicy: policy,
         duration: duration,
       );
     }
 
-    // On a phone Skip first, then the answer, which wins when both do not
-    // fit.
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => (compact ? reveal(_skipKey) : Future<void>.value()).then(
-        (_) => reveal(_answerKey),
-      ),
-    );
+    // On a phone the answer key marks the question card above Skip, so
+    // revealing Skip shows both when they fit and Skip when they do not;
+    // within a problem the page never scrolls back from where the player
+    // took it. A new problem brings the card's top back into view, also
+    // scrolling back, so it wins over Skip.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (compact) await reveal(_skipKey);
+      await reveal(_answerKey);
+      if (compact && newProblem) {
+        await reveal(
+          _answerKey,
+          ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+        );
+      }
+    });
   }
 
   @override

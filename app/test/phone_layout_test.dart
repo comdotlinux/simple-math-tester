@@ -136,6 +136,15 @@ void main() {
           reason: 'above the docked field',
         );
         expect(tester.takeException(), isNull);
+
+        // Skip from there brings the new question card back into view.
+        await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(nextQuestionButtonKey));
+        await tester.pumpAndSettle();
+        expect(find.byKey(pinnedQuestionKey), findsNothing);
+        expectOnScreen(tester, find.byKey(questionOnProblemsPageKey), size);
+        expect(tester.takeException(), isNull);
       });
     }
   }
