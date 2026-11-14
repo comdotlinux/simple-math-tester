@@ -99,3 +99,6 @@ lint/tmp/
 
 # CI-only browser check dependencies
 /tool/node_modules/
+
+# Wrangler (Cloudflare CLI) local cache
+.cloudflare/
