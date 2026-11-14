@@ -160,6 +160,12 @@ void numberPadJourneys() {
       // pad dock at the bottom.
       tester.view.physicalSize = const Size(1080, 1920);
       tester.view.devicePixelRatio = 3;
+      // A real phone of this size has a status bar and no notch or home bar.
+      // Fixed insets keep the device's own (the iOS simulator's notch and home
+      // bar on a 640 px screen no phone has) out of the layout.
+      const insets = FakeViewPadding(top: 20 * 3);
+      tester.view.padding = insets;
+      tester.view.viewPadding = insets;
       addTearDown(tester.view.reset);
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
@@ -167,17 +173,7 @@ void numberPadJourneys() {
       await submit(tester, model.current.result + 1);
 
       final screen = Offset.zero & tester.view.physicalSize / 3;
-      bool fullyOnScreen(Finder finder) {
-        final rect = tester.getRect(finder);
-        return screen.intersect(rect).size == rect.size;
-      }
-
-      // The device keeps its safe-area insets (the iOS simulator's notch and
-      // home bar), so the question card can scroll away; the pinned copy at
-      // the top then shows the question.
-      final question = fullyOnScreen(find.byKey(questionOnProblemsPageKey))
-          ? find.byKey(questionOnProblemsPageKey)
-          : find.byKey(pinnedQuestionKey);
+      final question = find.byKey(questionOnProblemsPageKey);
       expect(
         tester.widget<Text>(question).data,
         model.current.question,
