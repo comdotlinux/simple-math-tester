@@ -12,6 +12,7 @@ import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/problem_page.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
@@ -706,10 +707,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(find.textContaining('Now: Easy.'), findsOneWidget);
-        for (final (key, label) in [
-          (soundSwitchKey, 'Sound'),
-          (hapticsSwitchKey, 'Vibration'),
-        ]) {
+        // No Sound switch promises sound before any plays.
+        expect(soundPlays, isFalse);
+        expect(find.byKey(soundSwitchKey), findsNothing);
+        for (final (key, label) in [(hapticsSwitchKey, 'Vibration')]) {
           await tester.ensureVisible(find.byKey(key));
           await tester.pumpAndSettle();
           expect(tester.getSemantics(find.byKey(key)).label, startsWith(label));
@@ -1409,11 +1410,7 @@ void main() {
       await tester.tap(find.byKey(keyboardSwitchKey));
       await tester.pumpAndSettle();
       expect(pad, findsNothing);
-      expect(
-        [inputType(tester)['name'], inputType(tester)['signed']],
-        ['TextInputType.number', true],
-      );
-      expect(inputType(tester)['decimal'], isTrue);
+      expect(inputType(tester)['name'], 'TextInputType.number');
       expect(fieldText(tester), '72');
       expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
       expect(find.text('Check answer'), findsOneWidget);
@@ -1431,6 +1428,38 @@ void main() {
       await tester.tap(find.byKey(checkAnswerButtonKey));
       await tester.pumpAndSettle();
       expect(model.history, hasLength(2));
+    });
+
+    testWidgets('pasted or typed non-digits are dropped from the answer', (
+      tester,
+    ) async {
+      final model = await launch(tester, size: const Size(390, 844));
+      // A paste arrives as one editing update.
+      tester.testTextInput.enterText('1 5 apples');
+      await tester.pump();
+      expect(fieldText(tester), '15');
+      expect(model.draftInput, '15');
+
+      // Minus and decimal point from a hardware keyboard change nothing.
+      for (final typed in ['-15', '15.', '1.5']) {
+        tester.testTextInput.enterText(typed);
+        await tester.pump();
+        expect(fieldText(tester), '15', reason: typed);
+      }
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(model.history.single.firstAnswer, 15);
+
+      model.generateNextProblem();
+      await tester.pumpAndSettle();
+      tester.testTextInput.enterText('-.');
+      await tester.pump();
+      expect(fieldText(tester), '');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a number first.'), findsOneWidget);
+      expect(model.history, hasLength(1));
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('criterion 36: pad keys have semantics labels', (tester) async {
@@ -1540,7 +1569,8 @@ void main() {
       await tester.tap(find.byKey(hapticsSwitchKey));
       await tester.pumpAndSettle();
       expect([model.sound, model.haptics], [true, false]);
-      await tester.tap(find.byKey(soundSwitchKey));
+      // The Sound switch is hidden until sound plays; its value saves alike.
+      model.setSound(false);
       await tester.pumpAndSettle();
       final saved = Progress.decode((await store.read(progressKey))!);
       expect([saved.sound, saved.haptics], [false, false]);
@@ -1549,12 +1579,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
-      for (final key in [soundSwitchKey, hapticsSwitchKey]) {
-        expect(
-          tester.getSemantics(find.byKey(key)),
-          isSemantics(hasToggledState: true, isToggled: false),
-        );
-      }
+      expect(
+        tester.getSemantics(find.byKey(hapticsSwitchKey)),
+        isSemantics(hasToggledState: true, isToggled: false),
+      );
+      expect(
+        tester.element(find.byKey(homePageKey)).read<MathTesterModel>().sound,
+        isFalse,
+      );
     });
 
     // Visible means inside the screen's safe area and, for a control in a

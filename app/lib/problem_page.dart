@@ -224,10 +224,12 @@ class _ProblemPageState extends State<ProblemPage> {
                             autofocus: _padShown,
                             keyboardType: _padShown
                                 ? TextInputType.none
-                                : const TextInputType.numberWithOptions(
-                                    signed: true,
-                                    decimal: true,
-                                  ),
+                                : TextInputType.number,
+                            // Every answer is a whole number of 0 or more:
+                            // pasted or typed text keeps only its digits.
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             textInputAction: TextInputAction.done,
                             style: theme.textTheme.headlineMedium,
                             decoration: InputDecoration(
@@ -699,6 +701,10 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
+/// Whether the app plays sound; the Sound switch shows only once it does.
+/// The saved switch already exists, so the sound phase only flips this.
+const soundPlays = false;
+
 /// A simple list of settings: the starting tier and the feedback switches.
 void _showSettings(BuildContext context) {
   showModalBottomSheet<void>(
@@ -742,12 +748,13 @@ void _showSettings(BuildContext context) {
                   },
                 ),
               const SizedBox(height: 8),
-              SwitchListTile(
-                key: soundSwitchKey,
-                title: const Text('Sound'),
-                value: model.sound,
-                onChanged: model.setSound,
-              ),
+              if (soundPlays)
+                SwitchListTile(
+                  key: soundSwitchKey,
+                  title: const Text('Sound'),
+                  value: model.sound,
+                  onChanged: model.setSound,
+                ),
               SwitchListTile(
                 key: hapticsSwitchKey,
                 title: const Text('Vibration'),
