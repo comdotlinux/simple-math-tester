@@ -253,17 +253,21 @@ jobs:
           if [ -n "$DEEPSEEK_API_KEY" ]; then
             jq -n --arg model "$DEEPSEEK_MODEL" --rawfile notes "$RUNNER_TEMP/github-notes.md" '{
               model: $model, stream: false, temperature: 0.3, max_tokens: 300,
+              # Thinking is on by default and spends max_tokens before any answer.
+              thinking: {type: "disabled"},
               messages: [
                 {role: "system", content: "You write Google Play release notes for Simple Math Tester, a math practice app for children. You get the merged pull requests of a release. Write 2 to 5 short lines in plain English for parents and children, each starting with \"- \", about changes they can see or feel. Leave out tests, CI, build, docs and refactoring. No Markdown, links, names or version numbers. At most 450 characters in total. If nothing is visible to users, write exactly: - Small fixes and improvements."},
                 {role: "user", content: $notes}
               ]}' > "$RUNNER_TEMP/ai-request.json"
             if curl -sS --fail-with-body --max-time 60 https://api.deepseek.com/chat/completions \
                 -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
-                --data @"$RUNNER_TEMP/ai-request.json" \
-                | jq -er '.choices[0].message.content | select(length > 0)' > "$RUNNER_TEMP/ai-notes.txt"; then
+                --data @"$RUNNER_TEMP/ai-request.json" > "$RUNNER_TEMP/ai-response.json" \
+              && jq -er '.choices[0].message.content | select(length > 0)' "$RUNNER_TEMP/ai-response.json" \
+                > "$RUNNER_TEMP/ai-notes.txt"; then
               source="$RUNNER_TEMP/ai-notes.txt"
             else
-              echo "::warning::DeepSeek summary failed; Play gets the automatic notes"
+              reason="$(jq -r '.error.message // .choices[0].finish_reason // empty' "$RUNNER_TEMP/ai-response.json" 2>/dev/null || true)"
+              echo "::warning::DeepSeek summary failed (${reason:-no response}); Play gets the automatic notes"
             fi
           fi
           jq -nr --rawfile notes "$source" -f ../.github/play-release-notes.jq > "$RUNNER_TEMP/play-notes.txt"
