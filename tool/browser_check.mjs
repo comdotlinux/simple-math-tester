@@ -17,6 +17,8 @@ const serverScript = fileURLToPath(new URL('pages_like_server.mjs', import.meta.
 const progressKey = 'progress';
 const seededDocument = {
   schemaVersion: 1,
+  // Without a tier the app shows the tier picker instead of a question.
+  tier: 'easy',
   selectedOperations: ['multiply'],
   history: [3, 4, 5].map((lhs) => ({
     lhs,
