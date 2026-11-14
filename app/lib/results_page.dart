@@ -102,9 +102,15 @@ class ResultsPage extends StatelessWidget {
                   children: [
                     for (final (type, color, onColor) in signs)
                       Container(
-                        width: 56,
-                        height: 56,
-                        alignment: Alignment.center,
+                        // Grows with the text up to 96, then the sign shrinks
+                        // to fit.
+                        constraints: const BoxConstraints(
+                          minWidth: 56,
+                          minHeight: 56,
+                          maxWidth: 96,
+                          maxHeight: 96,
+                        ),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: color,
                           borderRadius: BorderRadius.circular(
@@ -115,11 +121,17 @@ class ResultsPage extends StatelessWidget {
                             width: AppTokens.outlineWidth,
                           ),
                         ),
-                        child: Text(
-                          type.displayString,
-                          textScaler: TextScaler.noScaling,
-                          style: textTheme.headlineMedium?.copyWith(
-                            color: onColor,
+                        child: Center(
+                          widthFactor: 1,
+                          heightFactor: 1,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              type.displayString,
+                              style: textTheme.headlineMedium?.copyWith(
+                                color: onColor,
+                              ),
+                            ),
                           ),
                         ),
                       ),

@@ -42,6 +42,21 @@ void main() {
     }
   });
 
+  test('text scaling is never switched off in lib', () {
+    for (final file in libFiles()) {
+      expect(
+        file.readAsStringSync(),
+        isNot(
+          anyOf(
+            contains('TextScaler.noScaling'),
+            matches(RegExp(r'TextScaler\.linear\(\s*1(\.0)?\s*\)')),
+          ),
+        ),
+        reason: '$file',
+      );
+    }
+  });
+
   test('criterion 32: no purple to magenta colour in schemes or tokens', () {
     for (final MapEntry(key: brightness, value: tokens) in themes.entries) {
       final scheme = buildAppTheme(brightness).colorScheme;
