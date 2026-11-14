@@ -152,10 +152,7 @@ void settingsJourneys() {
       await tapKey(tester, impressumTileKey);
 
       expect(opened, [impressumUrl]);
-      expect(
-        impressumUrl.toString(),
-        'https://math.munich-tech.de/impressum',
-      );
+      expect(impressumUrl.toString(), 'https://math.munich-tech.de/impressum');
       expect(find.byKey(settingsSheetKey), findsNothing);
     });
 

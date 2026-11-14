@@ -823,9 +823,7 @@ void main() {
       );
       await tapInSheet(tester, impressumTileKey);
 
-      expect(opened, [
-        Uri.parse('https://math.munich-tech.de/impressum'),
-      ]);
+      expect(opened, [Uri.parse('https://math.munich-tech.de/impressum')]);
       expect(opened.single, impressumUrl);
       expect(find.byKey(settingsSheetKey), findsNothing);
       expect(find.text('The browser did not open.'), findsNothing);

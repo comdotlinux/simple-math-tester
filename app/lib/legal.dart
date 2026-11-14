@@ -2,9 +2,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// The provider identification on the production site. Its text sits behind
 /// a bot check there, never in this repository, so the app only links to it.
-final impressumUrl = Uri.parse(
-  'https://math.munich-tech.de/impressum',
-);
+final impressumUrl = Uri.parse('https://math.munich-tech.de/impressum');
 
 /// Hands [uri] to the system browser, outside the app.
 Future<bool> openInBrowser(Uri uri) =>
