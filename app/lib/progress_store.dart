@@ -100,11 +100,14 @@ class ProgressWriter {
         try {
           await _store.write(progressKey, snapshot);
         } catch (error, stack) {
-          _waiting ??= snapshot;
           if (!_reported) {
             _reported = true;
             _report(error, stack, 'saving progress');
           }
+          // A newer snapshot gets one attempt now; a failed one waits for
+          // the next save or flush, so a broken store cannot spin.
+          if (_waiting != null) continue;
+          _waiting = snapshot;
           return;
         }
       }

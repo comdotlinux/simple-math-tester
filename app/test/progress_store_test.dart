@@ -157,6 +157,45 @@ void main() {
       },
     );
 
+    test(
+      'a newer snapshot waiting behind a failed write is written at once',
+      () async {
+        final errors = captureErrors();
+        final store = FakeStore()
+          ..holdWrites = Completer()
+          ..writeFailures = 1;
+        final writer = ProgressWriter(store);
+        writer.save('A');
+        await pumpEventQueue();
+        writer.save('B');
+        store.holdWrites!.complete();
+        await pumpEventQueue();
+        expect(store.values[progressKey], 'B');
+        expect(store.writes, hasLength(2));
+        expect(errors, hasLength(1));
+      },
+    );
+
+    test('a store whose every write throws is not retried in a loop', () async {
+      final errors = captureErrors();
+      final store = FakeStore()
+        ..holdWrites = Completer()
+        ..writeFailures = 1000;
+      final writer = ProgressWriter(store);
+      writer.save('A');
+      await pumpEventQueue();
+      writer.save('B');
+      store.holdWrites!.complete();
+      await pumpEventQueue();
+      expect(store.writes, hasLength(2), reason: 'A, then B once');
+      expect(errors, hasLength(1));
+
+      writer.flush();
+      await pumpEventQueue();
+      expect(store.writes, hasLength(3), reason: 'B once more, then stop');
+      expect(store.values, isEmpty);
+    });
+
     test('a flush retries the waiting snapshot of a failed write', () async {
       captureErrors();
       final store = FakeStore()..writeFailures = 1;
