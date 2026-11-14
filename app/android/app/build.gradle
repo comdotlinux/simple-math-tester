@@ -3,6 +3,18 @@ plugins {
     id 'dev.flutter.flutter-gradle-plugin'
 }
 
+// The upload key is read from app/android/key.properties (git-ignored) when it
+// exists; without it release builds stay debug-signed so CI validation builds work.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+def useUploadKey = keystorePropertiesFile.exists()
+if (useUploadKey) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+println(useUploadKey
+    ? 'Release signing: upload key from key.properties'
+    : 'Release signing: debug signing (no key.properties)')
+
 android {
     namespace 'com.linux.simplemathtester'
     compileSdk flutter.compileSdkVersion
@@ -21,10 +33,20 @@ android {
         versionName flutter.versionName
     }
 
+    signingConfigs {
+        if (useUploadKey) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Local/CI validation only. Configure production signing before publishing.
-            signingConfig signingConfigs.debug
+            signingConfig useUploadKey ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
