@@ -108,11 +108,14 @@ ThemeData buildAppTheme() {
     onSurface: AppColors.ink,
     error: AppColors.error,
   );
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+  final base = ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    fontFamily: 'Roboto',
+  );
   return base.copyWith(
     scaffoldBackgroundColor: AppColors.canvas,
     textTheme: base.textTheme
-        .apply(bodyColor: AppColors.ink, displayColor: AppColors.ink)
         .copyWith(
           displaySmall: const TextStyle(
             fontSize: 40,
@@ -143,6 +146,11 @@ ThemeData buildAppTheme() {
             height: 1.4,
             color: AppColors.ink,
           ),
+        )
+        .apply(
+          fontFamily: 'Roboto',
+          bodyColor: AppColors.ink,
+          displayColor: AppColors.ink,
         ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
