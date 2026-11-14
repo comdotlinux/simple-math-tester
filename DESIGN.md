@@ -88,10 +88,18 @@ button. Adaptive navigation shell, game-style header (flame, goal ring, combo, X
 bar), question card with an operation band, one row of four operation toggles,
 answer field, feedback strip, hint steps, sprint card, stats chips and result rows
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
-The on-screen number pad has digits, backspace and a large Check key. It edits the
-same text field. A keyboard toggle hides the pad and opens the system keyboard, so
+The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
+then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
+text field, which keeps focus. Phones dock it below the page like a keyboard and
+scroll the field and its feedback into view above it; pages 700px and wider dock it
+beside the practice column; when docking would squeeze the question (short screens,
+large text) it sits under the field, above the feedback, so a message never moves a
+key. A keyboard button on the field hides the pad and opens the system keyboard, so
 dictation and IME stay reachable; a hardware keyboard always types and Enter checks.
-There is one Check button, moved into the pad while it shows.
+There is one Check button, moved into the pad while it shows. `padReplacesKeyboard`
+is the one per-platform switch for platforms where the soft keyboard cannot be kept
+closed. The celebration (`app/lib/celebration.dart`) is flat outlined confetti thrown
+from both side edges, clear of the question.
 
 ## Accessibility
 Target WCAG AA contrast in both themes: 4.5:1 normal text, 3:1 large text/UI
@@ -111,8 +119,11 @@ short viewports, keyboard insets and 200% text scale. Results wrap, never clip.
 Initial: a clear question with an empty labeled answer field; before a starting tier
 is chosen, a tier picker covers Practice. Invalid: inline hint, no submission.
 The first valid check is the answer on record; retries are allowed and do not change
-it. Correct: encouraging confirmation, combo and XP. Wrong: invitation to try again
-with the first hint opened. Hints are progressive: Hint shows one step, Next step
+it. Correct: encouraging confirmation, combo and XP; a correct first check pops the
+answer and the header XP counts up. Wrong: invitation to try again with the first
+hint opened and a short shake. A level-up or the reached daily goal throws one
+confetti burst. Motion never blocks typing and never loops. Haptics: a light tap per
+pad key, stronger on correct, wrong and a milestone, all behind the haptics switch. Hints are progressive: Hint shows one step, Next step
 shows another, and only the last step states the answer. Next skips and records
 Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
 check moves to the next problem; the result card shows score beside the personal
