@@ -163,6 +163,14 @@ jobs:
             exit 1
           fi
       - run: flutter build ios --release --no-codesign
+      - name: Require the shared_preferences privacy manifest
+        run: |
+          manifests="$(find build/ios -path '*shared_preferences*' -name PrivacyInfo.xcprivacy)"
+          if [ -z "$manifests" ]; then
+            echo "::error::No PrivacyInfo.xcprivacy under a shared_preferences path in build/ios"
+            exit 1
+          fi
+          echo "$manifests"
       - name: Upload unsigned iOS app
         uses: actions/upload-artifact@v7
         with:
