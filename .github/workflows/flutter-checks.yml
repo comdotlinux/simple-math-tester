@@ -53,6 +53,8 @@ jobs:
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release --no-web-resources-cdn --web-content-hash
+      - name: Stamp the service worker with this build
+        run: ../tool/stamp_service_worker.sh build/web
       - name: Upload tested web build
         uses: actions/upload-artifact@v7
         with:
