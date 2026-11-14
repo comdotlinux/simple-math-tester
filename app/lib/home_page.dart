@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'celebration.dart';
 import 'hud.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
@@ -21,7 +22,10 @@ class MyHomePage extends StatelessWidget {
             onPopInvokedWithResult: (didPop, _) {
               if (!didPop) model.endSprint();
             },
-            child: const ProblemPage(key: problemsPageKey),
+            child: Celebration(
+              count: model.celebrations,
+              child: const ProblemPage(key: problemsPageKey),
+            ),
           )
         : const ResultsPage(key: resultsPageKey);
 

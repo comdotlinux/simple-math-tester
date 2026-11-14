@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
+import 'package:simple_math_tester/celebration.dart';
 import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
@@ -17,6 +18,28 @@ import 'package:simple_math_tester/rules.dart';
 import 'fake_store.dart';
 
 void main() {
+  final pad = find.byKey(numberPadKey);
+  Finder padKey(String label) => find.descendant(
+    of: pad,
+    matching: find.ancestor(
+      of: label == 'Delete'
+          ? find.bySemanticsLabel('Delete')
+          : find.text(label),
+      matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
+    ),
+  );
+  List<Finder> padKeys() => [
+    for (var digit = 0; digit <= 9; digit++) padKey('$digit'),
+    padKey('Delete'),
+    find.byKey(checkAnswerButtonKey),
+  ];
+  final celebrationPainter = find.byWidgetPredicate(
+    (widget) => widget is CustomPaint && widget.painter is CelebrationPainter,
+  );
+  final xpCounter = find.byType(TweenAnimationBuilder<int>);
+  String fieldText(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField)).controller!.text;
+
   Future<MathTesterModel> launch(
     WidgetTester tester, {
     Size size = const Size(1000, 900),
@@ -30,6 +53,9 @@ void main() {
     EdgeInsets padding = EdgeInsets.zero,
     Stream<void> Function()? ticker,
     Brightness brightness = Brightness.light,
+    void Function(Haptic)? haptic,
+    bool haptics = true,
+    ProgressStore? store,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -39,9 +65,11 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: problem,
-      progress: Progress(tier: tier, game: game),
+      progress: Progress(tier: tier, game: game, haptics: haptics),
       clock: clock,
       ticker: ticker,
+      haptic: haptic,
+      store: store,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -201,6 +229,12 @@ void main() {
         keyboardInset: 180,
         brightness: brightness,
       );
+      expect(tester.takeException(), isNull);
+      // The system keyboard is in use only after the keyboard switch.
+      await tester.ensureVisible(find.byKey(keyboardSwitchKey));
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(find.byKey(numberPadKey), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.enterText(find.byType(TextField), '15');
       await tester.testTextInput.receiveAction(TextInputAction.done);
@@ -456,12 +490,43 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    testWidgets('Reduced motion suppresses feedback animation, '
+    testWidgets('criterion 37: reduced motion gives feedback and '
+        'celebration zero duration and builds no particles, '
         '${brightness.name} theme', (tester) async {
-      await launch(tester, disableAnimations: true, brightness: brightness);
-      await tester.enterText(find.byType(TextField), '15');
-      await tester.tap(find.byKey(checkAnswerButtonKey));
+      final model = await launch(
+        tester,
+        disableAnimations: true,
+        brightness: brightness,
+        // 10 XP from level 2 and one answer from the daily goal.
+        game: const GameState(
+          xp: 90,
+          dailyCount: 9,
+          lastActiveDate: '2026-11-14',
+        ),
+        clock: () => DateTime(2026, 11, 14, 9),
+      );
+      // Checked with Enter: a tap's ink splash would be a running animation.
+      // The label floats with its own short animation as text arrives.
+      await tester.enterText(find.byType(TextField), '14');
       await tester.pumpAndSettle();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(tester.hasRunningAnimations, isFalse, reason: 'shake');
+
+      model.generateNextProblem();
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), '${model.current.result}');
+      await tester.pumpAndSettle();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(model.celebrations, 1);
+      expect(tester.hasRunningAnimations, isFalse, reason: 'pop and burst');
+      expect(celebrationPainter, findsNothing);
+      expect(find.text('Level 2 · 100 XP'), findsOneWidget);
+      expect(
+        tester.widget<TweenAnimationBuilder<int>>(xpCounter).duration,
+        Duration.zero,
+      );
       final feedback = find.ancestor(
         of: find.text('You got it!'),
         matching: find.byType(AnimatedSwitcher),
@@ -480,10 +545,12 @@ void main() {
         find.byType(TextField),
         find.byKey(settingsButtonKey),
         find.byKey(sprintButtonKey),
+        find.byKey(keyboardSwitchKey),
         for (final type in OperationType.values)
           find.byWidgetPredicate(
             (widget) => widget is Tooltip && widget.message == type.label,
           ),
+        ...padKeys(),
       ]) {
         final size = tester.getSize(finder);
         expect(size.width, greaterThanOrEqualTo(48));
@@ -595,10 +662,31 @@ void main() {
           tester.getSemantics(find.byKey(settingsButtonKey)),
           isSemantics(label: 'Settings', isButton: true, hasTapAction: true),
         );
+        await tester.ensureVisible(find.byKey(settingsButtonKey));
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(find.textContaining('Now: Easy.'), findsOneWidget);
+        for (final (key, label) in [
+          (soundSwitchKey, 'Sound'),
+          (hapticsSwitchKey, 'Vibration'),
+        ]) {
+          await tester.ensureVisible(find.byKey(key));
+          await tester.pumpAndSettle();
+          expect(tester.getSemantics(find.byKey(key)).label, startsWith(label));
+          expect(
+            tester.getSemantics(find.byKey(key)),
+            isSemantics(
+              hasToggledState: true,
+              isToggled: true,
+              hasTapAction: true,
+            ),
+          );
+          expect(
+            tester.getSize(find.byKey(key)).height,
+            greaterThanOrEqualTo(48),
+          );
+        }
         for (final tier in Tier.values) {
           await tester.ensureVisible(tierTile(tier));
           await tester.pumpAndSettle();
@@ -1198,6 +1286,8 @@ void main() {
       model.setDraftInput('14');
       model.submitAnswer();
       await expectInside('wrong answer with a hint');
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(settingsButtonKey));
       await expectInside('settings sheet');
       Navigator.of(tester.element(find.byKey(settingsSheetKey))).pop();
@@ -1209,4 +1299,298 @@ void main() {
       await expectInside('my answers');
     });
   }
+
+  group('number pad', () {
+    Future<void> tapPad(WidgetTester tester, String label) async {
+      await tester.tap(padKey(label));
+      await tester.pump();
+    }
+
+    Map<String, dynamic> inputType(WidgetTester tester) =>
+        tester.testTextInput.setClientArgs!['inputType']
+            as Map<String, dynamic>;
+
+    testWidgets('criterion 35: hardware typing and Enter check, pad keys edit '
+        'the same field, the switch hides the pad, one Check', (tester) async {
+      final model = await launch(tester, size: const Size(390, 844));
+      expect(pad, findsOneWidget);
+      expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
+      expect(find.text('Check answer'), findsOneWidget);
+      expect(
+        find.descendant(of: pad, matching: find.byKey(checkAnswerButtonKey)),
+        findsOneWidget,
+      );
+
+      // The field has focus with the pad shown, and asks for no soft
+      // keyboard; hardware keys reach it through the platform text input.
+      expect(tester.testTextInput.hasAnyClients, isTrue);
+      expect(inputType(tester)['name'], 'TextInputType.none');
+      tester.testTextInput.enterText('15');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(model.history.single.correct, isTrue);
+      expect(find.text('You got it!'), findsOneWidget);
+      // Enter keeps the focus, so typing goes on into the field.
+      expect(
+        FocusManager.instance.primaryFocus?.context
+            ?.findAncestorWidgetOfExactType<TextField>(),
+        isNotNull,
+      );
+
+      await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+      await tester.tap(find.byKey(nextQuestionButtonKey));
+      await tester.pumpAndSettle();
+      for (final label in ['1', '2', '0']) {
+        await tapPad(tester, label);
+      }
+      expect(fieldText(tester), '120');
+      expect(model.draftInput, '120');
+      await tapPad(tester, 'Delete');
+      expect(fieldText(tester), '12');
+      expect(model.draftInput, '12');
+      // A key replaces a selection, as typing does.
+      final controller = tester
+          .widget<TextField>(find.byType(TextField))
+          .controller!;
+      controller.selection = const TextSelection(
+        baseOffset: 0,
+        extentOffset: 1,
+      );
+      await tapPad(tester, '7');
+      expect(fieldText(tester), '72');
+
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(pad, findsNothing);
+      expect(
+        [inputType(tester)['name'], inputType(tester)['signed']],
+        ['TextInputType.number', true],
+      );
+      expect(inputType(tester)['decimal'], isTrue);
+      expect(fieldText(tester), '72');
+      expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
+      expect(find.text('Check answer'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byKey(keyboardSwitchKey)),
+        isSemantics(tooltip: 'Use the number pad', isButton: true),
+      );
+
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(pad, findsOneWidget);
+      expect(inputType(tester)['name'], 'TextInputType.none');
+      expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
+      expect(find.text('Check answer'), findsOneWidget);
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+      expect(model.history, hasLength(2));
+    });
+
+    testWidgets('criterion 36: pad keys have semantics labels', (tester) async {
+      await launch(tester, size: const Size(390, 844));
+      for (final label in [
+        for (var digit = 0; digit <= 9; digit++) '$digit',
+        'Delete',
+      ]) {
+        expect(
+          tester.getSemantics(padKey(label)),
+          isSemantics(
+            label: label,
+            isButton: true,
+            hasTapAction: true,
+            isFocusable: true,
+          ),
+          reason: label,
+        );
+      }
+      expect(
+        tester.getSemantics(find.byKey(checkAnswerButtonKey)),
+        isSemantics(label: 'Check answer', isButton: true, hasTapAction: true),
+      );
+    });
+
+    testWidgets('motion plays without blocking input and does not loop', (
+      tester,
+    ) async {
+      final model = await launch(
+        tester,
+        size: const Size(390, 844),
+        game: const GameState(xp: 90),
+      );
+      await tapPad(tester, '9');
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.hasRunningAnimations, isTrue, reason: 'shake');
+      await tapPad(tester, 'Delete');
+      await tapPad(tester, '1');
+      expect(fieldText(tester), '1');
+      await tester.pumpAndSettle();
+
+      model.generateNextProblem();
+      await tester.pumpAndSettle();
+      model.setDraftInput(formatNumber(model.current.result));
+      model.submitAnswer();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(celebrationPainter, findsOneWidget);
+      expect(find.text('Level 2 · 100 XP'), findsNothing, reason: 'counting');
+      // The burst lets pointers through to the pad.
+      await tapPad(tester, '4');
+      expect(fieldText(tester), '${formatNumber(model.current.result)}4');
+      await tester.pumpAndSettle();
+      expect(celebrationPainter, findsNothing);
+      expect(find.text('Level 2 · 100 XP'), findsOneWidget);
+    });
+
+    for (final on in [true, false]) {
+      testWidgets('haptics follow the switch (${on ? 'on' : 'off'})', (
+        tester,
+      ) async {
+        final felt = <Haptic>[];
+        final model = await launch(
+          tester,
+          size: const Size(390, 844),
+          haptic: felt.add,
+          haptics: on,
+          game: const GameState(xp: 90),
+        );
+        await tapPad(tester, '9');
+        await tapPad(tester, 'Delete');
+        await tapPad(tester, '1');
+        await tester.tap(find.byKey(checkAnswerButtonKey));
+        await tester.pumpAndSettle();
+        await tapPad(tester, '5');
+        await tester.tap(find.byKey(checkAnswerButtonKey));
+        await tester.pumpAndSettle();
+        model.generateNextProblem();
+        model.setDraftInput(formatNumber(model.current.result));
+        model.submitAnswer();
+        await tester.pumpAndSettle();
+        expect(
+          felt,
+          on
+              ? [
+                  Haptic.key,
+                  Haptic.key,
+                  Haptic.key,
+                  Haptic.wrong,
+                  Haptic.key,
+                  Haptic.correct,
+                  Haptic.celebrate,
+                ]
+              : isEmpty,
+        );
+      });
+    }
+
+    testWidgets('the switches are saved and shown after a restart', (
+      tester,
+    ) async {
+      final store = FakeStore();
+      final model = await launch(tester, store: store);
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(hapticsSwitchKey));
+      await tester.pumpAndSettle();
+      expect([model.sound, model.haptics], [true, false]);
+      await tester.tap(find.byKey(soundSwitchKey));
+      await tester.pumpAndSettle();
+      final saved = Progress.decode((await store.read(progressKey))!);
+      expect([saved.sound, saved.haptics], [false, false]);
+
+      await bootstrap(store);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      for (final key in [soundSwitchKey, hapticsSwitchKey]) {
+        expect(
+          tester.getSemantics(find.byKey(key)),
+          isSemantics(hasToggledState: true, isToggled: false),
+        );
+      }
+    });
+
+    // Visible means inside the screen's safe area and, for a control in a
+    // scroll view, inside its viewport.
+    void expectVisible(WidgetTester tester, Finder finder, Rect safe) {
+      final rect = tester.getRect(finder);
+      var shown = rect.intersect(safe);
+      final element = finder.evaluate().single;
+      if (Scrollable.maybeOf(element) case final scrollable?) {
+        final view = scrollable.context.findRenderObject()! as RenderBox;
+        shown = shown.intersect(view.localToGlobal(Offset.zero) & view.size);
+      }
+      expect(
+        shown.width * shown.height,
+        moreOrLessEquals(rect.width * rect.height, epsilon: .5),
+        reason: '$finder: $shown of $rect',
+      );
+    }
+
+    for (final (size, scale) in [
+      (const Size(320, 640), 1.0),
+      (const Size(320, 640), 2.0),
+      (const Size(360, 640), 1.0),
+      (const Size(360, 640), 2.0),
+      (const Size(800, 1000), 1.0),
+      (const Size(800, 1000), 2.0),
+      (const Size(1440, 900), 1.0),
+      (const Size(1440, 900), 2.0),
+      (const Size(390, 844), 1.0),
+    ]) {
+      for (final padding in [
+        EdgeInsets.zero,
+        const EdgeInsets.only(top: 59, bottom: 34),
+      ]) {
+        testWidgets('pad layout at ${size.width.toInt()}x'
+            '${size.height.toInt()}, text scale $scale, '
+            'safe area ${padding.top.toInt()}/${padding.bottom.toInt()}', (
+          tester,
+        ) async {
+          await launch(tester, size: size, scale: scale, padding: padding);
+          expect(tester.takeException(), isNull);
+          final safe = padding.deflateRect(Offset.zero & size);
+          for (final key in padKeys()) {
+            await tester.ensureVisible(key);
+            await tester.pumpAndSettle();
+            final rect = tester.getRect(key);
+            expect(rect.width, greaterThanOrEqualTo(48));
+            expect(rect.height, greaterThanOrEqualTo(48));
+            expectVisible(tester, key, safe);
+          }
+          if (scale == 1 &&
+              (padding == EdgeInsets.zero || size.height >= 800)) {
+            // At normal text size the question, the field and the whole pad
+            // are in view together, with no scrolling by the player. (A
+            // phone with 59/34 insets is taller than 640.)
+            await launch(tester, size: size, scale: scale, padding: padding);
+            for (final finder in [
+              find.byKey(questionOnProblemsPageKey),
+              find.byType(TextField),
+              ...padKeys(),
+            ]) {
+              expectVisible(tester, finder, safe);
+            }
+            // A check brings its feedback into view above the pad.
+            tester.testTextInput.enterText('15');
+            await tester.testTextInput.receiveAction(TextInputAction.done);
+            await tester.pumpAndSettle();
+            for (final finder in [
+              find.text('You got it!'),
+              find.byType(TextField),
+              ...padKeys(),
+            ]) {
+              expectVisible(tester, finder, safe);
+            }
+          }
+          final next = find.byKey(nextQuestionButtonKey);
+          await tester.ensureVisible(next);
+          await tester.pumpAndSettle();
+          await tester.tap(next);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
+  });
 }

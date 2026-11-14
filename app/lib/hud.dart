@@ -29,7 +29,6 @@ class Hud extends StatelessWidget {
     );
 
     final level = playerLevel(xp);
-    final levelStart = xpForLevel(level);
     final levelEnd = xpForLevel(level + 1);
 
     return DecoratedBox(
@@ -100,28 +99,42 @@ class Hud extends StatelessWidget {
                     child: SizedBox(
                       // Full width on a phone, so the level fits on one line.
                       width: min(constraints.maxWidth, 260),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Level $level · $xp XP', style: strong),
-                          const SizedBox(height: 2),
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: tokens.outline,
-                                width: AppTokens.outlineWidth,
+                      // Counts up from the shown value to a new total; the
+                      // label above always states the total.
+                      child: TweenAnimationBuilder<int>(
+                        tween: IntTween(begin: xp, end: xp),
+                        duration: MediaQuery.disableAnimationsOf(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 700),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, shown, _) {
+                          final level = playerLevel(shown);
+                          final start = xpForLevel(level);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Level $level · $shown XP', style: strong),
+                              const SizedBox(height: 2),
+                              DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: tokens.outline,
+                                    width: AppTokens.outlineWidth,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: LinearProgressIndicator(
+                                  value:
+                                      (shown - start) /
+                                      (xpForLevel(level + 1) - start),
+                                  minHeight: 10,
+                                  color: tokens.xp,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: LinearProgressIndicator(
-                              value:
-                                  (xp - levelStart) / (levelEnd - levelStart),
-                              minHeight: 10,
-                              color: tokens.xp,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),

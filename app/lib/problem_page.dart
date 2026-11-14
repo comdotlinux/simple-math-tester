@@ -1,9 +1,14 @@
+import 'dart:math';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
+import 'number_pad.dart';
 import 'operations.dart';
 import 'rules.dart';
 import 'slab.dart';
@@ -18,6 +23,14 @@ class ProblemPage extends StatefulWidget {
 class _ProblemPageState extends State<ProblemPage> {
   late final MathTesterModel _model;
   late final TextEditingController _controller;
+  final _focus = FocusNode();
+  final _answerKey = GlobalKey();
+  final _padAvailable = padReplacesKeyboard(defaultTargetPlatform);
+  late bool _padShown = _padAvailable;
+
+  /// What the answer block last showed, to bring it back into view only
+  /// when that changes.
+  Object? _revealed;
 
   @override
   void initState() {
@@ -39,7 +52,49 @@ class _ProblemPageState extends State<ProblemPage> {
   void dispose() {
     _model.removeListener(_syncDraft);
     _controller.dispose();
+    _focus.dispose();
     super.dispose();
+  }
+
+  /// The keyboard button on the field: hides the pad and opens the system
+  /// keyboard, or brings the pad back.
+  void _toggleKeyboard() {
+    setState(() => _padShown = !_padShown);
+    if (!_focus.hasFocus) {
+      _focus.requestFocus();
+      return;
+    }
+    // The rebuild sends the new keyboard type; the open field then needs an
+    // explicit show or hide.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => SystemChannels.textInput.invokeMethod<void>(
+        _padShown ? 'TextInput.hide' : 'TextInput.show',
+      ),
+    );
+  }
+
+  /// Keeps the field and its feedback in view above a docked pad, as the
+  /// system keyboard does, whenever the problem or the feedback changes.
+  void _revealAnswer(MathTesterModel model, bool docked) {
+    final shown = (
+      model.current,
+      model.answerCorrect,
+      model.validationMessage,
+      docked,
+    );
+    if (!docked || shown == _revealed) return;
+    // The page opens in place; later changes scroll there.
+    final jump = _revealed == null || MediaQuery.disableAnimationsOf(context);
+    _revealed = shown;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final answer = _answerKey.currentContext;
+      if (answer == null || !answer.mounted) return;
+      Scrollable.ensureVisible(
+        answer,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        duration: jump ? Duration.zero : const Duration(milliseconds: 200),
+      );
+    });
   }
 
   @override
@@ -48,13 +103,40 @@ class _ProblemPageState extends State<ProblemPage> {
     final theme = Theme.of(context);
     final tokens = context.tokens;
     final sprinting = model.inSprint;
+    final pad = NumberPad(
+      controller: _controller,
+      onEdited: (text) {
+        model.setDraftInput(text);
+        model.keyPressed();
+      },
+      onCheck: model.submitAnswer,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 520;
-        return SingleChildScrollView(
+        final showPad = _padShown && model.tier != null;
+        // Wide pages dock the pad beside the practice column; others dock
+        // it below like a keyboard while the page keeps room for the
+        // question and field above it, and otherwise put it under the
+        // field.
+        final side = showPad && constraints.maxWidth >= 700;
+        final padHeight =
+            NumberPad.height(MediaQuery.textScalerOf(context)) + 2 * 12 + 7;
+        final docked =
+            side || showPad && constraints.maxHeight - padHeight >= 260;
+        _revealAnswer(model, docked);
+        const sideWidth = 300.0;
+        final width = side
+            ? constraints.maxWidth - sideWidth - 2 * 16
+            : constraints.maxWidth;
+        final wide = width >= 520;
+        // On a phone-height page a bottom pad leaves little room: the card
+        // and the gap below it tighten so the question stays in view with
+        // the field.
+        final compact = docked && !side && constraints.maxHeight < 700;
+        final page = SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(
-            horizontal: constraints.maxWidth < 600 ? 16 : 24,
+            horizontal: width < 600 ? 16 : 24,
             vertical: 24,
           ),
           child: Center(
@@ -126,36 +208,80 @@ class _ProblemPageState extends State<ProblemPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _QuestionCard(problem: model.current),
-                    const SizedBox(height: 28),
-                    TextField(
-                      controller: _controller,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        signed: true,
-                        decimal: true,
-                      ),
-                      textInputAction: TextInputAction.done,
-                      style: theme.textTheme.headlineMedium,
-                      decoration: const InputDecoration(
-                        labelText: 'Your answer',
-                        hintText: 'Type a number',
-                      ),
-                      onChanged: model.setDraftInput,
-                      onSubmitted: (_) => model.submitAnswer(),
+                    _QuestionCard(problem: model.current, compact: compact),
+                    SizedBox(height: compact ? 16 : 28),
+                    Column(
+                      key: _answerKey,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _CheckMotion(
+                          check: model.lastCheck,
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focus,
+                            // Hardware keys reach the field only while it
+                            // has focus, and pad keys never take it.
+                            autofocus: _padShown,
+                            keyboardType: _padShown
+                                ? TextInputType.none
+                                : const TextInputType.numberWithOptions(
+                                    signed: true,
+                                    decimal: true,
+                                  ),
+                            textInputAction: TextInputAction.done,
+                            style: theme.textTheme.headlineMedium,
+                            decoration: InputDecoration(
+                              labelText: 'Your answer',
+                              hintText: 'Type a number',
+                              suffixIcon: _padAvailable
+                                  ? Padding(
+                                      padding: const EdgeInsetsDirectional.only(
+                                        end: 8,
+                                      ),
+                                      child: IconButton(
+                                        key: keyboardSwitchKey,
+                                        tooltip: _padShown
+                                            ? 'Use the keyboard'
+                                            : 'Use the number pad',
+                                        onPressed: _toggleKeyboard,
+                                        icon: Icon(
+                                          _padShown
+                                              ? Icons.keyboard_outlined
+                                              : Icons.dialpad,
+                                        ),
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                            onChanged: model.setDraftInput,
+                            // With the pad, Enter keeps the focus, so the
+                            // next answer can be typed straight away.
+                            onEditingComplete: _padShown ? () {} : null,
+                            onSubmitted: (_) => model.submitAnswer(),
+                          ),
+                        ),
+                        // Above the feedback, so a message never moves it.
+                        if (showPad && !docked) ...[
+                          const SizedBox(height: 16),
+                          pad,
+                        ],
+                        const SizedBox(height: 12),
+                        _AnswerFeedback(model: model),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _AnswerFeedback(model: model),
-                    const SizedBox(height: 16),
-                    Slab(
-                      pressable: true,
-                      radius: AppTokens.radiusControl,
-                      child: FilledButton.icon(
-                        key: checkAnswerButtonKey,
-                        onPressed: model.submitAnswer,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Check answer'),
+                    if (!showPad) ...[
+                      const SizedBox(height: 16),
+                      Slab(
+                        pressable: true,
+                        radius: AppTokens.radiusControl,
+                        child: FilledButton.icon(
+                          key: checkAnswerButtonKey,
+                          onPressed: model.submitAnswer,
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Check answer'),
+                        ),
                       ),
-                    ),
+                    ],
                     if (!sprinting) ...[
                       const SizedBox(height: 16),
                       // Side by side when both fit, else full-width rows.
@@ -209,6 +335,95 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
+        if (!docked) return page;
+        final edge = BorderSide(
+          color: tokens.outline,
+          width: AppTokens.outlineWidth,
+        );
+        final dock = DecoratedBox(
+          decoration: BoxDecoration(
+            color: tokens.surfaceRaised,
+            border: side ? Border(left: edge) : Border(top: edge),
+          ),
+          child: Padding(
+            // The extra bottom space holds the last row's slab.
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12 + 5),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: side ? sideWidth - AppTokens.outlineWidth : 440,
+                ),
+                child: pad,
+              ),
+            ),
+          ),
+        );
+        return Flex(
+          direction: side ? Axis.horizontal : Axis.vertical,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: page),
+            dock,
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Pops the answer on a correct first check and shakes it on a wrong one;
+/// nothing moves with reduced motion. Input is never blocked meanwhile.
+class _CheckMotion extends StatefulWidget {
+  const _CheckMotion({required this.check, required this.child});
+
+  final ({int count, bool correct, bool first})? check;
+  final Widget child;
+
+  @override
+  State<_CheckMotion> createState() => _CheckMotionState();
+}
+
+class _CheckMotionState extends State<_CheckMotion>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 380),
+  );
+
+  @override
+  void didUpdateWidget(_CheckMotion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final check = widget.check;
+    if (check == null ||
+        check.count == oldWidget.check?.count ||
+        (check.correct && !check.first) ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return;
+    }
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final correct = widget.check?.correct ?? false;
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) {
+        final t = _controller.value;
+        // Both curves start and end at rest.
+        return correct
+            ? Transform.scale(scale: 1 + .06 * sin(pi * t), child: child)
+            : Transform.translate(
+                offset: Offset(10 * sin(6 * pi * t) * (1 - t), 0),
+                child: child,
+              );
       },
     );
   }
@@ -218,9 +433,10 @@ Widget _flexed(bool row, Widget child) => row ? Expanded(child: child) : child;
 
 /// The hero: the operation's name on a colour band over the question.
 class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({required this.problem});
+  const _QuestionCard({required this.problem, required this.compact});
 
   final Problem problem;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +461,9 @@ class _QuestionCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 36, 20, 44),
+              padding: compact
+                  ? const EdgeInsets.fromLTRB(20, 18, 20, 22)
+                  : const EdgeInsets.fromLTRB(20, 36, 20, 44),
               child: Text(
                 problem.question,
                 key: questionOnProblemsPageKey,
@@ -481,7 +699,7 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
-/// A simple list of settings; for now only the starting tier.
+/// A simple list of settings: the starting tier and the feedback switches.
 void _showSettings(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -523,6 +741,20 @@ void _showSettings(BuildContext context) {
                     Navigator.pop(context);
                   },
                 ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                key: soundSwitchKey,
+                title: const Text('Sound'),
+                value: model.sound,
+                onChanged: model.setSound,
+              ),
+              SwitchListTile(
+                key: hapticsSwitchKey,
+                title: const Text('Vibration'),
+                subtitle: const Text('A short buzz on key presses and answers'),
+                value: model.haptics,
+                onChanged: model.setHaptics,
+              ),
             ],
           ),
         ),
