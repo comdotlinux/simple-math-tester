@@ -39,8 +39,10 @@ void operationsJourneys() {
         }
 
         expect(model.selectedOperations, subset);
-        // The selection applies from the next question on.
+        // The selection applies from the next question on, and changing it
+        // records no attempt.
         expect(model.current, same(shown));
+        expect(model.history, isEmpty);
 
         final kinds = <OperationType>{};
         final questions = <String>{};
