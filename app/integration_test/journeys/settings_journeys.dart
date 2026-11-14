@@ -22,8 +22,7 @@ void settingsJourneys() {
         expect(find.textContaining('Now: Easy.'), findsOneWidget);
         expect(find.text('Vibration'), findsOneWidget);
 
-        await tester.tapAt(const Offset(10, 10));
-        await tester.pumpAndSettle();
+        await closeSettings(tester);
         expect(find.byKey(settingsSheetKey), findsNothing);
       },
     );
@@ -111,8 +110,7 @@ void settingsJourneys() {
 
       await openSettings(tester);
       await tapVisible(tester, find.byKey(hapticsSwitchKey));
-      await tester.tapAt(const Offset(10, 10));
-      await tester.pumpAndSettle();
+      await closeSettings(tester);
       await tapVisible(tester, padKey('5'));
 
       expect(buzzes, [Haptic.key]);

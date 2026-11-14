@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show Table;
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
@@ -58,6 +59,65 @@ void historyJourneys() {
       expect(find.text('Player level: 2'), findsOneWidget);
       expect(find.text('Best streak: 4'), findsOneWidget);
       expect(find.text('Best sprint: 70'), findsOneWidget);
+    });
+
+    testWidgets('the stats table shows each operation’s accuracy and level', (
+      tester,
+    ) async {
+      await startWith(
+        tester,
+        Progress(
+          tier: Tier.easy,
+          history: [attempt(Problem(2, 3, OperationType.plus, 5), 5)],
+          difficulty: {
+            OperationType.plus: const Difficulty(
+              level: 3,
+              answered: 3,
+              correct: 2,
+            ),
+            OperationType.minus: const Difficulty(
+              level: 2,
+              answered: 4,
+              correct: 1,
+            ),
+            OperationType.divide: const Difficulty(
+              level: 4,
+              answered: 5,
+              correct: 5,
+            ),
+          },
+        ),
+      );
+
+      await openHistory(tester);
+
+      final table = find.byType(Table);
+      await tester.ensureVisible(table);
+      await tester.pumpAndSettle();
+      Finder inTable(String text) =>
+          find.descendant(of: table, matching: find.text(text));
+      // Every cell value below is unique in the table. Texts of one row
+      // overlap vertically; texts of different rows never do.
+      void expectRow(String operation, String accuracy, String level) {
+        final row = tester.getRect(inTable(operation));
+        for (final cell in [accuracy, level]) {
+          final rect = tester.getRect(inTable(cell));
+          expect(
+            rect.top < row.bottom && row.top < rect.bottom,
+            isTrue,
+            reason: 'the $operation row has no "$cell" cell',
+          );
+        }
+      }
+
+      expect(inTable('Operation'), findsOneWidget);
+      expect(inTable('Accuracy'), findsOneWidget);
+      expect(inTable('Level'), findsOneWidget);
+      expectRow('Addition', '67%', '3');
+      expectRow('Subtraction', '25%', '2');
+      // Never answered: a dash, at the tier's level.
+      expectRow('Multiplication', '–', '1');
+      expectRow('Division', '100%', '4');
     });
 
     testWidgets('an incorrect row shows your answer and the expected one', (

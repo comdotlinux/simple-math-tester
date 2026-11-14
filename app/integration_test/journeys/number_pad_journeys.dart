@@ -94,6 +94,30 @@ void numberPadJourneys() {
       expect(find.byTooltip('Use the keyboard'), findsOneWidget);
     });
 
+    testWidgets('with the keyboard, Enter checks the typed answer', (
+      tester,
+    ) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      await tapKey(tester, keyboardSwitchKey);
+      await typeAnswer(tester, formatNumber(model.current.result));
+
+      // The field's action is done; Enter on a keyboard sends the same one.
+      tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .performAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(model.history.single.correct, isTrue);
+    });
+
+    // What each CI device proves here: everywhere, the field asks for no
+    // keyboard (TextInputType.none) with the pad and a number keyboard
+    // without it. The zero keyboard-height check only means something on the
+    // Android emulator, which shows a soft keyboard; Linux and Chrome have
+    // none, and the iOS simulator uses the Mac's hardware keyboard by default,
+    // so there it holds trivially.
     testWidgets('with the pad, tapping the answer field opens no system '
         'keyboard; the keyboard button asks for one', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));

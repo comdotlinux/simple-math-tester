@@ -137,6 +137,20 @@ Future<void> returnToPractice(WidgetTester tester) =>
 Future<void> openSettings(WidgetTester tester) =>
     tapKey(tester, settingsButtonKey);
 
+/// Closes the settings sheet with a tap on the barrier halfway between the
+/// top of the screen and the sheet, wherever the sheet ends with large text
+/// or a small phone. A sheet that fills the screen leaves no barrier to tap,
+/// so there the system back action closes it.
+Future<void> closeSettings(WidgetTester tester) async {
+  final sheet = tester.getRect(find.byType(BottomSheet));
+  if (sheet.top > 24) {
+    await tester.tapAt(Offset(sheet.center.dx, sheet.top / 2));
+  } else {
+    await tester.binding.handlePopRoute();
+  }
+  await tester.pumpAndSettle();
+}
+
 /// The operation toggle named [type]'s label, as the player sees it.
 Finder operationToggle(OperationType type) => find.byWidgetPredicate(
   (widget) => widget is Tooltip && widget.message == type.label,
