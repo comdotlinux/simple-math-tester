@@ -201,6 +201,49 @@ void main() {
     },
   );
 
+  List<int> state(Difficulty d) => [
+    d.level,
+    d.upCount,
+    d.downCount,
+    d.answered,
+    d.correct,
+  ];
+
+  test('counters and totals the rule cannot produce are clamped', () {
+    final decoded = Progress.decode(
+      '{"operations":{'
+      '"plus":{"level":2,"upCount":7,"downCount":5,"answered":4,"correct":9},'
+      '"minus":{"upCount":-1,"downCount":-3,"answered":-2,"correct":-1},'
+      '"multiply":{"upCount":2,"downCount":1,"answered":6,"correct":6}}}',
+    ).difficulty;
+    expect(state(decoded[OperationType.plus]!), [2, 2, 1, 4, 4]);
+    expect(state(decoded[OperationType.minus]!), [1, 0, 0, 0, 0]);
+    // Values the rule can reach are kept.
+    expect(state(decoded[OperationType.multiply]!), [1, 2, 1, 6, 6]);
+  });
+
+  test('a tier without levels starts every operation at its level', () {
+    for (final tier in Tier.values) {
+      final progress = Progress(tier: tier);
+      for (final type in OperationType.values) {
+        expect(state(progress.difficulty[type]!), [tier.level, 0, 0, 0, 0]);
+      }
+      expect(
+        state(
+          Progress.decode(progress.encode()).difficulty[OperationType.plus]!,
+        ),
+        [tier.level, 0, 0, 0, 0],
+      );
+    }
+    final given = Progress(
+      tier: Tier.hard,
+      difficulty: {OperationType.plus: const Difficulty(level: 2)},
+    ).difficulty;
+    expect(given[OperationType.plus]!.level, 2);
+    expect(given[OperationType.minus]!.level, 5);
+    expect(Progress().difficulty[OperationType.divide]!.level, 1);
+  });
+
   test('a newer schemaVersion is not a decode failure', () {
     expect(
       () => Progress.decode('{"schemaVersion": 99, "history": "abc"}'),
