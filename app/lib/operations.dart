@@ -59,6 +59,10 @@ enum OperationType {
   }
 }
 
+/// A whole number without a decimal part ("4", not "4.0"); others as is.
+String formatNumber(num value) =>
+    value == value.toInt() ? value.toInt().toString() : value.toString();
+
 class Problem {
   const Problem(this.lhs, this.rhs, this.kind, this.result, {this.level = 1});
 

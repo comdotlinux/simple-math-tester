@@ -62,6 +62,13 @@ void main() {
     expect(answer(sum, null).correct, isFalse);
   });
 
+  test('whole numbers are formatted without a decimal part', () {
+    expect(formatNumber(4.0), '4');
+    expect(formatNumber(14), '14');
+    expect(formatNumber(4.5), '4.5');
+    expect(formatNumber(-3.0), '-3');
+  });
+
   test('question text uses the operation symbol', () {
     expect(const Problem(12, 3, OperationType.divide, 4.0).question, '12 ÷ 3');
   });

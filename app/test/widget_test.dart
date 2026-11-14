@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
@@ -13,6 +14,7 @@ void main() {
     double scale = 1,
     double keyboardInset = 0,
     bool disableAnimations = false,
+    Problem problem = const Problem(12, 3, OperationType.plus, 15),
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -20,9 +22,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    final model = MathTesterModel(
-      initialProblem: const Problem(12, 3, OperationType.plus, 15),
-    );
+    final model = MathTesterModel(initialProblem: problem);
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: model,
@@ -116,9 +116,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('1 question completed.'), findsOneWidget);
       expect(find.text('Incorrect'), findsOneWidget);
-      expect(find.text('Your answer: 14.0'), findsOneWidget);
+      expect(find.text('Your answer: 14'), findsOneWidget);
       expect(find.text('Expected answer: 15'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Results at width $width drop ".0" but keep decimals', (
+      tester,
+    ) async {
+      final model = await launch(
+        tester,
+        size: Size(width, 900),
+        problem: const Problem(12, 3, OperationType.divide, 4.0),
+      );
+      model.setDraftInput('4.5');
+      model.submitAnswer();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      expect(find.text('Your answer: 4.5'), findsOneWidget);
+      expect(find.text('Expected answer: 4'), findsOneWidget);
+      expect(find.textContaining('4.0'), findsNothing);
     });
   }
 
@@ -173,32 +190,46 @@ void main() {
       keyboardInset: 180,
     );
 
+    final revealControl = find.byKey(revealStepButtonKey);
+
+    bool canReveal(WidgetTester tester) =>
+        tester.widget<ButtonStyleButton>(revealControl).enabled;
+
+    Finder revealLabel(String label) =>
+        find.descendant(of: revealControl, matching: find.text(label));
+
     testWidgets('criterion 7: steps reveal one at a time', (tester) async {
       final model = await launchNarrow(tester);
       expect(model.steps, steps);
       expect(visibleSteps(), 0);
       expect(find.text('Let’s work it out'), findsNothing);
-      expect(find.byKey(nextStepButtonKey), findsNothing);
+      expect(revealLabel('Hint'), findsOneWidget);
+      expect(canReveal(tester), isTrue);
 
-      await tapKey(tester, hintButtonKey);
+      await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 1);
       expect(find.text(steps[0]), findsOneWidget);
       expect(find.text('Let’s work it out'), findsOneWidget);
-      expect(find.byKey(hintButtonKey), findsNothing);
+      expect(revealLabel('Hint'), findsNothing);
+      expect(revealLabel('Next step'), findsOneWidget);
 
-      await tapKey(tester, nextStepButtonKey);
+      await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 2);
       // The final step states the answer and needs a valid check first.
-      expect(find.byKey(nextStepButtonKey), findsNothing);
+      expect(canReveal(tester), isFalse);
+      expect(revealLabel('Next step'), findsOneWidget);
+      await tapKey(tester, revealStepButtonKey);
+      expect(visibleSteps(), 2);
       expect(find.text(steps.last), findsNothing);
 
       await check(tester, '15');
       expect(find.text('You got it!'), findsOneWidget);
       expect(visibleSteps(), 2);
-      await tapKey(tester, nextStepButtonKey);
+      expect(canReveal(tester), isTrue);
+      await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 3);
       expect(find.text(steps.last), findsOneWidget);
-      expect(find.byKey(nextStepButtonKey), findsNothing);
+      expect(canReveal(tester), isFalse);
       expect(tester.takeException(), isNull);
     });
 
@@ -217,13 +248,58 @@ void main() {
       tester,
     ) async {
       await launchNarrow(tester);
-      await tapKey(tester, hintButtonKey);
-      await tapKey(tester, nextStepButtonKey);
+      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, revealStepButtonKey);
       await check(tester, '14');
       expect(find.text('Not quite. Try another answer.'), findsOneWidget);
       expect(visibleSteps(), 2);
       expect(find.text(steps.last), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('keyboard focus stays on the reveal control', (tester) async {
+      await launch(tester);
+      Focus.of(
+        tester.element(
+          find.descendant(of: revealControl, matching: find.text('Hint')),
+        ),
+      ).requestFocus();
+      await tester.pumpAndSettle();
+      final focused = FocusManager.instance.primaryFocus;
+      expect(focused, isNotNull);
+
+      for (var i = 0; i < 2; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pumpAndSettle();
+        expect(FocusManager.instance.primaryFocus, same(focused));
+      }
+      expect(visibleSteps(), 2);
+      expect(canReveal(tester), isFalse);
+      expect(revealLabel('Next step'), findsOneWidget);
+      expect(
+        find.ancestor(of: revealControl, matching: find.byType(Card)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the newest step is announced through a live region', (
+      tester,
+    ) async {
+      await launch(tester);
+      await tapKey(tester, revealStepButtonKey);
+      expect(
+        tester.getSemantics(find.text(steps[0])),
+        isSemantics(isLiveRegion: true),
+      );
+      await tapKey(tester, revealStepButtonKey);
+      expect(
+        tester.getSemantics(find.text(steps[1])),
+        isSemantics(isLiveRegion: true),
+      );
+      expect(
+        tester.getSemantics(find.text(steps[0])),
+        isSemantics(isLiveRegion: false),
+      );
     });
   });
 
@@ -343,7 +419,7 @@ void main() {
     for (final finder in [
       find.byKey(checkAnswerButtonKey),
       find.byKey(nextQuestionButtonKey),
-      find.byKey(hintButtonKey),
+      find.byKey(revealStepButtonKey),
       find.byType(TextField),
       for (final type in OperationType.values)
         find.byWidgetPredicate(

@@ -281,48 +281,67 @@ class _Hints extends StatelessWidget {
   Widget build(BuildContext context) {
     final revealed = model.revealedSteps;
     final textStyle = Theme.of(context).textTheme.bodyMedium;
-    final reveal = model.canRevealStep
-        ? Align(
-            alignment: Alignment.centerLeft,
+
+    // The reveal control stays last and keeps one key, so it keeps its
+    // element and keyboard focus while its label changes and steps appear.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (revealed > 0)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Let’s work it out',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  for (var index = 0; index < revealed; index++) ...[
+                    const SizedBox(height: 12),
+                    Semantics(
+                      container: true,
+                      liveRegion: index == revealed - 1,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            child: Text('${index + 1}.', style: textStyle),
+                          ),
+                          Expanded(
+                            child: Text(model.steps[index], style: textStyle),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          )
+        else
+          const SizedBox.shrink(),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          // Directional mode keeps a disabled button focusable, so reaching
+          // the last allowed step does not drop keyboard focus.
+          child: MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(navigationMode: NavigationMode.directional),
             child: TextButton.icon(
-              key: revealed == 0 ? hintButtonKey : nextStepButtonKey,
-              onPressed: model.revealStep,
+              key: revealStepButtonKey,
+              onPressed: model.canRevealStep ? model.revealStep : null,
               icon: Icon(
                 revealed == 0 ? Icons.lightbulb_outline : Icons.navigate_next,
               ),
               label: Text(revealed == 0 ? 'Hint' : 'Next step'),
             ),
-          )
-        : null;
-    if (revealed == 0) return reveal ?? const SizedBox.shrink();
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Let’s work it out',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            for (var index = 0; index < revealed; index++) ...[
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 28,
-                    child: Text('${index + 1}.', style: textStyle),
-                  ),
-                  Expanded(child: Text(model.steps[index], style: textStyle)),
-                ],
-              ),
-            ],
-            if (reveal != null) ...[const SizedBox(height: 8), reveal],
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

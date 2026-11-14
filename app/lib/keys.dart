@@ -8,5 +8,4 @@ const noResultsOnResultsPageKey = Key('no-results-on-results-page');
 const questionOnProblemsPageKey = Key('question-on-problems-page');
 const checkAnswerButtonKey = Key('check-answer-button');
 const nextQuestionButtonKey = Key('next-question-button');
-const hintButtonKey = Key('hint-button');
-const nextStepButtonKey = Key('next-step-button');
+const revealStepButtonKey = Key('reveal-step-button');

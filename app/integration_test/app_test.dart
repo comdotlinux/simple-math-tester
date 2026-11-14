@@ -65,7 +65,7 @@ void main() {
     expect(visibleSteps(), 1);
     // The first valid check is recorded at once, before "Next question".
     expect(model.history, hasLength(1));
-    final incorrectInput = model.history.single.firstAnswer;
+    expect(model.history.single.firstAnswer, correctAnswer + 1);
 
     await submit(correctAnswer);
     expect(model.draftInput, '$correctAnswer');
@@ -74,8 +74,10 @@ void main() {
     expect(visibleSteps(), 1);
 
     // After a valid check every step, the answer included, can be opened.
-    while (find.byKey(nextStepButtonKey).evaluate().isNotEmpty) {
-      await tapKey(nextStepButtonKey);
+    while (tester
+        .widget<ButtonStyleButton>(find.byKey(revealStepButtonKey))
+        .enabled) {
+      await tapKey(revealStepButtonKey);
     }
     expect(visibleSteps(), model.steps.length);
     expect(find.text(model.steps.last), findsOneWidget);
@@ -84,21 +86,33 @@ void main() {
     expect(find.text('1 question completed.'), findsOneWidget);
     expect(find.text('Incorrect'), findsOneWidget);
     expect(find.text(firstQuestion), findsWidgets);
-    expect(find.text('Your answer: $incorrectInput'), findsWidgets);
-    expect(find.text('Expected answer: $correctAnswer'), findsWidgets);
+    expect(
+      find.text('Your answer: ${formatNumber(correctAnswer + 1)}'),
+      findsWidgets,
+    );
+    expect(
+      find.text('Expected answer: ${formatNumber(correctAnswer)}'),
+      findsWidgets,
+    );
 
     await returnToPractice();
     expect(currentQuestion(), firstQuestion);
     await nextQuestion();
     expect(find.text('Let’s work it out'), findsNothing);
-    expect(find.byKey(hintButtonKey), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(revealStepButtonKey),
+        matching: find.text('Hint'),
+      ),
+      findsOneWidget,
+    );
     expect(model.history, hasLength(1));
 
     final secondQuestion = currentQuestion();
     final secondAnswer = model.current.result;
     await submit(secondAnswer);
     expect(model.answerCorrect, isTrue);
-    final correctInput = model.history.last.firstAnswer;
+    expect(model.history.last.firstAnswer, secondAnswer);
 
     // Practise multiplication only, from the next question on.
     for (final name in ['Addition', 'Subtraction', 'Division']) {
@@ -118,15 +132,21 @@ void main() {
     expect(find.text('Correct'), findsOneWidget);
     expect(find.text('Incorrect'), findsOneWidget);
     expect(find.text(secondQuestion), findsWidgets);
-    expect(find.text('Your answer: $correctInput'), findsWidgets);
+    expect(
+      find.text('Your answer: ${formatNumber(secondAnswer)}'),
+      findsWidgets,
+    );
 
     await returnToPractice();
     final thirdQuestion = currentQuestion();
     expect(model.current.kind, OperationType.multiply);
-    await tapKey(hintButtonKey);
-    await tapKey(nextStepButtonKey);
+    await tapKey(revealStepButtonKey);
+    await tapKey(revealStepButtonKey);
     expect(visibleSteps(), 2);
-    expect(find.byKey(nextStepButtonKey), findsNothing);
+    expect(
+      tester.widget<ButtonStyleButton>(find.byKey(revealStepButtonKey)).enabled,
+      isFalse,
+    );
     await nextQuestion();
     expect(model.current.kind, OperationType.multiply);
     expect(model.history.last.hintsUsed, 2);
