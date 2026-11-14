@@ -71,6 +71,35 @@ void numberPadJourneys() {
       expect(model.history.single.correct, isTrue);
     });
 
+    testWidgets('pressing Check twice checks, then moves on', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      final first = model.current;
+      final check = find.descendant(
+        of: find.byKey(numberPadKey),
+        matching: find.byKey(checkAnswerButtonKey),
+      );
+      for (final digit in formatNumber(first.result).split('')) {
+        await tapVisible(tester, padKey(digit));
+      }
+
+      await tapVisible(tester, check);
+
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(find.descendant(of: check, matching: find.text('Next')), findsOne);
+      expect(answerFocused(tester), isTrue);
+
+      await tapVisible(tester, check);
+
+      expect(model.current, isNot(same(first)));
+      expect(model.history, hasLength(1));
+      expect(
+        find.descendant(of: check, matching: find.text('Check answer')),
+        findsOne,
+      );
+      expect(answerFocused(tester), isTrue);
+    });
+
     testWidgets('the keyboard button swaps the pad for the keyboard and back', (
       tester,
     ) async {

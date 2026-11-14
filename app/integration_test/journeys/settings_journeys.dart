@@ -11,7 +11,8 @@ import '../support/helpers.dart';
 void settingsJourneys() {
   group('settings', () {
     testWidgets(
-      'the gear opens the settings sheet and a tap outside closes it',
+      'the gear opens the settings sheet and a tap outside closes it, '
+      'focusing the answer again',
       (tester) async {
         await startWith(tester, Progress(tier: Tier.easy));
 
@@ -24,6 +25,7 @@ void settingsJourneys() {
 
         await closeSettings(tester);
         expect(find.byKey(settingsSheetKey), findsNothing);
+        expect(answerFocused(tester), isTrue, reason: 'the answer comes first');
       },
     );
 

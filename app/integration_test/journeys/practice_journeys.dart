@@ -129,6 +129,92 @@ void practiceJourneys() {
       expect(model.history, isEmpty);
     });
 
+    testWidgets('Enter checks the answer and a second Enter shows the next '
+        'question', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      final first = model.current;
+      await typeAnswer(tester, formatNumber(first.result));
+
+      await pressEnter(tester);
+
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(model.history.single.correct, isTrue);
+      expect(answerFocused(tester), isTrue);
+
+      await pressEnter(tester);
+
+      expect(model.current, isNot(same(first)));
+      expect(questionOnScreen(tester), model.current.question);
+      expect(model.draftInput, isEmpty);
+      expect(find.text('You got it!'), findsNothing);
+      expect(model.history, hasLength(1), reason: 'no skip is recorded');
+      expect(answerFocused(tester), isTrue);
+    });
+
+    testWidgets('a new answer after a wrong check is checked, not skipped', (
+      tester,
+    ) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      final first = model.current;
+      await typeAnswer(tester, formatNumber(first.result + 1));
+      await pressEnter(tester);
+      expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+
+      await typeAnswer(tester, formatNumber(first.result));
+      await pressEnter(tester);
+
+      expect(model.current, same(first));
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(model.history, hasLength(1));
+      expect(model.history.single.firstAnswer, first.result + 1);
+    });
+
+    testWidgets('the answer field keeps the focus after a check and after '
+        'Skip or Next', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      expect(answerFocused(tester), isTrue, reason: 'on start');
+
+      await nextQuestion(tester);
+      expect(answerFocused(tester), isTrue, reason: 'after Skip');
+
+      await submit(tester, model.current.result + 1);
+      expect(answerFocused(tester), isTrue, reason: 'after a check');
+
+      await nextQuestion(tester);
+      expect(answerFocused(tester), isTrue, reason: 'after Next');
+    });
+
+    testWidgets('the button says Skip before a check and Next question after', (
+      tester,
+    ) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      expect(nextButtonText('Skip'), findsOneWidget);
+      expect(semanticsNodesLabelled(tester, 'Skip'), 1);
+      expect(semanticsNodesLabelled(tester, 'Next question'), 0);
+
+      await submit(tester, model.current.result + 1);
+
+      // A phone docks a short "Next" in the feedback strip; its label still
+      // reads "Next question".
+      expect(nextButtonText('Skip'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(nextQuestionButtonKey),
+          matching: find.textContaining('Next'),
+        ),
+        findsOneWidget,
+      );
+      expect(semanticsNodesLabelled(tester, 'Skip'), 0);
+      expect(semanticsNodesLabelled(tester, 'Next question'), greaterThan(0));
+
+      await nextQuestion(tester);
+      expect(nextButtonText('Skip'), findsOneWidget);
+    });
+
     testWidgets('typing after feedback clears it', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);

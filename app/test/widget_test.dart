@@ -20,15 +20,8 @@ import 'fake_store.dart';
 
 void main() {
   final pad = find.byKey(numberPadKey);
-  Finder padKey(String label) => find.descendant(
-    of: pad,
-    matching: find.ancestor(
-      of: label == 'Delete'
-          ? find.bySemanticsLabel('Delete')
-          : find.text(label),
-      matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-    ),
-  );
+  Finder padKey(String label) =>
+      find.byKey(label == 'Delete' ? padDeleteKey : padDigitKey(label));
   List<Finder> padKeys() => [
     for (var digit = 0; digit <= 9; digit++) padKey('$digit'),
     padKey('Delete'),
@@ -1458,6 +1451,146 @@ void main() {
       await expectInside('my answers');
     });
   }
+
+  group('answer-first flow', () {
+    bool fieldFocused(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus;
+    String question(WidgetTester tester) =>
+        tester.widget<Text>(find.byKey(questionOnProblemsPageKey)).data!;
+    Finder nextLabel(String label) => find.descendant(
+      of: find.byKey(nextQuestionButtonKey),
+      matching: find.text(label),
+    );
+    Future<void> enter(WidgetTester tester) async {
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Enter checks, a second Enter moves on; the button says Skip '
+        'before a check and Next question after', (tester) async {
+      final model = await launch(tester);
+      final first = model.current;
+      expect(fieldFocused(tester), isTrue);
+      expect(nextLabel('Skip'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byKey(nextQuestionButtonKey)),
+        isSemantics(label: 'Skip', isButton: true),
+      );
+
+      tester.testTextInput.enterText(formatNumber(first.result));
+      await enter(tester);
+      expect(model.history.single.correct, isTrue);
+      expect(fieldFocused(tester), isTrue);
+      expect(nextLabel('Next question'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.byKey(nextQuestionButtonKey)),
+        isSemantics(label: 'Next question', isButton: true),
+      );
+
+      await enter(tester);
+      expect(model.history, hasLength(1), reason: 'not recorded as a skip');
+      expect(model.answerCorrect, isNull);
+      expect(model.draftInput, '');
+      expect(model.current, isNot(same(first)));
+      expect(fieldFocused(tester), isTrue);
+      expect(nextLabel('Skip'), findsOneWidget);
+
+      // Enter on an empty field asks for a number; it never skips.
+      final shown = question(tester);
+      await enter(tester);
+      expect(find.text('Enter a number first.'), findsOneWidget);
+      expect(question(tester), shown);
+    });
+
+    testWidgets('a new answer after a wrong check is checked, not skipped', (
+      tester,
+    ) async {
+      final model = await launch(tester);
+      final first = model.current;
+      tester.testTextInput.enterText(formatNumber(first.result + 1));
+      await enter(tester);
+      expect(model.answerCorrect, isFalse);
+      tester.testTextInput.enterText(formatNumber(first.result));
+      await tester.pump();
+      await enter(tester);
+      expect(model.answerCorrect, isTrue);
+      expect(model.current, same(first));
+      expect(find.text('You got it!'), findsOneWidget);
+    });
+
+    testWidgets(
+      'the pad Check key checks, then reads Next and moves on',
+      (tester) async {
+        final model = await launch(tester, size: const Size(390, 844));
+        final first = model.current;
+        final check = find.byKey(checkAnswerButtonKey);
+        for (final digit in formatNumber(first.result).split('')) {
+          await tester.tap(padKey(digit));
+          await tester.pump();
+        }
+        await tester.tap(check);
+        await tester.pumpAndSettle();
+        expect(model.history.single.correct, isTrue);
+        expect(
+          find.descendant(of: check, matching: find.text('Next')),
+          findsOne,
+        );
+        expect(
+          tester.getSemantics(check),
+          isSemantics(label: 'Next question', isButton: true),
+        );
+        expect(fieldFocused(tester), isTrue);
+
+        await tester.tap(check);
+        await tester.pumpAndSettle();
+        expect(model.history, hasLength(1));
+        expect(model.current, isNot(same(first)));
+        expect(
+          find.descendant(of: check, matching: find.text('Check answer')),
+          findsOne,
+        );
+        expect(fieldFocused(tester), isTrue);
+      },
+      // A mouse press outside a field takes its focus on desktop.
+      variant: TargetPlatformVariant.only(TargetPlatform.linux),
+    );
+
+    testWidgets('focus comes back after Skip from the keyboard and after '
+        'closing settings', (tester) async {
+      final model = await launch(tester);
+      final first = model.current;
+      Focus.of(tester.element(nextLabel('Skip'))).requestFocus();
+      await tester.pump();
+      expect(fieldFocused(tester), isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(model.current, isNot(same(first)));
+      expect(fieldFocused(tester), isTrue);
+
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      expect(fieldFocused(tester), isFalse);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(fieldFocused(tester), isTrue);
+    });
+
+    testWidgets(
+      'pressing a hint or an operation keeps the field focused',
+      (tester) async {
+        await launch(tester);
+        await tester.tap(find.byKey(revealStepButtonKey));
+        await tester.pumpAndSettle();
+        expect(fieldFocused(tester), isTrue);
+        await tester.tap(find.byKey(operationToggleKey(OperationType.minus)));
+        await tester.pumpAndSettle();
+        expect(fieldFocused(tester), isTrue);
+      },
+      // A mouse press outside a field takes its focus on desktop.
+      variant: TargetPlatformVariant.only(TargetPlatform.linux),
+    );
+  });
 
   group('number pad', () {
     Future<void> tapPad(WidgetTester tester, String label) async {
