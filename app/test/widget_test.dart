@@ -133,6 +133,34 @@ void main() {
     expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
   });
 
+  // Android ignores a config update on an open connection, so only a new
+  // connection tells it the keyboard type; with the old one a tap on the
+  // field brought the system keyboard back over the pad.
+  testWidgets('The keyboard button reconnects the focused field with the '
+      'new keyboard type', (tester) async {
+    await launch(tester, size: const Size(360, 640), keyboardInset: 260);
+    final log = tester.testTextInput.log;
+    // The keyboard type of each new connection since the log was cleared.
+    List<String> connected() => [
+      for (final call in log)
+        if (call.method == 'TextInput.setClient')
+          ((call.arguments as List)[1] as Map)['inputType']['name'] as String,
+    ];
+    expect(connected(), ['TextInputType.number']);
+
+    for (final type in ['TextInputType.none', 'TextInputType.number']) {
+      log.clear();
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expect(connected(), [type]);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+        isTrue,
+      );
+      expect(tester.testTextInput.isVisible, isTrue);
+    }
+  });
+
   for (final useKeyboard in [false, true]) {
     testWidgets(
       'Submit visible answer via ${useKeyboard ? 'keyboard' : 'button'}',

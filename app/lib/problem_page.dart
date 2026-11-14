@@ -117,30 +117,16 @@ class _ProblemPageState extends State<ProblemPage> {
   /// keyboard, or brings the pad back.
   void _toggleKeyboard() {
     setState(() => _model.padChosen = !_padShown);
-    if (kIsWeb) {
-      // The web engine sets the editing element's inputmode only when it
-      // creates the element and never clears "none" on a config update, so
-      // a new connection carries the new keyboard type. It opens after the
-      // rebuild, also when the field had no focus: a config update sent
-      // before the semantics tree hands the engine its element crashes the
-      // engine's semantics text editing.
-      _focus.unfocus();
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _focus.requestFocus(),
-      );
-      return;
-    }
-    if (!_focus.hasFocus) {
-      _focus.requestFocus();
-      return;
-    }
-    // The rebuild sends the new keyboard type; the open field then needs an
-    // explicit show or hide.
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => SystemChannels.textInput.invokeMethod<void>(
-        _padShown ? 'TextInput.hide' : 'TextInput.show',
-      ),
-    );
+    // A new connection carries the new keyboard type. Android has no config
+    // update at all, so an open field kept its old type and a tap on it
+    // brought the system keyboard back over the pad. The web engine sets the
+    // editing element's inputmode only when it creates the element and never
+    // clears "none" on a config update. It opens after the rebuild, also
+    // when the field had no focus: a config update sent before the semantics
+    // tree hands the engine its element crashes the engine's semantics text
+    // editing.
+    _focus.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
   }
 
   /// Keeps the field and its feedback in view above a docked pad, as the
