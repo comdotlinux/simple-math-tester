@@ -76,9 +76,10 @@ class _CelebrationState extends State<Celebration>
   }
 }
 
-/// Outlined circles and squares thrown up from both side edges, falling
-/// back under gravity and shrinking away by the end. They stay in the outer
-/// thirds, clear of the question in the middle.
+/// Outlined circles and squares burst from eight points (three up each side
+/// edge, one at the top middle, one at the bottom middle), falling under
+/// gravity and shrinking away by the end. The burst is over in about a
+/// second and lets pointers through, so crossing the question is fine.
 class CelebrationPainter extends CustomPainter {
   CelebrationPainter({
     required this.progress,
@@ -95,35 +96,68 @@ class CelebrationPainter extends CustomPainter {
   /// Five times the first burst of 36: the owner found 36 too thin to pop.
   static const _count = 180;
 
-  /// In area heights per unit of time squared: what is thrown up at the
-  /// fastest speed lands back at its starting height at the end.
+  /// In area heights per unit of time squared.
   static const _gravity = 1.8;
+
+  /// Where the bursts start, as fractions of the area's width and height.
+  static const origins = [
+    Offset(0, .25),
+    Offset(0, .5),
+    Offset(0, .75),
+    Offset(1, .25),
+    Offset(1, .5),
+    Offset(1, .75),
+    Offset(.5, 0),
+    Offset(.5, 1),
+  ];
+
+  /// Where each piece is at time [t] (0 to 1); piece i starts at
+  /// `origins[i % origins.length]`. Side pieces fly inwards and up, top
+  /// pieces fan out downwards, bottom pieces are thrown up and fall back.
+  static List<Offset> positions(Size size, double t, int seed) {
+    final random = Random(seed);
+    return [
+      for (var i = 0; i < _count; i++)
+        () {
+          final origin = origins[i % origins.length];
+          final a = random.nextDouble(), b = random.nextDouble();
+          final velocity = switch (origin.dx) {
+            0 => Offset(.15 + .3 * a, -(.3 + .5 * b)),
+            1 => Offset(-(.15 + .3 * a), -(.3 + .5 * b)),
+            _ when origin.dy == 0 => Offset((a - .5) * .8, .1 + .3 * b),
+            _ => Offset((a - .5) * .8, -(.9 + .5 * b)),
+          };
+          return Offset(
+            size.width * (origin.dx + velocity.dx * t),
+            size.height * (origin.dy + velocity.dy * t + _gravity / 2 * t * t),
+          );
+        }(),
+    ];
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final t = progress.value;
-    final random = Random(seed);
+    final random = Random(seed + 1);
     final edge = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = AppTokens.outlineWidth
       ..color = outline;
+    final all = positions(size, t, seed);
     for (var i = 0; i < _count; i++) {
-      final left = i < _count / 2;
-      final across = size.width * (.05 + .3 * random.nextDouble());
-      final up = size.height * (.45 + .45 * random.nextDouble());
       final side = 9 + 9 * random.nextDouble();
       final spin = (random.nextDouble() - .5) * 4 * pi;
-      final position = Offset(
-        left ? across * t : size.width - across * t,
-        size.height * (.55 + _gravity / 2 * t * t) - up * t,
-      );
+      final position = all[i];
       final shrink = t < .7 ? 1.0 : (1 - t) / .3;
       final rect = Rect.fromCenter(
         center: Offset.zero,
         width: side * shrink,
         height: side * shrink,
       );
-      final fill = Paint()..color = colors[i % colors.length];
+      // Not i % length: with eight points and eight colours, each point
+      // would throw a single colour.
+      final fill = Paint()
+        ..color = colors[random.nextInt(colors.length)];
       canvas
         ..save()
         ..translate(position.dx, position.dy)
