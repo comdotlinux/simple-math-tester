@@ -56,6 +56,14 @@ List<String> subtractionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;
+  if (left == right) {
+    return [
+      'Find the difference between $left and $right.',
+      'Both numbers are the same, so taking one away from the other leaves '
+          'nothing.',
+      'So $left − $right = ${formatNumber(result)}.',
+    ];
+  }
   final firstTen = (right + 9) ~/ 10 * 10;
   final lastTen = left ~/ 10 * 10;
   final hops = <(int, int)>[

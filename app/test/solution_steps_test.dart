@@ -19,6 +19,7 @@ void expectStepsHideResult(
     Problem(2, 10, OperationType.multiply, 20),
     Problem(4, 5, OperationType.multiply, 20),
     Problem(12, 3, OperationType.minus, 9),
+    Problem(5, 5, OperationType.minus, 0),
     Problem(12, 3, OperationType.divide, 4.0),
   ];
 
@@ -95,6 +96,15 @@ void main() {
       'Count up from 3 to 13 in hops, for example to the next ten, and keep '
           'track of how far you went.',
       'So 13 − 3 = 10. Check: 10 + 3 = 13.',
+    ]);
+  });
+
+  test('subtraction of equal numbers explains that nothing is left', () {
+    expect(solutionSteps(const Problem(5, 5, OperationType.minus, 0)), [
+      'Find the difference between 5 and 5.',
+      'Both numbers are the same, so taking one away from the other leaves '
+          'nothing.',
+      'So 5 − 5 = 0.',
     ]);
   });
 
