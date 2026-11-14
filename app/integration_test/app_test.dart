@@ -74,8 +74,10 @@ void main() {
     expect(visibleSteps(), 1);
 
     // After a valid check every step, the answer included, can be opened.
-    while (find.byKey(nextStepButtonKey).evaluate().isNotEmpty) {
-      await tapKey(nextStepButtonKey);
+    while (tester
+        .widget<ButtonStyleButton>(find.byKey(revealStepButtonKey))
+        .enabled) {
+      await tapKey(revealStepButtonKey);
     }
     expect(visibleSteps(), model.steps.length);
     expect(find.text(model.steps.last), findsOneWidget);
@@ -91,7 +93,13 @@ void main() {
     expect(currentQuestion(), firstQuestion);
     await nextQuestion();
     expect(find.text('Let’s work it out'), findsNothing);
-    expect(find.byKey(hintButtonKey), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(revealStepButtonKey),
+        matching: find.text('Hint'),
+      ),
+      findsOneWidget,
+    );
     expect(model.history, hasLength(1));
 
     final secondQuestion = currentQuestion();
@@ -123,10 +131,13 @@ void main() {
     await returnToPractice();
     final thirdQuestion = currentQuestion();
     expect(model.current.kind, OperationType.multiply);
-    await tapKey(hintButtonKey);
-    await tapKey(nextStepButtonKey);
+    await tapKey(revealStepButtonKey);
+    await tapKey(revealStepButtonKey);
     expect(visibleSteps(), 2);
-    expect(find.byKey(nextStepButtonKey), findsNothing);
+    expect(
+      tester.widget<ButtonStyleButton>(find.byKey(revealStepButtonKey)).enabled,
+      isFalse,
+    );
     await nextQuestion();
     expect(model.current.kind, OperationType.multiply);
     expect(model.history.last.hintsUsed, 2);
