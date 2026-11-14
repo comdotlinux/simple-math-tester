@@ -307,6 +307,19 @@ void main() {
       expect(model.revealedSteps, 1);
     });
 
+    test('an invalid check does not unlock the final step', () {
+      final model = modelFor(sum);
+      model.revealStep();
+      model.revealStep();
+      for (final text in ['', 'hello']) {
+        model.setDraftInput(text);
+        expect(model.submitAnswer(), isFalse);
+      }
+      expect(model.canRevealStep, isFalse);
+      model.revealStep();
+      expect(model.revealedSteps, model.steps.length - 1);
+    });
+
     test('a correct first check reveals nothing', () {
       final model = modelFor(sum);
       model.setDraftInput('15');
