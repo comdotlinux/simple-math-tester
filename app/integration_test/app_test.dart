@@ -77,7 +77,20 @@ void main() {
       await tester.ensureVisible(find.byType(TextField));
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '$answer');
+      // Types through the same entry point the platform's keyboard uses.
+      // tester.enterText cannot be used: integration tests have no fake text
+      // input, and the framework drops its client id -1 message when asserts
+      // are off, so in release and profile builds the field stayed empty.
+      final text = '$answer';
+      tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .updateEditingValue(
+            TextEditingValue(
+              text: text,
+              selection: TextSelection.collapsed(offset: text.length),
+            ),
+          );
+      await tester.pump();
       await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
       await tester.tap(find.byKey(checkAnswerButtonKey));
       await tester.pumpAndSettle();
