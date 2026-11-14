@@ -190,16 +190,28 @@ Future<void> closeSettings(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// The operation toggle named [type]'s label, as the player sees it.
-Finder operationToggle(OperationType type) => find.byWidgetPredicate(
-  (widget) => widget is Tooltip && widget.message == type.label,
-);
+/// The operation toggle for [type].
+Finder operationToggle(OperationType type) =>
+    find.byKey(operationToggleKey(type));
 
 /// A digit key of the on-screen number pad.
 Finder padKey(String digit) => find.byKey(padDigitKey(digit));
 
 /// The number pad's Delete key.
 Finder get padDelete => find.byKey(padDeleteKey);
+
+/// The text of the [Text] widget keyed [key].
+String textOf(WidgetTester tester, Key key) =>
+    tester.widget<Text>(find.byKey(key)).data!;
+
+/// Matches a text that shows [number] whole, not as part of a longer number,
+/// so a test can check a value without repeating the copy around it.
+Matcher showsNumber(num number) => matches(
+  RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
+);
+
+/// Matches the header's level and XP text for [xp].
+Matcher showsXp(int xp) => allOf(showsNumber(playerLevel(xp)), showsNumber(xp));
 
 String answerFieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField)).controller!.text;

@@ -8,6 +8,8 @@ import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
 
+// Header semantics labels stay literal: their wording is the behaviour.
+
 final _confetti = find.byWidgetPredicate(
   (widget) => widget is CustomPaint && widget.painter is CelebrationPainter,
 );
@@ -16,13 +18,13 @@ void gameLoopJourneys() {
   group('game loop', () {
     testWidgets('a correct first answer adds XP to the header', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
-      expect(find.text('Level 1 · 0 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(0));
 
       await submit(tester, modelOf(tester).current.result);
 
       // Level 1, no combo yet: 1 × (10 + 0).
       expect(modelOf(tester).game.xp, 10);
-      expect(find.text('Level 1 · 10 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(10));
     });
 
     testWidgets('a correct answer after a hint earns half the XP', (
@@ -34,7 +36,7 @@ void gameLoopJourneys() {
       await submit(tester, modelOf(tester).current.result);
 
       expect(modelOf(tester).game.xp, 5);
-      expect(find.text('Level 1 · 5 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(5));
     });
 
     testWidgets('the combo grows with right answers and a wrong one ends it', (
@@ -50,7 +52,7 @@ void gameLoopJourneys() {
       await submit(tester, model.current.result);
       expect(model.game.xp, 12);
       expect(semanticsNodesLabelled(tester, 'Combo: 3'), 1);
-      expect(find.text('×3'), findsOneWidget);
+      expect(textOf(tester, hudComboKey), showsNumber(3));
 
       await nextQuestion(tester);
       await submit(tester, model.current.result + 1);
@@ -81,7 +83,7 @@ void gameLoopJourneys() {
       expect(_confetti, reduceMotion ? findsNothing : findsOneWidget);
       await tester.pumpAndSettle();
       expect(_confetti, findsNothing);
-      expect(find.text('Level 2 · 105 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(105));
     });
 
     testWidgets('the tenth right answer of the day fills the goal and grows '
@@ -129,7 +131,10 @@ void gameLoopJourneys() {
 
       expect(semanticsNodesLabelled(tester, 'Daily goal: 0 of 10'), 1);
       expect(semanticsNodesLabelled(tester, 'Daily streak: 0'), 1);
-      expect(find.text('0/10'), findsOneWidget);
+      expect(
+        textOf(tester, hudGoalKey),
+        allOf(showsNumber(0), showsNumber(dailyGoal)),
+      );
     });
 
     testWidgets('a goal reached yesterday keeps the streak today', (

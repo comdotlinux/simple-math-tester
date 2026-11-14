@@ -61,7 +61,7 @@ class Hud extends StatelessWidget {
                         color: tokens.streak,
                         onColor: tokens.onStreak,
                       ),
-                      Text('$streak', style: strong),
+                      Text('$streak', key: hudStreakKey, style: strong),
                     ],
                   ),
                   _Stat(
@@ -78,7 +78,7 @@ class Hud extends StatelessWidget {
                           color: tokens.goalRing,
                         ),
                       ),
-                      Text('$daily/$dailyGoal', style: strong),
+                      Text('$daily/$dailyGoal', key: hudGoalKey, style: strong),
                     ],
                   ),
                   _Stat(
@@ -89,7 +89,7 @@ class Hud extends StatelessWidget {
                         color: tokens.combo,
                         onColor: tokens.onCombo,
                       ),
-                      Text('×$combo', style: strong),
+                      Text('×$combo', key: hudComboKey, style: strong),
                     ],
                   ),
                   Semantics(
@@ -115,7 +115,11 @@ class Hud extends StatelessWidget {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Level $level · $shown XP', style: strong),
+                              Text(
+                                'Level $level · $shown XP',
+                                key: hudXpKey,
+                                style: strong,
+                              ),
                               const SizedBox(height: 2),
                               DecoratedBox(
                                 decoration: BoxDecoration(
@@ -147,6 +151,7 @@ class Hud extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'Progress can’t be saved on this device right now',
+                key: cantSaveNoticeKey,
                 style: textTheme.bodyMedium,
               ),
             ],

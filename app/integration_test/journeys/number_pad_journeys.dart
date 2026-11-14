@@ -7,6 +7,12 @@ import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
 
+// Feedback, button and semantics wording stays literal: it is the behaviour.
+
+/// The keyboard switch's tooltip, which is also its accessible name.
+String? _switchTooltip(WidgetTester tester) =>
+    tester.widget<IconButton>(find.byKey(keyboardSwitchKey)).tooltip;
+
 void numberPadJourneys() {
   group('number pad', () {
     testWidgets('each digit key types its digit', (tester) async {
@@ -105,12 +111,12 @@ void numberPadJourneys() {
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
       expect(find.byKey(numberPadKey), findsOneWidget);
-      expect(find.byTooltip('Use the keyboard'), findsOneWidget);
+      expect(_switchTooltip(tester), 'Use the keyboard');
 
       await tapKey(tester, keyboardSwitchKey);
 
       expect(find.byKey(numberPadKey), findsNothing);
-      expect(find.byTooltip('Use the number pad'), findsOneWidget);
+      expect(_switchTooltip(tester), 'Use the number pad');
       // The page's own Check button takes the pad's place.
       expect(find.byKey(checkAnswerButtonKey), findsOneWidget);
       final model = modelOf(tester);
@@ -120,7 +126,7 @@ void numberPadJourneys() {
       await tapKey(tester, keyboardSwitchKey);
 
       expect(find.byKey(numberPadKey), findsOneWidget);
-      expect(find.byTooltip('Use the keyboard'), findsOneWidget);
+      expect(_switchTooltip(tester), 'Use the keyboard');
     });
 
     testWidgets('with the keyboard, Enter checks the typed answer', (

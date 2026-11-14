@@ -44,7 +44,7 @@ void persistenceJourneys() {
       expect(model.game.xp, 250);
       expect(model.shownStreak, 3);
       expect(semanticsNodesLabelled(tester, 'Daily streak: 3'), 1);
-      expect(find.text('Level 2 · 250 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(model.game.xp));
       // The first problem and the next both follow the saved selection.
       expect(model.current.kind, OperationType.multiply);
       expect(questionOnScreen(tester), contains('×'));
@@ -53,8 +53,18 @@ void persistenceJourneys() {
       expect(model.current.kind, OperationType.multiply);
 
       await openHistory(tester);
-      expect(find.text('4 questions completed.'), findsOneWidget);
-      expect(await inHistory(tester, find.text('3 × 6')), findsWidgets);
+      expect(
+        textOf(tester, historyCountKey),
+        showsNumber(model.history.length),
+      );
+      final first = await inHistory(tester, find.byKey(historyRowKey(0)));
+      expect(
+        find.descendant(
+          of: first,
+          matching: find.text(model.history.first.problem.question),
+        ),
+        findsOneWidget,
+      );
 
       // The skip is saved through the plugin.
       final saved = await waitForSaved((p) => p.history.length == 4);
@@ -75,7 +85,7 @@ void persistenceJourneys() {
       await tapVisible(tester, operationToggle(OperationType.minus));
       await openSettings(tester);
       await tapVisible(tester, find.byKey(hapticsSwitchKey));
-      await tapVisible(tester, find.text(Tier.medium.label));
+      await tapKey(tester, tierSettingKey(Tier.medium));
 
       await restartWhenSaved(
         tester,
@@ -94,6 +104,41 @@ void persistenceJourneys() {
       expect(model.tier, Tier.medium);
       expect(model.haptics, isFalse);
       expect(model.current.kind, isNot(OperationType.minus));
+    });
+
+    testWidgets('XP and a streak earned in play are shown again after a '
+        'restart', (tester) async {
+      await startWith(
+        tester,
+        Progress(
+          tier: Tier.easy,
+          game: GameState(
+            dailyCount: dailyGoal - 1,
+            lastActiveDate: today(),
+            lastGoalDate: daysAgo(1),
+            streak: 2,
+            bestStreak: 2,
+          ),
+        ),
+      );
+      final model = modelOf(tester);
+
+      // The day's tenth right answer earns XP and fills the goal.
+      await submit(tester, model.current.result);
+      final xp = model.game.xp;
+      expect(xp, greaterThan(0));
+      expect(model.shownStreak, 3);
+
+      await restartWhenSaved(tester, (p) => p.game.streak == 3);
+
+      final restarted = modelOf(tester);
+      expect(restarted, isNot(same(model)));
+      expect(restarted.game.xp, xp);
+      expect(restarted.shownStreak, 3);
+      expect(textOf(tester, hudXpKey), showsXp(xp));
+      expect(textOf(tester, hudStreakKey), showsNumber(3));
+      // The semantics label is the behaviour a screen reader announces.
+      expect(semanticsNodesLabelled(tester, 'Daily streak: 3'), 1);
     });
 
     testWidgets('the operation selection survives a restart', (tester) async {
@@ -153,13 +198,10 @@ void persistenceJourneys() {
       await startWithRaw(tester, newer);
       final model = modelOf(tester);
       expect(model.canSave, isFalse);
-      expect(
-        find.text('Progress can’t be saved on this device right now'),
-        findsOneWidget,
-      );
+      expect(find.byKey(cantSaveNoticeKey), findsOneWidget);
 
       // Play goes on, but nothing replaces the newer document.
-      await tapVisible(tester, find.text(Tier.easy.label));
+      await tapKey(tester, tierOptionKey(Tier.easy));
       await nextQuestion(tester);
       await Future<void>.delayed(const Duration(milliseconds: 200));
 

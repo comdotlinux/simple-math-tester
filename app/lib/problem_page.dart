@@ -742,7 +742,7 @@ class _SprintStatus extends StatelessWidget {
                 ),
               ],
             ),
-            Text('Score: $score', style: style),
+            Text('Score: $score', key: sprintScoreKey, style: style),
           ],
         ),
       ),
@@ -765,13 +765,13 @@ class _SprintResult extends StatelessWidget {
         if (result.levels[level - 1] > 0)
           'level $level: ${result.levels[level - 1]}',
     ];
-    Widget tile(String text) => Container(
+    Widget tile(String text, Key key) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: tokens.surfaceSunken,
         borderRadius: BorderRadius.circular(AppTokens.radiusControl),
       ),
-      child: Text(text, style: textTheme.titleLarge),
+      child: Text(text, key: key, style: textTheme.titleLarge),
     );
     return Slab(
       child: Card(
@@ -809,8 +809,11 @@ class _SprintResult extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        tile('Score: ${result.score}'),
-                        tile('Personal best: ${result.best}'),
+                        tile('Score: ${result.score}', sprintResultScoreKey),
+                        tile(
+                          'Personal best: ${result.best}',
+                          sprintResultBestKey,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -1150,6 +1153,7 @@ class _Hints extends StatelessWidget {
         if (revealed > 0)
           Slab(
             child: Card(
+              key: solutionStepsKey,
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(

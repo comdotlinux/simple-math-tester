@@ -15,7 +15,6 @@ void tierPickerJourneys() {
       await startWith(tester, Progress());
 
       expect(find.byKey(tierPickerKey), findsOneWidget);
-      expect(find.text('How hard should it start?'), findsOneWidget);
       // The lineup itself is the behaviour: Easy, Medium, Hard, Harder.
       expect(Tier.values.map((tier) => tier.label), [
         'Easy',
@@ -90,7 +89,6 @@ void tierPickerJourneys() {
       expect(model.difficulty[OperationType.plus]!.level, 2);
       expect(model.difficulty[OperationType.minus]!.level, 5);
       await openSettings(tester);
-      expect(find.textContaining('Now: ${Tier.harder.label}.'), findsOneWidget);
       expect(
         tester
             .widget<ListTile>(find.byKey(tierSettingKey(Tier.harder)))
@@ -106,10 +104,7 @@ void tierPickerJourneys() {
       await startWithRaw(tester, '{"schemaVersion": 99}');
 
       expect(find.byKey(tierPickerKey), findsOneWidget);
-      expect(
-        find.text('Progress can’t be saved on this device right now'),
-        findsOneWidget,
-      );
+      expect(find.byKey(cantSaveNoticeKey), findsOneWidget);
     });
   });
 }

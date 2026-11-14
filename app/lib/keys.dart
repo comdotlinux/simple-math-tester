@@ -32,3 +32,29 @@ const myAnswersNavKey = Key('my-answers-nav');
 const padDeleteKey = Key('pad-delete');
 Key padDigitKey(String digit) => Key('pad-digit-$digit');
 Key operationToggleKey(Enum type) => Key('operation-toggle-${type.name}');
+const solutionStepsKey = Key('solution-steps');
+
+// Header values.
+const hudStreakKey = Key('hud-streak');
+const hudGoalKey = Key('hud-goal');
+const hudComboKey = Key('hud-combo');
+const hudXpKey = Key('hud-xp');
+const cantSaveNoticeKey = Key('cant-save-notice');
+
+// Sprint bar and result.
+const sprintScoreKey = Key('sprint-score');
+const sprintResultScoreKey = Key('sprint-result-score');
+const sprintResultBestKey = Key('sprint-result-best');
+
+// My answers.
+const emptyStatePracticeButtonKey = Key('empty-state-practice-button');
+const historyCountKey = Key('history-count');
+
+/// One per answer, by its index in the history.
+Key historyRowKey(int index) => Key('history-row-$index');
+const statsCardKey = Key('stats-card');
+const dailyStreakStatKey = Key('stat-daily-streak');
+const bestStreakStatKey = Key('stat-best-streak');
+const bestSprintStatKey = Key('stat-best-sprint');
+const totalXpStatKey = Key('stat-total-xp');
+const playerLevelStatKey = Key('stat-player-level');

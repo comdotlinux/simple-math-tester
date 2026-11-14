@@ -15,8 +15,6 @@ import 'package:simple_math_tester/rules.dart';
 
 import 'fake_store.dart';
 
-const notice = 'Progress can’t be saved on this device right now';
-
 Attempt attempt(int lhs) => Attempt(
   Problem(lhs, 2, OperationType.multiply, lhs * 2),
   firstAnswer: lhs * 2,
@@ -247,9 +245,12 @@ void main() {
           );
         }
         // The results page is one tap away; its count is there in that frame.
-        await tester.tap(find.text('My answers').last);
+        await tester.tap(find.byKey(myAnswersNavKey));
         await tester.pump();
-        expect(find.text('3 questions completed.'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.byKey(historyCountKey)).data,
+          startsWith('3 '),
+        );
         expect(store.log.first, 'read $progressKey');
         expect(store.writes, isEmpty);
       },
@@ -281,9 +282,12 @@ void main() {
           .element(find.byKey(homePageKey))
           .read<MathTesterModel>();
       expect(model.history.map((a) => a.problem.lhs), [8, 9]);
-      await tester.tap(find.text('My answers').last);
+      await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pump();
-      expect(find.text('2 questions completed.'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(historyCountKey)).data,
+        startsWith('2 '),
+      );
     });
 
     testWidgets('criterion 11: the backup is written before the first frame', (
@@ -297,7 +301,7 @@ void main() {
       );
       expect(tester.takeException(), isA<FormatException>());
       await tester.pump();
-      expect(find.text(notice), findsNothing);
+      expect(find.byKey(cantSaveNoticeKey), findsNothing);
     });
 
     testWidgets(
@@ -313,7 +317,7 @@ void main() {
         await bootstrap(store);
         await tester.pump();
         expect(tester.takeException(), isA<StateError>());
-        expect(find.text(notice), findsOneWidget);
+        expect(find.byKey(cantSaveNoticeKey), findsOneWidget);
 
         final model = tester
             .element(find.byKey(homePageKey))
@@ -334,7 +338,7 @@ void main() {
           tester.binding.handleAppLifecycleStateChanged(state);
         }
         await tester.pump();
-        expect(find.text(notice), findsNothing);
+        expect(find.byKey(cantSaveNoticeKey), findsNothing);
         expect(model.history.single.problem.lhs, 7);
 
         model.generateNextProblem();

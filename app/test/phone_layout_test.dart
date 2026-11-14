@@ -28,13 +28,8 @@ void main() {
   });
 
   final pad = find.byKey(numberPadKey);
-  Finder padKey(String label) => find.descendant(
-    of: pad,
-    matching: find.ancestor(
-      of: find.text(label),
-      matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-    ),
-  );
+  Finder padKey(String digit) =>
+      find.descendant(of: pad, matching: find.byKey(padDigitKey(digit)));
 
   void expectOnScreen(WidgetTester tester, Finder finder, Size screen) {
     final rect = tester.getRect(finder);
@@ -114,7 +109,7 @@ void main() {
       ) async {
         final model = await launchAndCheck(tester, '65');
         expect(model.revealedSteps, 1);
-        expect(find.text('Let’s work it out'), findsOneWidget);
+        expect(find.byKey(solutionStepsKey), findsOneWidget);
         for (final finder in mustShow('65', 'Not quite. Try another answer.')) {
           expectOnScreen(tester, finder, size);
         }
