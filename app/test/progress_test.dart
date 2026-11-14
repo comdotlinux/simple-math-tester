@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show ThemeMode;
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -214,6 +215,28 @@ void main() {
     expect([onlySound.sound, onlySound.haptics], [false, true]);
     expect(
       () => Progress.decode('{"haptics":"yes"}'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test('the theme mode round trips and defaults to system', () {
+    for (final mode in ThemeMode.values) {
+      final json = jsonDecode(
+        Progress().withThemeMode(mode).encode(),
+      ) as Map<String, Object?>;
+      expect(json['themeMode'], mode.name);
+      final decoded = Progress.decode(jsonEncode(json));
+      expect(decoded.themeMode, mode);
+      expect(decoded.extra, isEmpty);
+    }
+    expect(Progress().themeMode, ThemeMode.system);
+    expect(Progress.decode('{}').themeMode, ThemeMode.system);
+    expect(
+      Progress.decode('{"themeMode":"sepia"}').themeMode,
+      ThemeMode.system,
+    );
+    expect(
+      () => Progress.decode('{"themeMode":2}'),
       throwsA(isA<FormatException>()),
     );
   });

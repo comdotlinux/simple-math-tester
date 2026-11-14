@@ -30,6 +30,9 @@ const hapticsSwitchKey = Key('haptics-switch');
 const privacyTileKey = Key('privacy-tile');
 const impressumTileKey = Key('impressum-tile');
 const privacyPageKey = Key('privacy-page');
+
+/// One per segment of the settings sheet's theme choice.
+Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');

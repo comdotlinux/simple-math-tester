@@ -434,6 +434,39 @@ ThemeData buildAppTheme(Brightness brightness) {
         color: t.inkMuted,
       ),
     ),
+    // Selected reads like a selected list tile: ink on the primary fill.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        // SegmentedButton ignores minimumSize; its height is the font size
+        // plus this padding, so 16 + 2 * 18 gives a 52 px row.
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 8, vertical: 18),
+        ),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? t.primary
+              : t.surfaceRaised,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? t.onPrimary : t.ink,
+        ),
+        iconColor: WidgetStateProperty.resolveWith(
+          (states) =>
+              states.contains(WidgetState.selected) ? t.onPrimary : t.ink,
+        ),
+        overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .08)),
+        side: buttonSide,
+        shape: WidgetStatePropertyAll(control),
+      ),
+    ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
         color: t.ink,

@@ -110,7 +110,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 | Privacy and Impressum (settings) | `settings_journeys.dart` | Privacy shows the privacy policy inside the app; Impressum asks the browser for the production Impressum (`startHarness(openLink:)` takes a recording opener, so no journey opens the real page) |
 | Vibration switch | `settings_journeys.dart` | the Vibration switch is saved; with Vibration off the pad keys stop buzzing |
 | Sound switch | `sound_journeys.dart` | the Sound switch shows in settings, on by default; turning Sound off is saved and survives a restart; with Sound off no sound plays; with it on, one per checked answer (`startHarness(sounds:)` takes a counting player; every other journey starts with `SilentSoundPlayer`) |
-| Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting (the app has no in-app theme choice yet) |
+| Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting; choosing Dark makes the app dark and survives a restart; System follows the device again |
 | Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; XP and a streak earned in play are shown again after a restart; the operation selection survives a restart |
 | Unreadable saved data | `persistence_journeys.dart` | unreadable saved data is backed up and the app starts fresh |
 | Offline web app | `tool/browser_check.mjs` | not a Flutter journey (phase 10) |
