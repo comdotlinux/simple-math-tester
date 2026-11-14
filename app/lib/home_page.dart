@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'hud.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'problem_page.dart';
@@ -25,7 +26,13 @@ class MyHomePage extends StatelessWidget {
           resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: compact
-                ? page
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Hud(),
+                      Expanded(child: page),
+                    ],
+                  )
                 : Row(
                     children: [
                       NavigationRail(
@@ -49,7 +56,15 @@ class MyHomePage extends StatelessWidget {
                         onDestinationSelected: model.setCurrentPage,
                       ),
                       const VerticalDivider(width: 1),
-                      Expanded(child: page),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Hud(),
+                            Expanded(child: page),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
           ),

@@ -2,12 +2,16 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
+
+import 'fake_store.dart';
 
 void main() {
   Future<MathTesterModel> launch(
@@ -18,6 +22,9 @@ void main() {
     bool disableAnimations = false,
     Problem problem = const Problem(12, 3, OperationType.plus, 15),
     Tier? tier = Tier.easy,
+    GameState game = const GameState(),
+    DateTime Function()? clock,
+    EdgeInsets padding = EdgeInsets.zero,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -27,7 +34,8 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: problem,
-      progress: Progress(tier: tier),
+      progress: Progress(tier: tier, game: game),
+      clock: clock,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -35,6 +43,7 @@ void main() {
         child: MediaQuery(
           data: MediaQueryData(
             size: size,
+            padding: padding,
             textScaler: TextScaler.linear(scale),
             viewInsets: EdgeInsets.only(bottom: keyboardInset),
             disableAnimations: disableAnimations,
@@ -478,9 +487,11 @@ void main() {
           scale: scale,
         );
         expect(tester.takeException(), isNull);
+        expect(find.byKey(hudKey), findsOneWidget);
         model.generateNextProblem();
         model.setCurrentPage(1);
         await tester.pumpAndSettle();
+        expect(find.byKey(hudKey), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }
@@ -612,4 +623,212 @@ void main() {
       expect(model.current.question, '12 + 3');
     });
   });
+
+  group('header', () {
+    final morning = DateTime(2026, 11, 14, 9);
+    const playing = GameState(
+      xp: 250,
+      combo: 4,
+      dailyCount: 6,
+      lastActiveDate: '2026-11-14',
+      lastGoalDate: '2026-11-14',
+      streak: 3,
+      bestStreak: 3,
+    );
+
+    void expectLabel(WidgetTester tester, String label) => expect(
+      tester.getSemantics(find.bySemanticsLabel(label)),
+      matchesSemantics(label: label),
+    );
+
+    String goal(int count) => 'Daily goal: $count of 10';
+
+    testWidgets('criterion 24: each value has a label with its value', (
+      tester,
+    ) async {
+      await launch(tester, game: playing, clock: () => morning);
+      expectLabel(tester, 'Daily streak: 3');
+      expectLabel(tester, goal(6));
+      expectLabel(tester, 'Level 2, 250 XP, 50 XP to level 3');
+      expectLabel(tester, 'Combo: 4');
+
+      // 12 + 3 at level 1 with combo 4 earns 14 XP.
+      await tester.enterText(find.byType(TextField), '15');
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+      expectLabel(tester, 'Daily streak: 3');
+      expectLabel(tester, goal(7));
+      expectLabel(tester, 'Level 2, 264 XP, 36 XP to level 3');
+      expectLabel(tester, 'Combo: 5');
+    });
+
+    testWidgets('criterion 24: bootstrap shows XP 250 and streak 3 at once', (
+      tester,
+    ) async {
+      final today = localDate(DateTime.now());
+      final store = FakeStore({
+        progressKey: Progress(
+          tier: Tier.easy,
+          game: GameState(
+            xp: 250,
+            streak: 3,
+            bestStreak: 3,
+            lastActiveDate: today,
+            lastGoalDate: today,
+          ),
+        ).encode(),
+      });
+      await bootstrap(store);
+      await tester.pump();
+      expectLabel(tester, 'Daily streak: 3');
+      expectLabel(tester, 'Level 2, 250 XP, 50 XP to level 3');
+      expect(find.text('Level 2 · 250 XP'), findsOneWidget);
+    });
+
+    testWidgets('criterion 23: a document from yesterday shows the ring at 0', (
+      tester,
+    ) async {
+      final yesterday = dateBefore(localDate(DateTime.now()));
+      final store = FakeStore({
+        progressKey: Progress(
+          tier: Tier.easy,
+          game: GameState(dailyCount: 7, lastActiveDate: yesterday),
+        ).encode(),
+      });
+      await bootstrap(store);
+      await tester.pump();
+      expectLabel(tester, goal(0));
+      expect(find.text('0/10'), findsOneWidget);
+    });
+
+    testWidgets('criterion 23: a resume after the date changed resets it', (
+      tester,
+    ) async {
+      var now = DateTime(2026, 11, 14, 23, 50);
+      final model = await launch(tester, game: playing, clock: () => now);
+      expectLabel(tester, goal(6));
+
+      now = DateTime(2026, 11, 15, 0, 5);
+      for (final state in [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(state);
+      }
+      await tester.pump();
+      expectLabel(tester, goal(0));
+      expect(model.game.dailyCount, 0);
+      expect(model.game.lastActiveDate, '2026-11-15');
+      expect(model.history, isEmpty);
+    });
+
+    testWidgets('criterion 23: left open past midnight, a rebuild shows 0', (
+      tester,
+    ) async {
+      var now = DateTime(2026, 11, 14, 23, 59);
+      final model = await launch(tester, game: playing, clock: () => now);
+      expectLabel(tester, goal(6));
+
+      now = DateTime(2026, 11, 15, 0, 1);
+      tester.element(find.byType(Hud)).markNeedsBuild();
+      await tester.pump();
+      expectLabel(tester, goal(0));
+      expect(model.game.dailyCount, 6, reason: 'no event has run');
+    });
+
+    for (final (width, scale) in [(320.0, 2.0), (390.0, 1.0), (1000.0, 1.0)]) {
+      testWidgets('shows on both pages inside the safe area at $width, '
+          'text scale $scale', (tester) async {
+        final model = await launch(
+          tester,
+          size: Size(width, 700),
+          scale: scale,
+          padding: const EdgeInsets.only(top: 59, bottom: 34),
+          // Long values, to show the header still fits.
+          game: const GameState(
+            xp: 1234567,
+            combo: 999,
+            dailyCount: 6,
+            lastActiveDate: '2026-11-14',
+            lastGoalDate: '2026-11-14',
+            streak: 3650,
+          ),
+          clock: () => morning,
+        );
+        for (final page in [0, 1]) {
+          model.setCurrentPage(page);
+          await tester.pumpAndSettle();
+          final hud = tester.getRect(find.byKey(hudKey));
+          expect(hud.top, greaterThanOrEqualTo(59));
+          expect(hud.left, greaterThanOrEqualTo(0));
+          expect(hud.right, lessThanOrEqualTo(width));
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+
+    testWidgets('the no-write notice is in the header', (tester) async {
+      final previous = FlutterError.onError;
+      FlutterError.onError = (_) {};
+      addTearDown(() => FlutterError.onError = previous);
+      await bootstrap(FakeStore()..readFailures = 1);
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(hudKey),
+          matching: find.text(
+            'Progress can’t be saved on this device right now',
+          ),
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
+  for (final (width, scale) in [(320.0, 2.0), (1000.0, 1.0)]) {
+    testWidgets('My answers shows stats above the history at $width, '
+        'text scale $scale', (tester) async {
+      final model = await launch(
+        tester,
+        size: Size(width, 900),
+        scale: scale,
+        clock: () => DateTime(2026, 11, 14, 9),
+        game: const GameState(
+          xp: 250,
+          lastActiveDate: '2026-11-14',
+          lastGoalDate: '2026-11-13',
+          streak: 3,
+          bestStreak: 8,
+        ),
+      );
+      model.setDraftInput('15');
+      model.submitAnswer();
+      model.generateNextProblem();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Your stats'), findsOneWidget);
+      expect(
+        tester.getRect(find.text('Your stats')).bottom,
+        lessThan(tester.getRect(find.text('1 question completed.')).top),
+      );
+      final addition = find.ancestor(
+        of: find.text('Addition'),
+        matching: find.byType(Table),
+      );
+      expect(addition, findsOneWidget);
+      expect(find.text('100%'), findsOneWidget);
+      expect(find.text('–'), findsNWidgets(3));
+      expect(find.text('Daily streak: 3'), findsOneWidget);
+      expect(find.text('Best streak: 8'), findsOneWidget);
+      // 12 + 3 at level 1 with combo 0 earns 10 XP.
+      expect(find.text('Total XP: 260'), findsOneWidget);
+      expect(find.text('Player level: 2'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
