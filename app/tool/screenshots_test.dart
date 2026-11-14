@@ -131,7 +131,7 @@ void main() {
     final render =
         boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
-      // SCREENSHOT_PIXEL_RATIO=3 at 360x640 gives Play's 1080x1920.
+      // SCREENSHOT_PIXEL_RATIO=2.4 at 450x800 gives Play's 1080x1920.
       final image = await render.toImage(
         pixelRatio: double.parse(
           Platform.environment['SCREENSHOT_PIXEL_RATIO'] ?? '1',
@@ -184,14 +184,20 @@ void main() {
       .position
       .jumpTo(offset);
 
+  // SCREENSHOT_SIZE=450x800 (with SCREENSHOT_PIXEL_RATIO=2.4) shoots only
+  // that size: the Play Store phone screenshots, 1080x1920.
+  final only = Platform.environment['SCREENSHOT_SIZE']?.split('x');
   for (final brightness in Brightness.values) {
-    for (final size in const [
-      Size(360, 640),
-      Size(412, 720),
-      Size(360, 800),
-      Size(800, 1000),
-      Size(1280, 900),
-    ]) {
+    for (final size
+        in only != null
+            ? [Size(double.parse(only[0]), double.parse(only[1]))]
+            : const [
+                Size(360, 640),
+                Size(412, 720),
+                Size(360, 800),
+                Size(800, 1000),
+                Size(1280, 900),
+              ]) {
       final tag =
           '${brightness.name}-${size.width.toInt()}x${size.height.toInt()}';
       testWidgets('screenshots $tag', (tester) async {
