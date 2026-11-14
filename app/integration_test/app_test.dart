@@ -101,8 +101,10 @@ void main() {
     final correctInput = model.history.last.firstAnswer;
 
     // Practise multiplication only, from the next question on.
-    for (final label in ['Addition (+)', 'Subtraction (-)', 'Division (/)']) {
-      final chip = find.widgetWithText(FilterChip, label);
+    for (final name in ['Addition', 'Subtraction', 'Division']) {
+      final chip = find.byWidgetPredicate(
+        (widget) => widget is Tooltip && widget.message == name,
+      );
       await tester.ensureVisible(chip);
       await tester.tap(chip);
       await tester.pumpAndSettle();

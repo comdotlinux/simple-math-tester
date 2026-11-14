@@ -63,6 +63,6 @@ void main() {
   });
 
   test('question text uses the operation symbol', () {
-    expect(const Problem(12, 3, OperationType.divide, 4.0).question, '12 / 3');
+    expect(const Problem(12, 3, OperationType.divide, 4.0).question, '12 ÷ 3');
   });
 }

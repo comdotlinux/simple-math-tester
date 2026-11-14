@@ -228,10 +228,13 @@ void main() {
   });
 
   group('operation chips', () {
-    Finder chip(OperationType type) => find.widgetWithText(
-      FilterChip,
-      '${type.label} (${type.displayString})',
+    // flutter_test's byTooltip matches Flutter's own Tooltip, not material_ui's.
+    Finder tooltip(String message) => find.byWidgetPredicate(
+      (widget) => widget is Tooltip && widget.message == message,
     );
+
+    // The sign is the visible label; its semantics node is the whole chip.
+    Finder chip(OperationType type) => find.text(type.displayString);
 
     testWidgets('criterion 5: the last selected chip stays selected', (
       tester,
@@ -260,17 +263,66 @@ void main() {
       await tester.pumpAndSettle();
       expect(model.selectedOperations, {OperationType.multiply});
       expect(
-        tester.widget<FilterChip>(chip(OperationType.multiply)).selected,
-        isTrue,
-      );
-      expect(
         tester.getSemantics(chip(OperationType.multiply)),
-        isSemantics(isSelected: true, hasSelectedState: true),
+        isSemantics(
+          label: 'Multiplication',
+          isSelected: true,
+          hasSelectedState: true,
+          isButton: true,
+          hasTapAction: true,
+        ),
       );
       // Deselecting kinds kept the problem on screen and recorded nothing.
       expect(find.text('12 + 3'), findsOneWidget);
       expect(model.history, isEmpty);
     });
+
+    testWidgets('chips show only the sign and name the operation', (
+      tester,
+    ) async {
+      await launch(tester);
+      for (final (type, sign, name) in [
+        (OperationType.plus, '+', 'Addition'),
+        (OperationType.minus, '\u2212', 'Subtraction'),
+        (OperationType.multiply, '\u00d7', 'Multiplication'),
+        (OperationType.divide, '\u00f7', 'Division'),
+      ]) {
+        expect(find.text(sign), findsOneWidget);
+        expect(tooltip(name), findsOneWidget);
+        expect(
+          tester.getSemantics(chip(type)),
+          isSemantics(label: name, isSelected: true, hasSelectedState: true),
+        );
+      }
+    });
+
+    for (final width in [320.0, 390.0, 800.0, 1440.0]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets('chips stay on one line at $width, text scale $scale', (
+          tester,
+        ) async {
+          await launch(tester, size: Size(width, 900), scale: scale);
+          final rects = [
+            for (final type in OperationType.values)
+              tester.getRect(tooltip(type.label)),
+          ];
+          final card = tester.getRect(
+            find.ancestor(
+              of: find.byKey(questionOnProblemsPageKey),
+              matching: find.byType(Card),
+            ),
+          );
+          for (final rect in rects) {
+            expect(rect.top, rects.first.top);
+            expect(rect.height, greaterThanOrEqualTo(48));
+            expect(rect.width, moreOrLessEquals(rects.first.width));
+          }
+          expect(rects.first.left, moreOrLessEquals(card.left));
+          expect(rects.last.right, moreOrLessEquals(card.right));
+          expect(tester.takeException(), isNull);
+        });
+      }
+    }
   });
 
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
@@ -293,10 +345,10 @@ void main() {
       find.byKey(nextQuestionButtonKey),
       find.byKey(hintButtonKey),
       find.byType(TextField),
-      ...find
-          .byType(FilterChip)
-          .evaluate()
-          .map((chip) => find.byWidget(chip.widget)),
+      for (final type in OperationType.values)
+        find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == type.label,
+        ),
     ]) {
       final size = tester.getSize(finder);
       expect(size.width, greaterThanOrEqualTo(48));

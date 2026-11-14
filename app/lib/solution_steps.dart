@@ -78,8 +78,8 @@ List<String> subtractionSteps(Problem problem) {
               'ten, and keep track of how far you went.',
     useHops
         ? 'Add the hops: ${hops.map((hop) => hop.$2 - hop.$1).join(' + ')} = '
-              '${_number(result)}. So $left - $right = ${_number(result)}.'
-        : 'So $left - $right = ${_number(result)}. '
+              '${_number(result)}. So $left − $right = ${_number(result)}.'
+        : 'So $left − $right = ${_number(result)}. '
               'Check: ${_number(result)} + $right = $left.',
   ];
 }

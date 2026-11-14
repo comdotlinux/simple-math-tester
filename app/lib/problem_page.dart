@@ -65,17 +65,18 @@ class _ProblemPageState extends State<ProblemPage> {
                     style: theme.textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                  Row(
                     children: [
-                      for (final type in OperationType.values)
-                        FilterChip(
-                          label: Text('${type.label} (${type.displayString})'),
-                          selected: model.selectedOperations.contains(type),
-                          onSelected: (_) => model.toggleOperation(type),
-                          materialTapTargetSize: MaterialTapTargetSize.padded,
+                      for (final type in OperationType.values) ...[
+                        if (type.index > 0) const SizedBox(width: 8),
+                        Expanded(
+                          child: _OperationToggle(
+                            type: type,
+                            selected: model.selectedOperations.contains(type),
+                            onPressed: () => model.toggleOperation(type),
+                          ),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -142,6 +143,47 @@ class _ProblemPageState extends State<ProblemPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _OperationToggle extends StatelessWidget {
+  const _OperationToggle({
+    required this.type,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final OperationType type;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return Tooltip(
+      message: type.label,
+      excludeFromSemantics: true,
+      // One node: the button's tap action, the name and the selected state.
+      child: MergeSemantics(
+        child: Semantics(
+          selected: selected,
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              backgroundColor: selected ? tokens.teal : null,
+              foregroundColor: selected ? tokens.paper : tokens.ink,
+              side: BorderSide(color: selected ? tokens.teal : tokens.muted),
+            ),
+            child: Text(
+              type.displayString,
+              semanticsLabel: type.label,
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

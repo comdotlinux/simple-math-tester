@@ -85,7 +85,7 @@ void main() {
     expect(solutionSteps(const Problem(12, 3, OperationType.minus, 9)), [
       'Find the difference between 12 and 3: what do you add to 3 to make 12?',
       'Hop to round numbers: from 3 up to 10 is 7; from 10 up to 12 is 2.',
-      'Add the hops: 7 + 2 = 9. So 12 - 3 = 9.',
+      'Add the hops: 7 + 2 = 9. So 12 − 3 = 9.',
     ]);
   });
 
@@ -94,7 +94,7 @@ void main() {
       'Find the difference between 13 and 3: what do you add to 3 to make 13?',
       'Count up from 3 to 13 in hops, for example to the next ten, and keep '
           'track of how far you went.',
-      'So 13 - 3 = 10. Check: 10 + 3 = 13.',
+      'So 13 − 3 = 10. Check: 10 + 3 = 13.',
     ]);
   });
 

@@ -11,9 +11,9 @@ num _divide(int lhs, int rhs) => lhs / rhs;
 /// its calculation and its step writer here and nowhere else.
 enum OperationType {
   plus('+', 'Addition', 2, 10000, 3, 10000, _add, additionSteps),
-  minus('-', 'Subtraction', 2, 10000, 0, 10000, _subtract, subtractionSteps),
+  minus('−', 'Subtraction', 2, 10000, 0, 10000, _subtract, subtractionSteps),
   multiply(
-    '*',
+    '×',
     'Multiplication',
     2,
     500,
@@ -22,7 +22,7 @@ enum OperationType {
     _multiply,
     multiplicationSteps,
   ),
-  divide('/', 'Division', 3, 1000, 2, 1000, _divide, divisionSteps);
+  divide('÷', 'Division', 3, 1000, 2, 1000, _divide, divisionSteps);
 
   final String displayString;
   final String label;
