@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
@@ -137,6 +138,39 @@ void settingsJourneys() {
       await tapVisible(tester, padKey('5'));
 
       expect(buzzes, [Haptic.key]);
+    });
+
+    testWidgets('Privacy shows the privacy policy inside the app', (
+      tester,
+    ) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      await openSettings(tester);
+
+      await tapKey(tester, privacyTileKey);
+
+      expect(find.byKey(privacyPageKey), findsOneWidget);
+      expect(find.text('Privacy policy'), findsOneWidget);
+      expect(find.textContaining('collects no personal data'), findsOneWidget);
+    });
+
+    // Never opens the real page: the opener only records the address.
+    testWidgets('Impressum asks the browser for the production Impressum', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await startHarness(
+        tester,
+        progress: Progress(tier: Tier.easy),
+        clock: DateTime.now,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await openSettings(tester);
+
+      await tapKey(tester, impressumTileKey);
+
+      expect(opened, [impressumUrl]);
+      expect(impressumUrl.toString(), 'https://math.munich-tech.de/impressum');
+      expect(find.byKey(settingsSheetKey), findsNothing);
     });
 
     testWidgets('the app follows the system light or dark setting', (

@@ -9,6 +9,7 @@ import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/celebration.dart';
 import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -67,6 +68,7 @@ void main() {
     bool haptics = true,
     ProgressStore? store,
     bool canSave = true,
+    Future<bool> Function(Uri)? openLink,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -82,6 +84,7 @@ void main() {
       haptic: haptic,
       store: store,
       canSave: canSave,
+      openLink: openLink,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -800,6 +803,73 @@ void main() {
       expect(find.byKey(settingsSheetKey), findsNothing);
       expect(model.current.question, '12 + 3');
     });
+
+    Future<void> tapInSheet(WidgetTester tester, Key key) async {
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(key));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('criterion 61: Privacy shows the bundled policy offline', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        size: const Size(320, 640),
+        scale: 2,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tapInSheet(tester, privacyTileKey);
+
+      expect(find.byKey(privacyPageKey), findsOneWidget);
+      expect(find.text('Privacy policy'), findsOneWidget);
+      // The list is lazy; the Turnstile paragraph is below the fold.
+      await tester.scrollUntilVisible(
+        find.textContaining('loads Cloudflare Turnstile'),
+        300,
+      );
+      expect(opened, isEmpty);
+      expect(tester.takeException(), isNull);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byKey(privacyPageKey), findsNothing);
+      expect(find.byKey(settingsSheetKey), findsOneWidget);
+    });
+
+    testWidgets('criterion 61: Impressum opens the production page', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tapInSheet(tester, impressumTileKey);
+
+      expect(opened, [Uri.parse('https://math.munich-tech.de/impressum')]);
+      expect(opened.single, impressumUrl);
+      expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
+      ('reports false', (_) async => false),
+      ('throws', (_) async => throw StateError('no browser')),
+    ]) {
+      testWidgets('when the opener $name, a notice says so', (tester) async {
+        await launch(tester, openLink: opener);
+        await tapInSheet(tester, impressumTileKey);
+
+        expect(find.text('The browser did not open.'), findsOneWidget);
+      });
+    }
   });
 
   group('header', () {

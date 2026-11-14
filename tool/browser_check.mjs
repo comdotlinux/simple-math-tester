@@ -188,6 +188,17 @@ try {
   await openApp(page, '/');
   await expectHistory(page, 4);
   check(true, 'offline reload after the update renders the app');
+
+  // Offline, the Impressum address gets its cached shell, not the app, and
+  // the shell shows its error line because Turnstile cannot load.
+  for (const path of ['/impressum', '/impressum.html']) {
+    await page.goto(origin + path);
+    await page.getByText('The Impressum could not be loaded.').waitFor();
+    check(
+      (await page.title()).startsWith('Impressum'),
+      `offline ${path} shows the Impressum shell with its error line`,
+    );
+  }
 } finally {
   await stopServer();
   await browser.close();

@@ -21,6 +21,7 @@ Future<void> main() async {
 Future<void> bootstrap(
   ProgressStore store, [
   SoundPlayer sounds = const SilentSoundPlayer(),
+  Future<bool> Function(Uri)? openLink,
 ]) async {
   final loaded = await loadProgress(store);
   runApp(
@@ -35,6 +36,7 @@ Future<void> bootstrap(
             canSave: loaded.canSave,
             haptic: playHaptic,
             sounds: sounds,
+            openLink: openLink,
           ),
         ),
       ],
