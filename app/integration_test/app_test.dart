@@ -1,3 +1,4 @@
+import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -26,6 +27,24 @@ Future<Finder> inHistory(WidgetTester tester, Finder finder) async {
   await tester.ensureVisible(finder.first);
   await tester.pumpAndSettle();
   return finder;
+}
+
+// find.bySemanticsLabel reads RenderObject.debugSemantics, which is always
+// null in release builds, so it never matches there. This counts the nodes
+// of the live semantics tree, which exists in every build mode.
+int semanticsNodesLabelled(WidgetTester tester, String label) {
+  var count = 0;
+  bool visit(SemanticsNode node) {
+    if (node.label == label) count++;
+    node.visitChildren(visit);
+    return true;
+  }
+
+  for (final view in tester.binding.renderViews) {
+    final root = view.owner?.semanticsOwner?.rootSemanticsNode;
+    if (root != null) visit(root);
+  }
+  return count;
 }
 
 void main() {
@@ -74,7 +93,7 @@ void main() {
     expect(model.history, hasLength(3));
     expect(model.game.xp, 250);
     expect(model.shownStreak, 3);
-    expect(find.bySemanticsLabel('Daily streak: 3'), findsOneWidget);
+    expect(semanticsNodesLabelled(tester, 'Daily streak: 3'), 1);
     expect(find.text('Level 2 · 250 XP'), findsOneWidget);
     // The first problem and the next both follow the saved selection.
     expect(model.current.kind, OperationType.multiply);
@@ -116,7 +135,21 @@ void main() {
       await tester.ensureVisible(find.byType(TextField));
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), formatNumber(answer));
+      // Types through the same entry point the platform's keyboard uses.
+      // tester.enterText cannot be used: integration tests have no fake text
+      // input, and the framework drops its client id -1 message when asserts
+      // are off, so in release and profile builds the field stayed empty.
+      // The answer is formatted as the app shows numbers, so 4.0 is typed 4.
+      final text = formatNumber(answer);
+      tester
+          .state<EditableTextState>(find.byType(EditableText))
+          .updateEditingValue(
+            TextEditingValue(
+              text: text,
+              selection: TextSelection.collapsed(offset: text.length),
+            ),
+          );
+      await tester.pump();
       await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
       await tester.tap(find.byKey(checkAnswerButtonKey));
       await tester.pumpAndSettle();

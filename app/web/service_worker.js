@@ -6,36 +6,46 @@ const BUILD = 'dev';
 const CACHE = `app-${BUILD}`;
 const MANIFEST = 'precache_manifest.json';
 const NEVER_CACHED = new Set(['_headers', '_redirects', 'service_worker.js']);
+const NETWORK_TIMEOUT_MS = 4000;
 
 const scopePath = new URL(self.registration.scope).pathname;
 // The page is cached as "./" because the host redirects index.html there.
 const cacheKey = (url) => (url === 'index.html' ? './' : url);
 
+// Each cache is a snapshot of one build, filled completely at install and
+// never changed afterwards, so an offline start always gets matching files.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // A missing manifest (development and flutter drive servers) fails the install.
-      const response = await fetch(MANIFEST, { cache: 'no-cache' });
-      if (!response.ok) throw new Error(`${MANIFEST}: HTTP ${response.status}`);
-      const { entries } = await response.clone().json();
-      // skwasm and its wimp variant are only loaded by --wasm builds.
-      const wasm = entries.some((e) => /^main\.dart\..*wasm$/.test(e.url));
-      const previous = await previousBuild();
-      const cache = await caches.open(CACHE);
-      await Promise.all(
-        entries
-          .filter((e) => !NEVER_CACHED.has(e.url))
-          .filter((e) => wasm || !/^canvaskit\/(skwasm|wimp)/.test(e.url))
-          .map(async (e) => {
-            const key = cacheKey(e.url);
-            const unchanged =
-              previous?.hashes.get(e.url) === e.hash &&
-              (await previous.cache.match(key));
-            await cache.put(key, unchanged || (await download(key)));
-          }),
-      );
-      // Stored last: its presence marks this cache complete for the next install.
-      await cache.put(MANIFEST, response);
+      try {
+        // A missing manifest (development and flutter drive servers) fails the install.
+        const manifest = await download(MANIFEST);
+        const { entries } = await manifest.clone().json();
+        // skwasm and its wimp variant are only loaded by --wasm builds.
+        const wasm = entries.some((e) => /^main\.dart\..*wasm$/.test(e.url));
+        const previous = await previousBuild();
+        const cache = await caches.open(CACHE);
+        await Promise.all(
+          entries
+            .filter((e) => !NEVER_CACHED.has(e.url))
+            .filter((e) => wasm || !/^canvaskit\/(skwasm|wimp)/.test(e.url))
+            .map(async (e) => {
+              const key = cacheKey(e.url);
+              // Only a hashed name guarantees unchanged content.
+              const unchanged =
+                e.urlHashed &&
+                previous?.hashes.get(e.url) === e.hash &&
+                (await previous.cache.match(key));
+              await cache.put(key, unchanged || (await download(key)));
+            }),
+        );
+        // Stored last: its presence marks this cache complete for the next install.
+        await cache.put(MANIFEST, manifest);
+      } catch (error) {
+        // All or nothing: the previous worker and its cache stay in charge.
+        await caches.delete(CACHE);
+        throw error;
+      }
       await self.skipWaiting();
     })(),
   );
@@ -57,13 +67,14 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (
     request.method !== 'GET' ||
+    request.headers.has('range') ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith('/api/')
   ) {
     return;
   }
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, './', false));
+    event.respondWith(networkFirst(request, './'));
     return;
   }
   const path = url.pathname.slice(scopePath.length);
@@ -71,34 +82,37 @@ self.addEventListener('fetch', (event) => {
     (async () => {
       const entry = (await manifestEntries()).get(path);
       if (!entry) return fetch(request);
-      if (entry.urlHashed) {
-        return (await (await caches.open(CACHE)).match(path)) || fetch(request);
-      }
-      return networkFirst(request, cacheKey(path), true);
+      if (entry.urlHashed) return (await cached(path)) || fetch(request);
+      return networkFirst(request, cacheKey(path));
     })(),
   );
 });
 
-async function networkFirst(request, key, writeBack) {
-  const cache = await caches.open(CACHE);
+// The network answer, or the snapshot's when the network fails or hangs.
+async function networkFirst(request, key) {
+  const network = fetch(request);
+  const fallback = await cached(key);
+  if (!fallback) return network;
+  network.catch(() => {});
+  const timeout = new Promise((resolve) => setTimeout(resolve, NETWORK_TIMEOUT_MS, fallback));
   try {
-    const response = await fetch(request);
-    if (writeBack && response.ok) await cache.put(key, await rebuilt(response.clone()));
-    return response;
-  } catch (error) {
-    const cached = await cache.match(key);
-    if (cached) return cached;
-    throw error;
+    return await Promise.race([network, timeout]);
+  } catch {
+    return fallback;
   }
 }
 
+// Does not create the cache, unlike caches.open().
+function cached(key) {
+  return caches.match(key, { cacheName: CACHE });
+}
+
 let entriesByUrl;
-function manifestEntries() {
-  entriesByUrl ??= (async () => {
-    const response = await (await caches.open(CACHE)).match(MANIFEST);
-    const entries = response ? (await response.json()).entries : [];
-    return new Map(entries.map((e) => [e.url, e]));
-  })();
+async function manifestEntries() {
+  if (entriesByUrl) return entriesByUrl;
+  const response = await cached(MANIFEST);
+  if (!response) return new Map();
+  entriesByUrl = new Map((await response.json()).entries.map((e) => [e.url, e]));
   return entriesByUrl;
 }
 
@@ -116,7 +130,9 @@ async function previousBuild() {
 
 async function download(url) {
   const response = await fetch(url, { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
+  if (response.status !== 200 || response.type !== 'basic') {
+    throw new Error(`${url}: HTTP ${response.status} ${response.type}`);
+  }
   return rebuilt(response);
 }
 
