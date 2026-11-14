@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'operations.dart';
+import 'rules.dart';
 
 /// The stored document was written by a newer build; it must not be replaced.
 class NewerProgressException implements Exception {
@@ -17,16 +19,25 @@ class NewerProgressException implements Exception {
 /// Everything the app saves, as one immutable JSON document.
 ///
 /// Decoding never drops data written by another build: unknown top-level
-/// fields, unknown operation names in the selection and history entries of
-/// an unknown kind are kept and encoded again unchanged.
+/// fields, unknown operation names in the selection, per-operation entries
+/// and history entries of an unknown kind are kept and encoded again
+/// unchanged.
 class Progress {
+  /// An operation missing from [difficulty] starts at [tier]'s level, or at
+  /// level 1 without a tier, so a tier never comes with other levels unless
+  /// they are given.
   Progress({
     Set<OperationType>? selectedOperations,
     List<Attempt> history = const [],
+    Tier? tier,
+    Map<OperationType, Difficulty> difficulty = const {},
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
          history,
+         tier,
+         difficulty,
+         const {},
          const {},
        );
 
@@ -34,12 +45,20 @@ class Progress {
     Set<OperationType> selected,
     List<String> unknownSelected,
     List<Object> entries,
+    this.tier,
+    Map<OperationType, Difficulty> difficulty,
+    Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
         selected.isEmpty ? OperationType.values : selected,
       ),
       _unknownSelected = List.unmodifiable(unknownSelected),
       _entries = List.unmodifiable(_capped(entries)),
+      difficulty = Map.unmodifiable({
+        for (final type in OperationType.values)
+          type: difficulty[type] ?? Difficulty(level: tier?.level ?? 1),
+      }),
+      _unknownOperations = Map.unmodifiable(unknownOperations),
       extra = Map.unmodifiable(extra) {
     history = List.unmodifiable(_entries.whereType<Attempt>());
   }
@@ -56,20 +75,51 @@ class Progress {
   /// Top-level fields this build does not know, written back unchanged.
   final Map<String, Object?> extra;
 
+  /// Absent until the player picks one.
+  final Tier? tier;
+
+  /// Every known operation's level, counters and totals.
+  final Map<OperationType, Difficulty> difficulty;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
   final List<Object> _entries;
 
-  Progress withAttempt(Attempt attempt) => Progress._(
-    selectedOperations,
-    _unknownSelected,
-    [..._entries, attempt],
-    extra,
-  );
+  /// Raw per-operation entries of unknown kinds, by kind name.
+  final Map<String, Object?> _unknownOperations;
+
+  Progress withAttempt(Attempt attempt) =>
+      _copy(entries: [..._entries, attempt]);
 
   Progress withSelectedOperations(Set<OperationType> selected) =>
-      Progress._(selected, _unknownSelected, _entries, extra);
+      _copy(selected: selected);
+
+  Progress withDifficulty(OperationType type, Difficulty value) =>
+      _copy(difficulty: {...difficulty, type: value});
+
+  /// Sets [tier] and resets every known operation to its level.
+  Progress withTier(Tier tier) => _copy(
+    tier: tier,
+    difficulty: difficulty.map(
+      (type, value) => MapEntry(type, value.atTier(tier)),
+    ),
+  );
+
+  Progress _copy({
+    Set<OperationType>? selected,
+    List<Object>? entries,
+    Tier? tier,
+    Map<OperationType, Difficulty>? difficulty,
+  }) => Progress._(
+    selected ?? selectedOperations,
+    _unknownSelected,
+    entries ?? _entries,
+    tier ?? this.tier,
+    difficulty ?? this.difficulty,
+    _unknownOperations,
+    extra,
+  );
 
   /// Drops the oldest attempts beyond [historyCap]; unknown entries stay.
   static List<Object> _capped(List<Object> entries) {
@@ -93,6 +143,12 @@ class Progress {
       for (final entry in _entries)
         entry is Attempt ? _encodeAttempt(entry) : entry,
     ],
+    'operations': {
+      for (final MapEntry(:key, :value) in difficulty.entries)
+        key.name: _encodeDifficulty(value),
+      ..._unknownOperations,
+    },
+    'tier': ?tier?.name,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -126,11 +182,68 @@ class Progress {
       entries.add(kind == null ? entry : _decodeAttempt(entry, kind));
     }
 
-    const known = {'schemaVersion', 'selectedOperations', 'history'};
-    return Progress._(selected, unknownSelected, entries, {
-      for (final MapEntry(:key, :value) in json.entries)
-        if (!known.contains(key)) key: value,
-    });
+    final difficulty = <OperationType, Difficulty>{};
+    final unknownOperations = <String, Object?>{};
+    for (final MapEntry(:key, :value)
+        in (_field<Map<String, Object?>>(json, 'operations') ?? const {})
+            .entries) {
+      final kind = _kinds[key];
+      if (kind == null) {
+        unknownOperations[key] = value;
+      } else if (value is Map<String, Object?>) {
+        difficulty[kind] = _decodeDifficulty(value);
+      } else {
+        throw FormatException('operations.$key is not an object', value);
+      }
+    }
+
+    // A tier name this build does not know asks the player again.
+    final tier = Tier.values.asNameMap()[_field<String>(json, 'tier')];
+
+    const known = {
+      'schemaVersion',
+      'selectedOperations',
+      'history',
+      'operations',
+      'tier',
+    };
+    return Progress._(
+      selected,
+      unknownSelected,
+      entries,
+      tier,
+      difficulty,
+      unknownOperations,
+      {
+        for (final MapEntry(:key, :value) in json.entries)
+          if (!known.contains(key)) key: value,
+      },
+    );
+  }
+
+  static Map<String, Object?> _encodeDifficulty(Difficulty value) => {
+    'level': value.level,
+    'upCount': value.upCount,
+    'downCount': value.downCount,
+    'answered': value.answered,
+    'correct': value.correct,
+  };
+
+  /// Values the rule cannot produce are clamped: a level outside the table
+  /// has no ranges to draw from, and a counter at its threshold has already
+  /// been reset.
+  static Difficulty _decodeDifficulty(Map<String, Object?> json) {
+    final answered = max(_field<int>(json, 'answered') ?? 0, 0);
+    return Difficulty(
+      level: (_field<int>(json, 'level') ?? 1).clamp(1, maxLevel),
+      upCount: (_field<int>(json, 'upCount') ?? 0).clamp(0, levelUpAfter - 1),
+      downCount: (_field<int>(json, 'downCount') ?? 0).clamp(
+        0,
+        levelDownAfter - 1,
+      ),
+      answered: answered,
+      correct: (_field<int>(json, 'correct') ?? 0).clamp(0, answered),
+    );
   }
 
   static final _kinds = OperationType.values.asNameMap();
