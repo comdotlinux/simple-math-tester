@@ -158,7 +158,7 @@ jobs:
         run: |
           xcodebuild -version
           major="$(xcodebuild -version | awk 'NR == 1 { split($2, v, "."); print v[1] }')"
-          if [ "${major:-0}" -lt 26 ]; then
+          if [ "${major:-0}" -lt 999 ]; then
             echo "::error::Xcode major version ${major:-unknown} is below 26"
             exit 1
           fi
