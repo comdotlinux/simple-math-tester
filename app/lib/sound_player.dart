@@ -53,10 +53,17 @@ class AudioplayersSoundPlayer implements SoundPlayer {
       AudioPlayer.global.setAudioContext(feedbackAudioContext);
 
   static Future<Future<void> Function()> _loadPool(String path) async {
-    final pool = await AudioPool.createFromAsset(
-      path: await bundledSoundPath(path),
-      maxPlayers: 3,
-    );
+    final bundled = await bundledSoundPath(path);
+    // On web an audio element fetches its file with a Range header, which
+    // the service worker leaves to the network; bytes read through the
+    // asset bundle come from its cache, so sound also plays offline.
+    final source = kIsWeb
+        ? BytesSource(
+            (await rootBundle.load('assets/$bundled')).buffer.asUint8List(),
+            mimeType: 'audio/wav',
+          )
+        : AssetSource(bundled);
+    final pool = await AudioPool.create(source: source, maxPlayers: 3);
     return pool.start;
   }
 
