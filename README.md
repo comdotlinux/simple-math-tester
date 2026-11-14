@@ -37,8 +37,9 @@ named journeys of every feature. See `app/integration_test/README.md` for the
 layout, the feature inventory, and the rule that every feature or fix adds a
 journey. On a headless Linux host, prefix it with `xvfb-run -a`.
 
-CI runs web checks first, then Linux integration. The Chrome and offline checks,
-Cloudflare deployment, and the Android and iOS jobs then run in parallel.
+CI runs web checks and the Impressum function tests first, then Linux
+integration. The Chrome and offline checks, Cloudflare deployment, and the
+Android and iOS jobs then run in parallel.
 Pull requests skip the Android and iOS jobs (builds, emulators, simulator) to keep
 rounds short; they run on every push to `main` and on manual runs ("Run
 workflow", environment `none` runs all checks without deploying). Deployment
@@ -67,6 +68,29 @@ mise exec -- flutter build ios --release --no-codesign
 
 See `DESIGN.md` for the visual and accessibility contract. Session answers remain
 in memory and are cleared when the app restarts.
+
+## Impressum
+
+The web build's `/impressum` page (`app/web/impressum.html`) shows the provider
+identification only after a Cloudflare Turnstile check. The Pages Function
+`functions/api/impressum.js` (deployed with the site, because the deploy command
+runs at the repository root) verifies the token and returns the text. It reads two
+secrets, set on the Pages project's Production environment only (preview
+deployments answer 500): `TURNSTILE_SECRET_KEY` and `IMPRESSUM_TEXT`. Neither the
+text nor the secret is in this repository. The site key is public and sits in
+`impressum.html`; see walkthrough row 4b in `docs/play-store.md`. The app's
+settings sheet links to the page and shows the privacy policy offline from
+`app/lib/legal.dart`, which a test keeps equal to `app/web/privacy.html`.
+
+Test the function from the repository root with Node 22 or later (no install
+needed; two tests call Cloudflare's verification with its published test keys and
+are skipped when it is unreachable):
+
+```sh
+node --test tool/functions_test/
+```
+
+CI runs this in its own job beside the web checks; deployment waits for it.
 
 ## Modernization record
 

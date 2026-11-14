@@ -57,6 +57,19 @@ jobs:
       - run: flutter build web --release --no-web-resources-cdn --web-content-hash
       - name: Stamp the service worker with this build
         run: ../tool/stamp_service_worker.sh build/web
+      # Criterion 61: both pages ship and are precached; the Impressum shell has the
+      # Turnstile widget and no personal data (no postcode-like number, no e-mail).
+      - name: Check the privacy and Impressum pages
+        run: |
+          for page in privacy.html impressum.html; do
+            test -f "build/web/$page"
+            jq -e --arg page "$page" 'any(.entries[]; .url == $page)' build/web/precache_manifest.json > /dev/null
+          done
+          grep -q 'class="cf-turnstile"' build/web/impressum.html
+          if grep -nE '\b[0-9]{5}\b|@' build/web/impressum.html; then
+            echo "::error::impressum.html looks like it contains an address or e-mail"
+            exit 1
+          fi
       - name: Upload tested web build
         uses: actions/upload-artifact@v7
         with:
@@ -64,6 +77,18 @@ jobs:
           path: app/build/web
           retention-days: 3
           if-no-files-found: error
+
+  # Runs beside the web job; the deploy waits for it, so a broken function never ships.
+  functions:
+    name: Test the Impressum function
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - run: node --test tool/functions_test/
 
   linux-integration:
     name: Launch Linux app and test user journeys
@@ -404,7 +429,7 @@ jobs:
 
   deploy:
     name: Deploy to Cloudflare Pages
-    needs: linux-integration
+    needs: [linux-integration, functions]
     if: >-
       (github.event_name == 'workflow_dispatch' &&
         github.event.inputs.environment-name != 'none') ||
@@ -427,5 +452,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Run at the repository root, so functions/ (the Impressum route) is uploaded too.
           command: pages deploy app/build/web --project-name=simple-math-tester
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

@@ -5,7 +5,9 @@ menu names are written from memory; check them against the live console while
 following the walkthrough. Facts behind the answers: the app's own code collects
 no personal data, stores progress only on the device, has no accounts, no
 analytics and no ads, and the Android release build requests no internet access
-(`app/android/expected-permissions.txt` lists its only permission).
+(`app/android/expected-permissions.txt` lists its only permission). Its one link
+out is the Impressum entry in the settings, which opens
+`https://simple-math-tester.pages.dev/impressum` in the system browser.
 
 ## Store listing
 
@@ -18,7 +20,7 @@ analytics and no ads, and the Android release build requests no internet access
 | Category | Education |
 | Tags (optional) | Math, Education |
 | Contact e-mail | The owner's developer e-mail (shown publicly on the listing) |
-| Website | `https://simple-math-tester.pages.dev/impressum` (live after the second 8a pull request; see below) |
+| Website | `https://simple-math-tester.pages.dev/impressum` (the Impressum; works once walkthrough row 4b is done) |
 | Privacy policy URL | `https://simple-math-tester.pages.dev/privacy.html` (see below) |
 
 The address is the Cloudflare Pages project `simple-math-tester` at its default
@@ -89,7 +91,9 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 - Users can interact or exchange content with each other: No.
 - Shares the user's location with others: No.
 - Digital purchases: No.
-- Unrestricted internet or web browsing: No.
+- Unrestricted internet or web browsing: No. (The settings sheet has one link,
+  to the developer's Impressum, which opens in the system browser; the app has
+  no browser of its own.)
 - Expected result: Everyone / PEGI 3 / USK 0.
 
 ### Families Policy
@@ -97,9 +101,16 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 - Target age groups: 6 to 8 and 9 to 12; the app is designed for children.
 - Ads: none, so no Families Self-Certified Ads SDK is needed.
 - Data from children: none collected or transmitted. The included packages
-  (`shared_preferences`, `audioplayers`, `provider`, `duration`, `material_ui`)
-  work on the device only and send nothing.
-- No accounts, no social features, no links out of the app, no purchases.
+  (`shared_preferences`, `audioplayers`, `provider`, `duration`, `material_ui`,
+  `url_launcher`) work on the device only and send nothing; `url_launcher` only
+  hands the Impressum address to the system browser.
+- No accounts, no social features, no purchases.
+- Links out of the app: one, the "Impressum" entry in the settings sheet (behind
+  the gear icon, not on the practice screen). It opens the developer's
+  provider identification on the app's own website in the system browser. That
+  page loads Cloudflare Turnstile (a bot check that receives the visitor's IP
+  address and browser signals); the privacy policy says so. The privacy policy
+  itself is shown inside the app and needs no connection.
 - Teacher Approved: optional, not applied for.
 
 ### Data safety
@@ -107,6 +118,10 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 - Does the app collect or share any of the required user data types? No.
 - With "No", the form asks no further data questions. Encryption in transit and
   deletion requests do not apply because nothing is collected.
+- The Impressum link opens a web page in the browser; the app itself sends
+  nothing. Cloudflare Turnstile on that page is part of the website, not of the
+  app, and is described in the privacy policy, so the answer stays "No". If
+  Play Console asks about links to websites, describe this one link.
 - Independent security review: No.
 
 ## Points for a lawyer or the data-protection authority
