@@ -92,7 +92,8 @@ class CelebrationPainter extends CustomPainter {
   final List<Color> colors;
   final Color outline;
 
-  static const _count = 36;
+  /// Five times the first burst of 36: the owner found 36 too thin to pop.
+  static const _count = 180;
 
   /// In area heights per unit of time squared: what is thrown up at the
   /// fastest speed lands back at its starting height at the end.
