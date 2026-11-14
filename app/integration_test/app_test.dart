@@ -8,12 +8,14 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
+import 'package:simple_math_tester/rules.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   // Each test writes its own starting document through the real plugin, so
-  // test order and data left by earlier runs do not matter.
+  // test order and data left by earlier runs do not matter. Both choose a
+  // tier, so the tier picker does not cover the practice page.
   Future<void> startWith(WidgetTester tester, Progress progress) async {
     await SharedPreferencesStore().write(progressKey, progress.encode());
     await app.main();
@@ -24,6 +26,7 @@ void main() {
     await startWith(
       tester,
       Progress(
+        tier: Tier.easy,
         selectedOperations: {OperationType.multiply},
         history: [
           for (final lhs in [3, 4, 5])
@@ -66,7 +69,7 @@ void main() {
   });
 
   testWidgets('real app solution and history journeys', (tester) async {
-    await startWith(tester, Progress());
+    await startWith(tester, Progress(tier: Tier.easy));
 
     final context = tester.element(find.byKey(homePageKey));
     final model = context.read<MathTesterModel>();
