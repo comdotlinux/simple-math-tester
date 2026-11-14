@@ -169,6 +169,18 @@ Android debug certificate and checks 16 KB page support of the APKs built from
 the bundle. Pull requests build no Android or iOS app. On `main` the bundle (and
 the APK and iOS app in `flutter-checks.yml`) is built, checked and discarded.
 
+Locally, `app/android/key.properties` (git-ignored) selects the upload key:
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=...
+keyPassword=...
+keyAlias=upload
+```
+
+Without that file, release builds are debug-signed and Gradle prints
+`Release signing: debug signing (no key.properties)`.
+
 ## Releasing to Play
 
 A published GitHub release builds the bundle with the release's version and
@@ -201,15 +213,3 @@ Each release:
    production when ready.
 
 The App Store (iOS) is not set up yet.
-
-Locally, `app/android/key.properties` (git-ignored) selects the upload key:
-
-```properties
-storeFile=/absolute/path/to/upload-keystore.jks
-storePassword=...
-keyPassword=...
-keyAlias=upload
-```
-
-Without that file, release builds are debug-signed and Gradle prints
-`Release signing: debug signing (no key.properties)`.
