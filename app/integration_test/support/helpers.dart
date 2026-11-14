@@ -11,6 +11,7 @@ import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
+import 'package:simple_math_tester/sound_player.dart';
 
 /// Writes [progress] as the saved document through the real plugin, then
 /// launches the real app on it, so no test depends on another or on data
@@ -29,9 +30,14 @@ Future<void> startWithRaw(WidgetTester tester, String document) async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     if (await store.read(progressKey) == document) break;
   }
-  await app.main();
+  await launch();
   await tester.pumpAndSettle();
 }
+
+/// The real entry point's startup on the real plugin, without audio: the
+/// test devices may have no sound output.
+Future<void> launch() =>
+    app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
 
 /// Closes and reopens the app once the saved document passes [saved]: the
 /// new app reads only what the old one wrote.
@@ -40,7 +46,7 @@ Future<void> restartWhenSaved(
   bool Function(Progress progress) saved,
 ) async {
   await waitForSaved(saved);
-  await app.main();
+  await launch();
   await tester.pumpAndSettle();
 }
 
@@ -61,13 +67,15 @@ Future<Progress> savedProgress() async =>
 
 /// Runs the real app widget on a model the test builds, for what the real
 /// entry point cannot reach in reasonable time: a clock to move, ticks to
-/// send and vibrations to count. Nothing is written through the plugin.
+/// send, and vibrations and sounds to count. Nothing is written through the
+/// plugin.
 Future<MathTesterModel> startHarness(
   WidgetTester tester, {
   required Progress progress,
   required DateTime Function() clock,
   Stream<void> Function()? ticker,
   void Function(Haptic)? haptic,
+  SoundPlayer sounds = const SilentSoundPlayer(),
   MemoryProgressStore? store,
 }) async {
   final model = MathTesterModel(
@@ -75,6 +83,7 @@ Future<MathTesterModel> startHarness(
     clock: clock,
     ticker: ticker,
     haptic: haptic,
+    sounds: sounds,
     store: store ?? MemoryProgressStore(),
   );
   runApp(

@@ -8,6 +8,7 @@ import 'journeys/operations_journeys.dart';
 import 'journeys/persistence_journeys.dart';
 import 'journeys/practice_journeys.dart';
 import 'journeys/settings_journeys.dart';
+import 'journeys/sound_journeys.dart';
 import 'journeys/sprint_journeys.dart';
 import 'journeys/tier_picker_journeys.dart';
 
@@ -25,5 +26,6 @@ void main() {
   gameLoopJourneys();
   sprintJourneys();
   settingsJourneys();
+  soundJourneys();
   persistenceJourneys();
 }

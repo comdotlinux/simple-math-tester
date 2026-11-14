@@ -116,16 +116,6 @@ void settingsJourneys() {
       expect(buzzes, [Haptic.key]);
     });
 
-    testWidgets('the Sound switch stays hidden until the app plays sound', (
-      tester,
-    ) async {
-      await startWith(tester, Progress(tier: Tier.easy));
-
-      await openSettings(tester);
-
-      expect(find.byKey(soundSwitchKey), findsNothing);
-    });
-
     testWidgets('the app follows the system light or dark setting', (
       tester,
     ) async {
