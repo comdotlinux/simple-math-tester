@@ -60,7 +60,7 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 |---|---|---|
 | App icon | 512 x 512 PNG | [`play-store/icon-512.png`](play-store/icon-512.png) |
 | Feature graphic | 1024 x 500 PNG or JPEG, no alpha | [`play-store/feature-graphic-1024x500.png`](play-store/feature-graphic-1024x500.png) |
-| Phone screenshots | At least 2 | Not yet in the folder. Capture them from the app (for example with `app/tool/screenshots_test.dart`) and add them to `docs/play-store/`. The internal track accepts the listing without final graphics. |
+| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 | `play-store/phone-1-practice.png` to `play-store/phone-6-dark.png`, uploaded in that order |
 
 ## App content declarations
 

@@ -131,7 +131,12 @@ void main() {
     final render =
         boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
-      final image = await render.toImage();
+      // SCREENSHOT_PIXEL_RATIO=3 at 360x640 gives Play's 1080x1920.
+      final image = await render.toImage(
+        pixelRatio: double.parse(
+          Platform.environment['SCREENSHOT_PIXEL_RATIO'] ?? '1',
+        ),
+      );
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       File('$dir/$name.png')
         ..createSync(recursive: true)
