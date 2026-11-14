@@ -61,24 +61,33 @@ A new problem is drawn after a reload.
    reducible, and both themes keep full contrast.
 
 ## Visual language
-- Two themes follow the system setting: light playful and dark neon. Flat solid
-  colours, no purple, no gradients. Pale accents always use dark ink.
-- Heavy numerals and large type for the problem. Use bundled Flutter typography; no
-  network-loaded fonts or new font package. Weight and scale carry hierarchy. Body
-  at least 16px; avoid uppercase paragraph text.
-- Spacing 8/12/16/24/32/48; 24–32px main card radii. Hard offset shadows give
-  buttons a pressed look; no soft heavy shadows. Large editorial heading, small
-  section label.
+- Two themes follow the system setting. Light playful: warm sunny page `#FFF6E3`,
+  white cards, navy ink `#18213B` for text, outlines and slabs. Dark neon: near-black
+  page `#0B0F17`, card `#161C29`, warm white ink `#F5F2E9`, aqua outlines `#5CE1E6`
+  over deep teal slabs `#1C5A66`. Flat solid colours, no purple, no gradients.
+- Colour has one job in both themes: yellow primary action, blue operations, green
+  correct and daily goal, tomato wrong, orange streak flame, teal XP, lime combo,
+  cyan sprint. Accents are fills; text and icons on them use their `on` colour
+  (navy in light, near-black in dark). Every pair is listed in `contrastPairs`.
+- Depth: 2px outlines and a hard 5px slab below raised cards and buttons, no blur.
+  A pressed button sinks to 1px. Unselected toggles sit flat on a sunken fill.
+- Bundled Roboto 400/500/700 only. Question 64px Bold with tabular figures; titles
+  36px Bold; body at least 16px; avoid uppercase paragraph text. Weight and scale
+  carry hierarchy.
+- Spacing 8/12/16/24/32/48; radii 28px cards, 18px controls.
 - Decorative arithmetic shapes made with native widgets, excluded from semantics.
 - Feedback motion (pop on correct, shake on wrong, XP count-up, particle burst on
   level-up and goal) stays brief; zero duration under disableAnimations.
 - Sound has a switch; haptics have a switch. Both default on.
 
 ## Components
-`app/lib/app_theme.dart` owns colors and global theme; both themes share one set of
-tokens. Adaptive navigation shell, persistent header, practice workbook card, answer
-field, number pad, feedback strip, sprint card and results rows share tokens.
-Buttons have minimum 48px height. No general-purpose component framework needed.
+`app/lib/app_theme.dart` owns colours, shape values and every component theme; the
+`AppTokens` roles exist once per theme and no widget names a colour. `Slab`
+(`app/lib/slab.dart`) is the one shared widget: the hard slab under a card or
+button. Adaptive navigation shell, game-style header (flame, goal ring, combo, XP
+bar), question card with an operation band, one row of four operation toggles,
+answer field, feedback strip, hint steps, sprint card, stats chips and result rows
+share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
 The on-screen number pad has digits, backspace and a large Check key. It edits the
 same text field. A keyboard toggle hides the pad and opens the system keyboard, so
 dictation and IME stay reachable; a hardware keyboard always types and Enter checks.

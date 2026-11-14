@@ -12,3 +12,7 @@ const revealStepButtonKey = Key('reveal-step-button');
 const settingsButtonKey = Key('settings-button');
 const settingsSheetKey = Key('settings-sheet');
 const tierPickerKey = Key('tier-picker');
+const hudKey = Key('hud');
+const sprintButtonKey = Key('sprint-button');
+const sprintCountdownKey = Key('sprint-countdown');
+const sprintResultKey = Key('sprint-result');

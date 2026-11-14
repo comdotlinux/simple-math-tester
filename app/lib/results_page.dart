@@ -8,6 +8,8 @@ import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
+import 'rules.dart';
+import 'slab.dart';
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
@@ -43,13 +45,15 @@ class ResultsPage extends StatelessWidget {
                         if (history.isEmpty)
                           _emptyState(context)
                         else ...[
+                          const _Stats(),
+                          const SizedBox(height: 24),
                           Text(
                             history.length == 1
                                 ? '1 question completed.'
                                 : '${history.length} questions completed.',
                             style: theme.textTheme.titleLarge,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           if (!useCards) _tableHeader(context),
                         ],
                       ],
@@ -59,7 +63,7 @@ class ResultsPage extends StatelessWidget {
                     itemCount: history.length,
                     itemBuilder: (context, index) => useCards
                         ? Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(bottom: 20),
                             child: _resultCard(context, index, history[index]),
                           )
                         : _tableRow(context, index, history[index]),
@@ -75,71 +79,121 @@ class ResultsPage extends StatelessWidget {
 
   Widget _emptyState(BuildContext context) {
     final model = context.read<MathTesterModel>();
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(Icons.auto_awesome, size: 48, color: context.tokens.teal),
-            const SizedBox(height: 16),
-            Text(
-              'No answers yet.',
-              key: noResultsOnResultsPageKey,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Try a question, then come back to see your work here.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => model.setCurrentPage(0),
-                icon: const Icon(Icons.calculate_outlined),
-                label: const Text('Practice'),
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final signs = [
+      (OperationType.plus, tokens.operation, tokens.onOperation),
+      (OperationType.minus, tokens.correct, tokens.onCorrect),
+      (OperationType.multiply, tokens.streak, tokens.onStreak),
+      (OperationType.divide, tokens.primary, tokens.onPrimary),
+    ];
+    return Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              // Decoration only: the four signs as coloured tiles.
+              ExcludeSemantics(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final (type, color, onColor) in signs)
+                      Container(
+                        width: 56,
+                        height: 56,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(
+                            AppTokens.radiusControl,
+                          ),
+                          border: Border.all(
+                            color: tokens.outline,
+                            width: AppTokens.outlineWidth,
+                          ),
+                        ),
+                        child: Text(
+                          type.displayString,
+                          textScaler: TextScaler.noScaling,
+                          style: textTheme.headlineMedium?.copyWith(
+                            color: onColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Text(
+                'No answers yet.',
+                key: noResultsOnResultsPageKey,
+                textAlign: TextAlign.center,
+                style: textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Try a question, then come back to see your work here.',
+                textAlign: TextAlign.center,
+                style: textTheme.bodyLarge?.copyWith(color: tokens.inkMuted),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: Slab(
+                  pressable: true,
+                  radius: AppTokens.radiusControl,
+                  child: FilledButton.icon(
+                    onPressed: () => model.setCurrentPage(0),
+                    icon: const Icon(Icons.calculate_outlined),
+                    label: const Text('Practice'),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _resultCard(BuildContext context, int index, Attempt attempt) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Question ${index + 1}',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _question(attempt),
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 16),
-            _status(context, attempt),
-            const SizedBox(height: 12),
-            _answerDetails(attempt),
-            const SizedBox(height: 8),
-            Text('Time: ${_elapsed(attempt)}'),
-          ],
+    final textTheme = Theme.of(context).textTheme;
+    final muted = context.tokens.inkMuted;
+    return Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Question ${index + 1}',
+                style: textTheme.labelMedium?.copyWith(color: muted),
+              ),
+              const SizedBox(height: 4),
+              Text(_question(attempt), style: textTheme.headlineMedium),
+              const SizedBox(height: 12),
+              _status(context, attempt),
+              const SizedBox(height: 12),
+              _answerDetails(attempt),
+              const SizedBox(height: 4),
+              Text(
+                'Time: ${_elapsed(attempt)}',
+                style: TextStyle(color: muted),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _tableHeader(BuildContext context) {
-    final headerStyle = Theme.of(context).textTheme.bodyMedium
-        ?.copyWith(fontWeight: FontWeight.w700);
+    final headerStyle = Theme.of(context).textTheme.labelMedium
+        ?.copyWith(color: context.tokens.inkMuted);
     return _tableCells([
       Text('#', style: headerStyle),
       Text('Question', style: headerStyle),
@@ -149,13 +203,19 @@ class ResultsPage extends StatelessWidget {
   }
 
   Widget _tableRow(BuildContext context, int index, Attempt attempt) {
+    final textTheme = Theme.of(context).textTheme;
     return DecoratedBox(
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: context.tokens.border)),
+        border: Border(
+          top: BorderSide(
+            color: context.tokens.surfaceSunken,
+            width: AppTokens.outlineWidth,
+          ),
+        ),
       ),
       child: _tableCells([
-        Text('${index + 1}'),
-        Text(_question(attempt)),
+        Text('${index + 1}', style: textTheme.titleMedium),
+        Text(_question(attempt), style: textTheme.titleLarge),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -188,35 +248,42 @@ class ResultsPage extends StatelessWidget {
       ? 'Not Available'
       : prettyDuration(Duration(milliseconds: attempt.elapsedMs));
 
+  /// The verdict as a word and an icon on a block of its role colour.
   Widget _status(BuildContext context, Attempt attempt) {
-    final skipped = attempt.skipped;
-    final correct = attempt.correct;
-    final color = skipped
-        ? context.tokens.muted
-        : correct
-        ? context.tokens.teal
-        : context.tokens.error;
-    final label = skipped
-        ? 'Skipped'
-        : correct
-        ? 'Correct'
-        : 'Incorrect';
-    final icon = skipped
-        ? Icons.remove_circle_outline
-        : correct
-        ? Icons.check_circle
-        : Icons.refresh;
-    return Row(
-      children: [
-        Icon(icon, color: color),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700),
-          ),
+    final tokens = context.tokens;
+    final (background, foreground, label, icon) = attempt.skipped
+        ? (
+            tokens.surfaceSunken,
+            tokens.ink,
+            'Skipped',
+            Icons.remove_circle_outline,
+          )
+        : attempt.correct
+        ? (tokens.correct, tokens.onCorrect, 'Correct', Icons.check_circle)
+        : (tokens.wrong, tokens.onWrong, 'Incorrect', Icons.refresh);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        border: Border.all(
+          color: tokens.outline,
+          width: AppTokens.outlineWidth,
         ),
-      ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: foreground),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(color: foreground, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -232,4 +299,135 @@ class ResultsPage extends StatelessWidget {
       Text('Expected answer: ${formatNumber(attempt.problem.result)}'),
     ],
   );
+}
+
+/// Lifetime accuracy and level per operation, streaks, XP and player level.
+class _Stats extends StatelessWidget {
+  const _Stats();
+
+  @override
+  Widget build(BuildContext context) {
+    final difficulty = context.select(
+      (MathTesterModel model) => model.difficulty,
+    );
+    final game = context.select((MathTesterModel model) => model.game);
+    final streak = context.select((MathTesterModel model) => model.shownStreak);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final headerStyle = textTheme.labelMedium?.copyWith(color: tokens.inkMuted);
+
+    Widget cell(Widget child) =>
+        Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: child);
+
+    Widget chip(String text, IconData icon, Color color, Color onColor) =>
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+            border: Border.all(
+              color: tokens.outline,
+              width: AppTokens.outlineWidth,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 8,
+            children: [
+              Icon(icon, size: 20, color: onColor),
+              Flexible(
+                child: Text(
+                  text,
+                  style: TextStyle(color: onColor, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        );
+
+    return Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Your stats', style: textTheme.titleLarge),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  chip(
+                    'Daily streak: $streak',
+                    Icons.local_fire_department,
+                    tokens.streak,
+                    tokens.onStreak,
+                  ),
+                  chip(
+                    'Best streak: ${game.bestStreak}',
+                    Icons.local_fire_department,
+                    tokens.streak,
+                    tokens.onStreak,
+                  ),
+                  chip(
+                    'Best sprint: ${game.bestSprint}',
+                    Icons.timer_outlined,
+                    tokens.sprint,
+                    tokens.onSprint,
+                  ),
+                  chip(
+                    'Total XP: ${game.xp}',
+                    Icons.star,
+                    tokens.xp,
+                    tokens.onXp,
+                  ),
+                  chip(
+                    'Player level: ${playerLevel(game.xp)}',
+                    Icons.military_tech,
+                    tokens.xp,
+                    tokens.onXp,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Table(
+                columnWidths: const {0: FlexColumnWidth(2)},
+                border: TableBorder(
+                  horizontalInside: BorderSide(
+                    color: tokens.surfaceSunken,
+                    width: AppTokens.outlineWidth,
+                  ),
+                ),
+                children: [
+                  TableRow(
+                    children: [
+                      for (final title in ['Operation', 'Accuracy', 'Level'])
+                        cell(Text(title, style: headerStyle)),
+                    ],
+                  ),
+                  for (final MapEntry(key: type, value: d)
+                      in difficulty.entries)
+                    TableRow(
+                      children: [
+                        cell(Text(type.label)),
+                        cell(
+                          d.answered == 0
+                              ? const Text('–', semanticsLabel: 'none yet')
+                              : Text(
+                                  '${(100 * d.correct / d.answered).round()}%',
+                                  style: textTheme.titleMedium,
+                                ),
+                        ),
+                        cell(Text('${d.level}', style: textTheme.titleMedium)),
+                      ],
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

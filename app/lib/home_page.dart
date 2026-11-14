@@ -1,6 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'app_theme.dart';
+import 'hud.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'problem_page.dart';
@@ -13,7 +15,14 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final page = model.currentPage == 0
-        ? const ProblemPage(key: problemsPageKey)
+        // The Android back gesture ends a sprint instead of leaving the app.
+        ? PopScope(
+            canPop: !model.inSprint,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) model.endSprint();
+            },
+            child: const ProblemPage(key: problemsPageKey),
+          )
         : const ResultsPage(key: resultsPageKey);
 
     return LayoutBuilder(
@@ -25,7 +34,13 @@ class MyHomePage extends StatelessWidget {
           resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: compact
-                ? page
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Hud(),
+                      Expanded(child: page),
+                    ],
+                  )
                 : Row(
                     children: [
                       NavigationRail(
@@ -48,27 +63,48 @@ class MyHomePage extends StatelessWidget {
                         selectedIndex: model.currentPage,
                         onDestinationSelected: model.setCurrentPage,
                       ),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: page),
+                      const VerticalDivider(
+                        width: AppTokens.outlineWidth,
+                        thickness: AppTokens.outlineWidth,
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Hud(),
+                            Expanded(child: page),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
           ),
           bottomNavigationBar: compact
-              ? NavigationBar(
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.calculate_outlined),
-                      selectedIcon: Icon(Icons.calculate),
-                      label: 'Practice',
+              ? DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: context.tokens.outline,
+                        width: AppTokens.outlineWidth,
+                      ),
                     ),
-                    NavigationDestination(
-                      icon: Icon(Icons.checklist_outlined),
-                      selectedIcon: Icon(Icons.checklist),
-                      label: 'My answers',
-                    ),
-                  ],
-                  selectedIndex: model.currentPage,
-                  onDestinationSelected: model.setCurrentPage,
+                  ),
+                  child: NavigationBar(
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.calculate_outlined),
+                        selectedIcon: Icon(Icons.calculate),
+                        label: 'Practice',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.checklist_outlined),
+                        selectedIcon: Icon(Icons.checklist),
+                        label: 'My answers',
+                      ),
+                    ],
+                    selectedIndex: model.currentPage,
+                    onDestinationSelected: model.setCurrentPage,
+                  ),
                 )
               : null,
         );

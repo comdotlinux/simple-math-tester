@@ -1,0 +1,8 @@
+{
+  "private": true,
+  "description": "CI-only browser check for the offline web build; not an app dependency.",
+  "type": "module",
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

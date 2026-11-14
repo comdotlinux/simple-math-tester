@@ -1,97 +1,158 @@
 import 'package:material_ui/material_ui.dart';
 
-abstract final class AppColors {
-  static const canvas = Color(0xFFF7F5EE);
-  static const paper = Color(0xFFFFFEF9);
-  static const ink = Color(0xFF203B36);
-  static const muted = Color(0xFF526760);
-  static const teal = Color(0xFF226453);
-  static const mint = Color(0xFFE1EEE4);
-  static const yellow = Color(0xFFF1CC68);
-  static const peach = Color(0xFFF7DDD1);
-  static const error = Color(0xFF9F382C);
-  static const border = Color(0xFFD9DED3);
+/// Every colour role. An `on…` role is the text and icon colour drawn on
+/// top of the role it names.
+enum AppColor {
+  surface,
+  surfaceRaised,
+  surfaceSunken,
+  ink,
+  inkMuted,
+  outline,
+  shadow,
+  primary,
+  onPrimary,
+  operation,
+  onOperation,
+  correct,
+  onCorrect,
+  wrong,
+  onWrong,
+  streak,
+  onStreak,
+  xp,
+  onXp,
+  combo,
+  onCombo,
+  sprint,
+  onSprint,
 }
 
 @immutable
 class AppTokens extends ThemeExtension<AppTokens> {
-  const AppTokens({
-    required this.canvas,
-    required this.paper,
-    required this.ink,
-    required this.muted,
-    required this.teal,
-    required this.mint,
-    required this.yellow,
-    required this.peach,
-    required this.error,
-    required this.border,
+  const AppTokens(this.colors);
+
+  /// Light playful: bright accents on a warm sunny page, navy ink outlines
+  /// and navy slabs under raised things.
+  static const light = AppTokens({
+    AppColor.surface: Color(0xFFFFF6E3),
+    AppColor.surfaceRaised: Color(0xFFFFFFFF),
+    AppColor.surfaceSunken: Color(0xFFF5E7C8),
+    AppColor.ink: Color(0xFF18213B),
+    AppColor.inkMuted: Color(0xFF4D5672),
+    AppColor.outline: Color(0xFF18213B),
+    AppColor.shadow: Color(0xFF18213B),
+    AppColor.primary: Color(0xFFFFC83A),
+    AppColor.onPrimary: Color(0xFF18213B),
+    AppColor.operation: Color(0xFF5B9DFF),
+    AppColor.onOperation: Color(0xFF18213B),
+    AppColor.correct: Color(0xFF35D07F),
+    AppColor.onCorrect: Color(0xFF18213B),
+    AppColor.wrong: Color(0xFFFF6B57),
+    AppColor.onWrong: Color(0xFF18213B),
+    AppColor.streak: Color(0xFFFF9A2F),
+    AppColor.onStreak: Color(0xFF18213B),
+    AppColor.xp: Color(0xFF1FCBB8),
+    AppColor.onXp: Color(0xFF18213B),
+    AppColor.combo: Color(0xFFB6E63A),
+    AppColor.onCombo: Color(0xFF18213B),
+    AppColor.sprint: Color(0xFF3CC8F2),
+    AppColor.onSprint: Color(0xFF18213B),
   });
 
-  static const light = AppTokens(
-    canvas: AppColors.canvas,
-    paper: AppColors.paper,
-    ink: AppColors.ink,
-    muted: AppColors.muted,
-    teal: AppColors.teal,
-    mint: AppColors.mint,
-    yellow: AppColors.yellow,
-    peach: AppColors.peach,
-    error: AppColors.error,
-    border: AppColors.border,
-  );
+  /// Dark neon: the same roles as vivid fills on a near-black page, with
+  /// near-black text on them.
+  static const dark = AppTokens({
+    AppColor.surface: Color(0xFF0B0F17),
+    AppColor.surfaceRaised: Color(0xFF161C29),
+    AppColor.surfaceSunken: Color(0xFF212A3B),
+    AppColor.ink: Color(0xFFF5F2E9),
+    AppColor.inkMuted: Color(0xFFA8B1C5),
+    AppColor.outline: Color(0xFF5CE1E6),
+    AppColor.shadow: Color(0xFF1C5A66),
+    AppColor.primary: Color(0xFFFFD43B),
+    AppColor.onPrimary: Color(0xFF0B0F17),
+    AppColor.operation: Color(0xFF4FA3FF),
+    AppColor.onOperation: Color(0xFF0B0F17),
+    AppColor.correct: Color(0xFF3BF08C),
+    AppColor.onCorrect: Color(0xFF0B0F17),
+    AppColor.wrong: Color(0xFFFF5F57),
+    AppColor.onWrong: Color(0xFF0B0F17),
+    AppColor.streak: Color(0xFFFFA032),
+    AppColor.onStreak: Color(0xFF0B0F17),
+    AppColor.xp: Color(0xFF2FEAD5),
+    AppColor.onXp: Color(0xFF0B0F17),
+    AppColor.combo: Color(0xFFC8FF3D),
+    AppColor.onCombo: Color(0xFF0B0F17),
+    AppColor.sprint: Color(0xFF38DCFF),
+    AppColor.onSprint: Color(0xFF0B0F17),
+  });
 
-  final Color canvas;
-  final Color paper;
-  final Color ink;
-  final Color muted;
-  final Color teal;
-  final Color mint;
-  final Color yellow;
-  final Color peach;
-  final Color error;
-  final Color border;
+  /// The (text or icon, background) pairs widgets draw; each must reach
+  /// 4.5 to 1 in both themes.
+  static const contrastPairs = [
+    (AppColor.ink, AppColor.surface),
+    (AppColor.ink, AppColor.surfaceRaised),
+    (AppColor.ink, AppColor.surfaceSunken),
+    (AppColor.inkMuted, AppColor.surface),
+    (AppColor.inkMuted, AppColor.surfaceRaised),
+    (AppColor.inkMuted, AppColor.surfaceSunken),
+    (AppColor.surface, AppColor.ink),
+    (AppColor.onPrimary, AppColor.primary),
+    (AppColor.onOperation, AppColor.operation),
+    (AppColor.onCorrect, AppColor.correct),
+    (AppColor.onWrong, AppColor.wrong),
+    (AppColor.onStreak, AppColor.streak),
+    (AppColor.onXp, AppColor.xp),
+    (AppColor.onCombo, AppColor.combo),
+    (AppColor.onSprint, AppColor.sprint),
+  ];
+
+  /// Corner radii, and the hard shadow: a solid slab [depth] px below a
+  /// raised surface that shrinks to [pressedDepth] while it is pressed.
+  static const radiusCard = 28.0;
+  static const radiusControl = 18.0;
+  static const depth = 5.0;
+  static const pressedDepth = 1.0;
+  static const outlineWidth = 2.0;
+
+  final Map<AppColor, Color> colors;
+
+  Color get surface => colors[AppColor.surface]!;
+  Color get surfaceRaised => colors[AppColor.surfaceRaised]!;
+  Color get surfaceSunken => colors[AppColor.surfaceSunken]!;
+  Color get ink => colors[AppColor.ink]!;
+  Color get inkMuted => colors[AppColor.inkMuted]!;
+  Color get outline => colors[AppColor.outline]!;
+  Color get shadow => colors[AppColor.shadow]!;
+  Color get primary => colors[AppColor.primary]!;
+  Color get onPrimary => colors[AppColor.onPrimary]!;
+  Color get operation => colors[AppColor.operation]!;
+  Color get onOperation => colors[AppColor.onOperation]!;
+  Color get correct => colors[AppColor.correct]!;
+  Color get onCorrect => colors[AppColor.onCorrect]!;
+  Color get wrong => colors[AppColor.wrong]!;
+  Color get onWrong => colors[AppColor.onWrong]!;
+  Color get streak => colors[AppColor.streak]!;
+  Color get onStreak => colors[AppColor.onStreak]!;
+  Color get xp => colors[AppColor.xp]!;
+  Color get onXp => colors[AppColor.onXp]!;
+  Color get combo => colors[AppColor.combo]!;
+  Color get onCombo => colors[AppColor.onCombo]!;
+  Color get sprint => colors[AppColor.sprint]!;
+  Color get onSprint => colors[AppColor.onSprint]!;
 
   @override
-  AppTokens copyWith({
-    Color? canvas,
-    Color? paper,
-    Color? ink,
-    Color? muted,
-    Color? teal,
-    Color? mint,
-    Color? yellow,
-    Color? peach,
-    Color? error,
-    Color? border,
-  }) => AppTokens(
-    canvas: canvas ?? this.canvas,
-    paper: paper ?? this.paper,
-    ink: ink ?? this.ink,
-    muted: muted ?? this.muted,
-    teal: teal ?? this.teal,
-    mint: mint ?? this.mint,
-    yellow: yellow ?? this.yellow,
-    peach: peach ?? this.peach,
-    error: error ?? this.error,
-    border: border ?? this.border,
-  );
+  AppTokens copyWith({Map<AppColor, Color>? colors}) =>
+      AppTokens({...this.colors, ...?colors});
 
   @override
   AppTokens lerp(AppTokens? other, double t) {
     if (other == null) return this;
-    return AppTokens(
-      canvas: Color.lerp(canvas, other.canvas, t)!,
-      paper: Color.lerp(paper, other.paper, t)!,
-      ink: Color.lerp(ink, other.ink, t)!,
-      muted: Color.lerp(muted, other.muted, t)!,
-      teal: Color.lerp(teal, other.teal, t)!,
-      mint: Color.lerp(mint, other.mint, t)!,
-      yellow: Color.lerp(yellow, other.yellow, t)!,
-      peach: Color.lerp(peach, other.peach, t)!,
-      error: Color.lerp(error, other.error, t)!,
-      border: Color.lerp(border, other.border, t)!,
-    );
+    return AppTokens({
+      for (final role in AppColor.values)
+        role: Color.lerp(colors[role], other.colors[role], t)!,
+    });
   }
 }
 
@@ -99,129 +160,311 @@ extension AppTokensContext on BuildContext {
   AppTokens get tokens => Theme.of(this).extension<AppTokens>()!;
 }
 
-ThemeData buildAppTheme() {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: AppColors.teal,
-    primary: AppColors.teal,
-    onPrimary: AppColors.paper,
-    surface: AppColors.paper,
-    onSurface: AppColors.ink,
-    error: AppColors.error,
+ThemeData buildAppTheme(Brightness brightness) {
+  final t = brightness == Brightness.light ? AppTokens.light : AppTokens.dark;
+  // Written out in full so no generated colour can land in the purple range.
+  final scheme = ColorScheme(
+    brightness: brightness,
+    primary: t.primary,
+    onPrimary: t.onPrimary,
+    primaryContainer: t.primary,
+    onPrimaryContainer: t.onPrimary,
+    primaryFixed: t.primary,
+    primaryFixedDim: t.primary,
+    onPrimaryFixed: t.onPrimary,
+    onPrimaryFixedVariant: t.onPrimary,
+    secondary: t.operation,
+    onSecondary: t.onOperation,
+    secondaryContainer: t.operation,
+    onSecondaryContainer: t.onOperation,
+    secondaryFixed: t.operation,
+    secondaryFixedDim: t.operation,
+    onSecondaryFixed: t.onOperation,
+    onSecondaryFixedVariant: t.onOperation,
+    tertiary: t.xp,
+    onTertiary: t.onXp,
+    tertiaryContainer: t.xp,
+    onTertiaryContainer: t.onXp,
+    tertiaryFixed: t.xp,
+    tertiaryFixedDim: t.xp,
+    onTertiaryFixed: t.onXp,
+    onTertiaryFixedVariant: t.onXp,
+    error: t.wrong,
+    onError: t.onWrong,
+    errorContainer: t.wrong,
+    onErrorContainer: t.onWrong,
+    surface: t.surface,
+    onSurface: t.ink,
+    surfaceDim: t.surfaceSunken,
+    surfaceBright: t.surfaceRaised,
+    surfaceContainerLowest: t.surfaceRaised,
+    surfaceContainerLow: t.surfaceRaised,
+    surfaceContainer: t.surfaceRaised,
+    surfaceContainerHigh: t.surfaceSunken,
+    surfaceContainerHighest: t.surfaceSunken,
+    onSurfaceVariant: t.inkMuted,
+    outline: t.outline,
+    outlineVariant: t.outline,
+    shadow: t.shadow,
+    scrim: t.shadow,
+    inverseSurface: t.ink,
+    onInverseSurface: t.surface,
+    inversePrimary: t.primary,
+    surfaceTint: t.surface,
   );
-  final base = ThemeData(useMaterial3: true, colorScheme: scheme);
+  final control = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+  );
+  final card = RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(AppTokens.radiusCard),
+    side: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
+  );
+  // A thicker ink edge marks keyboard focus on every button, in both themes.
+  final buttonSide = WidgetStateProperty.resolveWith(
+    (states) => BorderSide(
+      color: states.contains(WidgetState.focused) ? t.ink : t.outline,
+      width: states.contains(WidgetState.focused) ? 4 : AppTokens.outlineWidth,
+    ),
+  );
+  const buttonText = TextStyle(
+    fontFamily: 'Roboto',
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
+  );
+  const buttonPadding = EdgeInsets.symmetric(horizontal: 22, vertical: 14);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: brightness,
+    colorScheme: scheme,
+    fontFamily: 'Roboto',
+  );
+  const tabular = [FontFeature.tabularFigures()];
   return base.copyWith(
-    scaffoldBackgroundColor: AppColors.canvas,
+    scaffoldBackgroundColor: t.surface,
     textTheme: base.textTheme
-        .apply(bodyColor: AppColors.ink, displayColor: AppColors.ink)
         .copyWith(
+          // The question: the biggest, heaviest thing on screen.
+          displayLarge: const TextStyle(
+            fontSize: 64,
+            height: 1.05,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.5,
+            fontFeatures: tabular,
+          ),
           displaySmall: const TextStyle(
-            fontSize: 40,
-            height: 1.12,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1.4,
-            color: AppColors.ink,
+            fontSize: 36,
+            height: 1.1,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1,
           ),
           headlineMedium: const TextStyle(
             fontSize: 28,
             height: 1.2,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -.6,
-            color: AppColors.ink,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -.5,
+            fontFeatures: tabular,
           ),
           titleLarge: const TextStyle(
             fontSize: 22,
+            height: 1.25,
             fontWeight: FontWeight.w700,
-            color: AppColors.ink,
           ),
-          bodyLarge: const TextStyle(
-            fontSize: 17,
-            height: 1.5,
-            color: AppColors.ink,
+          titleMedium: const TextStyle(
+            fontSize: 18,
+            height: 1.3,
+            fontWeight: FontWeight.w700,
+            fontFeatures: tabular,
           ),
-          bodyMedium: const TextStyle(
+          bodyLarge: const TextStyle(fontSize: 18, height: 1.45),
+          bodyMedium: const TextStyle(fontSize: 16, height: 1.4),
+          labelLarge: buttonText,
+          // Small section labels above a value.
+          labelMedium: const TextStyle(
             fontSize: 16,
-            height: 1.4,
-            color: AppColors.ink,
+            height: 1.2,
+            fontWeight: FontWeight.w500,
+            letterSpacing: .3,
           ),
-        ),
+        )
+        .apply(fontFamily: 'Roboto', bodyColor: t.ink, displayColor: t.ink),
+    iconTheme: IconThemeData(color: t.ink),
     filledButtonTheme: FilledButtonThemeData(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(48, 54),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
+        padding: const WidgetStatePropertyAll(buttonPadding),
+        textStyle: const WidgetStatePropertyAll(buttonText),
+        backgroundColor: WidgetStatePropertyAll(t.primary),
+        foregroundColor: WidgetStatePropertyAll(t.onPrimary),
+        overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .1)),
+        side: buttonSide,
+        shape: WidgetStatePropertyAll(control),
+        elevation: const WidgetStatePropertyAll(0),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(48, 54),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        foregroundColor: AppColors.ink,
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        side: const BorderSide(color: AppColors.muted),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      style: ButtonStyle(
+        minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
+        padding: const WidgetStatePropertyAll(buttonPadding),
+        textStyle: const WidgetStatePropertyAll(buttonText),
+        backgroundColor: WidgetStatePropertyAll(t.surfaceRaised),
+        foregroundColor: WidgetStatePropertyAll(t.ink),
+        overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .08)),
+        side: buttonSide,
+        shape: WidgetStatePropertyAll(control),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        minimumSize: const Size(48, 48),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-      ),
+      style:
+          TextButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            foregroundColor: t.ink,
+            textStyle: buttonText,
+            shape: control,
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.focused)
+                  ? BorderSide(color: t.ink, width: 4)
+                  : BorderSide.none,
+            ),
+          ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(
+        minimumSize: const Size(52, 52),
+        backgroundColor: t.surfaceRaised,
+        foregroundColor: t.ink,
+        shape: control,
+      ).copyWith(side: buttonSide),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.paper,
+      fillColor: t.surfaceRaised,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      labelStyle: TextStyle(
+        fontFamily: 'Roboto',
+        color: t.inkMuted,
+        fontWeight: FontWeight.w500,
+      ),
+      floatingLabelStyle: TextStyle(
+        fontFamily: 'Roboto',
+        color: t.ink,
+        fontWeight: FontWeight.w700,
+      ),
+      hintStyle: TextStyle(fontFamily: 'Roboto', color: t.inkMuted),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.muted),
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        borderSide: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.muted),
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        borderSide: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.teal, width: 2.5),
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        borderSide: BorderSide(color: t.ink, width: 4),
       ),
     ),
+    textSelectionTheme: TextSelectionThemeData(
+      cursorColor: t.ink,
+      selectionColor: t.operation.withValues(alpha: .45),
+      selectionHandleColor: t.operation,
+    ),
     cardTheme: CardThemeData(
-      color: AppColors.paper,
+      color: t.surfaceRaised,
       elevation: 0,
       margin: EdgeInsets.zero,
+      shape: card,
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: t.surfaceRaised,
+      modalBackgroundColor: t.surfaceRaised,
+      dragHandleColor: t.outline,
+      elevation: 0,
+      modalElevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: const BorderSide(color: AppColors.border),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppTokens.radiusCard),
+        ),
+        side: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
+      ),
+    ),
+    listTileTheme: ListTileThemeData(
+      textColor: t.ink,
+      iconColor: t.ink,
+      selectedColor: t.onPrimary,
+      selectedTileColor: t.primary,
+      minVerticalPadding: 12,
+      shape: control,
+      titleTextStyle: buttonText,
+      subtitleTextStyle: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 16,
+        color: t.inkMuted,
+      ),
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: t.ink,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      textStyle: TextStyle(
+        fontFamily: 'Roboto',
+        color: t.surface,
+        fontSize: 16,
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: AppColors.paper,
-      indicatorColor: AppColors.mint,
-      labelTextStyle: WidgetStateProperty.all(
-        const TextStyle(
+      backgroundColor: t.surfaceRaised,
+      surfaceTintColor: t.surfaceRaised,
+      elevation: 0,
+      height: 72,
+      indicatorColor: t.primary,
+      indicatorShape: StadiumBorder(
+        side: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (states) => IconThemeData(
+          color: states.contains(WidgetState.selected) ? t.onPrimary : t.ink,
+        ),
+      ),
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (states) => TextStyle(
+          fontFamily: 'Roboto',
           fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.ink,
+          fontWeight: states.contains(WidgetState.selected)
+              ? FontWeight.w700
+              : FontWeight.w500,
+          color: t.ink,
         ),
       ),
     ),
-    navigationRailTheme: const NavigationRailThemeData(
-      backgroundColor: AppColors.paper,
-      indicatorColor: AppColors.mint,
-      selectedIconTheme: IconThemeData(color: AppColors.teal),
-      unselectedIconTheme: IconThemeData(color: AppColors.muted),
+    navigationRailTheme: NavigationRailThemeData(
+      backgroundColor: t.surfaceRaised,
+      indicatorColor: t.primary,
+      indicatorShape: StadiumBorder(
+        side: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
+      ),
+      selectedIconTheme: IconThemeData(color: t.onPrimary),
+      unselectedIconTheme: IconThemeData(color: t.ink),
       selectedLabelTextStyle: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 16,
         fontWeight: FontWeight.w700,
-        color: AppColors.ink,
+        color: t.ink,
       ),
       unselectedLabelTextStyle: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: AppColors.ink,
+        fontWeight: FontWeight.w500,
+        color: t.ink,
       ),
     ),
-    dividerColor: AppColors.border,
-    extensions: const [AppTokens.light],
+    dividerColor: t.outline,
+    progressIndicatorTheme: ProgressIndicatorThemeData(
+      linearTrackColor: t.surfaceSunken,
+      circularTrackColor: t.surfaceSunken,
+    ),
+    extensions: [t],
   );
 }

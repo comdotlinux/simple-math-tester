@@ -38,6 +38,16 @@ void main() {
           correct: 3,
         ),
       },
+      game: const GameState(
+        xp: 250,
+        combo: 4,
+        dailyCount: 6,
+        lastActiveDate: '2026-11-14',
+        lastGoalDate: '2026-11-13',
+        streak: 3,
+        bestStreak: 7,
+        bestSprint: 132,
+      ),
     );
 
     final decoded = Progress.decode(original.encode());
@@ -53,6 +63,20 @@ void main() {
       );
     }
     expect(decoded.difficulty[OperationType.plus]!.upCount, 2);
+    final game = decoded.game;
+    expect(
+      [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.lastActiveDate,
+        game.lastGoalDate,
+        game.streak,
+        game.bestStreak,
+        game.bestSprint,
+      ],
+      [250, 4, 6, '2026-11-14', '2026-11-13', 3, 7, 132],
+    );
     expect(decoded.history, hasLength(original.history.length));
     for (var i = 0; i < original.history.length; i++) {
       final (a, b) = (decoded.history[i], original.history[i]);
@@ -148,6 +172,21 @@ void main() {
       1,
     );
     expect(jsonDecode(Progress().encode()) as Map, isNot(contains('tier')));
+    final game = decoded.game;
+    expect(
+      [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.lastActiveDate,
+        game.lastGoalDate,
+        game.streak,
+        game.bestStreak,
+        game.bestSprint,
+      ],
+      [0, 0, 0, null, null, 0, 0, 0],
+    );
+    expect(Progress.decode('{"streak":3}').game.xp, 0);
 
     final partial = Progress.decode(
       '{"history":[{"kind":"plus","lhs":1,"rhs":2,"result":3,'
@@ -180,6 +219,12 @@ void main() {
     '{"operations": {"plus": 2}}',
     '{"operations": {"plus": {"level": "2"}}}',
     '{"operations": {"minus": {"answered": 1.5}}}',
+    '{"xp": "abc"}',
+    '{"combo": 1.5}',
+    '{"streak": true}',
+    '{"lastActiveDate": 20261114}',
+    '{"lastGoalDate": "14.11.2026"}',
+    '{"lastActiveDate": "2026-02-30"}',
     '{"history": [{"kind": "plus", "lhs": "1", "rhs": 2, "result": 3, '
         '"answeredAt": "2026-11-14T08:00:00.000Z"}]}',
   ]) {
