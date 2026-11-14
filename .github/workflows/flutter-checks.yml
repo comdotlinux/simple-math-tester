@@ -332,6 +332,40 @@ jobs:
               -d web-server --browser-name=chrome --headless --driver-port=4444 \
               --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
 
+  web-offline:
+    name: Check the web build offline and after an update in Chrome
+    needs: linux-integration
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Download the tested web build
+        uses: actions/download-artifact@v8
+        with:
+          name: simple-math-tester-web
+          path: app/build/web
+      - run: flutter pub get --enforce-lockfile
+      - name: Build the same app as build number 2
+        run: |
+          flutter build web --release --no-web-resources-cdn --web-content-hash --build-number=2 -o "$PWD/build/web-2"
+          ../tool/stamp_service_worker.sh build/web-2
+      # Playwright drives the runner's Google Chrome; no browser is downloaded.
+      - name: Install the pinned Playwright
+        working-directory: tool
+        run: |
+          node --version
+          npm ci --no-audit --no-fund
+      - name: Run the offline browser check
+        run: node ../tool/browser_check.mjs build/web build/web-2
+
   deploy:
     name: Deploy to Cloudflare Pages
     needs: linux-integration

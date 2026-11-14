@@ -96,3 +96,6 @@ lint/tmp/
 .codex/skills/.system/**
 !.codex/prompts/
 !.codex/prompts/**
+
+# CI-only browser check dependencies
+/tool/node_modules/
