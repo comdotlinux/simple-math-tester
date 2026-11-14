@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'operations.dart';
 import 'rules.dart';
@@ -22,6 +23,9 @@ class NewerProgressException implements Exception {
 /// and history entries of an unknown kind are kept and encoded again
 /// unchanged.
 class Progress {
+  /// An operation missing from [difficulty] starts at [tier]'s level, or at
+  /// level 1 without a tier, so a tier never comes with other levels unless
+  /// they are given.
   Progress({
     Set<OperationType>? selectedOperations,
     List<Attempt> history = const [],
@@ -55,7 +59,7 @@ class Progress {
       _entries = List.unmodifiable(_capped(entries)),
       difficulty = Map.unmodifiable({
         for (final type in OperationType.values)
-          type: difficulty[type] ?? const Difficulty(),
+          type: difficulty[type] ?? Difficulty(level: tier?.level ?? 1),
       }),
       _unknownOperations = Map.unmodifiable(unknownOperations),
       extra = Map.unmodifiable(extra) {
@@ -259,14 +263,22 @@ class Progress {
     'correct': value.correct,
   };
 
-  static Difficulty _decodeDifficulty(Map<String, Object?> json) => Difficulty(
-    // A level outside the table would have no ranges to draw from.
-    level: (_field<int>(json, 'level') ?? 1).clamp(1, maxLevel),
-    upCount: _field<int>(json, 'upCount') ?? 0,
-    downCount: _field<int>(json, 'downCount') ?? 0,
-    answered: _field<int>(json, 'answered') ?? 0,
-    correct: _field<int>(json, 'correct') ?? 0,
-  );
+  /// Values the rule cannot produce are clamped: a level outside the table
+  /// has no ranges to draw from, and a counter at its threshold has already
+  /// been reset.
+  static Difficulty _decodeDifficulty(Map<String, Object?> json) {
+    final answered = max(_field<int>(json, 'answered') ?? 0, 0);
+    return Difficulty(
+      level: (_field<int>(json, 'level') ?? 1).clamp(1, maxLevel),
+      upCount: (_field<int>(json, 'upCount') ?? 0).clamp(0, levelUpAfter - 1),
+      downCount: (_field<int>(json, 'downCount') ?? 0).clamp(
+        0,
+        levelDownAfter - 1,
+      ),
+      answered: answered,
+      correct: (_field<int>(json, 'correct') ?? 0).clamp(0, answered),
+    );
+  }
 
   static final _kinds = OperationType.values.asNameMap();
 

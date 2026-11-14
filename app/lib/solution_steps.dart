@@ -39,12 +39,10 @@ List<String> additionSteps(Problem problem) {
   }
   // One place only, so its total would be the answer itself.
   final place = _highestPlace(bigger);
-  final name = _placeNames[place]!;
-  String count(int value) =>
-      '${value ~/ place} $name${value ~/ place == 1 ? '' : 's'}';
   return [
-    '$left is ${count(left)} and $right is ${count(right)}. '
-        'Add ${left ~/ place} + ${right ~/ place}, then make it ${name}s.',
+    '$left is ${_count(left, place)} and $right is ${_count(right, place)}. '
+        'Add ${left ~/ place} + ${right ~/ place}, then make it '
+        '${_placeNames[place]}s.',
     'So $left + $right = $result.',
   ];
 }
@@ -74,11 +72,29 @@ List<String> subtractionSteps(Problem problem) {
       'Hop to round numbers: '
       '${hops.map((hop) => 'from ${hop.$1} up to ${hop.$2} is ${hop.$2 - hop.$1}').join('; ')}.';
   final useHops = hops.length > 1 && !_mentions(hopText, result);
+  // Two round numbers have a single hop; take away in the largest place
+  // they share instead.
+  var place = 1;
+  while (_placeNames.containsKey(place * 10) &&
+      left % (place * 10) == 0 &&
+      right % (place * 10) == 0) {
+    place *= 10;
+  }
+  final roundText = place == 1
+      ? ''
+      : '$left is ${_count(left, place)} and $right is '
+            '${_count(right, place)}. Take away ${left ~/ place} − '
+            '${right ~/ place}, then make it ${_placeNames[place]}s.';
+  // A result equal to [right] is already in the question, so it may appear.
+  final useRound =
+      place > 1 && (result == right || !_mentions(roundText, result));
   return [
     'Find the difference between $left and $right: '
         'what do you add to $right to make $left?',
     useHops
         ? hopText
+        : useRound
+        ? roundText
         : firstTen > lastTen
         // No round number lies between them, so there is no ten to hop to.
         ? 'Count up from $right to $left one at a time and keep track of '
@@ -179,6 +195,10 @@ const _placeNames = {
   1000: 'thousand',
   10000: 'ten thousand',
 };
+
+/// [value] counted in [place]s, such as "5 thousands" or "1 ten".
+String _count(int value, int place) =>
+    '${value ~/ place} ${_placeNames[place]}${value ~/ place == 1 ? '' : 's'}';
 
 bool _mentions(String text, num value) =>
     RegExp('(?<!\\d)${formatNumber(value)}(?!\\d)').hasMatch(text);

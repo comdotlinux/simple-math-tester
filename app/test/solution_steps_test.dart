@@ -20,6 +20,10 @@ void expectStepsHideResult(
     Problem(4, 5, OperationType.multiply, 20),
     Problem(12, 3, OperationType.minus, 9),
     Problem(5, 5, OperationType.minus, 0),
+    Problem(5000, 1000, OperationType.minus, 4000),
+    Problem(100, 40, OperationType.minus, 60),
+    Problem(1000, 300, OperationType.minus, 700),
+    Problem(10000, 5000, OperationType.minus, 5000),
     Problem(12, 3, OperationType.divide, 4.0),
   ];
 
@@ -27,7 +31,10 @@ void expectStepsHideResult(
     final steps = solutionSteps(problem);
     final token = RegExp('(?<!\\d)${problem.result.toInt()}(?!\\d)');
     expect(steps.length, greaterThanOrEqualTo(2), reason: problem.question);
-    for (final step in steps.take(steps.length - 1)) {
+    // A result equal to an operand is already on screen (10000 − 5000).
+    final operand =
+        problem.result == problem.lhs || problem.result == problem.rhs;
+    for (final step in steps.take(operand ? 0 : steps.length - 1)) {
       expect(
         token.hasMatch(step),
         isFalse,
@@ -162,6 +169,41 @@ void main() {
           'counted.',
       'So 7 − 3 = 4. Check: 4 + 3 = 7.',
     ]);
+  });
+
+  test('subtraction of round numbers takes away in their shared place', () {
+    expect(
+      solutionSteps(const Problem(5000, 1000, OperationType.minus, 4000)),
+      [
+        'Find the difference between 5000 and 1000: what do you add to 1000 '
+            'to make 5000?',
+        '5000 is 5 thousands and 1000 is 1 thousand. Take away 5 − 1, then '
+            'make it thousands.',
+        'So 5000 − 1000 = 4000. Check: 4000 + 1000 = 5000.',
+      ],
+    );
+    expect(
+      solutionSteps(const Problem(1000, 300, OperationType.minus, 700))[1],
+      '1000 is 10 hundreds and 300 is 3 hundreds. Take away 10 − 3, then '
+      'make it hundreds.',
+    );
+    expect(
+      solutionSteps(const Problem(100, 40, OperationType.minus, 60))[1],
+      '100 is 10 tens and 40 is 4 tens. Take away 10 − 4, then make it tens.',
+    );
+    expect(
+      solutionSteps(const Problem(10000, 5000, OperationType.minus, 5000))[1],
+      '10000 is 10 thousands and 5000 is 5 thousands. Take away 10 − 5, then '
+      'make it thousands.',
+    );
+  });
+
+  test('round subtraction drops the counts when they would show it', () {
+    // 100 is 10 tens and 90 is 9 tens: "10" is the answer.
+    expect(
+      solutionSteps(const Problem(100, 90, OperationType.minus, 10))[1],
+      isNot(contains('tens')),
+    );
   });
 
   test('multiplication splits the factor that has more than one place', () {
