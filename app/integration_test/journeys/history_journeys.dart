@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart' show Table;
+import 'package:material_ui/material_ui.dart'
+    show Scrollable, ScrollableState, Table;
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
@@ -205,26 +206,61 @@ void historyJourneys() {
       );
     });
 
-    testWidgets('a long history scrolls to its last answer', (tester) async {
+    testWidgets('a long history loads more on scroll and keeps stats pinned', (
+      tester,
+    ) async {
       await startWith(
         tester,
         Progress(
           tier: Tier.easy,
           history: [
-            for (var i = 0; i < 39; i++)
-              attempt(Problem(1, 1, OperationType.plus, 2), 2),
             attempt(Problem(77, 23, OperationType.plus, 100), 100),
+            for (var i = 0; i < 44; i++)
+              attempt(Problem(1, 1, OperationType.plus, 2), 2),
           ],
         ),
       );
 
       await openHistory(tester);
 
-      final last = modelOf(tester).history.length - 1;
-      expect(textOf(tester, historyCountKey), showsNumber(last + 1));
-      expect(find.byKey(historyRowKey(last)), findsNothing);
-      final row = await inHistory(tester, find.byKey(historyRowKey(last)));
+      final count = modelOf(tester).history.length;
+      expect(textOf(tester, historyCountKey), showsNumber(count));
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      // Newest first: the oldest answer, index 0, is in the third page of
+      // 20, after two loads.
+      expect(find.byKey(historyRowKey(0)), findsNothing);
+      final row = await inHistory(tester, find.byKey(historyRowKey(0)));
       expect(_inRow(row, '77 + 23'), findsOneWidget);
+      expect(
+        await inHistory(tester, find.byKey(answersEndKey)),
+        findsOneWidget,
+      );
+      expect(find.byKey(answersLoadingKey), findsNothing);
+      // Scrolled down, the stats are a compact bar still on screen.
+      final bar = find.byKey(compactStatsKey);
+      expect(bar, findsOneWidget);
+      expect(find.byKey(statsCardKey), findsNothing);
+      final screen = tester.getRect(find.byKey(resultsPageKey));
+      expect(tester.getRect(bar).top, greaterThanOrEqualTo(screen.top));
+      expect(tester.getRect(bar).bottom, lessThan(screen.bottom));
+      // The bar shows numbers only; screen readers hear the full labels.
+      expect(semanticsNodesLabelled(tester, 'Total XP: 0'), 1);
+      expect(semanticsNodesLabelled(tester, 'Player level: 1'), 1);
+      expect(semanticsNodesLabelled(tester, "That's all your answers"), 1);
+
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byKey(resultsPageKey),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      expect(bar, findsNothing);
     });
 
     testWidgets(

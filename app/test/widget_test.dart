@@ -69,6 +69,7 @@ void main() {
     bool haptics = true,
     ProgressStore? store,
     bool canSave = true,
+    List<Attempt> history = const [],
     Future<bool> Function(Uri)? openLink,
   }) async {
     tester.view.physicalSize = size;
@@ -79,7 +80,12 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: problem,
-      progress: Progress(tier: tier, game: game, haptics: haptics),
+      progress: Progress(
+        tier: tier,
+        game: game,
+        haptics: haptics,
+        history: history,
+      ),
       clock: clock,
       ticker: ticker,
       haptic: haptic,
@@ -206,6 +212,192 @@ void main() {
       find.descendant(of: last, matching: find.text('Skipped')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  List<Attempt> answers(int count) => [
+    for (var i = 1; i <= count; i++)
+      Attempt(
+        Problem(i, 1, OperationType.plus, i + 1),
+        firstAnswer: i + 1,
+        elapsedMs: 1500,
+        answeredAt: DateTime(2026, 11, 13, 18),
+      ),
+  ];
+
+  for (final scale in [1.0, 1.3]) {
+    testWidgets('At text scale $scale the stats shrink to a pinned bar', (
+      tester,
+    ) async {
+      final model = await launch(
+        tester,
+        size: const Size(360, 640),
+        scale: scale,
+        history: answers(30),
+      );
+      final semantics = tester.ensureSemantics();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      final position = tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byKey(resultsPageKey),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position;
+      final bar = find.byKey(compactStatsKey);
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      expect(bar, findsNothing);
+
+      position.jumpTo(1500);
+      await tester.pumpAndSettle();
+      expect(bar, findsOneWidget);
+      final pinned = tester.getRect(bar);
+      expect(pinned.top, greaterThanOrEqualTo(0));
+      expect(pinned.height, lessThan(640 / 5));
+      expect(find.byKey(statsCardKey), findsNothing);
+      // The bar shows numbers only; screen readers hear the full labels.
+      // (The daily streak is left out: the header reads it too.)
+      for (final label in [
+        'Best streak: 0',
+        'Best sprint: 0',
+        'Total XP: 0',
+        'Player level: 1',
+      ]) {
+        expect(find.semantics.byLabel(label), findsOne, reason: label);
+      }
+
+      // Rows move under the bar; the bar stays put.
+      final rowLabel = find.text(
+        tester
+            .widget<Text>(find.textContaining(RegExp(r'^Question \d+$')).last)
+            .data!,
+      );
+      final rowTop = tester.getRect(rowLabel).top;
+      position.jumpTo(position.pixels + 200);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(bar), pinned);
+      expect(tester.getRect(rowLabel).top, rowTop - 200);
+
+      position.jumpTo(0);
+      await tester.pumpAndSettle();
+      expect(bar, findsNothing);
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      expect(find.text('Accuracy'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
+  }
+
+  testWidgets('Resizing while scrolled down keeps the header whole', (
+    tester,
+  ) async {
+    final model = await launch(
+      tester,
+      size: const Size(360, 640),
+      history: answers(30),
+    );
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(resultsPageKey),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    position.jumpTo(1500);
+    await tester.pumpAndSettle();
+    expect(find.byKey(compactStatsKey), findsOneWidget);
+
+    // The header's measured heights are one frame old after each change.
+    for (final size in [const Size(640, 360), const Size(240, 640)]) {
+      tester.view.physicalSize = size;
+      await tester.pump();
+      expect(tester.takeException(), isNull, reason: '$size');
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: '$size');
+      expect(find.byKey(compactStatsKey), findsOneWidget);
+    }
+  });
+
+  testWidgets('My answers loads 20 rows at a time, then shows the end', (
+    tester,
+  ) async {
+    final model = await launch(
+      tester,
+      size: const Size(360, 640),
+      history: answers(45),
+    );
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    final list = find.descendant(
+      of: find.byKey(resultsPageKey),
+      matching: find.byType(Scrollable),
+    );
+    // Rows in the cache area below the screen count as built.
+    final loading = find.byKey(answersLoadingKey, skipOffstage: false);
+    final end = find.byKey(answersEndKey, skipOffstage: false);
+    // Jumps down until the loading row or the end marker is built, then
+    // pumps the one frame a page needs to load.
+    Future<void> scrollToEnd() async {
+      final position = tester.state<ScrollableState>(list).position;
+      while (loading.evaluate().isEmpty && end.evaluate().isEmpty) {
+        position.jumpTo(min(position.pixels + 300, position.maxScrollExtent));
+        await tester.pump();
+      }
+      if (loading.evaluate().isNotEmpty) {
+        final spinner = find.descendant(
+          of: loading,
+          matching: find.byType(CircularProgressIndicator, skipOffstage: false),
+          skipOffstage: false,
+        );
+        expect(
+          tester.widget<CircularProgressIndicator>(spinner).semanticsLabel,
+          'Loading more answers',
+        );
+        await tester.pump();
+      }
+    }
+
+    // Answer rows the list can build, plus the loading row or end marker.
+    int rowCount() => tester
+        .widget<SliverList>(
+          find.descendant(
+            of: find.byKey(resultsPageKey),
+            matching: find.byType(SliverList, skipOffstage: false),
+            skipOffstage: false,
+          ),
+        )
+        .delegate
+        .estimatedChildCount!;
+
+    expect(find.text('45 questions completed.'), findsOneWidget);
+    expect(rowCount(), 21);
+    // Newest first: the top page holds Questions 45 to 26.
+    expect(find.text('Question 25', skipOffstage: false), findsNothing);
+
+    await scrollToEnd();
+    expect(rowCount(), 41);
+    await scrollToEnd();
+    expect(rowCount(), 46);
+    await scrollToEnd();
+    expect(rowCount(), 46);
+    expect(loading, findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.byKey(answersEndKey),
+      300,
+      scrollable: list,
+    );
+    expect(find.text('Question 1'), findsOneWidget);
+    expect(find.text("That's all your answers"), findsOneWidget);
+    final semantics = tester.ensureSemantics();
+    await tester.pump();
+    expect(find.semantics.byLabel("That's all your answers"), findsOne);
+    semantics.dispose();
     expect(tester.takeException(), isNull);
   });
 

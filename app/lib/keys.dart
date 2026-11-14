@@ -65,3 +65,6 @@ const bestStreakStatKey = Key('stat-best-streak');
 const bestSprintStatKey = Key('stat-best-sprint');
 const totalXpStatKey = Key('stat-total-xp');
 const playerLevelStatKey = Key('stat-player-level');
+const compactStatsKey = Key('compact-stats');
+const answersLoadingKey = Key('answers-loading');
+const answersEndKey = Key('answers-end');
