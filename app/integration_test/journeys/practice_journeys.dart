@@ -6,6 +6,8 @@ import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
 
+// Feedback, button and semantics wording stays literal: it is the behaviour.
+
 void practiceJourneys() {
   group('practice', () {
     testWidgets('a wrong first answer is saved before Next', (tester) async {
@@ -67,7 +69,7 @@ void practiceJourneys() {
       expect(model.current, isNot(same(checked)));
       expect(model.draftInput, isEmpty);
       expect(find.text('Not quite. Try another answer.'), findsNothing);
-      expect(find.text('Let’s work it out'), findsNothing);
+      expect(find.byKey(solutionStepsKey), findsNothing);
       expect(
         find.descendant(
           of: find.byKey(revealStepButtonKey),

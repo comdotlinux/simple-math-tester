@@ -7,6 +7,25 @@ The real app, built once per device, driven through its own screens.
 Every new feature or bug fix adds or extends a named journey in its feature
 file, and updates the inventory below. A pull request without one is not done.
 
+## Finders
+
+Tests find widgets by what they are, not by what they say, so a change of
+copy or layout does not break them. This holds here and in `test/`.
+
+1. Every tap, navigation and `ensureVisible` goes through a `Key` from
+   `lib/keys.dart` (`tapKey`, `tapVisible(tester, find.byKey(...))`,
+   `inHistory(tester, find.byKey(historyRowKey(i)))`). Never tap by
+   `find.text`, `find.byTooltip`, `find.byIcon` or `find.widgetWithText`.
+   A control without a key gets one in `lib/keys.dart`.
+2. Assertions find widgets by key and compare them with model values or
+   shared values from `lib/`: `textOf(tester, key)` with `showsNumber(n)` or
+   `showsXp(xp)`, `Tier.label`, `OperationType.label`, `statsColumns`.
+   Literal copy stays only where the wording itself is the behaviour:
+   feedback messages, the Skip / Next question / Check answer / Hint / Next
+   step labels, a history row's verdict and answer lines, the sprint's mix
+   sentence, and semantics or tooltip labels. Each file with such literals
+   says so in a one-line comment.
+
 ## Layout
 
 - `app_test.dart`: the single entry point. It only calls one function per
@@ -15,7 +34,8 @@ file, and updates the inventory below. A pull request without one is not done.
 - `journeys/<feature>_journeys.dart`: one `group('<feature>', ...)` of short
   `testWidgets`, each named as behaviour a player can see.
 - `support/helpers.dart`: starting from a saved document, restarting, release-safe
-  typing, finders for the pad and toggles, `inHistory`, `semanticsNodesLabelled`,
+  typing, finders for the pad and toggles, `textOf`, `showsNumber`, `showsXp`,
+  `inHistory`, `semanticsNodesLabelled`,
   and `startHarness`.
 
 Every test starts from its own saved document (`startWith` writes it through
@@ -91,7 +111,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 | Vibration switch | `settings_journeys.dart` | the Vibration switch is saved; with Vibration off the pad keys stop buzzing |
 | Sound switch | `sound_journeys.dart` | the Sound switch shows in settings, on by default; turning Sound off is saved and survives a restart; with Sound off no sound plays; with it on, one per checked answer (`startHarness(sounds:)` takes a counting player; every other journey starts with `SilentSoundPlayer`) |
 | Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting; choosing Dark makes the app dark and survives a restart; System follows the device again |
-| Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; the operation selection survives a restart |
+| Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; XP and a streak earned in play are shown again after a restart; the operation selection survives a restart |
 | Unreadable saved data | `persistence_journeys.dart` | unreadable saved data is backed up and the app starts fresh |
 | Offline web app | `tool/browser_check.mjs` | not a Flutter journey (phase 10) |
 

@@ -28,7 +28,6 @@ void soundJourneys() {
       await openSettings(tester);
 
       expect(find.byKey(soundSwitchKey), findsOneWidget);
-      expect(find.text('Sound'), findsOneWidget);
       expect(soundSwitchOn(tester), isTrue);
     });
 
