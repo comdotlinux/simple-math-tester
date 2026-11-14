@@ -64,6 +64,17 @@ void main() {
       expect(store.values[backupKeys(store).single], source);
     });
 
+    test('a document with xp: "abc" takes the backup path', () async {
+      captureErrors();
+      const source = '{"schemaVersion": 1, "xp": "abc"}';
+      final store = FakeStore({progressKey: source});
+      final loaded = await loadProgress(store, clock: clock);
+      expect(loaded.canSave, isTrue);
+      expect(loaded.progress.game.xp, 0);
+      expect(store.values[backupKeys(store).single], source);
+      expect(store.values[progressKey], source);
+    });
+
     test('a failed backup write enters no-write mode', () async {
       final errors = captureErrors();
       final store = FakeStore({progressKey: 'not json'})..failBackups = true;

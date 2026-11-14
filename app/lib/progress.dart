@@ -27,12 +27,14 @@ class Progress {
     List<Attempt> history = const [],
     Tier? tier,
     Map<OperationType, Difficulty> difficulty = const {},
+    GameState game = const GameState(),
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
          history,
          tier,
          difficulty,
+         game,
          const {},
          const {},
        );
@@ -43,6 +45,7 @@ class Progress {
     List<Object> entries,
     this.tier,
     Map<OperationType, Difficulty> difficulty,
+    this.game,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -77,6 +80,8 @@ class Progress {
   /// Every known operation's level, counters and totals.
   final Map<OperationType, Difficulty> difficulty;
 
+  final GameState game;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -94,6 +99,8 @@ class Progress {
   Progress withDifficulty(OperationType type, Difficulty value) =>
       _copy(difficulty: {...difficulty, type: value});
 
+  Progress withGame(GameState game) => _copy(game: game);
+
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
@@ -107,12 +114,14 @@ class Progress {
     List<Object>? entries,
     Tier? tier,
     Map<OperationType, Difficulty>? difficulty,
+    GameState? game,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
     entries ?? _entries,
     tier ?? this.tier,
     difficulty ?? this.difficulty,
+    game ?? this.game,
     _unknownOperations,
     extra,
   );
@@ -145,6 +154,13 @@ class Progress {
       ..._unknownOperations,
     },
     'tier': ?tier?.name,
+    'xp': game.xp,
+    'combo': game.combo,
+    'dailyCount': game.dailyCount,
+    'lastActiveDate': ?game.lastActiveDate,
+    'lastGoalDate': ?game.lastGoalDate,
+    'streak': game.streak,
+    'bestStreak': game.bestStreak,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -196,12 +212,29 @@ class Progress {
     // A tier name this build does not know asks the player again.
     final tier = Tier.values.asNameMap()[_field<String>(json, 'tier')];
 
+    final game = GameState(
+      xp: _field<int>(json, 'xp') ?? 0,
+      combo: _field<int>(json, 'combo') ?? 0,
+      dailyCount: _field<int>(json, 'dailyCount') ?? 0,
+      lastActiveDate: _date(json, 'lastActiveDate'),
+      lastGoalDate: _date(json, 'lastGoalDate'),
+      streak: _field<int>(json, 'streak') ?? 0,
+      bestStreak: _field<int>(json, 'bestStreak') ?? 0,
+    );
+
     const known = {
       'schemaVersion',
       'selectedOperations',
       'history',
       'operations',
       'tier',
+      'xp',
+      'combo',
+      'dailyCount',
+      'lastActiveDate',
+      'lastGoalDate',
+      'streak',
+      'bestStreak',
     };
     return Progress._(
       selected,
@@ -209,6 +242,7 @@ class Progress {
       entries,
       tier,
       difficulty,
+      game,
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)
@@ -265,6 +299,20 @@ class Progress {
       answeredAt: answeredAt.toLocal(),
       sprint: _field<bool>(json, 'sprint') ?? false,
     );
+  }
+
+  /// A `yyyy-MM-dd` date; anything else is a decode failure, because the
+  /// date rules compare these strings.
+  static String? _date(Map<String, Object?> json, String key) {
+    final value = _field<String>(json, key);
+    if (value == null) return null;
+    final parsed = RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)
+        ? DateTime.tryParse(value)
+        : null;
+    if (parsed == null || localDate(parsed) != value) {
+      throw FormatException('$key is not a yyyy-MM-dd date', value);
+    }
+    return value;
   }
 
   /// Null when absent; a value of another type is a decode failure.
