@@ -216,12 +216,26 @@ jobs:
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
-      - name: Run integration tests on iOS simulator (one retry)
+      # A run on main stalled here for 45 minutes: the Xcode build finished and the
+      # test never started. Each attempt therefore has its own time limit, and the
+      # second attempt starts from a freshly booted simulator.
+      - name: Run integration tests on iOS simulator (attempt 1)
+        id: simulator_attempt_1
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: flutter test integration_test -d "$SIMULATOR_UDID"
+      - name: Run integration tests on iOS simulator (attempt 2)
+        if: steps.simulator_attempt_1.outcome != 'success'
+        timeout-minutes: 15
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
-          flutter test integration_test -d "$SIMULATOR_UDID" \
-            || flutter test integration_test -d "$SIMULATOR_UDID"
+          xcrun simctl shutdown "$SIMULATOR_UDID" || true
+          xcrun simctl boot "$SIMULATOR_UDID"
+          xcrun simctl bootstatus "$SIMULATOR_UDID" -b
+          flutter test integration_test -d "$SIMULATOR_UDID"
 
   android-emulator:
     name: Test user journeys on Android emulator API ${{ matrix.api-level }}
