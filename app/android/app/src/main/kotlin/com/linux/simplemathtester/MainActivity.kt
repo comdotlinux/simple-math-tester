@@ -1,4 +1,4 @@
-package com.example.simple_math_tester
+package com.linux.simplemathtester
 
 import io.flutter.embedding.android.FlutterActivity
 

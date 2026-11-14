@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.example.simple_math_tester'
+    namespace 'com.linux.simplemathtester'
     compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
@@ -14,7 +14,7 @@ android {
     }
 
     defaultConfig {
-        applicationId 'com.example.simple_math_tester'
+        applicationId 'com.linux.simplemathtester'
         minSdk flutter.minSdkVersion
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode
