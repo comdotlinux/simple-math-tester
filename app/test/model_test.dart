@@ -475,8 +475,8 @@ void main() {
         expect(model.tier, isNull);
         final before = model.current;
 
-        model.chooseTier(Tier.hard);
-        expect(model.tier, Tier.hard);
+        model.chooseTier(Tier.harder);
+        expect(model.tier, Tier.harder);
         expect(model.current, isNot(same(before)));
         expect(model.current.level, 5);
         expect(model.history, isEmpty);

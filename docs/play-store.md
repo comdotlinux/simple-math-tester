@@ -38,8 +38,8 @@ without it. Cloudflare Pages redirects `/privacy.html` to `/privacy`; both work.
 > starting school math.
 >
 > Practise addition, subtraction, multiplication and division, alone or mixed.
-> Each kind of exercise has five difficulty levels. Start at Easy, Medium or
-> Hard, and the app adapts to how well you answer.
+> Each kind of exercise has five difficulty levels. Start at Easy, Medium, Hard
+> or Harder, and the app adapts to how well you answer.
 >
 > - Big, clear numbers and an on-screen number pad.
 > - A wrong answer can be retried or skipped, and worked steps show how to solve it.

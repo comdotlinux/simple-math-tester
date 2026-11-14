@@ -19,8 +19,8 @@ beside it. Distinctive motif: oversized arithmetic marks and heavy numerals.
 ## Product goals
 Make answering and reviewing math feel clear and rewarding, and bring a child back
 because they are getting better. Four operations, chosen by the player. Five
-difficulty levels per operation, starting at Easy, Medium or Hard and adapting to
-accuracy. Combo, XP, player levels, a daily goal and a daily streak reward progress.
+difficulty levels per operation, starting at Easy, Medium, Hard or Harder and
+adapting to accuracy. Combo, XP, player levels, a daily goal and a daily streak reward progress.
 Retry and skip behavior stay. Progress and the last 200 answers are saved on the
 device. No accounts, cloud features or leaderboards. Success means a child can
 enter, check, retry and move on without losing input or context, and sees progress
