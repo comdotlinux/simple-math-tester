@@ -137,10 +137,12 @@ void main() {
 
         final wrong = await launch(tester, size, brightness);
         await check(tester, '65');
+        // As the player sees it: one hint open, the page where it stopped.
+        await shoot(tester, '$tag-3-wrong');
         wrong.revealStep();
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.byKey(revealStepButtonKey));
-        await shoot(tester, '$tag-3-wrong-hints');
+        await shoot(tester, '$tag-3b-wrong-hints');
 
         // One answer short of the daily goal: the next correct one bursts.
         final goal = await launch(

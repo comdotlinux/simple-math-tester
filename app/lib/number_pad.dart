@@ -29,6 +29,7 @@ class NumberPad extends StatelessWidget {
     required this.controller,
     required this.onEdited,
     required this.onCheck,
+    this.dense = false,
   });
 
   final TextEditingController controller;
@@ -40,13 +41,17 @@ class NumberPad extends StatelessWidget {
   /// replaces.
   final VoidCallback onCheck;
 
-  static const _gap = 8.0;
+  /// Smaller keys and gaps, for a phone that also docks the field above.
+  final bool dense;
 
   /// Grows with the text, so a 200% digit still fits its key.
-  static double keyHeight(TextScaler scaler) =>
-      max(52, scaler.scale(28) * 1.2 + 16);
+  static double keyHeight(TextScaler scaler, {bool dense = false}) =>
+      max(dense ? 48 : 52, scaler.scale(28) * 1.2 + 16);
 
-  static double height(TextScaler scaler) => 3 * keyHeight(scaler) + 2 * _gap;
+  static double _gap(bool dense) => dense ? 6 : 8;
+
+  static double height(TextScaler scaler, {bool dense = false}) =>
+      3 * keyHeight(scaler, dense: dense) + 2 * _gap(dense);
 
   void _edit(String? digit) {
     final text = controller.text;
@@ -70,7 +75,11 @@ class NumberPad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final keyHeight = NumberPad.keyHeight(MediaQuery.textScalerOf(context));
+    final keyHeight = NumberPad.keyHeight(
+      MediaQuery.textScalerOf(context),
+      dense: dense,
+    );
+    final gap = _gap(dense);
     final keySize = WidgetStatePropertyAll(Size(48, keyHeight));
     const noPadding = WidgetStatePropertyAll(EdgeInsets.zero);
 
@@ -98,12 +107,12 @@ class NumberPad extends StatelessWidget {
       ),
     );
 
-    Widget row(List<Widget> keys) => Row(spacing: _gap, children: keys);
+    Widget row(List<Widget> keys) => Row(spacing: gap, children: keys);
 
     return Column(
       key: numberPadKey,
       mainAxisSize: MainAxisSize.min,
-      spacing: _gap,
+      spacing: gap,
       children: [
         row([for (var value = 1; value <= 5; value++) digit(value)]),
         row([for (var value = 6; value <= 10; value++) digit(value % 10)]),

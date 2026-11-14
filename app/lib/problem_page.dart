@@ -25,6 +25,10 @@ class _ProblemPageState extends State<ProblemPage> {
   late final TextEditingController _controller;
   final _focus = FocusNode();
   final _answerKey = GlobalKey();
+
+  /// Keeps the field's state and input connection when it moves between
+  /// the page and the phone dock.
+  final _fieldKey = GlobalKey();
   final _padAvailable = padReplacesKeyboard(defaultTargetPlatform);
   late bool _padShown = _padAvailable;
 
@@ -119,20 +123,74 @@ class _ProblemPageState extends State<ProblemPage> {
         // question and field above it, and otherwise put it under the
         // field.
         final side = showPad && constraints.maxWidth >= 700;
-        final padHeight =
-            NumberPad.height(MediaQuery.textScalerOf(context)) + 2 * 12 + 7;
+        // A phone-height page docks the field and the feedback with a dense
+        // pad, so after a check the question, the answer, the feedback and
+        // Next all stay on screen. The estimate holds room for the feedback,
+        // so a check never moves the pad out of the dock.
+        final phone = !side && constraints.maxHeight < 700;
+        final scaler = MediaQuery.textScalerOf(context);
+        final dockHeight = phone
+            ? NumberPad.height(scaler, dense: true) +
+                  scaler.scale(28) * 1.2 +
+                  128
+            : NumberPad.height(scaler) + 2 * 12 + 7;
         final docked =
-            side || showPad && constraints.maxHeight - padHeight >= 260;
+            side ||
+            showPad && constraints.maxHeight - dockHeight >= (phone ? 80 : 260);
+        final compact = docked && phone;
         _revealAnswer(model, docked);
         const sideWidth = 300.0;
         final width = side
             ? constraints.maxWidth - sideWidth - 2 * 16
             : constraints.maxWidth;
         final wide = width >= 520;
-        // On a phone-height page a bottom pad leaves little room: the card
-        // and the gap below it tighten so the question stays in view with
-        // the field.
-        final compact = docked && !side && constraints.maxHeight < 700;
+        // Next sits in the feedback strip while a result shows there.
+        final nextInStrip =
+            compact && !sprinting && model.answerCorrect != null;
+        final field = _CheckMotion(
+          key: _fieldKey,
+          check: model.lastCheck,
+          child: TextField(
+            controller: _controller,
+            focusNode: _focus,
+            // Hardware keys reach the field only while it
+            // has focus, and pad keys never take it.
+            autofocus: _padShown,
+            keyboardType: _padShown ? TextInputType.none : TextInputType.number,
+            // Every answer is a whole number of 0 or more:
+            // pasted or typed text keeps only its digits.
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            textInputAction: TextInputAction.done,
+            style: theme.textTheme.headlineMedium,
+            decoration: InputDecoration(
+              labelText: 'Your answer',
+              contentPadding: compact
+                  ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
+                  : null,
+              hintText: 'Type a number',
+              suffixIcon: _padAvailable
+                  ? Padding(
+                      padding: const EdgeInsetsDirectional.only(end: 8),
+                      child: IconButton(
+                        key: keyboardSwitchKey,
+                        tooltip: _padShown
+                            ? 'Use the keyboard'
+                            : 'Use the number pad',
+                        onPressed: _toggleKeyboard,
+                        icon: Icon(
+                          _padShown ? Icons.keyboard_outlined : Icons.dialpad,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+            onChanged: model.setDraftInput,
+            // With the pad, Enter keeps the focus, so the
+            // next answer can be typed straight away.
+            onEditingComplete: _padShown ? () {} : null,
+            onSubmitted: (_) => model.submitAnswer(),
+          ),
+        );
         final page = SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(
@@ -208,69 +266,30 @@ class _ProblemPageState extends State<ProblemPage> {
                       ],
                     ),
                     const SizedBox(height: 24),
-                    _QuestionCard(problem: model.current, compact: compact),
-                    SizedBox(height: compact ? 16 : 28),
-                    Column(
-                      key: _answerKey,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _CheckMotion(
-                          check: model.lastCheck,
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focus,
-                            // Hardware keys reach the field only while it
-                            // has focus, and pad keys never take it.
-                            autofocus: _padShown,
-                            keyboardType: _padShown
-                                ? TextInputType.none
-                                : TextInputType.number,
-                            // Every answer is a whole number of 0 or more:
-                            // pasted or typed text keeps only its digits.
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            textInputAction: TextInputAction.done,
-                            style: theme.textTheme.headlineMedium,
-                            decoration: InputDecoration(
-                              labelText: 'Your answer',
-                              hintText: 'Type a number',
-                              suffixIcon: _padAvailable
-                                  ? Padding(
-                                      padding: const EdgeInsetsDirectional.only(
-                                        end: 8,
-                                      ),
-                                      child: IconButton(
-                                        key: keyboardSwitchKey,
-                                        tooltip: _padShown
-                                            ? 'Use the keyboard'
-                                            : 'Use the number pad',
-                                        onPressed: _toggleKeyboard,
-                                        icon: Icon(
-                                          _padShown
-                                              ? Icons.keyboard_outlined
-                                              : Icons.dialpad,
-                                        ),
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                            onChanged: model.setDraftInput,
-                            // With the pad, Enter keeps the focus, so the
-                            // next answer can be typed straight away.
-                            onEditingComplete: _padShown ? () {} : null,
-                            onSubmitted: (_) => model.submitAnswer(),
-                          ),
-                        ),
-                        // Above the feedback, so a message never moves it.
-                        if (showPad && !docked) ...[
-                          const SizedBox(height: 16),
-                          pad,
-                        ],
-                        const SizedBox(height: 12),
-                        _AnswerFeedback(model: model),
-                      ],
+                    KeyedSubtree(
+                      key: compact ? _answerKey : null,
+                      child: _QuestionCard(
+                        problem: model.current,
+                        compact: compact,
+                      ),
                     ),
+                    if (!compact) ...[
+                      const SizedBox(height: 28),
+                      Column(
+                        key: _answerKey,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          field,
+                          // Above the feedback, so a message never moves it.
+                          if (showPad && !docked) ...[
+                            const SizedBox(height: 16),
+                            pad,
+                          ],
+                          const SizedBox(height: 12),
+                          _AnswerFeedback(model: model),
+                        ],
+                      ),
+                    ],
                     if (!showPad) ...[
                       const SizedBox(height: 16),
                       Slab(
@@ -294,19 +313,20 @@ class _ProblemPageState extends State<ProblemPage> {
                             : CrossAxisAlignment.stretch,
                         spacing: 16,
                         children: [
-                          _flexed(
-                            wide,
-                            Slab(
-                              pressable: true,
-                              radius: AppTokens.radiusControl,
-                              child: OutlinedButton.icon(
-                                key: nextQuestionButtonKey,
-                                onPressed: model.generateNextProblem,
-                                icon: const Icon(Icons.navigate_next),
-                                label: const Text('Next question'),
+                          if (!nextInStrip)
+                            _flexed(
+                              wide,
+                              Slab(
+                                pressable: true,
+                                radius: AppTokens.radiusControl,
+                                child: OutlinedButton.icon(
+                                  key: nextQuestionButtonKey,
+                                  onPressed: model.generateNextProblem,
+                                  icon: const Icon(Icons.navigate_next),
+                                  label: const Text('Next question'),
+                                ),
                               ),
                             ),
-                          ),
                           _flexed(
                             wide,
                             Slab(
@@ -349,13 +369,37 @@ class _ProblemPageState extends State<ProblemPage> {
           ),
           child: Padding(
             // The extra bottom space holds the last row's slab.
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12 + 5),
+            padding: compact
+                ? const EdgeInsets.fromLTRB(16, 8, 16, 8 + 5)
+                : const EdgeInsets.fromLTRB(16, 12, 16, 12 + 5),
             child: Center(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: side ? sideWidth - AppTokens.outlineWidth : 440,
                 ),
-                child: pad,
+                child: compact
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: 6,
+                        children: [
+                          field,
+                          _AnswerFeedback(
+                            model: model,
+                            dense: true,
+                            onNext: nextInStrip
+                                ? model.generateNextProblem
+                                : null,
+                          ),
+                          NumberPad(
+                            controller: _controller,
+                            onEdited: pad.onEdited,
+                            onCheck: model.submitAnswer,
+                            dense: true,
+                          ),
+                        ],
+                      )
+                    : pad,
               ),
             ),
           ),
@@ -376,7 +420,7 @@ class _ProblemPageState extends State<ProblemPage> {
 /// Pops the answer on a correct first check and shakes it on a wrong one;
 /// nothing moves with reduced motion. Input is never blocked meanwhile.
 class _CheckMotion extends StatefulWidget {
-  const _CheckMotion({required this.check, required this.child});
+  const _CheckMotion({super.key, required this.check, required this.child});
 
   final ({int count, bool correct, bool first})? check;
   final Widget child;
@@ -444,35 +488,46 @@ class _QuestionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+    Widget question(TextStyle? style) => Text(
+      problem.question,
+      key: questionOnProblemsPageKey,
+      textAlign: TextAlign.center,
+      semanticsLabel: 'Math question: ${problem.question}',
+      style: style,
+    );
     return Slab(
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The question's own label already names the operation.
-            ExcludeSemantics(
-              child: _Band(
-                color: tokens.operation,
-                child: Text(
-                  problem.kind.label,
-                  style: textTheme.labelMedium?.copyWith(
-                    color: tokens.onOperation,
+            // The question's own label already names the operation; a phone
+            // with the docked field drops the band for room.
+            if (!compact)
+              ExcludeSemantics(
+                child: _Band(
+                  color: tokens.operation,
+                  child: Text(
+                    problem.kind.label,
+                    style: textTheme.labelMedium?.copyWith(
+                      color: tokens.onOperation,
+                    ),
                   ),
                 ),
               ),
-            ),
             Padding(
               padding: compact
-                  ? const EdgeInsets.fromLTRB(20, 18, 20, 22)
+                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 10)
                   : const EdgeInsets.fromLTRB(20, 36, 20, 44),
-              child: Text(
-                problem.question,
-                key: questionOnProblemsPageKey,
-                textAlign: TextAlign.center,
-                semanticsLabel: 'Math question: ${problem.question}',
-                style: textTheme.displayLarge,
-              ),
+              child: compact
+                  // One line that shrinks to fit rather than wrapping.
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: question(
+                        textTheme.displayLarge?.copyWith(fontSize: 52),
+                      ),
+                    )
+                  : question(textTheme.displayLarge),
             ),
           ],
         ),
@@ -840,10 +895,14 @@ class _OperationToggle extends StatelessWidget {
   }
 }
 
+/// The feedback strip; [dense] for the phone dock, where it also carries
+/// the Next button ([onNext]) after a result.
 class _AnswerFeedback extends StatelessWidget {
-  const _AnswerFeedback({required this.model});
+  const _AnswerFeedback({required this.model, this.dense = false, this.onNext});
 
   final MathTesterModel model;
+  final bool dense;
+  final VoidCallback? onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -881,10 +940,10 @@ class _AnswerFeedback extends StatelessWidget {
               liveRegion: true,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
+                padding: dense
+                    ? const EdgeInsets.fromLTRB(12, 6, 6, 6)
+                    : const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                constraints: const BoxConstraints(minHeight: 48),
                 decoration: BoxDecoration(
                   color: background,
                   border: Border.all(
@@ -894,16 +953,40 @@ class _AnswerFeedback extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppTokens.radiusControl),
                 ),
                 child: Row(
+                  spacing: dense ? 8 : 12,
                   children: [
-                    Icon(icon, size: 28, color: foreground),
-                    const SizedBox(width: 12),
+                    Icon(icon, size: dense ? 24 : 28, color: foreground),
                     Expanded(
                       child: Text(
                         message,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(color: foreground),
+                        style:
+                            (dense
+                                    ? Theme.of(context).textTheme.bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          )
+                                    : Theme.of(context).textTheme.titleMedium)
+                                ?.copyWith(color: foreground),
                       ),
                     ),
+                    if (onNext case final next?)
+                      Slab(
+                        pressable: true,
+                        radius: AppTokens.radiusControl,
+                        child: OutlinedButton.icon(
+                          key: nextQuestionButtonKey,
+                          onPressed: next,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          icon: const Icon(Icons.navigate_next),
+                          label: const Text(
+                            'Next',
+                            semanticsLabel: 'Next question',
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
