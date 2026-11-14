@@ -6,6 +6,8 @@ import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
+import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/rules.dart';
 
 void main() {
   Future<MathTesterModel> launch(
@@ -15,6 +17,7 @@ void main() {
     double keyboardInset = 0,
     bool disableAnimations = false,
     Problem problem = const Problem(12, 3, OperationType.plus, 15),
+    Tier? tier = Tier.easy,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -22,7 +25,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    final model = MathTesterModel(initialProblem: problem);
+    final model = MathTesterModel(
+      initialProblem: problem,
+      progress: Progress(tier: tier),
+    );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: model,
@@ -451,6 +457,7 @@ void main() {
       find.byKey(nextQuestionButtonKey),
       find.byKey(revealStepButtonKey),
       find.byType(TextField),
+      find.byKey(settingsButtonKey),
       for (final type in OperationType.values)
         find.byWidgetPredicate(
           (widget) => widget is Tooltip && widget.message == type.label,
@@ -478,4 +485,131 @@ void main() {
       });
     }
   }
+
+  group('tier picker', () {
+    for (final (width, scale) in [(320.0, 2.0), (390.0, 1.0), (1000.0, 1.0)]) {
+      testWidgets('covers practice until a tier is chosen at $width, '
+          'text scale $scale', (tester) async {
+        final model = await launch(
+          tester,
+          size: Size(width, 700),
+          scale: scale,
+          tier: null,
+        );
+        expect(find.byKey(tierPickerKey), findsOneWidget);
+        expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+        expect(find.byType(TextField), findsNothing);
+        expect(
+          tester.getSemantics(find.text('How hard should it start?')),
+          isSemantics(isHeader: true),
+        );
+        for (final tier in Tier.values) {
+          final button = find.widgetWithText(OutlinedButton, tier.label);
+          await tester.ensureVisible(button);
+          final size = tester.getSize(button);
+          expect(size.height, greaterThanOrEqualTo(48));
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(
+            tester.getSemantics(button),
+            isSemantics(label: tier.label, isButton: true, hasTapAction: true),
+          );
+        }
+        expect(tester.takeException(), isNull);
+
+        // "My answers" stays reachable while the picker is shown.
+        await tester.tap(find.text('My answers').last);
+        await tester.pumpAndSettle();
+        expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.calculate_outlined).last);
+        await tester.pumpAndSettle();
+        expect(find.byKey(tierPickerKey), findsOneWidget);
+
+        final medium = find.widgetWithText(OutlinedButton, 'Medium');
+        await tester.ensureVisible(medium);
+        await tester.tap(medium);
+        await tester.pumpAndSettle();
+        expect(model.tier, Tier.medium);
+        expect(model.current.level, 3);
+        expect(model.history, isEmpty);
+        expect(find.byKey(tierPickerKey), findsNothing);
+        expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('a tier can be chosen with the keyboard', (tester) async {
+      final model = await launch(tester, tier: null);
+      Focus.of(tester.element(find.text('Hard'))).requestFocus();
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(model.tier, Tier.hard);
+      expect(model.current.level, 5);
+    });
+  });
+
+  group('settings sheet', () {
+    Finder tierTile(Tier tier) => find.descendant(
+      of: find.byKey(settingsSheetKey),
+      matching: find.widgetWithText(ListTile, tier.label),
+    );
+
+    for (final (width, scale) in [(320.0, 2.0), (1000.0, 1.0)]) {
+      testWidgets('changes the tier and draws at the new level at $width, '
+          'text scale $scale', (tester) async {
+        final model = await launch(
+          tester,
+          size: Size(width, 700),
+          scale: scale,
+          tier: Tier.easy,
+        );
+        expect(
+          tester.getSemantics(find.byKey(settingsButtonKey)),
+          isSemantics(label: 'Settings', isButton: true, hasTapAction: true),
+        );
+        await tester.tap(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        expect(find.byKey(settingsSheetKey), findsOneWidget);
+        expect(find.textContaining('Now: Easy.'), findsOneWidget);
+        for (final tier in Tier.values) {
+          await tester.ensureVisible(tierTile(tier));
+          await tester.pumpAndSettle();
+          expect(
+            tester.getSemantics(tierTile(tier)),
+            isSemantics(
+              label: tier.label,
+              isSelected: tier == Tier.easy,
+              hasTapAction: true,
+            ),
+          );
+          expect(
+            tester.getSize(tierTile(tier)).height,
+            greaterThanOrEqualTo(48),
+          );
+        }
+        expect(tester.takeException(), isNull);
+
+        await tester.ensureVisible(tierTile(Tier.hard));
+        await tester.tap(tierTile(Tier.hard));
+        await tester.pumpAndSettle();
+        expect(find.byKey(settingsSheetKey), findsNothing);
+        expect(model.tier, Tier.hard);
+        expect(model.current.level, 5);
+        // The replaced problem is not recorded.
+        expect(model.history, isEmpty);
+        expect(find.text('12 + 3'), findsNothing);
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('choosing the current tier keeps the problem', (tester) async {
+      final model = await launch(tester);
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(tierTile(Tier.easy));
+      await tester.pumpAndSettle();
+      expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(model.current.question, '12 + 3');
+    });
+  });
 }

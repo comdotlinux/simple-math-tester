@@ -9,3 +9,6 @@ const questionOnProblemsPageKey = Key('question-on-problems-page');
 const checkAnswerButtonKey = Key('check-answer-button');
 const nextQuestionButtonKey = Key('next-question-button');
 const revealStepButtonKey = Key('reveal-step-button');
+const settingsButtonKey = Key('settings-button');
+const settingsSheetKey = Key('settings-sheet');
+const tierPickerKey = Key('tier-picker');

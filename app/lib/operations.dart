@@ -7,55 +7,72 @@ num _subtract(int lhs, int rhs) => lhs - rhs;
 num _multiply(int lhs, int rhs) => lhs * rhs;
 num _divide(int lhs, int rhs) => lhs / rhs;
 
-/// The registry of operation kinds: each kind declares its generator ranges,
+typedef Range = (int, int);
+
+const maxLevel = 5;
+
+/// The level table, levels 1 to 5: the two operand ranges of addition and
+/// subtraction, and the smaller and larger factor ranges of multiplication
+/// and division (divisor by quotient).
+const List<(Range, Range)> _sumLevels = [
+  ((1, 10), (1, 10)),
+  ((1, 20), (1, 20)),
+  ((10, 100), (10, 100)),
+  ((100, 1000), (100, 1000)),
+  ((1000, 10000), (1000, 10000)),
+];
+const List<(Range, Range)> _productLevels = [
+  ((2, 5), (2, 5)),
+  ((2, 10), (2, 10)),
+  ((2, 12), (2, 20)),
+  ((2, 20), (11, 50)),
+  ((11, 30), (11, 99)),
+];
+
+/// The registry of operation kinds: each kind declares its level-table row,
 /// its calculation and its step writer here and nowhere else.
 enum OperationType {
-  plus('+', 'Addition', 2, 10000, 3, 10000, _add, additionSteps),
-  minus('−', 'Subtraction', 2, 10000, 0, 10000, _subtract, subtractionSteps),
+  plus('+', 'Addition', _sumLevels, _add, additionSteps),
+  minus('−', 'Subtraction', _sumLevels, _subtract, subtractionSteps),
   multiply(
     '×',
     'Multiplication',
-    2,
-    500,
-    10,
-    1000,
+    _productLevels,
     _multiply,
     multiplicationSteps,
   ),
-  divide('÷', 'Division', 3, 1000, 2, 1000, _divide, divisionSteps);
+  divide('÷', 'Division', _productLevels, _divide, divisionSteps);
 
   final String displayString;
   final String label;
-  final int minOperand;
-  final int maxOperand;
-  final num minResult;
-  final num maxResult;
+
+  /// The two ranges drawn from at each level; index 0 is level 1.
+  final List<(Range, Range)> levels;
   final num Function(int lhs, int rhs) calculate;
   final List<String> Function(Problem problem) steps;
 
   const OperationType(
     this.displayString,
     this.label,
-    this.minOperand,
-    this.maxOperand,
-    this.minResult,
-    this.maxResult,
+    this.levels,
     this.calculate,
     this.steps,
   );
 
-  /// Draws operands uniformly until the result is a whole number in range.
-  Problem generate(Random random) {
-    while (true) {
-      final lhs = minOperand + random.nextInt(maxOperand - minOperand + 1);
-      final rhs = minOperand + random.nextInt(maxOperand - minOperand + 1);
-      final result = calculate(lhs, rhs);
-      if (result >= minResult &&
-          result <= maxResult &&
-          result == result.truncate()) {
-        return Problem(lhs, rhs, this, result);
-      }
-    }
+  /// One problem at [level]: subtraction puts the larger operand first and
+  /// division is built as divisor times quotient, so every answer is a
+  /// whole number of 0 or more.
+  Problem generate(Random random, int level) {
+    final ((aMin, aMax), (bMin, bMax)) = levels[level - 1];
+    final a = aMin + random.nextInt(aMax - aMin + 1);
+    final b = bMin + random.nextInt(bMax - bMin + 1);
+    final (lhs, rhs) = switch (this) {
+      plus => (a, b),
+      minus => (max(a, b), min(a, b)),
+      multiply => random.nextBool() ? (a, b) : (b, a),
+      divide => (a * b, a),
+    };
+    return Problem(lhs, rhs, this, calculate(lhs, rhs), level: level);
   }
 }
 

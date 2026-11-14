@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
+import 'rules.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -58,85 +59,115 @@ class _ProblemPageState extends State<ProblemPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Let’s practice', style: theme.textTheme.displaySmall),
+                  if (!model.canSave) ...[
+                    Text(
+                      'Progress can’t be saved on this device right now',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Let’s practice',
+                          style: theme.textTheme.displaySmall,
+                        ),
+                      ),
+                      IconButton(
+                        key: settingsButtonKey,
+                        tooltip: 'Settings',
+                        onPressed: () => _showSettings(context),
+                        icon: const Icon(
+                          Icons.settings_outlined,
+                          semanticLabel: 'Settings',
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Take your time and give it a try.',
                     style: theme.textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      for (final type in OperationType.values) ...[
-                        if (type.index > 0) const SizedBox(width: 8),
-                        Expanded(
-                          child: _OperationToggle(
-                            type: type,
-                            selected: model.selectedOperations.contains(type),
-                            onPressed: () => model.toggleOperation(type),
+                  if (model.tier == null)
+                    const _TierPicker()
+                  else ...[
+                    Row(
+                      children: [
+                        for (final type in OperationType.values) ...[
+                          if (type.index > 0) const SizedBox(width: 8),
+                          Expanded(
+                            child: _OperationToggle(
+                              type: type,
+                              selected: model.selectedOperations.contains(type),
+                              onPressed: () => model.toggleOperation(type),
+                            ),
                           ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Card(
+                      color: context.tokens.mint,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 32,
+                        ),
+                        child: Text(
+                          model.current.question,
+                          key: questionOnProblemsPageKey,
+                          textAlign: TextAlign.center,
+                          semanticsLabel:
+                              'Math question: ${model.current.question}',
+                          style: theme.textTheme.displaySmall,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _controller,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        signed: true,
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.done,
+                      style: theme.textTheme.titleLarge,
+                      decoration: const InputDecoration(
+                        labelText: 'Your answer',
+                        hintText: 'Type a number',
+                      ),
+                      onChanged: model.setDraftInput,
+                      onSubmitted: (_) => model.submitAnswer(),
+                    ),
+                    const SizedBox(height: 12),
+                    _AnswerFeedback(model: model),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        FilledButton.icon(
+                          key: checkAnswerButtonKey,
+                          onPressed: model.submitAnswer,
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Check answer'),
+                        ),
+                        OutlinedButton.icon(
+                          key: nextQuestionButtonKey,
+                          onPressed: model.generateNextProblem,
+                          icon: const Icon(Icons.navigate_next),
+                          label: const Text('Next question'),
                         ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    color: context.tokens.mint,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 32,
-                      ),
-                      child: Text(
-                        model.current.question,
-                        key: questionOnProblemsPageKey,
-                        textAlign: TextAlign.center,
-                        semanticsLabel:
-                            'Math question: ${model.current.question}',
-                        style: theme.textTheme.displaySmall,
-                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _controller,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      signed: true,
-                      decimal: true,
-                    ),
-                    textInputAction: TextInputAction.done,
-                    style: theme.textTheme.titleLarge,
-                    decoration: const InputDecoration(
-                      labelText: 'Your answer',
-                      hintText: 'Type a number',
-                    ),
-                    onChanged: model.setDraftInput,
-                    onSubmitted: (_) => model.submitAnswer(),
-                  ),
-                  const SizedBox(height: 12),
-                  _AnswerFeedback(model: model),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      FilledButton.icon(
-                        key: checkAnswerButtonKey,
-                        onPressed: model.submitAnswer,
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Check answer'),
-                      ),
-                      OutlinedButton.icon(
-                        key: nextQuestionButtonKey,
-                        onPressed: model.generateNextProblem,
-                        icon: const Icon(Icons.navigate_next),
-                        label: const Text('Next question'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _Hints(model: model),
+                    const SizedBox(height: 12),
+                    _Hints(model: model),
+                  ],
                 ],
               ),
             ),
@@ -145,6 +176,97 @@ class _ProblemPageState extends State<ProblemPage> {
       },
     );
   }
+}
+
+/// Covers the practice controls until a starting tier is chosen; it has no
+/// way out other than a choice.
+class _TierPicker extends StatelessWidget {
+  const _TierPicker();
+
+  @override
+  Widget build(BuildContext context) {
+    final model = context.read<MathTesterModel>();
+    final textTheme = Theme.of(context).textTheme;
+    return Card(
+      key: tierPickerKey,
+      color: context.tokens.paper,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                'How hard should it start?',
+                style: textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Questions get easier or harder as you answer. '
+              'You can change this later in settings.',
+              style: textTheme.bodyMedium,
+            ),
+            for (final tier in Tier.values) ...[
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () => model.chooseTier(tier),
+                child: Text(tier.label),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A simple list of settings; for now only the starting tier.
+void _showSettings(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) {
+      final model = context.watch<MathTesterModel>();
+      final textTheme = Theme.of(context).textTheme;
+      return SafeArea(
+        child: SingleChildScrollView(
+          key: settingsSheetKey,
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Semantics(
+                  header: true,
+                  child: Text(
+                    'Starting difficulty',
+                    style: textTheme.titleLarge,
+                  ),
+                ),
+                subtitle: Text(
+                  'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
+                  'starts every operation again at that difficulty.',
+                ),
+              ),
+              for (final tier in Tier.values)
+                ListTile(
+                  title: Text(tier.label),
+                  selected: tier == model.tier,
+                  trailing: tier == model.tier ? const Icon(Icons.check) : null,
+                  onTap: () {
+                    if (tier != model.tier) model.chooseTier(tier);
+                    Navigator.pop(context);
+                  },
+                ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 class _OperationToggle extends StatelessWidget {

@@ -58,7 +58,12 @@ void expectStepsHideResult(
 }
 
 void main() {
-  expectStepsHideResult((type, random) => type.generate(random));
+  for (var level = 1; level <= maxLevel; level++) {
+    expectStepsHideResult(
+      (type, random) => type.generate(random, level),
+      label: ' at level $level',
+    );
+  }
 
   test('addition shows place values and carrying', () {
     expect(solutionSteps(const Problem(19, 6, OperationType.plus, 25)), [
@@ -129,6 +134,68 @@ void main() {
       'How many 3s make 12? Think: 3 × ? = 12.',
       'Count in 3s: 3, 6, 9, … until you reach 12. How many 3s did you count?',
       '3 × 4 = 12, so 12 ÷ 3 = 4.',
+    ]);
+  });
+
+  test('addition up to 10 counts on, also from 10', () {
+    expect(solutionSteps(const Problem(6, 10, OperationType.plus, 16)), [
+      'Start at 10 and count on 6 more: 11, 12, 13, …',
+      'So 6 + 10 = 16.',
+    ]);
+  });
+
+  test('addition of two round ten thousands names the place', () {
+    expect(
+      solutionSteps(const Problem(10000, 10000, OperationType.plus, 20000)),
+      [
+        '10000 is 1 ten thousand and 10000 is 1 ten thousand. '
+            'Add 1 + 1, then make it ten thousands.',
+        'So 10000 + 10000 = 20000.',
+      ],
+    );
+  });
+
+  test('subtraction inside one ten counts one at a time', () {
+    expect(solutionSteps(const Problem(7, 3, OperationType.minus, 4)), [
+      'Find the difference between 7 and 3: what do you add to 3 to make 7?',
+      'Count up from 3 to 7 one at a time and keep track of how many you '
+          'counted.',
+      'So 7 − 3 = 4. Check: 4 + 3 = 7.',
+    ]);
+  });
+
+  test('multiplication splits the factor that has more than one place', () {
+    expect(solutionSteps(const Problem(17, 50, OperationType.multiply, 850)), [
+      'Split 17 into 10 + 7.',
+      'Multiply each part by 50: 50 × 10 = 500; 50 × 7 = 350.',
+      'Add the products: 500 + 350 = 850.',
+    ]);
+  });
+
+  test('multiplication of two round numbers multiplies the digits', () {
+    expect(solutionSteps(const Problem(20, 30, OperationType.multiply, 600)), [
+      'Take the zeros off and multiply the digits: 2 × 3 = 6.',
+      '20 and 30 have 2 zeros together. Write them after 6.',
+      'So 20 × 30 = 600.',
+    ]);
+  });
+
+  test('division with a quotient of 10 or more takes tens first', () {
+    expect(solutionSteps(const Problem(2047, 23, OperationType.divide, 89.0)), [
+      'How many 23s make 2047? Think: 23 × ? = 2047.',
+      'Take tens first: 23 × 80 = 1840, and 2047 − 1840 = 207 is left to '
+          'share into 23s.',
+      '23 × 89 = 2047, so 2047 ÷ 23 = 89.',
+    ]);
+  });
+
+  test('division by tens drops the numbers when they would show it', () {
+    // 11 × 30 = 330 leaves 33, the answer itself.
+    expect(solutionSteps(const Problem(363, 11, OperationType.divide, 33.0)), [
+      'How many 11s make 363? Think: 11 × ? = 363.',
+      'Multiply 11 by round tens until you get close to 363, then count on '
+          'in 11s for the rest.',
+      '11 × 33 = 363, so 363 ÷ 11 = 33.',
     ]);
   });
 
