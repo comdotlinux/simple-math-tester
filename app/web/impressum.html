@@ -81,18 +81,19 @@
     }
     .details-head { margin-top: 0.9rem; }
     .details-head + .details { margin-top: 0.4rem; }
-    .consent {
+    .notice {
       display: flex;
       align-items: flex-start;
       gap: 0.6rem;
       margin-top: 0.9rem;
       padding: 0.8rem 0.9rem;
-      background: var(--sunken);
+      background: var(--primary);
+      color: var(--on-primary);
       border: 2px solid var(--outline);
       border-radius: 0.9rem;
-      cursor: pointer;
     }
-    .consent input { width: 1.25rem; height: 1.25rem; margin: 0.15rem 0 0; flex: none; accent-color: var(--primary); }
+    .notice strong { display: block; }
+    .notice::before { content: "\26A0"; font-size: 1.2rem; line-height: 1.3; flex: none; }
     .label {
       font: 600 0.75rem/1 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       letter-spacing: 0.08em;
@@ -121,7 +122,6 @@
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
-    #status.waiting::before { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { #status::before { animation: none; } }
     .cf-turnstile { margin-top: 0.9rem; min-height: 65px; }
@@ -149,11 +149,11 @@
       <h2 id="provider-heading">Provider</h2>
       <p class="muted">Information under § 5 DDG (German Digital Services Act) about who
         provides this app and website, and how to reach them.</p>
-      <label class="consent">
-        <input type="checkbox" id="consent" onchange="maybeLoad()">
-        <span>I will use these details only to contact the provider, and I will not
-          publish, share, sell or otherwise misuse them.</span>
-      </label>
+      <div class="notice" role="note">
+        <span><strong>For contacting the provider only.</strong>
+          Do not publish, share, sell or otherwise misuse these details, for example
+          for advertising or unsolicited mail.</span>
+      </div>
       <p id="status">A short automatic check keeps bots away from the provider details.</p>
       <!-- Public site key of the "impressum" Turnstile widget (math.munich-tech.de, simple-math-tester.pages.dev); its secret is TURNSTILE_SECRET_KEY on the Pages Production environment. -->
       <div class="cf-turnstile"
@@ -202,10 +202,6 @@
     const details = document.getElementById('details');
     const textBox = document.getElementById('text');
     const errorLine = document.getElementById('error');
-    const consent = document.getElementById('consent');
-    const checkText = statusLine.textContent;
-    // The Turnstile token, kept until the visitor confirms the line above.
-    let pendingToken = null;
 
     function showError() {
       statusLine.hidden = true;
@@ -221,9 +217,6 @@
         location.reload();
         return;
       }
-      pendingToken = null;
-      statusLine.textContent = checkText;
-      statusLine.classList.remove('waiting');
       statusLine.hidden = false;
       turnstile.reset();
     }
@@ -234,21 +227,7 @@
       return true;
     }
 
-    function onPassed(token) {
-      pendingToken = token;
-      maybeLoad();
-    }
-
-    // Loads the details only once the check passed and the visitor confirmed.
-    async function maybeLoad() {
-      if (!pendingToken) return;
-      if (!consent.checked) {
-        statusLine.textContent = 'Check passed. Tick the box above to show the details.';
-        statusLine.classList.add('waiting');
-        return;
-      }
-      const token = pendingToken;
-      pendingToken = null;
+    async function onPassed(token) {
       try {
         const response = await fetch('/api/impressum', {
           method: 'POST',
@@ -261,7 +240,6 @@
         textBox.textContent = (await response.text()).trim();
         details.hidden = false;
         statusLine.hidden = true;
-        consent.disabled = true;
         document.querySelector('.cf-turnstile').hidden = true;
       } catch {
         showError();

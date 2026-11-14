@@ -131,10 +131,6 @@ From plan section 4.6 (research, not legal advice):
   If not, or if Turnstile or the function is unavailable for long, the fallback is
   to return the text without the check (a one-line change in
   `functions/api/impressum.js`) or to publish the text as a static page.
-- Whether the confirmation step before the details (the visitor ticks that they will
-  use them only to contact the provider and not misuse them) is compatible with
-  "directly accessible" under § 5 DDG. If not, remove the checkbox in
-  `app/web/impressum.html` so the details load as soon as the check passes.
 - Whether the one link out of the app (the Impressum, behind the settings gear)
   needs a parental gate for the Families Policy.
 - Whether an Impressum is required for an ad-free hobby app, and with which address.
