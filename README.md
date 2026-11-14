@@ -24,7 +24,7 @@ macOS and Xcode. Android builds require an Android SDK and accepted licenses.
 Run all Flutter and Dart commands through `mise` from `app/`:
 
 ```sh
-mise exec -- dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+mise exec -- dart format --output=none --set-exit-if-changed lib test integration_test integration_test_web test_driver tool
 mise exec -- flutter analyze
 mise exec -- flutter test
 mise exec -- flutter test integration_test -d linux
@@ -48,6 +48,16 @@ deploy after the prerequisite checks pass.
 
 CI uploads the Linux release bundle, Android APK, and unsigned iOS app as build
 artifacts with 3-day retention.
+
+A separate workflow, `play-bundle.yml`, builds the Google Play app bundle on every
+push to `main` and on manual runs (no inputs). It signs with the upload key from
+repository secrets, or with a throwaway key when the secrets are not set, fails if
+the bundle carries the Android debug certificate, and checks 16 KB page support of
+the APKs built from it (`zipalign -c -P 16`, `.so` LOAD alignment of at least
+0x4000). Only the secret-signed bundle is uploaded (3-day retention). Release builds
+use `app/android/key.properties` when it exists and debug signing otherwise; the
+Android application id is `com.linux.simplemathtester`. See `docs/play-store.md`
+for the Play Console answers and the publishing walkthrough.
 
 On macOS, also run:
 
