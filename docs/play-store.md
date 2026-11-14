@@ -208,8 +208,10 @@ uploaded by hand, walkthrough row 8, done 2026-11-14):
 Each release:
 
 1. GitHub, Releases, Draft a new release. Tag: the version, `v1.0.1` (or `1.0.1`);
-   anything else fails the run. The release text becomes the release notes
-   (500 characters at most are sent).
+   anything else fails the run. The release text becomes the Play release notes:
+   Markdown, HTML, links and "by @user in ..." are removed, and whole lines are
+   kept up to Play's 500 characters (`.github/play-release-notes.jq`). Write short
+   plain lines; an empty text sends "Version 1.0.1".
 2. Publish. The "Play app bundle" run builds, checks and uploads; its last line
    says which version is on the internal track.
 3. In Play Console, promote the release from internal testing to closed testing or

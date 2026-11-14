@@ -92,6 +92,8 @@ jobs:
           # A file, not a step output: outputs holding a secret are dropped.
           printf '%s' "$alias" > "$RUNNER_TEMP/key-alias"
           echo "signing=$signing" >> "$GITHUB_OUTPUT"
+      - name: Check the release notes filter
+        run: bash ../.github/play-release-notes.test.sh
       - name: Require the upload key for a release
         if: github.event_name == 'release' && steps.key.outputs.signing != 'upload'
         run: |
@@ -262,10 +264,11 @@ jobs:
             echo "::error::Play reports version code $code, expected $BUILD_NUMBER"
             exit 1
           fi
-          # Play allows 500 characters of release notes per language; jq cuts by character.
-          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${NOTES:-Version $VERSION_NAME}" \
+          # Plain text, whole lines, 500 characters at most (see play-release-notes.jq).
+          notes="$(jq -nr --arg notes "$NOTES" -f ../.github/play-release-notes.jq)"
+          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:-Version $VERSION_NAME}" \
             '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
-              releaseNotes: [{language: "en-US", text: $notes[:500]}]}]}' > "$RUNNER_TEMP/track.json"
+              releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
           curl -sS --fail-with-body -X PUT "${auth[@]}" -H 'Content-Type: application/json' \
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
