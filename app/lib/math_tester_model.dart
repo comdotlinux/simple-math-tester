@@ -1,8 +1,11 @@
 import 'dart:math';
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
 
 import 'operations.dart';
+import 'progress.dart';
+import 'progress_store.dart';
 import 'rules.dart';
 import 'solution_steps.dart';
 
@@ -12,13 +15,23 @@ class MathTesterModel extends ChangeNotifier {
     this.nextProblem,
     Random? random,
     DateTime Function()? clock,
+    ProgressStore? store,
+    Progress? progress,
+    this._canSave = true,
   }) : _random = random ?? Random(),
-       _clock = clock ?? DateTime.now {
+       _clock = clock ?? DateTime.now,
+       _store = store ?? MemoryProgressStore(),
+       _progress = progress ?? Progress() {
     _show(initialProblem ?? OperationType.plus.generate(_random));
   }
 
   final Random _random;
   final DateTime Function() _clock;
+  final ProgressStore _store;
+  late final _writer = ProgressWriter(_store);
+  Progress _progress;
+  bool _canSave;
+  bool _retried = false;
   @visibleForTesting
   final Problem Function()? nextProblem;
 
@@ -27,10 +40,6 @@ class MathTesterModel extends ChangeNotifier {
   late DateTime _shownAt;
   late bool _checked;
   late int _revealed;
-  List<Attempt> _history = List.unmodifiable(const <Attempt>[]);
-  Set<OperationType> _selectedOperations = Set.unmodifiable(
-    OperationType.values,
-  );
   String _draftInput = '';
   String? _validationMessage;
   bool? _answerCorrect;
@@ -44,8 +53,11 @@ class MathTesterModel extends ChangeNotifier {
   bool get canRevealStep => _nextRevealed(HintEvent.reveal) > _revealed;
 
   /// Replaced, never mutated, so `context.select` sees every change.
-  List<Attempt> get history => _history;
-  Set<OperationType> get selectedOperations => _selectedOperations;
+  List<Attempt> get history => _progress.history;
+  Set<OperationType> get selectedOperations => _progress.selectedOperations;
+
+  /// False in no-write mode: saved data could not be read, so it is kept.
+  bool get canSave => _canSave;
   String get draftInput => _draftInput;
   String? get validationMessage => _validationMessage;
   bool? get answerCorrect => _answerCorrect;
@@ -82,7 +94,7 @@ class MathTesterModel extends ChangeNotifier {
 
   void generateNextProblem() {
     _record(null);
-    final kinds = OperationType.values.where(_selectedOperations.contains);
+    final kinds = OperationType.values.where(selectedOperations.contains);
     _show(
       nextProblem?.call() ??
           kinds.elementAt(_random.nextInt(kinds.length)).generate(_random),
@@ -103,15 +115,17 @@ class MathTesterModel extends ChangeNotifier {
   /// Refuses to deselect the last selected operation. The problem on screen
   /// is kept; the selection applies from the next problem.
   void toggleOperation(OperationType type) {
-    if (!_selectedOperations.contains(type)) {
-      _selectedOperations = Set.unmodifiable({..._selectedOperations, type});
-    } else if (_selectedOperations.length > 1) {
-      _selectedOperations = Set.unmodifiable(
-        _selectedOperations.where((selected) => selected != type),
+    final selected = selectedOperations;
+    if (!selected.contains(type)) {
+      _progress = _progress.withSelectedOperations({...selected, type});
+    } else if (selected.length > 1) {
+      _progress = _progress.withSelectedOperations(
+        selected.where((kind) => kind != type).toSet(),
       );
     } else {
       return;
     }
+    _save();
     notifyListeners();
   }
 
@@ -119,6 +133,31 @@ class MathTesterModel extends ChangeNotifier {
     RangeError.checkValueInInterval(value, 0, 1, 'page');
     _currentPage = value;
     notifyListeners();
+  }
+
+  /// Flushes saves when the app goes to the background; in no-write mode
+  /// the first resume tries to read the saved progress once more.
+  void handleLifecycle(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused || AppLifecycleState.hidden:
+        if (_canSave) _writer.flush();
+      case AppLifecycleState.resumed when !_canSave && !_retried:
+        _retried = true;
+        _retryLoad();
+      default:
+    }
+  }
+
+  Future<void> _retryLoad() async {
+    final loaded = await loadProgress(_store, clock: _clock);
+    if (!loaded.canSave) return;
+    _progress = loaded.progress;
+    _canSave = true;
+    notifyListeners();
+  }
+
+  void _save() {
+    if (_canSave) _writer.save(_progress.encode());
   }
 
   void _show(Problem problem) {
@@ -147,6 +186,8 @@ class MathTesterModel extends ChangeNotifier {
       at: now,
     );
     _checked = true;
-    if (attempt != null) _history = List.unmodifiable([..._history, attempt]);
+    if (attempt == null) return;
+    _progress = _progress.withAttempt(attempt);
+    _save();
   }
 }
