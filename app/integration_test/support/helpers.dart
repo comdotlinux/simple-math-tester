@@ -145,15 +145,17 @@ Future<void> pressEnter(WidgetTester tester) async {
 
 /// Whether the answer field has the focus. Check it before [typeAnswer],
 /// which taps the field first. While another window has the desktop's
-/// focus the app is inactive and Flutter holds the focus aside, giving it
-/// back on resume, so that counts too.
-bool answerFocused(WidgetTester tester) {
-  final state = WidgetsBinding.instance.lifecycleState;
+/// focus the app is inactive and Flutter holds the focus aside until it
+/// resumes, so the app is resumed first.
+Future<bool> answerFocused(WidgetTester tester) async {
+  if (tester.binding.lifecycleState != AppLifecycleState.resumed) {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+  }
   return tester
-          .widget<EditableText>(find.byType(EditableText))
-          .focusNode
-          .hasFocus ||
-      state != null && state != AppLifecycleState.resumed;
+      .widget<EditableText>(find.byType(EditableText))
+      .focusNode
+      .hasFocus;
 }
 
 /// The text on the Next button: Skip before a check.

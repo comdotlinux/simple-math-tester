@@ -22,6 +22,16 @@ void hintsJourneys() {
       expect(find.text('Next step'), findsOneWidget);
     });
 
+    testWidgets('a hint tap keeps the focus on the answer', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      expect(await answerFocused(tester), isTrue);
+
+      await tapKey(tester, revealStepButtonKey);
+
+      expect(modelOf(tester).revealedSteps, 1);
+      expect(await answerFocused(tester), isTrue);
+    });
+
     testWidgets('before a check every step but the answer can be opened', (
       tester,
     ) async {

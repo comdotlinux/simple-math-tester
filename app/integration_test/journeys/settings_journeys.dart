@@ -25,7 +25,11 @@ void settingsJourneys() {
 
         await closeSettings(tester);
         expect(find.byKey(settingsSheetKey), findsNothing);
-        expect(answerFocused(tester), isTrue, reason: 'the answer comes first');
+        expect(
+          await answerFocused(tester),
+          isTrue,
+          reason: 'the answer comes first',
+        );
       },
     );
 

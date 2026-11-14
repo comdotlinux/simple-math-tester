@@ -274,8 +274,9 @@ class _ProblemPageState extends State<ProblemPage> {
                             key: settingsButtonKey,
                             tooltip: 'Settings',
                             onPressed: () =>
-                                _showSettings(context)
-                                    .whenComplete(_focus.requestFocus),
+                                _showSettings(context).whenComplete(() {
+                                  if (mounted) _focus.requestFocus();
+                                }),
                             icon: const Icon(
                               Icons.settings_outlined,
                               semanticLabel: 'Settings',

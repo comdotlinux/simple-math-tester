@@ -70,6 +70,31 @@ void main() {
     expect(model.history, hasLength(1));
   });
 
+  test('Enter on a wrong answer left unchanged moves on, no extra row', () {
+    final model = modelFor(addition);
+    model.setDraftInput('4');
+    model.checkOrNext();
+    expect(model.answerCorrect, isFalse);
+    model.checkOrNext();
+    expect(model.current, isNot(same(addition)));
+    expect(model.history, hasLength(1));
+    expect(model.history.single.firstAnswer, 4);
+  });
+
+  test('Enter after a hint, with no check, checks the answer', () {
+    final model = modelFor(addition);
+    model.revealStep();
+    expect(model.revealedSteps, 1);
+    model.checkOrNext();
+    expect(model.current, same(addition), reason: 'empty: no skip');
+    expect(model.validationMessage, 'Enter a number first.');
+    model.setDraftInput('5');
+    model.checkOrNext();
+    expect(model.current, same(addition));
+    expect(model.answerCorrect, isTrue);
+    expect(model.history.single.hintsUsed, 1);
+  });
+
   test('a retry after a correct first check keeps the entry', () {
     var now = start;
     final model = modelFor(addition, clock: () => now);

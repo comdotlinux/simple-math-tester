@@ -243,7 +243,7 @@ void historyJourneys() {
 
         expect(model.current.question, question);
         expect(questionOnScreen(tester), question);
-        expect(answerFocused(tester), isTrue);
+        expect(await answerFocused(tester), isTrue);
       },
     );
   });

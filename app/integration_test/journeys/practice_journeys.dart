@@ -140,7 +140,7 @@ void practiceJourneys() {
 
       expect(find.text('You got it!'), findsOneWidget);
       expect(model.history.single.correct, isTrue);
-      expect(answerFocused(tester), isTrue);
+      expect(await answerFocused(tester), isTrue);
 
       await pressEnter(tester);
 
@@ -149,7 +149,7 @@ void practiceJourneys() {
       expect(model.draftInput, isEmpty);
       expect(find.text('You got it!'), findsNothing);
       expect(model.history, hasLength(1), reason: 'no skip is recorded');
-      expect(answerFocused(tester), isTrue);
+      expect(await answerFocused(tester), isTrue);
     });
 
     testWidgets('a new answer after a wrong check is checked, not skipped', (
@@ -175,16 +175,16 @@ void practiceJourneys() {
         'Skip or Next', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
-      expect(answerFocused(tester), isTrue, reason: 'on start');
+      expect(await answerFocused(tester), isTrue, reason: 'on start');
 
       await nextQuestion(tester);
-      expect(answerFocused(tester), isTrue, reason: 'after Skip');
+      expect(await answerFocused(tester), isTrue, reason: 'after Skip');
 
       await submit(tester, model.current.result + 1);
-      expect(answerFocused(tester), isTrue, reason: 'after a check');
+      expect(await answerFocused(tester), isTrue, reason: 'after a check');
 
       await nextQuestion(tester);
-      expect(answerFocused(tester), isTrue, reason: 'after Next');
+      expect(await answerFocused(tester), isTrue, reason: 'after Next');
     });
 
     testWidgets('the button says Skip before a check and Next question after', (

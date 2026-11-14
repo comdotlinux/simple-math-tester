@@ -87,7 +87,7 @@ void numberPadJourneys() {
 
       expect(find.text('You got it!'), findsOneWidget);
       expect(find.descendant(of: check, matching: find.text('Next')), findsOne);
-      expect(answerFocused(tester), isTrue);
+      expect(await answerFocused(tester), isTrue);
 
       await tapVisible(tester, check);
 
@@ -97,7 +97,7 @@ void numberPadJourneys() {
         find.descendant(of: check, matching: find.text('Check answer')),
         findsOne,
       );
-      expect(answerFocused(tester), isTrue);
+      expect(await answerFocused(tester), isTrue);
     });
 
     testWidgets('the keyboard button swaps the pad for the keyboard and back', (
