@@ -78,7 +78,8 @@ A new problem is drawn after a reload.
 - Decorative arithmetic shapes made with native widgets, excluded from semantics.
 - Feedback motion (pop on correct, shake on wrong, XP count-up, particle burst on
   level-up and goal) stays brief; zero duration under disableAnimations.
-- Sound has a switch; haptics have a switch. Both default on.
+- Sound has a switch; haptics have a switch. Both default on. The Sound switch
+  shows in settings only once sound plays (`soundPlays`).
 
 ## Components
 `app/lib/app_theme.dart` owns colours, shape values and every component theme; the
@@ -90,8 +91,11 @@ answer field, feedback strip, hint steps, sprint card, stats chips and result ro
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
 The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
 then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
-text field, which keeps focus. Phones dock it below the page like a keyboard and
-scroll the field and its feedback into view above it; pages 700px and wider dock it
+text field, which keeps focus and accepts digits only. Phone-height pages dock the
+field, a compact feedback strip (which carries Next after a check) and a denser pad
+together below the page, and the question card drops its band, so the question,
+answer, feedback and Next stay on screen; taller pages dock the pad alone below the
+page; pages 700px and wider dock it
 beside the practice column; when docking would squeeze the question (short screens,
 large text) it sits under the field, above the feedback, so a message never moves a
 key. A keyboard button on the field hides the pad and opens the system keyboard, so
