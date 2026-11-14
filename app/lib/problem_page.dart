@@ -879,10 +879,17 @@ class _OperationToggle extends StatelessWidget {
                     top: 5,
                     end: 5,
                     child: IgnorePointer(
-                      child: Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: foreground,
+                      // Its own fill states what the mark is drawn on.
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: tokens.operation,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: foreground,
+                        ),
                       ),
                     ),
                   ),

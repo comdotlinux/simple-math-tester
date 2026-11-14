@@ -226,6 +226,12 @@ ThemeData buildAppTheme(Brightness brightness) {
       width: states.contains(WidgetState.focused) ? 4 : AppTokens.outlineWidth,
     ),
   );
+  // Disabled controls use opaque muted colours from contrastPairs, never a
+  // translucent fade.
+  WidgetStateProperty<Color> enabledOr(Color enabled, Color disabled) =>
+      WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.disabled) ? disabled : enabled,
+      );
   const buttonText = TextStyle(
     fontFamily: 'Roboto',
     fontSize: 17,
@@ -293,8 +299,8 @@ ThemeData buildAppTheme(Brightness brightness) {
         minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
         padding: const WidgetStatePropertyAll(buttonPadding),
         textStyle: const WidgetStatePropertyAll(buttonText),
-        backgroundColor: WidgetStatePropertyAll(t.primary),
-        foregroundColor: WidgetStatePropertyAll(t.onPrimary),
+        backgroundColor: enabledOr(t.primary, t.surfaceSunken),
+        foregroundColor: enabledOr(t.onPrimary, t.inkMuted),
         overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .1)),
         side: buttonSide,
         shape: WidgetStatePropertyAll(control),
@@ -306,8 +312,8 @@ ThemeData buildAppTheme(Brightness brightness) {
         minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
         padding: const WidgetStatePropertyAll(buttonPadding),
         textStyle: const WidgetStatePropertyAll(buttonText),
-        backgroundColor: WidgetStatePropertyAll(t.surfaceRaised),
-        foregroundColor: WidgetStatePropertyAll(t.ink),
+        backgroundColor: enabledOr(t.surfaceRaised, t.surfaceSunken),
+        foregroundColor: enabledOr(t.ink, t.inkMuted),
         overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .08)),
         side: buttonSide,
         shape: WidgetStatePropertyAll(control),
@@ -319,6 +325,7 @@ ThemeData buildAppTheme(Brightness brightness) {
             minimumSize: const Size(48, 48),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             foregroundColor: t.ink,
+            disabledForegroundColor: t.inkMuted,
             textStyle: buttonText,
             shape: control,
           ).copyWith(
@@ -334,6 +341,8 @@ ThemeData buildAppTheme(Brightness brightness) {
         minimumSize: const Size(52, 52),
         backgroundColor: t.surfaceRaised,
         foregroundColor: t.ink,
+        disabledBackgroundColor: t.surfaceSunken,
+        disabledForegroundColor: t.inkMuted,
         shape: control,
       ).copyWith(side: buttonSide),
     ),

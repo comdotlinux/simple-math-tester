@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -57,6 +58,7 @@ void main() {
     void Function(Haptic)? haptic,
     bool haptics = true,
     ProgressStore? store,
+    bool canSave = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -71,6 +73,7 @@ void main() {
       ticker: ticker,
       haptic: haptic,
       store: store,
+      canSave: canSave,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -1210,80 +1213,181 @@ void main() {
       });
     }
 
-    // Disabled text (alpha below 1) is exempt from contrast rules.
-    Set<Color> textColors(WidgetTester tester) => {
-      for (final element in find.byType(RichText).evaluate())
-        ...() {
-          final colors = <Color>[];
-          (element.widget as RichText).text.visitChildren((span) {
-            if (span.style?.color case final color?) colors.add(color);
-            return true;
+    double contrast(Color a, Color b) {
+      final (la, lb) = (a.computeLuminance(), b.computeLuminance());
+      return (max(la, lb) + .05) / (min(la, lb) + .05);
+    }
+
+    Color? opaque(Color? color) => color != null && color.a == 1 ? color : null;
+
+    Color? decorationFill(Decoration? decoration) => switch (decoration) {
+      BoxDecoration(:final color) => opaque(color),
+      ShapeDecoration(:final color) => opaque(color),
+      _ => null,
+    };
+
+    /// The fill an element's text is drawn on: the nearest opaque colour
+    /// painted by an ancestor.
+    Color? backgroundOf(Element element) {
+      Color? found;
+      element.visitAncestorElements((ancestor) {
+        // A navigation destination draws its indicator as a sibling below
+        // the icon, not as an ancestor.
+        if (ancestor.widget is Stack) {
+          ancestor.visitChildElements((child) {
+            if (child.widget
+                case NavigationIndicator(:final animation, :final color)
+                when animation.value > 0) {
+              found = opaque(color);
+            }
           });
-          return colors;
-        }(),
-      for (final element in find.byType(EditableText).evaluate())
-        (element.widget as EditableText).style.color!,
-    }.where((color) => color.a == 1).toSet();
+          if (found != null) return false;
+        }
+        found = switch (ancestor.widget) {
+          DecoratedBox(:final decoration) => decorationFill(decoration),
+          Ink(:final decoration) => decorationFill(decoration),
+          ColoredBox(:final color) => opaque(color),
+          PhysicalShape(:final color) => opaque(color),
+          PhysicalModel(:final color) => opaque(color),
+          InputDecorator(:final decoration) when decoration.filled ?? false =>
+            opaque(decoration.fillColor),
+          Material(:final color?) => opaque(color),
+          Material(type: MaterialType.canvas) => opaque(
+            Theme.of(ancestor).canvasColor,
+          ),
+          _ => null,
+        };
+        return found == null;
+      });
+      return found;
+    }
+
+    /// Every (text or icon colour, fill behind it) pair on screen, with the
+    /// text that shows it.
+    Map<(Color, Color), String> drawnPairs(WidgetTester tester) {
+      final pairs = <(Color, Color), String>{};
+      void add(Element element, Color? color, String text) {
+        final background = backgroundOf(element);
+        expect(color, isNotNull, reason: 'no colour for "$text"');
+        expect(background, isNotNull, reason: 'no fill behind "$text"');
+        pairs[(color!, background!)] = text;
+      }
+
+      for (final element in find.byType(RichText).evaluate()) {
+        final span = (element.widget as RichText).text;
+        span.visitChildren((child) {
+          if (child is TextSpan && (child.text ?? '').trim().isNotEmpty) {
+            final icon = element.findAncestorWidgetOfExactType<Icon>();
+            add(
+              element,
+              child.style?.color ?? span.style?.color,
+              icon == null
+                  ? child.text!
+                  : 'icon ${icon.semanticLabel ?? icon.icon?.codePoint}',
+            );
+          }
+          return true;
+        });
+      }
+      for (final element in find.byType(EditableText).evaluate()) {
+        final field = element.widget as EditableText;
+        add(element, field.style.color, field.controller.text);
+      }
+      return pairs;
+    }
 
     for (final brightness in Brightness.values) {
-      for (final width in [400.0, 1000.0]) {
-        testWidgets('criterion 33: every text and icon colour is a paired '
-            'foreground token, ${brightness.name} theme at $width', (
-          tester,
-        ) async {
+      for (final size in const [
+        Size(400, 2000),
+        Size(1000, 2000),
+        Size(360, 640),
+      ]) {
+        testWidgets('criterion 33: every text and icon on every screen reaches '
+            '4.5 to 1 on the fill behind it, ${brightness.name} theme at '
+            '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
           final tokens = brightness == Brightness.light
               ? AppTokens.light
               : AppTokens.dark;
-          final foregrounds = {
-            for (final (foreground, _) in AppTokens.contrastPairs)
-              tokens.colors[foreground]!,
-          };
-          final seen = <Color>{};
-          Future<void> collect() async {
+          final seen = <(Color, Color), String>{};
+          final states = <String>[];
+          String role(Color color) => [
+            for (final MapEntry(:key, :value) in tokens.colors.entries)
+              if (value == color) key.name,
+          ].join('/').ifEmpty(() => '$color');
+          Future<void> collect(String state) async {
             await tester.pumpAndSettle();
-            seen.addAll(textColors(tester));
+            states.add(state);
+            for (final MapEntry(key: pair, value: text) in drawnPairs(
+              tester,
+            ).entries) {
+              seen.putIfAbsent(pair, () => '$state: "$text"');
+            }
           }
 
           final model = await launch(
             tester,
-            size: Size(width, 2000),
+            size: size,
             brightness: brightness,
             tier: null,
+            canSave: false,
             ticker: () => const Stream.empty(),
           );
-          await collect();
+          await collect('tier picker, cannot save');
           model.setCurrentPage(1);
-          await collect();
+          await collect('my answers, empty');
           model.setCurrentPage(0);
           model.chooseTier(Tier.easy);
-          await collect();
+          model.toggleOperation(OperationType.divide);
+          await collect('practice with an unselected toggle');
+          while (model.canRevealStep) {
+            model.revealStep();
+          }
+          await collect('hints up to a disabled reveal button');
           model.submitAnswer();
-          await collect();
+          await collect('empty check message');
           model.setDraftInput('14');
           model.submitAnswer();
-          model.revealStep();
-          await collect();
+          await collect('wrong answer');
           model.setDraftInput('15');
           model.submitAnswer();
-          await collect();
+          await collect('correct answer');
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await collect('keyboard switched, Check button');
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await tester.ensureVisible(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
-          await collect();
+          await collect('settings sheet');
           Navigator.of(tester.element(find.byKey(settingsSheetKey))).pop();
           model.startSprint();
-          await collect();
+          await collect('sprint');
           model.endSprint();
-          await collect();
+          await collect('sprint result');
           model.setCurrentPage(1);
-          await collect();
+          await collect('my answers with stats');
 
-          // The walk did reach text on the page and on a fill.
+          // The walk did reach the pad, the fills and both kinds of ink.
+          final foregrounds = {for (final (fg, _) in seen.keys) fg};
           expect(
-            seen,
-            containsAll({tokens.ink, tokens.inkMuted, tokens.onPrimary}),
+            foregrounds,
+            containsAll({
+              tokens.ink,
+              tokens.inkMuted,
+              tokens.onPrimary,
+              tokens.onOperation,
+              tokens.onWrong,
+              tokens.onCorrect,
+              tokens.onSprint,
+            }),
           );
-          for (final color in seen) {
-            expect(foregrounds, contains(color), reason: '$color');
-          }
+          expect([
+            for (final MapEntry(key: (fg, bg), value: where) in seen.entries)
+              // Translucent text has no fixed contrast; disabled states use
+              // opaque theme colours instead.
+              if (fg.a < 1 || contrast(fg, bg) < 4.5)
+                '$where: ${contrast(fg, bg).toStringAsFixed(2)} for '
+                    '${role(fg)} on ${role(bg)}',
+          ], isEmpty);
         });
       }
     }
@@ -1672,4 +1776,8 @@ void main() {
       }
     }
   });
+}
+
+extension on String {
+  String ifEmpty(String Function() other) => this.isEmpty ? other() : this;
 }
