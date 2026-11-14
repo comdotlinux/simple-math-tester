@@ -72,7 +72,7 @@ class Progress {
     history = List.unmodifiable(_entries.whereType<Attempt>());
   }
 
-  static const schemaVersion = 1;
+  static const schemaVersion = 2;
   static const historyCap = 200;
 
   /// Never empty: a selection with no known operation falls back to all.
@@ -233,8 +233,12 @@ class Progress {
       }
     }
 
-    // A tier name this build does not know asks the player again.
-    final tier = Tier.values.asNameMap()[_field<String>(json, 'tier')];
+    // A tier name this build does not know asks the player again. Before
+    // schema 2, `hard` meant level 5, which is now `harder`.
+    final tierName = _field<String>(json, 'tier');
+    final tier = version < 2 && tierName == Tier.hard.name
+        ? Tier.harder
+        : Tier.values.asNameMap()[tierName];
 
     // Values outside what the rules can produce are clamped, as above.
     int run(String key) => (_field<int>(json, key) ?? 0).clamp(0, maxStoredRun);

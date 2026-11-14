@@ -6,7 +6,8 @@ import 'operations.dart';
 enum Tier {
   easy('Easy', 1),
   medium('Medium', 3),
-  hard('Hard', 5);
+  hard('Hard', 4),
+  harder('Harder', 5);
 
   const Tier(this.label, this.level);
 

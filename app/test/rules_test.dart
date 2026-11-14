@@ -154,7 +154,7 @@ void main() {
           8,
         ]);
       }
-      expect(Tier.values.map((tier) => tier.level), [1, 3, 5]);
+      expect(Tier.values.map((tier) => tier.level), [1, 3, 4, 5]);
     });
 
     test('criterion 19: always right goes from 1 to 5 in exactly 12', () {

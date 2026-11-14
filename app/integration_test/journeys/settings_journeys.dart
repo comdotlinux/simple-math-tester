@@ -20,6 +20,15 @@ void settingsJourneys() {
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(find.text('Starting difficulty'), findsOneWidget);
         expect(find.textContaining('Now: Easy.'), findsOneWidget);
+        for (final tier in Tier.values) {
+          expect(
+            find.descendant(
+              of: find.byKey(tierSettingKey(tier)),
+              matching: find.text(tier.label),
+            ),
+            findsOneWidget,
+          );
+        }
         expect(find.text('Vibration'), findsOneWidget);
 
         await closeSettings(tester);
@@ -41,7 +50,7 @@ void settingsJourneys() {
         final shown = model.current;
         await openSettings(tester);
 
-        await tapVisible(tester, find.text(Tier.hard.label));
+        await tapKey(tester, tierSettingKey(Tier.hard));
 
         expect(find.byKey(settingsSheetKey), findsNothing);
         expect(model.tier, Tier.hard);
@@ -72,7 +81,7 @@ void settingsJourneys() {
       final shown = model.current;
       await openSettings(tester);
 
-      await tapVisible(tester, find.text(Tier.easy.label));
+      await tapKey(tester, tierSettingKey(Tier.easy));
 
       expect(find.byKey(settingsSheetKey), findsNothing);
       expect(model.tier, Tier.easy);

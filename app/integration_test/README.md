@@ -74,7 +74,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 
 | Feature | File | Journeys |
 | --- | --- | --- |
-| Tier picker on first start | `tier_picker_journeys.dart` | a first start asks how hard to start and hides practice; choosing a tier starts every operation at its level |
+| Tier picker on first start | `tier_picker_journeys.dart` | a first start asks how hard to start and hides practice (it offers Easy, Medium, Hard, Harder); choosing a tier starts every operation at its level; choosing Hard starts every operation at level 4; choosing Harder starts every operation at level 5; a saved old Hard tier restarts as Harder with levels kept |
 | "Progress can't be saved" notice | `tier_picker_journeys.dart`, `persistence_journeys.dart` | a start without saving shows the can't-be-saved notice; data from a newer version is kept and not overwritten |
 | Practice: check, retry, Next, skip | `practice_journeys.dart` | a wrong first answer is saved before Next; a retry after a wrong answer can still be right; a correct first answer is saved as correct; Next after a check shows a new question and adds no row; Next without an answer is saved as skipped; answers from play are kept in order: wrong, right, skipped; an empty answer asks for a number and records nothing; typing after feedback clears it |
 | Number pad | `number_pad_journeys.dart` | each digit key types its digit; Delete removes the last digit; Check with nothing typed says enter a number first; an answer typed on the pad is checked from the pad; only digits reach the answer field |

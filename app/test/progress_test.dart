@@ -100,7 +100,7 @@ void main() {
       final json = jsonDecode(
         Progress(history: [attempt(12)]).encode(),
       ) as Map<String, Object?>;
-      expect(json['schemaVersion'], 1);
+      expect(json['schemaVersion'], 2);
       final entry = (json['history']! as List).single as Map;
       expect(entry['kind'], 'divide');
       expect(entry['lhs'], 12);
@@ -301,12 +301,28 @@ void main() {
       );
     }
     final given = Progress(
-      tier: Tier.hard,
+      tier: Tier.harder,
       difficulty: {OperationType.plus: const Difficulty(level: 2)},
     ).difficulty;
     expect(given[OperationType.plus]!.level, 2);
     expect(given[OperationType.minus]!.level, 5);
     expect(Progress().difficulty[OperationType.divide]!.level, 1);
+  });
+
+  test('a schema 1 hard tier loads as harder with its levels kept', () {
+    final old = Progress.decode(
+      '{"schemaVersion":1,"tier":"hard","operations":{"plus":{"level":2}}}',
+    );
+    expect(old.tier, Tier.harder);
+    expect(old.difficulty[OperationType.plus]!.level, 2);
+    expect(old.difficulty[OperationType.minus]!.level, 5);
+    expect(
+      Progress.decode('{"schemaVersion":1,"tier":"medium"}').tier,
+      Tier.medium,
+    );
+    // Schema 2 means what it says, and saving writes schema 2.
+    expect(Progress.decode(Progress(tier: Tier.hard).encode()).tier, Tier.hard);
+    expect(Progress.decode(old.encode()).tier, Tier.harder);
   });
 
   test('a newer schemaVersion is not a decode failure', () {
