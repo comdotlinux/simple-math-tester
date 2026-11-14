@@ -872,6 +872,7 @@ class _TierPicker extends StatelessWidget {
                   pressable: true,
                   radius: AppTokens.radiusControl,
                   child: OutlinedButton(
+                    key: tierOptionKey(tier),
                     onPressed: () => model.chooseTier(tier),
                     child: Row(
                       spacing: 12,
@@ -919,6 +920,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
             ),
             for (final tier in Tier.values)
               ListTile(
+                key: tierSettingKey(tier),
                 title: Text(tier.label),
                 selected: tier == model.tier,
                 trailing: tier == model.tier

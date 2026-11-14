@@ -630,7 +630,7 @@ void main() {
           'text scale $scale', (tester) async {
         final model = await launch(
           tester,
-          size: Size(width, 700),
+          size: Size(width, 640),
           scale: scale,
           tier: null,
         );
@@ -642,7 +642,7 @@ void main() {
           isSemantics(isHeader: true),
         );
         for (final tier in Tier.values) {
-          final button = find.widgetWithText(OutlinedButton, tier.label);
+          final button = find.byKey(tierOptionKey(tier));
           await tester.ensureVisible(button);
           final size = tester.getSize(button);
           expect(size.height, greaterThanOrEqualTo(48));
@@ -662,7 +662,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(tierPickerKey), findsOneWidget);
 
-        final medium = find.widgetWithText(OutlinedButton, 'Medium');
+        final medium = find.byKey(tierOptionKey(Tier.medium));
         await tester.ensureVisible(medium);
         await tester.tap(medium);
         await tester.pumpAndSettle();
@@ -677,27 +677,31 @@ void main() {
 
     testWidgets('a tier can be chosen with the keyboard', (tester) async {
       final model = await launch(tester, tier: null);
-      Focus.of(tester.element(find.text('Hard'))).requestFocus();
+      Focus.of(
+        tester.element(
+          find.descendant(
+            of: find.byKey(tierOptionKey(Tier.hard)),
+            matching: find.text(Tier.hard.label),
+          ),
+        ),
+      ).requestFocus();
       await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
       expect(model.tier, Tier.hard);
-      expect(model.current.level, 5);
+      expect(model.current.level, 4);
     });
   });
 
   group('settings sheet', () {
-    Finder tierTile(Tier tier) => find.descendant(
-      of: find.byKey(settingsSheetKey),
-      matching: find.widgetWithText(ListTile, tier.label),
-    );
+    Finder tierTile(Tier tier) => find.byKey(tierSettingKey(tier));
 
     for (final (width, scale) in [(320.0, 2.0), (1000.0, 1.0)]) {
       testWidgets('changes the tier and draws at the new level at $width, '
           'text scale $scale', (tester) async {
         final model = await launch(
           tester,
-          size: Size(width, 700),
+          size: Size(width, 640),
           scale: scale,
           tier: Tier.easy,
         );
@@ -753,7 +757,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsNothing);
         expect(model.tier, Tier.hard);
-        expect(model.current.level, 5);
+        expect(model.current.level, 4);
         // The replaced problem is not recorded.
         expect(model.history, isEmpty);
         expect(find.text('12 + 3'), findsNothing);
