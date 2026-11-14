@@ -4,9 +4,17 @@ import 'package:material_ui/material_ui.dart'
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/results_page.dart' show statsColumns;
 import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
+
+// A row's verdict and answer wording stays literal: it is what the row tells
+// the player about their answer.
+
+/// [text] inside [row].
+Finder _inRow(Finder row, String text) =>
+    find.descendant(of: row, matching: find.text(text));
 
 void historyJourneys() {
   group('my answers', () {
@@ -18,8 +26,7 @@ void historyJourneys() {
       await openHistory(tester);
 
       expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
-      expect(find.text('No answers yet.'), findsOneWidget);
-      expect(find.text('Your stats'), findsNothing);
+      expect(find.byKey(statsCardKey), findsNothing);
     });
 
     testWidgets('the empty state’s Practice button returns to the question', (
@@ -29,13 +36,7 @@ void historyJourneys() {
       final question = modelOf(tester).current.question;
       await openHistory(tester);
 
-      await tapVisible(
-        tester,
-        find.descendant(
-          of: find.byKey(resultsPageKey),
-          matching: find.text('Practice'),
-        ),
-      );
+      await tapKey(tester, emptyStatePracticeButtonKey);
 
       expect(find.byKey(problemsPageKey), findsOneWidget);
       expect(modelOf(tester).current.question, question);
@@ -55,11 +56,15 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('Your stats'), findsOneWidget);
-      expect(find.text('Total XP: 250'), findsOneWidget);
-      expect(find.text('Player level: 2'), findsOneWidget);
-      expect(find.text('Best streak: 4'), findsOneWidget);
-      expect(find.text('Best sprint: 70'), findsOneWidget);
+      final game = modelOf(tester).game;
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      expect(textOf(tester, totalXpStatKey), showsNumber(game.xp));
+      expect(
+        textOf(tester, playerLevelStatKey),
+        showsNumber(playerLevel(game.xp)),
+      );
+      expect(textOf(tester, bestStreakStatKey), showsNumber(game.bestStreak));
+      expect(textOf(tester, bestSprintStatKey), showsNumber(game.bestSprint));
     });
 
     testWidgets('the stats table shows each operation’s accuracy and level', (
@@ -111,14 +116,14 @@ void historyJourneys() {
         }
       }
 
-      expect(inTable('Operation'), findsOneWidget);
-      expect(inTable('Accuracy'), findsOneWidget);
-      expect(inTable('Level'), findsOneWidget);
-      expectRow('Addition', '67%', '3');
-      expectRow('Subtraction', '25%', '2');
+      for (final column in statsColumns) {
+        expect(inTable(column), findsOneWidget);
+      }
+      expectRow(OperationType.plus.label, '67%', '3');
+      expectRow(OperationType.minus.label, '25%', '2');
       // Never answered: a dash, at the tier's level.
-      expectRow('Multiplication', '–', '1');
-      expectRow('Division', '100%', '4');
+      expectRow(OperationType.multiply.label, '–', '1');
+      expectRow(OperationType.divide.label, '100%', '4');
     });
 
     testWidgets('an incorrect row shows your answer and the expected one', (
@@ -132,22 +137,17 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('1 question completed.'), findsOneWidget);
-      expect(await inHistory(tester, find.text('Incorrect')), findsOneWidget);
-      expect(await inHistory(tester, find.text(question)), findsWidgets);
+      expect(textOf(tester, historyCountKey), showsNumber(1));
+      final row = await inHistory(tester, find.byKey(historyRowKey(0)));
+      expect(_inRow(row, 'Incorrect'), findsOneWidget);
+      expect(_inRow(row, question), findsOneWidget);
       expect(
-        await inHistory(
-          tester,
-          find.text('Your answer: ${formatNumber(answer + 1)}'),
-        ),
-        findsWidgets,
+        _inRow(row, 'Your answer: ${formatNumber(answer + 1)}'),
+        findsOneWidget,
       );
       expect(
-        await inHistory(
-          tester,
-          find.text('Expected answer: ${formatNumber(answer)}'),
-        ),
-        findsWidgets,
+        _inRow(row, 'Expected answer: ${formatNumber(answer)}'),
+        findsOneWidget,
       );
     });
 
@@ -163,16 +163,15 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('2 questions completed.'), findsOneWidget);
-      expect(await inHistory(tester, find.text('Incorrect')), findsOneWidget);
-      expect(await inHistory(tester, find.text('Correct')), findsOneWidget);
-      expect(await inHistory(tester, find.text(question)), findsWidgets);
+      expect(textOf(tester, historyCountKey), showsNumber(2));
+      final wrong = await inHistory(tester, find.byKey(historyRowKey(0)));
+      expect(_inRow(wrong, 'Incorrect'), findsOneWidget);
+      final right = await inHistory(tester, find.byKey(historyRowKey(1)));
+      expect(_inRow(right, 'Correct'), findsOneWidget);
+      expect(_inRow(right, question), findsOneWidget);
       expect(
-        await inHistory(
-          tester,
-          find.text('Your answer: ${formatNumber(answer)}'),
-        ),
-        findsWidgets,
+        _inRow(right, 'Your answer: ${formatNumber(answer)}'),
+        findsOneWidget,
       );
     });
 
@@ -193,21 +192,17 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('3 questions completed.'), findsOneWidget);
-      expect(await inHistory(tester, find.text('Skipped')), findsOneWidget);
-      expect(await inHistory(tester, find.text(question)), findsWidgets);
+      expect(textOf(tester, historyCountKey), showsNumber(3));
+      final row = await inHistory(tester, find.byKey(historyRowKey(2)));
+      expect(_inRow(row, 'Skipped'), findsOneWidget);
+      expect(_inRow(row, question), findsOneWidget);
+      expect(_inRow(row, 'No answer entered'), findsOneWidget);
       expect(
-        await inHistory(tester, find.text('No answer entered')),
-        findsOneWidget,
-      );
-      expect(
-        await inHistory(
-          tester,
-          find.text(
-            'Expected answer: ${formatNumber(model.history[2].problem.result)}',
-          ),
+        _inRow(
+          row,
+          'Expected answer: ${formatNumber(model.history[2].problem.result)}',
         ),
-        findsWidgets,
+        findsOneWidget,
       );
     });
 
@@ -228,12 +223,14 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('45 questions completed.'), findsOneWidget);
+      final count = modelOf(tester).history.length;
+      expect(textOf(tester, historyCountKey), showsNumber(count));
       expect(find.byKey(statsCardKey), findsOneWidget);
-      expect(find.text('77 + 23'), findsNothing);
-      // Newest first: the oldest answer is in the third page of 20, after
-      // two loads.
-      expect(await inHistory(tester, find.text('77 + 23')), findsOneWidget);
+      // Newest first: the oldest answer, index 0, is in the third page of
+      // 20, after two loads.
+      expect(find.byKey(historyRowKey(0)), findsNothing);
+      final row = await inHistory(tester, find.byKey(historyRowKey(0)));
+      expect(_inRow(row, '77 + 23'), findsOneWidget);
       expect(
         await inHistory(tester, find.byKey(answersEndKey)),
         findsOneWidget,
@@ -259,7 +256,6 @@ void historyJourneys() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(statsCardKey), findsOneWidget);
-      expect(find.text('Your stats'), findsOneWidget);
       expect(bar, findsNothing);
     });
 

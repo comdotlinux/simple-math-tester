@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'legal.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
@@ -742,7 +743,7 @@ class _SprintStatus extends StatelessWidget {
                 ),
               ],
             ),
-            Text('Score: $score', style: style),
+            Text('Score: $score', key: sprintScoreKey, style: style),
           ],
         ),
       ),
@@ -765,13 +766,13 @@ class _SprintResult extends StatelessWidget {
         if (result.levels[level - 1] > 0)
           'level $level: ${result.levels[level - 1]}',
     ];
-    Widget tile(String text) => Container(
+    Widget tile(String text, Key key) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: tokens.surfaceSunken,
         borderRadius: BorderRadius.circular(AppTokens.radiusControl),
       ),
-      child: Text(text, style: textTheme.titleLarge),
+      child: Text(text, key: key, style: textTheme.titleLarge),
     );
     return Slab(
       child: Card(
@@ -809,8 +810,11 @@ class _SprintResult extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        tile('Score: ${result.score}'),
-                        tile('Personal best: ${result.best}'),
+                        tile('Score: ${result.score}', sprintResultScoreKey),
+                        tile(
+                          'Personal best: ${result.best}',
+                          sprintResultBestKey,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -892,11 +896,14 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
-/// A simple list of settings: the starting tier and the feedback switches.
+/// A simple list of settings: the starting tier, the feedback switches and
+/// the legal pages.
 Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
+  // A full-height sheet would otherwise reach under the status bar.
+  useSafeArea: true,
   builder: (context) {
     final model = context.watch<MathTesterModel>();
     final textTheme = Theme.of(context).textTheme;
@@ -914,6 +921,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                 child: Text('Starting difficulty', style: textTheme.titleLarge),
               ),
               subtitle: Text(
+                key: currentTierNoteKey,
                 'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
                 'starts every operation again at that difficulty.',
               ),
@@ -946,12 +954,77 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               value: model.haptics,
               onChanged: model.setHaptics,
             ),
+            const SizedBox(height: 8),
+            ListTile(
+              key: privacyTileKey,
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Privacy'),
+              subtitle: const Text('What the app stores, and why'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+              ),
+            ),
+            ListTile(
+              key: impressumTileKey,
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('Impressum'),
+              subtitle: const Text('Who makes the app (opens the browser)'),
+              onTap: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                // Closed first, so a failure notice is not hidden behind it.
+                Navigator.pop(context);
+                if (!await model.openImpressum()) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('The browser did not open.')),
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   },
 );
+
+/// The bundled privacy policy, readable offline.
+class _PrivacyPage extends StatelessWidget {
+  const _PrivacyPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final [(title, intro), ...sections] = privacyPolicy;
+    return Scaffold(
+      key: privacyPageKey,
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            for (final paragraph in intro) _paragraph(paragraph),
+            for (final (heading, paragraphs) in sections) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 4),
+                child: Semantics(
+                  header: true,
+                  child: Text(heading, style: textTheme.titleMedium),
+                ),
+              ),
+              for (final paragraph in paragraphs) _paragraph(paragraph),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _paragraph(String text) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Text(text),
+  );
+}
 
 /// Selected stands up on its slab with a check; unselected sits flat on a
 /// sunken fill, so the state reads without colour.
@@ -1150,6 +1223,7 @@ class _Hints extends StatelessWidget {
         if (revealed > 0)
           Slab(
             child: Card(
+              key: solutionStepsKey,
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(

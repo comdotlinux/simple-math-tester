@@ -67,7 +67,8 @@ Future<Progress> savedProgress() async =>
 
 /// Runs the real app widget on a model the test builds, for what the real
 /// entry point cannot reach in reasonable time: a clock to move, ticks to
-/// send, and vibrations and sounds to count. Nothing is written through the
+/// send, vibrations and sounds to count, and links to record instead of
+/// opening a browser. Nothing is written through the
 /// plugin.
 Future<MathTesterModel> startHarness(
   WidgetTester tester, {
@@ -76,6 +77,7 @@ Future<MathTesterModel> startHarness(
   Stream<void> Function()? ticker,
   void Function(Haptic)? haptic,
   SoundPlayer sounds = const SilentSoundPlayer(),
+  Future<bool> Function(Uri)? openLink,
   MemoryProgressStore? store,
 }) async {
   final model = MathTesterModel(
@@ -84,6 +86,7 @@ Future<MathTesterModel> startHarness(
     ticker: ticker,
     haptic: haptic,
     sounds: sounds,
+    openLink: openLink,
     store: store ?? MemoryProgressStore(),
   );
   runApp(
@@ -190,16 +193,37 @@ Future<void> closeSettings(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// The operation toggle named [type]'s label, as the player sees it.
-Finder operationToggle(OperationType type) => find.byWidgetPredicate(
-  (widget) => widget is Tooltip && widget.message == type.label,
-);
+/// The operation toggle for [type].
+Finder operationToggle(OperationType type) =>
+    find.byKey(operationToggleKey(type));
 
 /// A digit key of the on-screen number pad.
 Finder padKey(String digit) => find.byKey(padDigitKey(digit));
 
 /// The number pad's Delete key.
 Finder get padDelete => find.byKey(padDeleteKey);
+
+/// The text of the [Text] widget keyed [key].
+String textOf(WidgetTester tester, Key key) =>
+    tester.widget<Text>(find.byKey(key)).data!;
+
+/// Matches a text that shows [number] whole, not as part of a longer number,
+/// so a test can check a value without repeating the copy around it.
+Matcher showsNumber(num number) => matches(
+  RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
+);
+
+/// Matches a text whose only numbers are [numbers], in that order.
+Matcher showsNumbers(List<num> numbers) => matches(
+  RegExp(
+    '^[^0-9]*'
+    '${numbers.map((n) => RegExp.escape(formatNumber(n))).join('[^0-9]+')}'
+    '[^0-9]*\$',
+  ),
+);
+
+/// Matches the header's level and XP text for [xp]: level first, then XP.
+Matcher showsXp(int xp) => showsNumbers([playerLevel(xp), xp]);
 
 String answerFieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField)).controller!.text;

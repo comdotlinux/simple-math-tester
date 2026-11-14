@@ -5,6 +5,7 @@ import 'dart:ui' show AppLifecycleState;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'legal.dart';
 import 'operations.dart';
 import 'progress.dart';
 import 'progress_store.dart';
@@ -35,7 +36,9 @@ class MathTesterModel extends ChangeNotifier {
     Stream<void> Function()? ticker,
     void Function(Haptic)? haptic,
     this._sounds = const SilentSoundPlayer(),
-  }) : _ticker = ticker ?? _everySecond,
+    Future<bool> Function(Uri)? openLink,
+  }) : _openLink = openLink ?? openInBrowser,
+       _ticker = ticker ?? _everySecond,
        // Silent unless given, so a model built without a binding works.
        _haptic = haptic ?? _silent,
        _random = random ?? Random(),
@@ -55,6 +58,7 @@ class MathTesterModel extends ChangeNotifier {
   final Stream<void> Function() _ticker;
   final void Function(Haptic) _haptic;
   SoundPlayer _sounds;
+  final Future<bool> Function(Uri) _openLink;
   final Random _random;
   final DateTime Function() _clock;
   final ProgressStore _store;
@@ -144,6 +148,15 @@ class MathTesterModel extends ChangeNotifier {
     _progress = _progress.withSwitches(haptics: on);
     _save();
     notifyListeners();
+  }
+
+  /// Opens the Impressum in the browser; false when nothing opened it.
+  Future<bool> openImpressum() async {
+    try {
+      return await _openLink(impressumUrl);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// A number pad key press.

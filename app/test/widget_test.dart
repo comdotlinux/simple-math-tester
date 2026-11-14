@@ -9,6 +9,7 @@ import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/celebration.dart';
 import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -33,6 +34,22 @@ void main() {
   final xpCounter = find.byType(TweenAnimationBuilder<int>);
   String fieldText(WidgetTester tester) =>
       tester.widget<TextField>(find.byType(TextField)).controller!.text;
+  // Values are checked by key and number; feedback, button, answer-row and
+  // semantics wording stays literal because the wording is the behaviour.
+  String textOf(WidgetTester tester, Key key) =>
+      tester.widget<Text>(find.byKey(key)).data!;
+  Matcher showsNumber(num number) => matches(
+    RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
+  );
+  // Only these numbers, in this order.
+  Matcher showsNumbers(List<num> numbers) => matches(
+    RegExp(
+      '^[^0-9]*'
+      '${numbers.map((n) => RegExp.escape(formatNumber(n))).join('[^0-9]+')}'
+      '[^0-9]*\$',
+    ),
+  );
+  Matcher showsXp(int xp) => showsNumbers([playerLevel(xp), xp]);
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
@@ -52,6 +69,7 @@ void main() {
     ProgressStore? store,
     bool canSave = true,
     List<Attempt> history = const [],
+    Future<bool> Function(Uri)? openLink,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -72,6 +90,7 @@ void main() {
       haptic: haptic,
       store: store,
       canSave: canSave,
+      openLink: openLink,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -97,10 +116,10 @@ void main() {
   testWidgets('Practice and results remain navigable', (tester) async {
     await launch(tester);
     expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
-    await tester.tap(find.text('My answers').last);
+    await tester.tap(find.byKey(myAnswersNavKey));
     await tester.pumpAndSettle();
     expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
-    await tester.tap(find.text('Practice').first);
+    await tester.tap(find.byKey(practiceNavKey));
     await tester.pumpAndSettle();
     expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
   });
@@ -138,9 +157,9 @@ void main() {
     (tester) async {
       final model = await launch(tester);
       await tester.enterText(find.byType(TextField), '42');
-      await tester.tap(find.text('My answers').last);
+      await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Practice').first);
+      await tester.tap(find.byKey(practiceNavKey));
       await tester.pumpAndSettle();
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
@@ -149,9 +168,16 @@ void main() {
       await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
       expect(model.history.length, 1);
-      await tester.tap(find.text('My answers').last);
+      await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pumpAndSettle();
-      expect(find.text('Skipped'), findsOneWidget);
+      // The verdict word is what the row tells the player.
+      expect(
+        find.descendant(
+          of: find.byKey(historyRowKey(0)),
+          matching: find.text('Skipped'),
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -168,20 +194,23 @@ void main() {
     model.generateNextProblem();
     model.setCurrentPage(1);
     await tester.pumpAndSettle();
-    expect(find.text('3 questions completed.'), findsOneWidget);
+    expect(textOf(tester, historyCountKey), showsNumber(3));
     // Rows are built lazily: the last one is not on screen yet.
-    expect(find.text('Skipped'), findsNothing);
+    final last = find.byKey(historyRowKey(2));
+    expect(last, findsNothing);
 
     await tester.scrollUntilVisible(
-      find.text('Skipped'),
+      last,
       100,
       scrollable: find.descendant(
         of: find.byKey(resultsPageKey),
         matching: find.byType(Scrollable),
       ),
     );
-    expect(find.text('Skipped'), findsOneWidget);
-    expect(find.text('Question 3'), findsOneWidget);
+    expect(
+      find.descendant(of: last, matching: find.text('Skipped')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -324,25 +353,23 @@ void main() {
     model.generateNextProblem();
     model.setCurrentPage(1);
     await tester.pumpAndSettle();
-    expect(find.text('Your stats'), findsOneWidget);
-    expect(find.text('3 questions completed.'), findsOneWidget);
+    expect(find.byKey(statsCardKey), findsOneWidget);
+    expect(textOf(tester, historyCountKey), showsNumber(3));
+    final first = find.byKey(historyRowKey(0));
     // The header and the stats card fill the first screen.
-    expect(find.text('Question 1').hitTestable(), findsNothing);
+    expect(first.hitTestable(), findsNothing);
 
     // Scroll until the row is built, then bring its whole card into view,
     // so a taller stats card cannot leave part of the row off screen.
     await tester.scrollUntilVisible(
-      find.text('Question 1'),
+      first,
       100,
       scrollable: find.descendant(
         of: find.byKey(resultsPageKey),
         matching: find.byType(Scrollable),
       ),
     );
-    final row = find.ancestor(
-      of: find.text('Question 1'),
-      matching: find.byType(Card),
-    );
+    final row = find.descendant(of: first, matching: find.byType(Card));
     await tester.ensureVisible(row);
     await tester.pumpAndSettle();
     // The whole first row is on screen at once. Searched inside that row,
@@ -350,7 +377,7 @@ void main() {
     Finder inRow(String text) =>
         find.descendant(of: row, matching: find.text(text)).hitTestable();
     expect(inRow('Question 1'), findsOneWidget);
-    expect(inRow('12 + 3'), findsOneWidget);
+    expect(inRow(model.history.first.problem.question), findsOneWidget);
     expect(inRow('Your answer: 14'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -366,7 +393,7 @@ void main() {
       model.submitAnswer();
       model.setCurrentPage(1);
       await tester.pumpAndSettle();
-      expect(find.text('1 question completed.'), findsOneWidget);
+      expect(textOf(tester, historyCountKey), showsNumber(1));
       expect(find.text('Incorrect'), findsOneWidget);
       expect(find.text('Your answer: 14'), findsOneWidget);
       expect(find.text('Expected answer: 15'), findsOneWidget);
@@ -462,14 +489,14 @@ void main() {
       final model = await launchNarrow(tester);
       expect(model.steps, steps);
       expect(visibleSteps(), 0);
-      expect(find.text('Let’s work it out'), findsNothing);
+      expect(find.byKey(solutionStepsKey), findsNothing);
       expect(revealLabel('Hint'), findsOneWidget);
       expect(canReveal(tester), isTrue);
 
       await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 1);
       expect(find.text(steps[0]), findsOneWidget);
-      expect(find.text('Let’s work it out'), findsOneWidget);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
       expect(revealLabel('Hint'), findsNothing);
       expect(revealLabel('Next step'), findsOneWidget);
 
@@ -569,8 +596,8 @@ void main() {
       (widget) => widget is Tooltip && widget.message == message,
     );
 
-    // The sign is the visible label; its semantics node is the whole chip.
-    Finder chip(OperationType type) => find.text(type.displayString);
+    // Its semantics node is the whole chip.
+    Finder chip(OperationType type) => find.byKey(operationToggleKey(type));
 
     testWidgets('criterion 5: the last selected chip stays selected', (
       tester,
@@ -697,7 +724,9 @@ void main() {
       expect(model.celebrations, 1);
       expect(tester.hasRunningAnimations, isFalse, reason: 'pop and burst');
       expect(celebrationPainter, findsNothing);
-      expect(find.text('Level 2 · 100 XP'), findsOneWidget);
+      expect(model.game.xp, 100);
+      expect(playerLevel(model.game.xp), 2);
+      expect(textOf(tester, hudXpKey), showsXp(100));
       expect(
         tester.widget<TweenAnimationBuilder<int>>(xpCounter).duration,
         Duration.zero,
@@ -787,10 +816,10 @@ void main() {
         expect(tester.takeException(), isNull);
 
         // "My answers" stays reachable while the picker is shown.
-        await tester.tap(find.text('My answers').last);
+        await tester.tap(find.byKey(myAnswersNavKey));
         await tester.pumpAndSettle();
         expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
-        await tester.tap(find.byIcon(Icons.calculate_outlined).last);
+        await tester.tap(find.byKey(practiceNavKey));
         await tester.pumpAndSettle();
         expect(find.byKey(tierPickerKey), findsOneWidget);
 
@@ -845,7 +874,7 @@ void main() {
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
-        expect(find.textContaining('Now: Easy.'), findsOneWidget);
+        expect(textOf(tester, currentTierNoteKey), contains(model.tier!.label));
         for (final (key, label) in [
           (soundSwitchKey, 'Sound'),
           (hapticsSwitchKey, 'Vibration'),
@@ -906,6 +935,73 @@ void main() {
       expect(find.byKey(settingsSheetKey), findsNothing);
       expect(model.current.question, '12 + 3');
     });
+
+    Future<void> tapInSheet(WidgetTester tester, Key key) async {
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(key));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('criterion 61: Privacy shows the bundled policy offline', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        size: const Size(320, 640),
+        scale: 2,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tapInSheet(tester, privacyTileKey);
+
+      expect(find.byKey(privacyPageKey), findsOneWidget);
+      expect(find.text('Privacy policy'), findsOneWidget);
+      // The list is lazy; the Turnstile paragraph is below the fold.
+      await tester.scrollUntilVisible(
+        find.textContaining('loads Cloudflare Turnstile'),
+        300,
+      );
+      expect(opened, isEmpty);
+      expect(tester.takeException(), isNull);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byKey(privacyPageKey), findsNothing);
+      expect(find.byKey(settingsSheetKey), findsOneWidget);
+    });
+
+    testWidgets('criterion 61: Impressum opens the production page', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tapInSheet(tester, impressumTileKey);
+
+      expect(opened, [Uri.parse('https://math.munich-tech.de/impressum')]);
+      expect(opened.single, impressumUrl);
+      expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
+      ('reports false', (_) async => false),
+      ('throws', (_) async => throw StateError('no browser')),
+    ]) {
+      testWidgets('when the opener $name, a notice says so', (tester) async {
+        await launch(tester, openLink: opener);
+        await tapInSheet(tester, impressumTileKey);
+
+        expect(find.text('The browser did not open.'), findsOneWidget);
+      });
+    }
   });
 
   group('header', () {
@@ -966,7 +1062,7 @@ void main() {
       await tester.pump();
       expectLabel(tester, 'Daily streak: 3');
       expectLabel(tester, 'Level 2, 250 XP, 50 XP to level 3');
-      expect(find.text('Level 2 · 250 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(250));
     });
 
     testWidgets('criterion 23: a document from yesterday shows the ring at 0', (
@@ -982,7 +1078,7 @@ void main() {
       await bootstrap(store);
       await tester.pump();
       expectLabel(tester, goal(0));
-      expect(find.text('0/10'), findsOneWidget);
+      expect(textOf(tester, hudGoalKey), showsNumbers([0, dailyGoal]));
     });
 
     testWidgets('criterion 23: a resume after the date changed resets it', (
@@ -1072,9 +1168,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byKey(hudKey),
-          matching: find.text(
-            'Progress can’t be saved on this device right now',
-          ),
+          matching: find.byKey(cantSaveNoticeKey),
         ),
         findsOneWidget,
       );
@@ -1103,23 +1197,23 @@ void main() {
       model.setCurrentPage(1);
       await tester.pumpAndSettle();
 
-      expect(find.text('Your stats'), findsOneWidget);
       expect(
-        tester.getRect(find.text('Your stats')).bottom,
-        lessThan(tester.getRect(find.text('1 question completed.')).top),
+        tester.getRect(find.byKey(statsCardKey)).bottom,
+        lessThan(tester.getRect(find.byKey(historyCountKey)).top),
       );
       final addition = find.ancestor(
-        of: find.text('Addition'),
+        of: find.text(OperationType.plus.label),
         matching: find.byType(Table),
       );
       expect(addition, findsOneWidget);
       expect(find.text('100%'), findsOneWidget);
       expect(find.text('–'), findsNWidgets(3));
-      expect(find.text('Daily streak: 3'), findsOneWidget);
-      expect(find.text('Best streak: 8'), findsOneWidget);
+      expect(textOf(tester, dailyStreakStatKey), showsNumber(3));
+      expect(textOf(tester, bestStreakStatKey), showsNumber(8));
       // 12 + 3 at level 1 with combo 0 earns 10 XP.
-      expect(find.text('Total XP: 260'), findsOneWidget);
-      expect(find.text('Player level: 2'), findsOneWidget);
+      expect(model.game.xp, 260);
+      expect(textOf(tester, totalXpStatKey), showsNumber(260));
+      expect(textOf(tester, playerLevelStatKey), showsNumber(playerLevel(260)));
       expect(tester.takeException(), isNull);
     });
   }
@@ -1179,7 +1273,7 @@ void main() {
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
       expect(find.byKey(revealStepButtonKey), findsNothing);
       expect(find.byKey(sprintButtonKey), findsNothing);
-      expect(find.text('60 s left'), findsOneWidget);
+      expect(textOf(tester, sprintCountdownKey), showsNumber(60));
       expect(
         tester.getSemantics(countdown),
         isSemantics(label: '60 seconds left'),
@@ -1189,12 +1283,12 @@ void main() {
       await answer(tester, first.result + 1);
       expect(model.current, isNot(same(first)), reason: 'wrong moves on');
       await answer(tester, model.current.result);
-      expect(find.text('Score: 10'), findsOneWidget);
+      expect(textOf(tester, sprintScoreKey), showsNumber(10));
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
       expect(find.byKey(revealStepButtonKey), findsNothing);
 
       await tickTo(tester, 30);
-      expect(find.text('30 s left'), findsOneWidget);
+      expect(textOf(tester, sprintCountdownKey), showsNumber(30));
       final onScreen = model.current;
       await tester.enterText(find.byType(TextField), '${onScreen.result}');
       await tickTo(tester, 60);
@@ -1208,10 +1302,11 @@ void main() {
       final result = find.byKey(sprintResultKey);
       expect(result, findsOneWidget);
       expect(
-        find.descendant(of: result, matching: find.text('Score: 10')),
+        find.descendant(of: result, matching: find.byKey(sprintResultScoreKey)),
         findsOneWidget,
       );
-      expect(find.text('Personal best: 10'), findsOneWidget);
+      expect(textOf(tester, sprintResultScoreKey), showsNumber(10));
+      expect(textOf(tester, sprintResultBestKey), showsNumber(10));
       expect(find.text('Answers by difficulty: level 1: 2'), findsOneWidget);
       expect(
         tester.getSemantics(find.text('Sprint over')),
@@ -1231,15 +1326,15 @@ void main() {
       final model = await launchSprint(tester);
       await answer(tester, model.current.result);
       final onScreen = model.current;
-      await tester.tap(find.text('My answers').last);
+      await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pumpAndSettle();
       expect(model.inSprint, isFalse);
-      expect(find.text('Best sprint: 10'), findsOneWidget);
+      expect(textOf(tester, bestSprintStatKey), showsNumber(10));
 
-      await tester.tap(find.text('Practice').first);
+      await tester.tap(find.byKey(practiceNavKey));
       await tester.pumpAndSettle();
       expect(countdown, findsNothing);
-      expect(find.text('Score: 10'), findsOneWidget);
+      expect(textOf(tester, sprintResultScoreKey), showsNumber(10));
       expect(model.current, isNot(same(onScreen)));
       expect(model.history, hasLength(1));
     });
@@ -1252,8 +1347,8 @@ void main() {
       await answer(tester, model.current.result);
       await tickTo(tester, 60);
       await tester.pumpAndSettle();
-      expect(find.text('Score: 10'), findsOneWidget);
-      expect(find.text('Personal best: 500'), findsOneWidget);
+      expect(textOf(tester, sprintResultScoreKey), showsNumber(10));
+      expect(textOf(tester, sprintResultBestKey), showsNumber(500));
       expect(model.game.bestSprint, 500);
     });
 
@@ -1290,7 +1385,7 @@ void main() {
       record();
       for (var second = 1; second <= 5; second++) {
         await tickTo(tester, second);
-        expect(find.text('${60 - second} s left'), findsOneWidget);
+        expect(textOf(tester, sprintCountdownKey), showsNumber(60 - second));
         record();
       }
       expect(builds, hasLength(1));
@@ -1316,7 +1411,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await answer(tester, model.current.result);
         await tickTo(tester, 1);
-        expect(find.text('59 s left'), findsOneWidget);
+        expect(textOf(tester, sprintCountdownKey), showsNumber(59));
         expect(tester.takeException(), isNull);
         await tickTo(tester, 60);
         await tester.pumpAndSettle();
@@ -1889,13 +1984,13 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(celebrationPainter, findsOneWidget);
-      expect(find.text('Level 2 · 100 XP'), findsNothing, reason: 'counting');
+      expect(textOf(tester, hudXpKey), isNot(showsXp(100)), reason: 'counting');
       // The burst lets pointers through to the pad.
       await tapPad(tester, '4');
       expect(fieldText(tester), '${formatNumber(model.current.result)}4');
       await tester.pumpAndSettle();
       expect(celebrationPainter, findsNothing);
-      expect(find.text('Level 2 · 100 XP'), findsOneWidget);
+      expect(textOf(tester, hudXpKey), showsXp(100));
     });
 
     for (final on in [true, false]) {

@@ -65,12 +65,13 @@ class _ResultsPageState extends State<ResultsPage> {
     Widget expanded({required bool keyed}) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Stats(key: keyed ? statsCardKey : null),
+        const _Stats(),
         const SizedBox(height: 24),
         Text(
           history.length == 1
               ? '1 question completed.'
               : '${history.length} questions completed.',
+          key: keyed ? historyCountKey : null,
           style: theme.textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
@@ -151,18 +152,22 @@ class _ResultsPageState extends State<ResultsPage> {
                             ? _loadingRow()
                             : _endMarker(context);
                       }
-                      // Newest first; each row keeps its own number.
+                      // Newest first; each row keeps its own number, and its
+                      // key is its index in the history.
                       final number = history.length - 1 - index;
-                      return useCards
-                          ? Padding(
-                              padding: const EdgeInsets.only(bottom: 20),
-                              child: _resultCard(
-                                context,
-                                number,
-                                history[number],
-                              ),
-                            )
-                          : _tableRow(context, number, history[number]);
+                      return KeyedSubtree(
+                        key: historyRowKey(number),
+                        child: useCards
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 20),
+                                child: _resultCard(
+                                  context,
+                                  number,
+                                  history[number],
+                                ),
+                              )
+                            : _tableRow(context, number, history[number]),
+                      );
                     },
                   ),
                 ],
@@ -297,6 +302,7 @@ class _ResultsPageState extends State<ResultsPage> {
                   pressable: true,
                   radius: AppTokens.radiusControl,
                   child: FilledButton.icon(
+                    key: emptyStatePracticeButtonKey,
                     onPressed: () => model.setCurrentPage(0),
                     icon: const Icon(Icons.calculate_outlined),
                     label: const Text('Practice'),
@@ -452,12 +458,15 @@ class _ResultsPageState extends State<ResultsPage> {
   );
 }
 
+/// The stats table's column headings.
+const statsColumns = ['Operation', 'Accuracy', 'Level'];
+
 /// Lifetime accuracy and level per operation, streaks, XP and player level.
 ///
 /// [compact] is the pinned bar: icons and numbers only (screen readers hear
 /// the full labels), no table.
 class _Stats extends StatelessWidget {
-  const _Stats({super.key, this.compact = false});
+  const _Stats({this.compact = false});
 
   final bool compact;
 
@@ -478,6 +487,7 @@ class _Stats extends StatelessWidget {
     Widget chip(
       String text,
       String value,
+      Key key,
       IconData icon,
       Color color,
       Color onColor,
@@ -501,6 +511,7 @@ class _Stats extends StatelessWidget {
           Flexible(
             child: Text(
               compact ? value : text,
+              key: compact ? null : key,
               semanticsLabel: text,
               style: (compact ? textTheme.labelMedium : const TextStyle())
                   ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
@@ -517,6 +528,7 @@ class _Stats extends StatelessWidget {
         chip(
           'Daily streak: $streak',
           '$streak',
+          dailyStreakStatKey,
           Icons.local_fire_department,
           tokens.streak,
           tokens.onStreak,
@@ -524,6 +536,7 @@ class _Stats extends StatelessWidget {
         chip(
           'Best streak: ${game.bestStreak}',
           '${game.bestStreak}',
+          bestStreakStatKey,
           // The compact bar has no words, so the two streaks differ by icon.
           compact ? Icons.emoji_events : Icons.local_fire_department,
           tokens.streak,
@@ -532,6 +545,7 @@ class _Stats extends StatelessWidget {
         chip(
           'Best sprint: ${game.bestSprint}',
           '${game.bestSprint}',
+          bestSprintStatKey,
           Icons.timer_outlined,
           tokens.sprint,
           tokens.onSprint,
@@ -539,6 +553,7 @@ class _Stats extends StatelessWidget {
         chip(
           'Total XP: ${game.xp}',
           '${game.xp}',
+          totalXpStatKey,
           Icons.star,
           tokens.xp,
           tokens.onXp,
@@ -546,6 +561,7 @@ class _Stats extends StatelessWidget {
         chip(
           'Player level: ${playerLevel(game.xp)}',
           '${playerLevel(game.xp)}',
+          playerLevelStatKey,
           Icons.military_tech,
           tokens.xp,
           tokens.onXp,
@@ -562,6 +578,7 @@ class _Stats extends StatelessWidget {
     }
     return Slab(
       child: Card(
+        key: statsCardKey,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -582,7 +599,7 @@ class _Stats extends StatelessWidget {
                 children: [
                   TableRow(
                     children: [
-                      for (final title in ['Operation', 'Accuracy', 'Level'])
+                      for (final title in statsColumns)
                         cell(Text(title, style: headerStyle)),
                     ],
                   ),
