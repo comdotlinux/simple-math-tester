@@ -116,7 +116,7 @@ void main() {
       await tester.ensureVisible(find.byType(TextField));
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '$answer');
+      await tester.enterText(find.byType(TextField), formatNumber(answer));
       await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
       await tester.tap(find.byKey(checkAnswerButtonKey));
       await tester.pumpAndSettle();

@@ -558,7 +558,10 @@ void main() {
 
       model.generateNextProblem();
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), '${model.current.result}');
+      await tester.enterText(
+        find.byType(TextField),
+        formatNumber(model.current.result),
+      );
       await tester.pumpAndSettle();
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
