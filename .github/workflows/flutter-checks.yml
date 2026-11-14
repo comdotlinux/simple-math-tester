@@ -52,7 +52,7 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build web --release
+      - run: flutter build web --release --no-web-resources-cdn --web-content-hash
       - name: Upload tested web build
         uses: actions/upload-artifact@v7
         with:
@@ -319,12 +319,16 @@ jobs:
           cat "$RUNNER_TEMP/chromedriver.log"
           exit 1
       # --headless (the default) makes flutter drive add --headless and SwiftShader flags on Linux.
-      - name: Run integration tests in Chrome (one retry)
+      # Every host name with a dot fails to resolve, so only localhost is reachable. flutter drive
+      # splits --web-browser-flag values at commas, so "MAP * ~NOTFOUND, EXCLUDE localhost" cannot be passed.
+      - name: Run integration tests in Chrome with other origins blocked (one retry)
         run: |
           flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
             -d web-server --browser-name=chrome --headless --driver-port=4444 \
+            --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND" \
             || flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
-              -d web-server --browser-name=chrome --headless --driver-port=4444
+              -d web-server --browser-name=chrome --headless --driver-port=4444 \
+              --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
 
   deploy:
     name: Deploy to Cloudflare Pages
