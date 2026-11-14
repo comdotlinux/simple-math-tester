@@ -2,6 +2,10 @@ name: Flutter checks and Cloudflare Pages
 
 on:
   push:
+    branches: [main]
+  # Never pull_request_target: the repository is public and the deploy job holds secrets.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment-name:
@@ -45,7 +49,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
-      - run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release
@@ -110,6 +114,22 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       # Debug signing is retained for build validation, not store distribution.
       - run: flutter build apk --release
+      # Compares only the names the APK requests: aapt2 `uses-permission:` and
+      # `uses-permission-sdk-23:` lines, attributes such as maxSdkVersion dropped.
+      # `permission:` lines (permissions the app declares, not requests) and the
+      # `package:` line are ignored. One name per line, sorted with LC_ALL=C, no duplicates.
+      - name: Check release APK permissions
+        run: |
+          aapt2="$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name aapt2 -type f | sort -V | tail -n 1)"
+          if [ -z "$aapt2" ]; then
+            echo "::error::aapt2 not found under the Android SDK build-tools"
+            exit 1
+          fi
+          echo "Using $aapt2"
+          "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk | tee "$RUNNER_TEMP/aapt2-permissions.txt"
+          sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
+            | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
+          diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
       - name: Upload Android release APK
         uses: actions/upload-artifact@v7
         with:
@@ -134,6 +154,14 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
+      - name: Require Xcode 26 or newer
+        run: |
+          xcodebuild -version
+          major="$(xcodebuild -version | awk 'NR == 1 { split($2, v, "."); print v[1] }')"
+          if [ "${major:-0}" -lt 26 ]; then
+            echo "::error::Xcode major version ${major:-unknown} is below 26"
+            exit 1
+          fi
       - run: flutter build ios --release --no-codesign
       - name: Upload unsigned iOS app
         uses: actions/upload-artifact@v7
@@ -142,6 +170,153 @@ jobs:
           path: app/build/ios/iphoneos/Runner.app
           retention-days: 3
           if-no-files-found: error
+
+  ios-simulator:
+    name: Test user journeys on iOS simulator
+    needs: linux-integration
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Boot newest iOS simulator
+        id: simulator
+        run: |
+          runtime="$(xcrun simctl list runtimes --json | jq -r '
+            [.runtimes[] | select(.isAvailable and (.identifier | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")))]
+            | sort_by(.version | split(".") | map(tonumber)) | last | .identifier // empty')"
+          if [ -z "$runtime" ]; then
+            echo "::error::No available iOS simulator runtime"
+            exit 1
+          fi
+          device="$(xcrun simctl list devices available --json | jq -r --arg rt "$runtime" '
+            [.devices[$rt][]? | select(.name | startswith("iPhone"))] | first // empty | "\(.udid) \(.name)"')"
+          if [ -z "$device" ]; then
+            echo "::error::No available iPhone simulator for $runtime"
+            exit 1
+          fi
+          udid="${device%% *}"
+          echo "Using iOS simulator runtime $runtime, device ${device#* } ($udid)"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+      - name: Run integration tests on iOS simulator (one retry)
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: |
+          flutter test integration_test -d "$SIMULATOR_UDID" \
+            || flutter test integration_test -d "$SIMULATOR_UDID"
+
+  android-emulator:
+    name: Test user journeys on Android emulator API ${{ matrix.api-level }}
+    needs: linux-integration
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: ['36', '37']
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # Image folders can carry a minor version (API 37 is published as android-37.0).
+      # Picks android-<level> or android-<level>.0; if neither exists, the newest published image.
+      - name: Select x86_64 system image
+        id: image
+        env:
+          REQUESTED_API: ${{ matrix.api-level }}
+        run: |
+          sdkmanager="$(command -v sdkmanager || echo "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager")"
+          images="$("$sdkmanager" --list 2>/dev/null | awk '{ print $1 }' \
+            | sed -nE 's/^system-images;android-([0-9]+(\.[0-9]+)?);google_apis;x86_64$/\1/p' | sort -uV)"
+          echo "Published google_apis x86_64 images: $(printf '%s' "$images" | tr '\n' ' ')"
+          chosen="$(printf '%s\n' "$images" | grep -E "^${REQUESTED_API}(\.0)?\$" | head -n 1 || true)"
+          if [ -z "$chosen" ]; then
+            chosen="$(printf '%s\n' "$images" | tail -n 1)"
+            echo "::warning::No API $REQUESTED_API x86_64 system image is published; falling back to the newest, android-$chosen"
+          fi
+          if [ -z "$chosen" ]; then
+            echo "::error::No google_apis x86_64 system image found"
+            exit 1
+          fi
+          echo "Using system image system-images;android-$chosen;google_apis;x86_64 (requested API $REQUESTED_API)"
+          echo "api-level=$chosen" >> "$GITHUB_OUTPUT"
+      - name: Run integration tests on Android emulator (one retry)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ steps.image.outputs.api-level }}
+          target: google_apis
+          arch: x86_64
+          working-directory: app
+          script: flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554
+
+  web-chrome:
+    name: Test user journeys in Chrome
+    needs: linux-integration
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      # The runner image ships Chrome and a matching ChromeDriver ($CHROMEWEBDRIVER).
+      - name: Start ChromeDriver matching the runner's Chrome
+        run: |
+          chrome_major="$(google-chrome --version | grep -oE '[0-9]+' | head -n 1)"
+          driver_major="$("$CHROMEWEBDRIVER/chromedriver" --version | grep -oE '[0-9]+' | head -n 1)"
+          google-chrome --version
+          "$CHROMEWEBDRIVER/chromedriver" --version
+          if [ "$chrome_major" != "$driver_major" ]; then
+            echo "::error::ChromeDriver $driver_major does not match Chrome $chrome_major"
+            exit 1
+          fi
+          "$CHROMEWEBDRIVER/chromedriver" --port=4444 > "$RUNNER_TEMP/chromedriver.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sf http://localhost:4444/status > /dev/null && exit 0
+            sleep 1
+          done
+          echo "::error::ChromeDriver did not start"
+          cat "$RUNNER_TEMP/chromedriver.log"
+          exit 1
+      # --headless (the default) makes flutter drive add --headless and SwiftShader flags on Linux.
+      - name: Run integration tests in Chrome (one retry)
+        run: |
+          flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
+            -d web-server --browser-name=chrome --headless --driver-port=4444 \
+            || flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
+              -d web-server --browser-name=chrome --headless --driver-port=4444
 
   deploy:
     name: Deploy to Cloudflare Pages
