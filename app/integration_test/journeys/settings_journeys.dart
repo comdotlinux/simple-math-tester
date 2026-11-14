@@ -232,6 +232,8 @@ void settingsJourneys() {
         of: find.byKey(historyRowKey(0)),
         matching: find.text(text),
       );
+      // Wide screens show a table row, phones a card; compact beats both
+      // (the 3x ratio on phones is a widget test).
       Future<double> rowHeight() async => tester
           .getSize(await inHistory(tester, find.byKey(historyRowKey(0))))
           .height;
@@ -245,14 +247,14 @@ void settingsJourneys() {
       await tapKey(tester, layoutModeKey(LayoutMode.compact));
       await closeSettings(tester);
       await openHistory(tester);
-      expect(await rowHeight() * 3, lessThanOrEqualTo(card));
+      expect(await rowHeight(), lessThan(card));
       expect(inRow('75 + 46 = 121'), findsOneWidget);
       expect(inRow('You said 125'), findsOneWidget);
 
       await restartWhenSaved(tester, (p) => p.layoutMode == LayoutMode.compact);
       expect(modelOf(tester).layoutMode, LayoutMode.compact);
       await openHistory(tester);
-      expect(await rowHeight() * 3, lessThanOrEqualTo(card));
+      expect(await rowHeight(), lessThan(card));
 
       await returnToPractice(tester);
       await openSettings(tester);
