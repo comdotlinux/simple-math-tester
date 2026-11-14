@@ -170,18 +170,23 @@ void main() {
     // The header and the stats card fill the first screen.
     expect(find.text('Question 1').hitTestable(), findsNothing);
 
+    // Scroll until the row is built, then bring its whole card into view,
+    // so a taller stats card cannot leave part of the row off screen.
     await tester.scrollUntilVisible(
-      find.text('Question 1').hitTestable(),
+      find.text('Question 1'),
       100,
       scrollable: find.descendant(
         of: find.byKey(resultsPageKey),
         matching: find.byType(Scrollable),
       ),
     );
+    await tester.ensureVisible(
+      find.ancestor(of: find.text('Question 1'), matching: find.byType(Card)),
+    );
+    await tester.pumpAndSettle();
+    // The whole first row is on screen at once.
     expect(find.text('Question 1').hitTestable(), findsOneWidget);
     expect(find.text('12 + 3').hitTestable(), findsOneWidget);
-    await tester.ensureVisible(find.text('Your answer: 14'));
-    await tester.pumpAndSettle();
     expect(find.text('Your answer: 14').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
