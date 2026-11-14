@@ -14,6 +14,7 @@ void main() {
     double scale = 1,
     double keyboardInset = 0,
     bool disableAnimations = false,
+    Problem problem = const Problem(12, 3, OperationType.plus, 15),
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -21,9 +22,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    final model = MathTesterModel(
-      initialProblem: const Problem(12, 3, OperationType.plus, 15),
-    );
+    final model = MathTesterModel(initialProblem: problem);
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: model,
@@ -117,9 +116,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('1 question completed.'), findsOneWidget);
       expect(find.text('Incorrect'), findsOneWidget);
-      expect(find.text('Your answer: 14.0'), findsOneWidget);
+      expect(find.text('Your answer: 14'), findsOneWidget);
       expect(find.text('Expected answer: 15'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Results at width $width drop ".0" but keep decimals', (
+      tester,
+    ) async {
+      final model = await launch(
+        tester,
+        size: Size(width, 900),
+        problem: const Problem(12, 3, OperationType.divide, 4.0),
+      );
+      model.setDraftInput('4.5');
+      model.submitAnswer();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      expect(find.text('Your answer: 4.5'), findsOneWidget);
+      expect(find.text('Expected answer: 4'), findsOneWidget);
+      expect(find.textContaining('4.0'), findsNothing);
     });
   }
 

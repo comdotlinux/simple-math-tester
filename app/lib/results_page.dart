@@ -226,10 +226,10 @@ class ResultsPage extends StatelessWidget {
       Text(
         attempt.skipped
             ? 'No answer entered'
-            : 'Your answer: ${attempt.firstAnswer}',
+            : 'Your answer: ${formatNumber(attempt.firstAnswer!)}',
       ),
       const SizedBox(height: 4),
-      Text('Expected answer: ${attempt.problem.result}'),
+      Text('Expected answer: ${formatNumber(attempt.problem.result)}'),
     ],
   );
 }

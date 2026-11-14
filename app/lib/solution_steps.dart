@@ -8,7 +8,7 @@ List<String> solutionSteps(Problem problem) => problem.kind.steps(problem);
 List<String> additionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
-  final result = _number(problem.result);
+  final result = formatNumber(problem.result);
   final calculations = <String>[];
   final totals = <int>[];
   for (
@@ -78,16 +78,16 @@ List<String> subtractionSteps(Problem problem) {
               'ten, and keep track of how far you went.',
     useHops
         ? 'Add the hops: ${hops.map((hop) => hop.$2 - hop.$1).join(' + ')} = '
-              '${_number(result)}. So $left − $right = ${_number(result)}.'
-        : 'So $left − $right = ${_number(result)}. '
-              'Check: ${_number(result)} + $right = $left.',
+              '${formatNumber(result)}. So $left − $right = ${formatNumber(result)}.'
+        : 'So $left − $right = ${formatNumber(result)}. '
+              'Check: ${formatNumber(result)} + $right = $left.',
   ];
 }
 
 List<String> multiplicationSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
-  final result = _number(problem.result);
+  final result = formatNumber(problem.result);
   final split = left >= right ? left : right;
   final multiplier = left >= right ? right : left;
   final parts = _placeParts(split);
@@ -125,15 +125,15 @@ List<String> divisionSteps(Problem problem) {
         ? 'Count in ${right}s until you reach $left. '
               'How many ${right}s did you count?'
         : countText,
-    '$right × ${_number(result)} = $left, '
-        'so $left ÷ $right = ${_number(result)}.',
+    '$right × ${formatNumber(result)} = $left, '
+        'so $left ÷ $right = ${formatNumber(result)}.',
   ];
 }
 
 const _placeNames = {10: 'ten', 100: 'hundred', 1000: 'thousand'};
 
 bool _mentions(String text, num value) =>
-    RegExp('(?<!\\d)${_number(value)}(?!\\d)').hasMatch(text);
+    RegExp('(?<!\\d)${formatNumber(value)}(?!\\d)').hasMatch(text);
 
 int _highestPlace(int value) {
   var place = 1;
@@ -151,6 +151,3 @@ List<int> _placeParts(int value) {
   }
   return parts;
 }
-
-String _number(num value) =>
-    value == value.toInt() ? value.toInt().toString() : value.toString();
