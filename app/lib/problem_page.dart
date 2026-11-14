@@ -66,7 +66,7 @@ class _ProblemPageState extends State<ProblemPage> {
                   ),
                   const SizedBox(height: 24),
                   Card(
-                    color: AppColors.mint,
+                    color: context.tokens.mint,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
@@ -111,11 +111,13 @@ class _ProblemPageState extends State<ProblemPage> {
                     runSpacing: 12,
                     children: [
                       FilledButton.icon(
+                        key: checkAnswerButtonKey,
                         onPressed: model.submitAnswer,
                         icon: const Icon(Icons.check_circle_outline),
                         label: const Text('Check answer'),
                       ),
                       OutlinedButton.icon(
+                        key: nextQuestionButtonKey,
                         onPressed: model.generateNextProblem,
                         icon: const Icon(Icons.navigate_next),
                         label: const Text('Next question'),
@@ -162,15 +164,15 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
         };
     final correct = model.answerCorrect ?? false;
     final foreground = model.answerCorrect == null
-        ? AppColors.error
+        ? context.tokens.error
         : correct
-        ? AppColors.teal
-        : AppColors.error;
+        ? context.tokens.teal
+        : context.tokens.error;
     final background = model.answerCorrect == null
-        ? AppColors.peach
+        ? context.tokens.peach
         : correct
-        ? AppColors.mint
-        : AppColors.peach;
+        ? context.tokens.mint
+        : context.tokens.peach;
     final icon = model.answerCorrect == null
         ? Icons.info_outline
         : correct

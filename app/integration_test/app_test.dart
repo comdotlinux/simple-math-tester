@@ -25,14 +25,14 @@ void main() {
       await tester.tap(find.byType(TextField));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), '$answer');
-      await tester.ensureVisible(find.text('Check answer'));
-      await tester.tap(find.text('Check answer'));
+      await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
+      await tester.tap(find.byKey(checkAnswerButtonKey));
       await tester.pumpAndSettle();
     }
 
     Future<void> nextQuestion() async {
-      await tester.ensureVisible(find.text('Next question'));
-      await tester.tap(find.text('Next question'));
+      await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+      await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
     }
 

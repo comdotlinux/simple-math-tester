@@ -13,6 +13,92 @@ abstract final class AppColors {
   static const border = Color(0xFFD9DED3);
 }
 
+@immutable
+class AppTokens extends ThemeExtension<AppTokens> {
+  const AppTokens({
+    required this.canvas,
+    required this.paper,
+    required this.ink,
+    required this.muted,
+    required this.teal,
+    required this.mint,
+    required this.yellow,
+    required this.peach,
+    required this.error,
+    required this.border,
+  });
+
+  static const light = AppTokens(
+    canvas: AppColors.canvas,
+    paper: AppColors.paper,
+    ink: AppColors.ink,
+    muted: AppColors.muted,
+    teal: AppColors.teal,
+    mint: AppColors.mint,
+    yellow: AppColors.yellow,
+    peach: AppColors.peach,
+    error: AppColors.error,
+    border: AppColors.border,
+  );
+
+  final Color canvas;
+  final Color paper;
+  final Color ink;
+  final Color muted;
+  final Color teal;
+  final Color mint;
+  final Color yellow;
+  final Color peach;
+  final Color error;
+  final Color border;
+
+  @override
+  AppTokens copyWith({
+    Color? canvas,
+    Color? paper,
+    Color? ink,
+    Color? muted,
+    Color? teal,
+    Color? mint,
+    Color? yellow,
+    Color? peach,
+    Color? error,
+    Color? border,
+  }) => AppTokens(
+    canvas: canvas ?? this.canvas,
+    paper: paper ?? this.paper,
+    ink: ink ?? this.ink,
+    muted: muted ?? this.muted,
+    teal: teal ?? this.teal,
+    mint: mint ?? this.mint,
+    yellow: yellow ?? this.yellow,
+    peach: peach ?? this.peach,
+    error: error ?? this.error,
+    border: border ?? this.border,
+  );
+
+  @override
+  AppTokens lerp(AppTokens? other, double t) {
+    if (other == null) return this;
+    return AppTokens(
+      canvas: Color.lerp(canvas, other.canvas, t)!,
+      paper: Color.lerp(paper, other.paper, t)!,
+      ink: Color.lerp(ink, other.ink, t)!,
+      muted: Color.lerp(muted, other.muted, t)!,
+      teal: Color.lerp(teal, other.teal, t)!,
+      mint: Color.lerp(mint, other.mint, t)!,
+      yellow: Color.lerp(yellow, other.yellow, t)!,
+      peach: Color.lerp(peach, other.peach, t)!,
+      error: Color.lerp(error, other.error, t)!,
+      border: Color.lerp(border, other.border, t)!,
+    );
+  }
+}
+
+extension AppTokensContext on BuildContext {
+  AppTokens get tokens => Theme.of(this).extension<AppTokens>()!;
+}
+
 ThemeData buildAppTheme() {
   final scheme = ColorScheme.fromSeed(
     seedColor: AppColors.teal,
@@ -136,5 +222,6 @@ ThemeData buildAppTheme() {
       ),
     ),
     dividerColor: AppColors.border,
+    extensions: const [AppTokens.light],
   );
 }
