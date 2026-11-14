@@ -6,20 +6,27 @@ import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
 
+// Feedback, button and semantics wording stays literal: it is the behaviour.
+
+Finder _revealLabel(String label) => find.descendant(
+  of: find.byKey(revealStepButtonKey),
+  matching: find.text(label),
+);
+
 void hintsJourneys() {
   group('hints', () {
     testWidgets('Hint shows the first step and becomes Next step', (
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
-      expect(find.text('Hint'), findsOneWidget);
+      expect(_revealLabel('Hint'), findsOneWidget);
       expect(visibleSteps(tester), 0);
 
       await tapKey(tester, revealStepButtonKey);
 
-      expect(find.text('Let’s work it out'), findsOneWidget);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
       expect(visibleSteps(tester), 1);
-      expect(find.text('Next step'), findsOneWidget);
+      expect(_revealLabel('Next step'), findsOneWidget);
     });
 
     testWidgets('a hint tap keeps the focus on the answer', (tester) async {
@@ -57,7 +64,7 @@ void hintsJourneys() {
 
       await submit(tester, model.current.result + 1);
 
-      expect(find.text('Let’s work it out'), findsOneWidget);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
       expect(visibleSteps(tester), 1);
       // A right retry opens nothing more by itself.
       await submit(tester, model.current.result);

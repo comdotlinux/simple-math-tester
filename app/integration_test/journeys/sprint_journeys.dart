@@ -9,6 +9,9 @@ import 'package:simple_math_tester/rules.dart';
 
 import '../support/helpers.dart';
 
+// Feedback and the round's mix sentence stay literal: their wording is the
+// behaviour.
+
 void sprintJourneys() {
   group('sprint', () {
     testWidgets('starting a sprint shows the countdown and hides practice '
@@ -19,9 +22,8 @@ void sprintJourneys() {
 
       final model = modelOf(tester);
       expect(model.inSprint, isTrue);
-      expect(find.text('Sprint'), findsOneWidget);
       expect(find.byKey(sprintCountdownKey), findsOneWidget);
-      expect(find.text('Score: 0'), findsOneWidget);
+      expect(textOf(tester, sprintScoreKey), showsNumber(0));
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
       expect(find.byKey(settingsButtonKey), findsNothing);
       expect(find.byKey(revealStepButtonKey), findsNothing);
@@ -41,7 +43,7 @@ void sprintJourneys() {
       expect(model.history.single.sprint, isTrue);
       expect(model.history.single.correct, isTrue);
       expect(model.sprintScore, greaterThan(0));
-      expect(find.text('Score: ${model.sprintScore}'), findsOneWidget);
+      expect(textOf(tester, sprintScoreKey), showsNumber(model.sprintScore));
       expect(find.text('You got it!'), findsNothing);
     });
 
@@ -81,9 +83,8 @@ void sprintJourneys() {
 
       expect(model.inSprint, isFalse);
       expect(find.byKey(sprintResultKey), findsOneWidget);
-      expect(find.text('Sprint over'), findsOneWidget);
-      expect(find.text('Score: $score'), findsOneWidget);
-      expect(find.text('Personal best: $score'), findsOneWidget);
+      expect(textOf(tester, sprintResultScoreKey), showsNumber(score));
+      expect(textOf(tester, sprintResultBestKey), showsNumber(score));
       expect(find.text('Answers by difficulty: level 1: 1'), findsOneWidget);
       final saved = await waitForSaved((p) => p.game.bestSprint == score);
       expect(saved.game.combo, 0);
@@ -99,8 +100,8 @@ void sprintJourneys() {
       await openHistory(tester);
       await returnToPractice(tester);
 
-      expect(find.text('Score: 0'), findsOneWidget);
-      expect(find.text('Personal best: 500'), findsOneWidget);
+      expect(textOf(tester, sprintResultScoreKey), showsNumber(0));
+      expect(textOf(tester, sprintResultBestKey), showsNumber(500));
       expect(find.text('No answers this round.'), findsOneWidget);
     });
 
@@ -120,12 +121,12 @@ void sprintJourneys() {
         store: store,
       );
       await tapKey(tester, sprintButtonKey);
-      expect(find.text('60 s left'), findsOneWidget);
+      expect(textOf(tester, sprintCountdownKey), showsNumber(60));
 
       now = now.add(const Duration(seconds: 30));
       ticks.add(null);
       await tester.pumpAndSettle();
-      expect(find.text('30 s left'), findsOneWidget);
+      expect(textOf(tester, sprintCountdownKey), showsNumber(30));
       await submit(tester, model.current.result);
       final score = model.sprintScore;
 
@@ -135,8 +136,8 @@ void sprintJourneys() {
 
       expect(model.inSprint, isFalse);
       expect(find.byKey(sprintCountdownKey), findsNothing);
-      expect(find.text('Sprint over'), findsOneWidget);
-      expect(find.text('Personal best: $score'), findsOneWidget);
+      expect(find.byKey(sprintResultKey), findsOneWidget);
+      expect(textOf(tester, sprintResultBestKey), showsNumber(score));
       expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
       expect(
         Progress.decode(store.values[progressKey]!).game.bestSprint,

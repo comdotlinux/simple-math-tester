@@ -20,8 +20,16 @@ void settingsJourneys() {
         await openSettings(tester);
 
         expect(find.byKey(settingsSheetKey), findsOneWidget);
-        expect(find.text('Starting difficulty'), findsOneWidget);
-        expect(find.textContaining('Now: Easy.'), findsOneWidget);
+        expect(
+          textOf(tester, currentTierNoteKey),
+          contains(modelOf(tester).tier!.label),
+        );
+        expect(
+          tester
+              .widget<ListTile>(find.byKey(tierSettingKey(Tier.easy)))
+              .selected,
+          isTrue,
+        );
         for (final tier in Tier.values) {
           expect(
             find.descendant(
@@ -31,7 +39,7 @@ void settingsJourneys() {
             findsOneWidget,
           );
         }
-        expect(find.text('Vibration'), findsOneWidget);
+        expect(find.byKey(hapticsSwitchKey), findsOneWidget);
 
         await closeSettings(tester);
         expect(find.byKey(settingsSheetKey), findsNothing);

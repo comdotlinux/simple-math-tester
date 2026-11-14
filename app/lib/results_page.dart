@@ -51,6 +51,7 @@ class ResultsPage extends StatelessWidget {
                             history.length == 1
                                 ? '1 question completed.'
                                 : '${history.length} questions completed.',
+                            key: historyCountKey,
                             style: theme.textTheme.titleLarge,
                           ),
                           const SizedBox(height: 16),
@@ -61,12 +62,19 @@ class ResultsPage extends StatelessWidget {
                   ),
                   SliverList.builder(
                     itemCount: history.length,
-                    itemBuilder: (context, index) => useCards
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: _resultCard(context, index, history[index]),
-                          )
-                        : _tableRow(context, index, history[index]),
+                    itemBuilder: (context, index) => KeyedSubtree(
+                      key: historyRowKey(index),
+                      child: useCards
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: _resultCard(
+                                context,
+                                index,
+                                history[index],
+                              ),
+                            )
+                          : _tableRow(context, index, history[index]),
+                    ),
                   ),
                 ],
               ),
@@ -158,6 +166,7 @@ class ResultsPage extends StatelessWidget {
                   pressable: true,
                   radius: AppTokens.radiusControl,
                   child: FilledButton.icon(
+                    key: emptyStatePracticeButtonKey,
                     onPressed: () => model.setCurrentPage(0),
                     icon: const Icon(Icons.calculate_outlined),
                     label: const Text('Practice'),
@@ -313,6 +322,9 @@ class ResultsPage extends StatelessWidget {
   );
 }
 
+/// The stats table's column headings.
+const statsColumns = ['Operation', 'Accuracy', 'Level'];
+
 /// Lifetime accuracy and level per operation, streaks, XP and player level.
 class _Stats extends StatelessWidget {
   const _Stats();
@@ -331,34 +343,41 @@ class _Stats extends StatelessWidget {
     Widget cell(Widget child) =>
         Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: child);
 
-    Widget chip(String text, IconData icon, Color color, Color onColor) =>
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppTokens.radiusControl),
-            border: Border.all(
-              color: tokens.outline,
-              width: AppTokens.outlineWidth,
+    Widget chip(
+      String text,
+      Key key,
+      IconData icon,
+      Color color,
+      Color onColor,
+    ) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        border: Border.all(
+          color: tokens.outline,
+          width: AppTokens.outlineWidth,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: 8,
+        children: [
+          Icon(icon, size: 20, color: onColor),
+          Flexible(
+            child: Text(
+              text,
+              key: key,
+              style: TextStyle(color: onColor, fontWeight: FontWeight.w700),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 8,
-            children: [
-              Icon(icon, size: 20, color: onColor),
-              Flexible(
-                child: Text(
-                  text,
-                  style: TextStyle(color: onColor, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        );
+        ],
+      ),
+    );
 
     return Slab(
       child: Card(
+        key: statsCardKey,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -372,30 +391,35 @@ class _Stats extends StatelessWidget {
                 children: [
                   chip(
                     'Daily streak: $streak',
+                    dailyStreakStatKey,
                     Icons.local_fire_department,
                     tokens.streak,
                     tokens.onStreak,
                   ),
                   chip(
                     'Best streak: ${game.bestStreak}',
+                    bestStreakStatKey,
                     Icons.local_fire_department,
                     tokens.streak,
                     tokens.onStreak,
                   ),
                   chip(
                     'Best sprint: ${game.bestSprint}',
+                    bestSprintStatKey,
                     Icons.timer_outlined,
                     tokens.sprint,
                     tokens.onSprint,
                   ),
                   chip(
                     'Total XP: ${game.xp}',
+                    totalXpStatKey,
                     Icons.star,
                     tokens.xp,
                     tokens.onXp,
                   ),
                   chip(
                     'Player level: ${playerLevel(game.xp)}',
+                    playerLevelStatKey,
                     Icons.military_tech,
                     tokens.xp,
                     tokens.onXp,
@@ -414,7 +438,7 @@ class _Stats extends StatelessWidget {
                 children: [
                   TableRow(
                     children: [
-                      for (final title in ['Operation', 'Accuracy', 'Level'])
+                      for (final title in statsColumns)
                         cell(Text(title, style: headerStyle)),
                     ],
                   ),
