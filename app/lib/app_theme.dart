@@ -22,6 +22,11 @@ enum AppColor {
   onStreak,
   xp,
   onXp,
+
+  /// The daily-goal ring stroke and the XP bar fill: graphics, not text,
+  /// drawn on the header and their sunken track.
+  goalRing,
+  xpBar,
   combo,
   onCombo,
   sprint,
@@ -58,6 +63,10 @@ class AppTokens extends ThemeExtension<AppTokens> {
     AppColor.onCombo: Color(0xFF18213B),
     AppColor.sprint: Color(0xFF3CC8F2),
     AppColor.onSprint: Color(0xFF18213B),
+    // Darker than the fills above, so the thin ring and bar stand out from
+    // white and cream.
+    AppColor.goalRing: Color(0xFF1A9150),
+    AppColor.xpBar: Color(0xFF0E8C80),
   });
 
   /// Dark neon: the same roles as vivid fills on a near-black page, with
@@ -86,6 +95,8 @@ class AppTokens extends ThemeExtension<AppTokens> {
     AppColor.onCombo: Color(0xFF0B0F17),
     AppColor.sprint: Color(0xFF38DCFF),
     AppColor.onSprint: Color(0xFF0B0F17),
+    AppColor.goalRing: Color(0xFF3BF08C),
+    AppColor.xpBar: Color(0xFF2FEAD5),
   });
 
   /// The (text or icon, background) pairs widgets draw; each must reach
@@ -106,6 +117,15 @@ class AppTokens extends ThemeExtension<AppTokens> {
     (AppColor.onXp, AppColor.xp),
     (AppColor.onCombo, AppColor.combo),
     (AppColor.onSprint, AppColor.sprint),
+  ];
+
+  /// The (graphic, background) pairs of thin non-text marks; each must reach
+  /// 3 to 1 in both themes (WCAG 1.4.11).
+  static const graphicPairs = [
+    (AppColor.goalRing, AppColor.surfaceRaised),
+    (AppColor.goalRing, AppColor.surfaceSunken),
+    (AppColor.xpBar, AppColor.surfaceRaised),
+    (AppColor.xpBar, AppColor.surfaceSunken),
   ];
 
   /// Corner radii, and the hard shadow: a solid slab [depth] px below a
@@ -141,6 +161,8 @@ class AppTokens extends ThemeExtension<AppTokens> {
   Color get onCombo => colors[AppColor.onCombo]!;
   Color get sprint => colors[AppColor.sprint]!;
   Color get onSprint => colors[AppColor.onSprint]!;
+  Color get goalRing => colors[AppColor.goalRing]!;
+  Color get xpBar => colors[AppColor.xpBar]!;
 
   @override
   AppTokens copyWith({Map<AppColor, Color>? colors}) =>

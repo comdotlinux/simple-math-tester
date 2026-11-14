@@ -93,6 +93,18 @@ void main() {
     }
   });
 
+  test('every graphic pair reaches 3 to 1 in both themes', () {
+    for (final MapEntry(key: brightness, value: tokens) in themes.entries) {
+      for (final (graphic, background) in AppTokens.graphicPairs) {
+        expect(
+          contrast(tokens.colors[graphic]!, tokens.colors[background]!),
+          greaterThanOrEqualTo(3),
+          reason: '$brightness $graphic on $background',
+        );
+      }
+    }
+  });
+
   test('criterion 33: ink, muted ink and every on-role are in a pair', () {
     final foregrounds = {for (final (fg, _) in AppTokens.contrastPairs) fg};
     for (final role in AppColor.values) {
