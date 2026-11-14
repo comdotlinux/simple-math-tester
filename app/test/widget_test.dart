@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -806,6 +807,35 @@ void main() {
       await tester.tap(find.byKey(themeModeKey(ThemeMode.light)));
       await tester.pumpAndSettle();
       expect(shown(), Brightness.light);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the theme choice fits on one line at 360, text scale 1.3', (
+      tester,
+    ) async {
+      await launch(tester, size: const Size(360, 640), scale: 1.3);
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      final sheet = tester.getRect(find.byKey(settingsSheetKey));
+      final choice = find.byType(SegmentedButton<ThemeMode>);
+      await tester.ensureVisible(choice);
+      await tester.pumpAndSettle();
+      final rect = tester.getRect(choice);
+      expect(rect.left, moreOrLessEquals(sheet.left + 12 + 16));
+      expect(rect.right, moreOrLessEquals(sheet.right - 12 - 24));
+      expect(rect.height, greaterThanOrEqualTo(52));
+      for (final mode in ThemeMode.values) {
+        final label = tester.renderObject<RenderParagraph>(
+          find.byKey(themeModeKey(mode)),
+        );
+        expect(label.didExceedMaxLines, isFalse, reason: mode.name);
+        expect(
+          tester.getSize(find.byKey(themeModeKey(mode))).width,
+          lessThan(rect.width / 3),
+        );
+      }
       expect(tester.takeException(), isNull);
     });
   });

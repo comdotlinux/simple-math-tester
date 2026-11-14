@@ -902,6 +902,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   builder: (context) {
     final model = context.watch<MathTesterModel>();
     final textTheme = Theme.of(context).textTheme;
+    final listTileTheme = Theme.of(context).listTileTheme;
     return SafeArea(
       child: SingleChildScrollView(
         key: settingsSheetKey,
@@ -948,23 +949,40 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               value: model.haptics,
               onChanged: model.setHaptics,
             ),
-            ListTile(
-              title: const Text('Theme'),
-              subtitle: SegmentedButton<ThemeMode>(
-                segments: [
-                  for (final (mode, label, icon) in const [
-                    (ThemeMode.system, 'System', Icons.brightness_auto),
-                    (ThemeMode.light, 'Light', Icons.light_mode),
-                    (ThemeMode.dark, 'Dark', Icons.dark_mode),
-                  ])
-                    ButtonSegment(
-                      value: mode,
-                      label: Text(label, key: themeModeKey(mode)),
-                      icon: Icon(icon),
-                    ),
+            // Laid out like the switch tiles above: same insets and text
+            // styles, with the choice on its own full-width line.
+            Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 24, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: 12,
+                children: [
+                  Text('Theme', style: listTileTheme.titleTextStyle),
+                  SegmentedButton<ThemeMode>(
+                    expandedInsets: EdgeInsets.zero,
+                    showSelectedIcon: false,
+                    segments: [
+                      // Text only: an icon beside "System" wraps it at 360 px.
+                      for (final (mode, label) in const [
+                        (ThemeMode.system, 'System'),
+                        (ThemeMode.light, 'Light'),
+                        (ThemeMode.dark, 'Dark'),
+                      ])
+                        ButtonSegment(
+                          value: mode,
+                          label: Text(
+                            label,
+                            key: themeModeKey(mode),
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
+                    ],
+                    selected: {model.themeMode},
+                    onSelectionChanged: (modes) =>
+                        model.setThemeMode(modes.single),
+                  ),
                 ],
-                selected: {model.themeMode},
-                onSelectionChanged: (modes) => model.setThemeMode(modes.single),
               ),
             ),
           ],

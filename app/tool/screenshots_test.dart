@@ -206,6 +206,15 @@ void main() {
         final empty = await launch(tester, size, brightness);
         empty.setCurrentPage(1);
         await shoot(tester, '$tag-8-answers-empty');
+
+        await launch(tester, size, brightness);
+        await tester.ensureVisible(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        await shoot(tester, '$tag-9-settings');
+        await tester.ensureVisible(find.byKey(themeModeKey(ThemeMode.dark)));
+        await shoot(tester, '$tag-9b-settings-theme');
       });
     }
   }
