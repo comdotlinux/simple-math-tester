@@ -197,6 +197,29 @@ Future<void> closeSettings(WidgetTester tester) async {
 Finder operationToggle(OperationType type) =>
     find.byKey(operationToggleKey(type));
 
+/// Phones (shortest side under 600) start with the system keyboard and
+/// larger screens with the pad; the keyboard button swaps them. These two
+/// bring up the one a journey needs on any device.
+Future<void> openPad(WidgetTester tester) async {
+  if (find.byKey(numberPadKey).evaluate().isEmpty) {
+    await tapKey(tester, keyboardSwitchKey);
+  }
+  expect(find.byKey(numberPadKey), findsOneWidget);
+}
+
+Future<void> closePad(WidgetTester tester) async {
+  if (find.byKey(numberPadKey).evaluate().isNotEmpty) {
+    await tapKey(tester, keyboardSwitchKey);
+  }
+  expect(find.byKey(numberPadKey), findsNothing);
+}
+
+/// Whether the screen is a phone's: the app then starts with the system
+/// keyboard.
+bool isPhone(WidgetTester tester) =>
+    (tester.view.physicalSize / tester.view.devicePixelRatio).shortestSide <
+    600;
+
 /// A digit key of the on-screen number pad.
 Finder padKey(String digit) => find.byKey(padDigitKey(digit));
 

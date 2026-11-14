@@ -129,6 +129,7 @@ void settingsJourneys() {
         clock: DateTime.now,
         haptic: buzzes.add,
       );
+      await openPad(tester);
       await tapVisible(tester, padKey('5'));
       expect(buzzes, [Haptic.key]);
 

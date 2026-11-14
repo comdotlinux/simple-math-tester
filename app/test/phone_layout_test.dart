@@ -31,6 +31,14 @@ void main() {
   Finder padKey(String digit) =>
       find.descendant(of: pad, matching: find.byKey(padDigitKey(digit)));
 
+  // Phones start with the system keyboard; the keyboard button opens the
+  // pad.
+  Future<void> openPad(WidgetTester tester) async {
+    expect(pad, findsNothing);
+    await tester.tap(find.byKey(keyboardSwitchKey));
+    await tester.pumpAndSettle();
+  }
+
   void expectOnScreen(WidgetTester tester, Finder finder, Size screen) {
     final rect = tester.getRect(finder);
     var shown = rect.intersect(Offset.zero & screen);
@@ -76,6 +84,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
+        await openPad(tester);
         expect(
           Scrollable.maybeOf(tester.element(pad)),
           isNull,
@@ -127,6 +136,15 @@ void main() {
           reason: 'above the docked field',
         );
         expect(tester.takeException(), isNull);
+
+        // Skip from there brings the new question card back into view.
+        await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(nextQuestionButtonKey));
+        await tester.pumpAndSettle();
+        expect(find.byKey(pinnedQuestionKey), findsNothing);
+        expectOnScreen(tester, find.byKey(questionOnProblemsPageKey), size);
+        expect(tester.takeException(), isNull);
       });
     }
   }
@@ -160,6 +178,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await openPad(tester);
         expect(pad, findsOneWidget);
         expect(
           Scrollable.maybeOf(tester.element(pad)),
@@ -255,6 +274,95 @@ void main() {
         for (final finder in mustShow('75', 'You got it!')) {
           expectOnScreen(tester, finder, size);
         }
+      });
+    }
+  }
+
+  // A phone's own number keyboard covers the bottom of the screen: about
+  // 260 dp on a small phone, as Gboard's number layout and iOS's number
+  // pad with its bar.
+  for (final scale in const [1.0, 1.3]) {
+    for (final size in const [Size(412, 720), Size(360, 640)]) {
+      const inset = 260.0;
+      final tag =
+          '${size.width.toInt()}x${size.height.toInt()}, text $scale, '
+          'keyboard $inset';
+
+      testWidgets('with the system keyboard up, the question, the field, '
+          'the feedback and Check, then Next, stay above it at $tag', (
+        tester,
+      ) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        tester.view.viewInsets = const FakeViewPadding(bottom: inset);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetViewInsets);
+        final model = MathTesterModel(
+          initialProblem: const Problem(48, 27, OperationType.plus, 75),
+          progress: Progress(tier: Tier.easy),
+        );
+        addTearDown(model.dispose);
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: model,
+            child: MediaQuery(
+              data: MediaQueryData(
+                size: size,
+                textScaler: TextScaler.linear(scale),
+                viewInsets: const EdgeInsets.only(bottom: inset),
+              ),
+              child: const MathTesterApp(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(pad, findsNothing, reason: 'a phone starts with the keyboard');
+        final above = Size(size.width, size.height - inset);
+        final field = find.byType(TextField);
+        bool fieldFocused() =>
+            tester.widget<TextField>(field).focusNode!.hasFocus;
+
+        void expectShown(List<Finder> finders) {
+          // The card's question, or the dock's copy once the card scrolls
+          // away.
+          final pinned = find.byKey(pinnedQuestionKey);
+          final question = pinned.evaluate().isEmpty
+              ? find.byKey(questionOnProblemsPageKey)
+              : pinned;
+          for (final finder in [question, field, ...finders]) {
+            expectOnScreen(tester, finder, above);
+          }
+          expect(fieldFocused(), isTrue, reason: 'the keyboard stays up');
+          expect(tester.takeException(), isNull);
+        }
+
+        expectShown([find.byKey(checkAnswerButtonKey)]);
+
+        tester.testTextInput.enterText('65');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expectShown([
+          find.text('Not quite. Try another answer.'),
+          find.byKey(checkAnswerButtonKey),
+          find.byKey(nextQuestionButtonKey),
+        ]);
+
+        tester.testTextInput.enterText('75');
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expectShown([
+          find.text('You got it!'),
+          find.byKey(nextQuestionButtonKey),
+        ]);
+
+        // Enter again moves on, and the next answer goes straight in.
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expect(model.history, hasLength(1));
+        expect(find.text('You got it!'), findsNothing);
+        expectShown([find.byKey(checkAnswerButtonKey)]);
       });
     }
   }

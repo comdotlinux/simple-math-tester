@@ -115,6 +115,12 @@ class MathTesterModel extends ChangeNotifier {
   /// False in no-write mode: saved data could not be read, so it is kept.
   bool get canSave => _canSave;
   String get draftInput => _draftInput;
+
+  /// The practice page's keyboard button pick: the number pad (true) or the
+  /// system keyboard (false); null until the player picks. Kept here so it
+  /// outlives the page (a visit to "My answers", a resized window), for this
+  /// session only and never saved.
+  bool? padChosen;
   String? get validationMessage => _validationMessage;
   bool? get answerCorrect => _answerCorrect;
   int get currentPage => _currentPage;
