@@ -9,10 +9,12 @@ on:
   workflow_dispatch:
     inputs:
       environment-name:
-        description: 'Environment to deploy to'
+        description: 'Environment to deploy to (none: only run the checks, phone jobs included)'
         required: true
         type: choice
+        default: none
         options:
+          - none
           - dev
           - prod
           - test
@@ -49,10 +51,12 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
-      - run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test integration_test_web test_driver tool
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build web --release
+      - run: flutter build web --release --no-web-resources-cdn --web-content-hash
+      - name: Stamp the service worker with this build
+        run: ../tool/stamp_service_worker.sh build/web
       - name: Upload tested web build
         uses: actions/upload-artifact@v7
         with:
@@ -95,6 +99,9 @@ jobs:
   android:
     name: Build Android release APK
     needs: linux-integration
+    # Phone jobs run after a merge to main and on manual runs, not on pull
+    # requests (owner's choice, 2026-11-14: faster PR rounds).
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -141,6 +148,7 @@ jobs:
   ios:
     name: Build unsigned iOS release
     needs: linux-integration
+    if: github.event_name != 'pull_request'
     runs-on: macos-26
     timeout-minutes: 30
     defaults:
@@ -182,6 +190,7 @@ jobs:
   ios-simulator:
     name: Test user journeys on iOS simulator
     needs: linux-integration
+    if: github.event_name != 'pull_request'
     runs-on: macos-26
     timeout-minutes: 45
     defaults:
@@ -240,6 +249,7 @@ jobs:
   android-emulator:
     name: Test user journeys on Android emulator API ${{ matrix.api-level }}
     needs: linux-integration
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     strategy:
@@ -295,7 +305,9 @@ jobs:
           target: google_apis
           arch: x86_64
           working-directory: app
-          script: flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554
+          script: |
+            flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554
+            adb shell cmd connectivity airplane-mode enable && (flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554)
 
   web-chrome:
     name: Test user journeys in Chrome
@@ -333,18 +345,68 @@ jobs:
           cat "$RUNNER_TEMP/chromedriver.log"
           exit 1
       # --headless (the default) makes flutter drive add --headless and SwiftShader flags on Linux.
-      - name: Run integration tests in Chrome (one retry)
+      # Every host name with a dot fails to resolve, so only localhost is reachable. flutter drive
+      # splits --web-browser-flag values at commas, so "MAP * ~NOTFOUND, EXCLUDE localhost" cannot be passed.
+      - name: Run integration tests in Chrome with other origins blocked (one retry)
         run: |
           flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
             -d web-server --browser-name=chrome --headless --driver-port=4444 \
+            --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND" \
             || flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
-              -d web-server --browser-name=chrome --headless --driver-port=4444
+              -d web-server --browser-name=chrome --headless --driver-port=4444 \
+              --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
+      # Criterion 39: the pad's text field asks for no soft keyboard. The file imports
+      # web-only libraries, so it sits in integration_test_web/, outside the folder the
+      # Linux, Android and iOS jobs run with `flutter test integration_test`.
+      - name: Check the pad keeps the soft keyboard closed in Chrome (one retry)
+        run: |
+          flutter drive --driver=test_driver/integration_test.dart --target=integration_test_web/web_keyboard_test.dart \
+            -d web-server --browser-name=chrome --headless --driver-port=4444 \
+            --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND" \
+            || flutter drive --driver=test_driver/integration_test.dart --target=integration_test_web/web_keyboard_test.dart \
+              -d web-server --browser-name=chrome --headless --driver-port=4444 \
+              --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
+
+  web-offline:
+    name: Check the web build offline and after an update in Chrome
+    needs: linux-integration
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Download the tested web build
+        uses: actions/download-artifact@v8
+        with:
+          name: simple-math-tester-web
+          path: app/build/web
+      - run: flutter pub get --enforce-lockfile
+      - name: Build the same app as build number 2
+        run: |
+          flutter build web --release --no-web-resources-cdn --web-content-hash --build-number=2 -o "$PWD/build/web-2"
+          ../tool/stamp_service_worker.sh build/web-2
+      # Playwright drives the runner's Google Chrome; no browser is downloaded.
+      - name: Install the pinned Playwright
+        working-directory: tool
+        run: |
+          node --version
+          npm ci --no-audit --no-fund
+      - name: Run the offline browser check
+        run: node ../tool/browser_check.mjs build/web build/web-2
 
   deploy:
     name: Deploy to Cloudflare Pages
     needs: linux-integration
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' &&
+        github.event.inputs.environment-name != 'none') ||
       github.event_name == 'workflow_call' ||
       (github.event_name == 'push' && github.ref == 'refs/heads/main')
     environment: ${{ github.event.inputs.environment-name }}

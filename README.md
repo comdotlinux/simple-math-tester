@@ -32,14 +32,19 @@ mise exec -- flutter build web --release
 mise exec -- flutter build apk --release
 ```
 
-The integration command builds and launches the real Linux app, then tests wrong
-and correct answers, optional steps, navigation, and correct/incorrect/skipped
-history. On a headless Linux host, prefix it with `xvfb-run -a`.
+The integration command builds and launches the real Linux app, then runs the
+named journeys of every feature. See `app/integration_test/README.md` for the
+layout, the feature inventory, and the rule that every feature or fix adds a
+journey. On a headless Linux host, prefix it with `xvfb-run -a`.
 
-CI runs web checks first, then Linux integration. Cloudflare deployment, Android
-and iOS builds then run in parallel. Deployment downloads the tested web artifact
-instead of repeating tests or compilation. Branch pushes skip deployment; `main`
-pushes and manual runs deploy after the prerequisite checks pass.
+CI runs web checks first, then Linux integration. The Chrome and offline checks,
+Cloudflare deployment, and the Android and iOS jobs then run in parallel.
+Pull requests skip the Android and iOS jobs (builds, emulators, simulator) to keep
+rounds short; they run on every push to `main` and on manual runs ("Run
+workflow", environment `none` runs all checks without deploying). Deployment
+downloads the tested web artifact instead of repeating tests or compilation.
+Branch pushes skip deployment; `main` pushes and manual runs with an environment
+deploy after the prerequisite checks pass.
 
 CI uploads the Linux release bundle, Android APK, and unsigned iOS app as build
 artifacts with 3-day retention.

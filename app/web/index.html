@@ -34,5 +34,11 @@
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Registered after the first frame so caching never delays the app's start.
+    window.addEventListener('flutter-first-frame', () => {
+      navigator.serviceWorker?.register('service_worker.js');
+    }, { once: true });
+  </script>
 </body>
 </html>
