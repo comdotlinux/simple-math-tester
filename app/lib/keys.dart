@@ -33,6 +33,9 @@ const privacyPageKey = Key('privacy-page');
 
 /// One per segment of the settings sheet's theme choice.
 Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
+
+/// One per segment of the settings sheet's layout choice.
+Key layoutModeKey(Enum mode) => Key('layout-mode-${mode.name}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');

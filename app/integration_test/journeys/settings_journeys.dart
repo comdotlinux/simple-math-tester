@@ -218,5 +218,56 @@ void settingsJourneys() {
       }
       await waitForSaved((p) => p.themeMode == ThemeMode.system);
     });
+
+    // A history row's answer lines stay literal: the wording is the
+    // behaviour.
+    testWidgets('choosing Compact shows dense answer rows and survives a '
+        'restart; Comfortable brings the cards back', (tester) async {
+      const problem = Problem(75, 46, OperationType.plus, 121);
+      await startWith(
+        tester,
+        Progress(tier: Tier.easy, history: [attempt(problem, 125)]),
+      );
+      Finder inRow(String text) => find.descendant(
+        of: find.byKey(historyRowKey(0)),
+        matching: find.text(text),
+      );
+      // Wide screens show a table row, phones a card; compact beats both
+      // (the 3x ratio on phones is a widget test).
+      Future<double> rowHeight() async => tester
+          .getSize(await inHistory(tester, find.byKey(historyRowKey(0))))
+          .height;
+
+      await openHistory(tester);
+      final card = await rowHeight();
+      expect(inRow('Your answer: 125'), findsOneWidget);
+
+      await returnToPractice(tester);
+      await openSettings(tester);
+      await tapKey(tester, layoutModeKey(LayoutMode.compact));
+      await closeSettings(tester);
+      await openHistory(tester);
+      expect(await rowHeight(), lessThan(card));
+      expect(
+        find.descendant(
+          of: find.byKey(historyRowKey(0)),
+          matching: find.text('75 + 46 = 121   said 125', findRichText: true),
+        ),
+        findsOneWidget,
+      );
+
+      await restartWhenSaved(tester, (p) => p.layoutMode == LayoutMode.compact);
+      expect(modelOf(tester).layoutMode, LayoutMode.compact);
+      await openHistory(tester);
+      expect(await rowHeight(), lessThan(card));
+
+      await returnToPractice(tester);
+      await openSettings(tester);
+      await tapKey(tester, layoutModeKey(LayoutMode.comfortable));
+      await closeSettings(tester);
+      await openHistory(tester);
+      expect(inRow('Your answer: 125'), findsOneWidget);
+      await waitForSaved((p) => p.layoutMode == LayoutMode.comfortable);
+    });
   });
 }

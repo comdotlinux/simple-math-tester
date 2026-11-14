@@ -51,7 +51,9 @@ class _ResultsPageState extends State<ResultsPage> {
   Widget build(BuildContext context) {
     final history = context.select((MathTesterModel model) => model.history);
     final theme = Theme.of(context);
-    final useCards = MediaQuery.sizeOf(context).width < 800;
+    final compact = context.select((MathTesterModel model) => model.compact);
+    // The compact layout uses its dense rows at every width.
+    final useCards = compact || MediaQuery.sizeOf(context).width < 800;
     final shown = min(_shown, history.length);
     final fullSize = _fullSize;
     final compactSize = _compactSize;
@@ -65,23 +67,25 @@ class _ResultsPageState extends State<ResultsPage> {
     Widget expanded({required bool keyed}) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _Stats(),
-        const SizedBox(height: 24),
+        _Stats(dense: compact),
+        SizedBox(height: compact ? 12 : 24),
         Text(
           history.length == 1
               ? '1 question completed.'
               : '${history.length} questions completed.',
           key: keyed ? historyCountKey : null,
-          style: theme.textTheme.titleLarge,
+          style: compact
+              ? theme.textTheme.titleMedium
+              : theme.textTheme.titleLarge,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: compact ? 8 : 16),
         if (!useCards) _tableHeader(context),
       ],
     );
     Widget collapsed({required bool keyed}) => Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _CompactBar(key: keyed ? compactStatsKey : null),
+        _CompactBar(key: keyed ? compactStatsKey : null, dense: compact),
         if (!useCards) _tableHeader(context),
       ],
     );
@@ -96,7 +100,7 @@ class _ResultsPageState extends State<ResultsPage> {
             SliverPadding(
               padding: EdgeInsets.symmetric(
                 horizontal: horizontal,
-                vertical: 24,
+                vertical: compact ? 12 : 24,
               ),
               sliver: SliverMainAxisGroup(
                 slivers: [
@@ -104,8 +108,13 @@ class _ResultsPageState extends State<ResultsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('My answers', style: theme.textTheme.displaySmall),
-                        const SizedBox(height: 24),
+                        Text(
+                          'My answers',
+                          style: compact
+                              ? theme.textTheme.headlineMedium
+                              : theme.textTheme.displaySmall,
+                        ),
+                        SizedBox(height: compact ? 12 : 24),
                         if (history.isEmpty)
                           _emptyState(context)
                         else
@@ -157,7 +166,16 @@ class _ResultsPageState extends State<ResultsPage> {
                       final number = history.length - 1 - index;
                       return KeyedSubtree(
                         key: historyRowKey(number),
-                        child: useCards
+                        child: compact
+                            ? Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: _compactRow(
+                                  context,
+                                  number,
+                                  history[number],
+                                ),
+                              )
+                            : useCards
                             ? Padding(
                                 padding: const EdgeInsets.only(bottom: 20),
                                 child: _resultCard(
@@ -348,6 +366,95 @@ class _ResultsPageState extends State<ResultsPage> {
     );
   }
 
+  /// One line per answer, the same height whatever the verdict: number,
+  /// problem = expected answer, what a wrong or skipped answer entered
+  /// (cut short first when the line is full; the tooltip has it whole), a
+  /// mark and the time. Screen readers hear the same facts as on the card.
+  Widget _compactRow(BuildContext context, int index, Attempt attempt) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final (status, color, onColor, icon) = _verdict(tokens, attempt);
+    final expected = formatNumber(attempt.problem.result);
+    final entered = attempt.skipped
+        ? 'No answer entered'
+        : 'Your answer: ${formatNumber(attempt.firstAnswer!)}';
+    final said = attempt.skipped
+        ? 'no answer'
+        : attempt.correct
+        ? null
+        : 'said ${formatNumber(attempt.firstAnswer!)}';
+    final muted = textTheme.bodyMedium?.copyWith(color: tokens.inkMuted);
+    final row = Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            spacing: 10,
+            children: [
+              Text('${index + 1}', style: muted),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    text: '${_question(attempt)} = $expected',
+                    style: textTheme.titleMedium,
+                    children: [
+                      if (said != null)
+                        TextSpan(text: '   $said', style: muted),
+                    ],
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
+                  // The smaller "said" part must not change the line height.
+                  strutStyle: StrutStyle.fromTextStyle(
+                    textTheme.titleMedium!,
+                    forceStrutHeight: true,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: tokens.outline,
+                    width: AppTokens.outlineWidth,
+                  ),
+                ),
+                child: Icon(icon, size: 16, color: onColor),
+              ),
+              if (!attempt.skipped)
+                Text(
+                  prettyDuration(
+                    Duration(milliseconds: attempt.elapsedMs),
+                    abbreviated: true,
+                  ),
+                  style: muted,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Semantics(
+      container: true,
+      label:
+          'Question ${index + 1}, ${_question(attempt)}, $status, $entered, '
+          'Expected answer: $expected, Time: ${_elapsed(attempt)}',
+      child: ExcludeSemantics(
+        child: said == null
+            ? row
+            : Tooltip(
+                message: attempt.skipped
+                    ? 'No answer entered'
+                    : 'You said ${formatNumber(attempt.firstAnswer!)}',
+                child: row,
+              ),
+      ),
+    );
+  }
+
   Widget _tableHeader(BuildContext context) {
     final headerStyle = Theme.of(context).textTheme.labelMedium
         ?.copyWith(color: context.tokens.inkMuted);
@@ -405,19 +512,25 @@ class _ResultsPageState extends State<ResultsPage> {
       ? 'Not Available'
       : prettyDuration(Duration(milliseconds: attempt.elapsedMs));
 
+  /// The verdict's word, role colours and icon, shared by card and row.
+  static (String, Color, Color, IconData) _verdict(
+    AppTokens tokens,
+    Attempt attempt,
+  ) => attempt.skipped
+      ? (
+          'Skipped',
+          tokens.surfaceSunken,
+          tokens.ink,
+          Icons.remove_circle_outline,
+        )
+      : attempt.correct
+      ? ('Correct', tokens.correct, tokens.onCorrect, Icons.check_circle)
+      : ('Incorrect', tokens.wrong, tokens.onWrong, Icons.refresh);
+
   /// The verdict as a word and an icon on a block of its role colour.
   Widget _status(BuildContext context, Attempt attempt) {
     final tokens = context.tokens;
-    final (background, foreground, label, icon) = attempt.skipped
-        ? (
-            tokens.surfaceSunken,
-            tokens.ink,
-            'Skipped',
-            Icons.remove_circle_outline,
-          )
-        : attempt.correct
-        ? (tokens.correct, tokens.onCorrect, 'Correct', Icons.check_circle)
-        : (tokens.wrong, tokens.onWrong, 'Incorrect', Icons.refresh);
+    final (label, background, foreground, icon) = _verdict(tokens, attempt);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -466,9 +579,12 @@ const statsColumns = ['Operation', 'Accuracy', 'Level'];
 /// [compact] is the pinned bar: icons and numbers only (screen readers hear
 /// the full labels), no table.
 class _Stats extends StatelessWidget {
-  const _Stats({this.compact = false});
+  const _Stats({this.compact = false, this.dense = false});
 
   final bool compact;
+
+  /// The compact layout setting: small chips and less padding.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -480,9 +596,12 @@ class _Stats extends StatelessWidget {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final headerStyle = textTheme.labelMedium?.copyWith(color: tokens.inkMuted);
+    final small = compact || dense;
 
-    Widget cell(Widget child) =>
-        Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: child);
+    Widget cell(Widget child) => Padding(
+      padding: EdgeInsets.symmetric(vertical: dense ? 3 : 6),
+      child: child,
+    );
 
     Widget chip(
       String text,
@@ -495,7 +614,7 @@ class _Stats extends StatelessWidget {
       // One node per chip, so each label is read on its own.
       container: true,
       child: Container(
-        padding: compact
+        padding: small
             ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
             : const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
@@ -508,15 +627,15 @@ class _Stats extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          spacing: compact ? 4 : 8,
+          spacing: small ? 4 : 8,
           children: [
-            Icon(icon, size: compact ? 16 : 20, color: onColor),
+            Icon(icon, size: small ? 16 : 20, color: onColor),
             Flexible(
               child: Text(
                 compact ? value : text,
                 key: compact ? null : key,
                 semanticsLabel: text,
-                style: (compact ? textTheme.labelMedium : const TextStyle())
+                style: (small ? textTheme.labelMedium : const TextStyle())
                     ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
               ),
             ),
@@ -526,8 +645,8 @@ class _Stats extends StatelessWidget {
     );
 
     final chips = Wrap(
-      spacing: compact ? 6 : 10,
-      runSpacing: compact ? 6 : 8,
+      spacing: small ? 6 : 10,
+      runSpacing: small ? 4 : 8,
       // Centred, so a wide screen does not leave the bar empty on one side.
       alignment: compact ? WrapAlignment.center : WrapAlignment.start,
       children: [
@@ -578,7 +697,7 @@ class _Stats extends StatelessWidget {
     if (compact) {
       return Slab(
         child: Card(
-          child: Padding(padding: const EdgeInsets.all(8), child: chips),
+          child: Padding(padding: EdgeInsets.all(dense ? 4 : 8), child: chips),
         ),
       );
     }
@@ -586,14 +705,17 @@ class _Stats extends StatelessWidget {
       child: Card(
         key: statsCardKey,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(dense ? 12 : 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your stats', style: textTheme.titleLarge),
-              const SizedBox(height: 12),
+              Text(
+                'Your stats',
+                style: dense ? textTheme.titleMedium : textTheme.titleLarge,
+              ),
+              SizedBox(height: dense ? 8 : 12),
               chips,
-              const SizedBox(height: 12),
+              SizedBox(height: dense ? 8 : 12),
               Table(
                 columnWidths: const {0: FlexColumnWidth(2)},
                 border: TableBorder(
@@ -637,12 +759,14 @@ class _Stats extends StatelessWidget {
 
 /// The pinned stats bar, with room above and below it.
 class _CompactBar extends StatelessWidget {
-  const _CompactBar({super.key});
+  const _CompactBar({super.key, this.dense = false});
+
+  final bool dense;
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: _Stats(compact: true),
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.symmetric(vertical: dense ? 4 : 8),
+    child: _Stats(compact: true, dense: dense),
   );
 }
 

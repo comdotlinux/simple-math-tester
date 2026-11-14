@@ -64,6 +64,8 @@ void main() {
     // A simulated system keyboard this tall covers the bottom, drawn as a
     // plain block.
     double keyboard = 0,
+    LayoutMode layout = LayoutMode.comfortable,
+    List<Attempt> history = const [],
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -73,7 +75,12 @@ void main() {
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
       initialProblem: const Problem(48, 27, OperationType.plus, 75, level: 3),
-      progress: Progress(tier: tier, game: game),
+      progress: Progress(
+        tier: tier,
+        game: game,
+        layoutMode: layout,
+        history: history,
+      ),
       clock: () => now,
       ticker: ticks == null ? null : () => ticks.stream,
     );
@@ -138,6 +145,39 @@ void main() {
     await tester.tap(find.byKey(checkAnswerButtonKey));
     await tester.pumpAndSettle();
   }
+
+  /// Four answers: right, skipped, wrong, right; then [more] alternating.
+  void answer(MathTesterModel model, {int more = 0}) {
+    for (final answer in ['75', 'skip', 'wrong', 'right']) {
+      switch (answer) {
+        case 'skip':
+          model.generateNextProblem();
+        case 'wrong':
+          model.setDraftInput('${model.current.result + 2}');
+          model.submitAnswer();
+          model.generateNextProblem();
+        default:
+          model.setDraftInput('${model.current.result}');
+          model.submitAnswer();
+          model.generateNextProblem();
+      }
+    }
+    for (var i = 0; i < more; i++) {
+      model.setDraftInput('${model.current.result + i % 2}');
+      model.submitAnswer();
+      model.generateNextProblem();
+    }
+  }
+
+  void scrollAnswers(WidgetTester tester, double offset) => tester
+      .state<ScrollableState>(
+        find.descendant(
+          of: find.byKey(resultsPageKey),
+          matching: find.byType(Scrollable),
+        ),
+      )
+      .position
+      .jumpTo(offset);
 
   for (final brightness in Brightness.values) {
     for (final size in const [
@@ -211,39 +251,14 @@ void main() {
         await shoot(tester, '$tag-6-sprint-result');
 
         final history = await launch(tester, size, brightness);
-        for (final answer in ['75', 'skip', 'wrong', 'right']) {
-          switch (answer) {
-            case 'skip':
-              history.generateNextProblem();
-            case 'wrong':
-              history.setDraftInput('${history.current.result + 2}');
-              history.submitAnswer();
-              history.generateNextProblem();
-            default:
-              history.setDraftInput('${history.current.result}');
-              history.submitAnswer();
-              history.generateNextProblem();
-          }
-        }
+        answer(history);
         history.setCurrentPage(1);
         await shoot(tester, '$tag-7-answers');
 
         // Scrolled down a long list, the stats are a pinned compact bar.
-        for (var i = 0; i < 26; i++) {
-          history.setDraftInput('${history.current.result + i % 2}');
-          history.submitAnswer();
-          history.generateNextProblem();
-        }
+        answer(history, more: 22);
         await tester.pumpAndSettle();
-        tester
-            .state<ScrollableState>(
-              find.descendant(
-                of: find.byKey(resultsPageKey),
-                matching: find.byType(Scrollable),
-              ),
-            )
-            .position
-            .jumpTo(1200);
+        scrollAnswers(tester, 1200);
         await shoot(tester, '$tag-7b-answers-scrolled');
 
         final empty = await launch(tester, size, brightness);
@@ -258,6 +273,50 @@ void main() {
         await shoot(tester, '$tag-9-settings');
         await tester.ensureVisible(find.byKey(themeModeKey(ThemeMode.dark)));
         await shoot(tester, '$tag-9b-settings-theme');
+
+        // The compact layout setting.
+        const compact = LayoutMode.compact;
+        // Long numbers, so the "said" part is cut short on a small phone.
+        Attempt big(int lhs, int rhs, OperationType kind, int result, int? a) =>
+            Attempt(
+              Problem(lhs, rhs, kind, result, level: 5),
+              firstAnswer: a,
+              elapsedMs: 12000,
+              answeredAt: now,
+            );
+        final dense = await launch(
+          tester,
+          size,
+          brightness,
+          layout: compact,
+          history: [
+            big(9876, 8765, OperationType.plus, 18641, 18651),
+            big(4321, 1234, OperationType.minus, 3087, null),
+            big(29, 87, OperationType.multiply, 2523, 2523),
+            big(8642, 9753, OperationType.plus, 18395, 18359),
+          ],
+        );
+        dense.toggleOperation(OperationType.divide);
+        await shoot(tester, '$tag-11-compact-practice');
+        dense.setCurrentPage(1);
+        await shoot(tester, '$tag-11b-compact-answers');
+        // The long rows just under the pinned bar.
+        await tester.pumpAndSettle();
+        scrollAnswers(tester, 300);
+        await shoot(tester, '$tag-11b2-compact-answers-long');
+        scrollAnswers(tester, 0);
+        answer(dense, more: 22);
+        await tester.pumpAndSettle();
+        scrollAnswers(tester, 600);
+        await shoot(tester, '$tag-11c-compact-answers-scrolled');
+        await launch(tester, size, brightness, layout: compact);
+        await tester.ensureVisible(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        await shoot(tester, '$tag-11d-compact-settings');
+        await tester.ensureVisible(find.byKey(layoutModeKey(compact)));
+        await shoot(tester, '$tag-11e-compact-settings-layout');
 
         // A phone with its own number keyboard up.
         if (size.shortestSide < 600 && size.height < 800) {

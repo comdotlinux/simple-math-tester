@@ -138,6 +138,8 @@ class MathTesterModel extends ChangeNotifier {
   bool get sound => _progress.sound;
   bool get haptics => _progress.haptics;
   ThemeMode get themeMode => _progress.themeMode;
+  bool get compact => _progress.layoutMode == LayoutMode.compact;
+  LayoutMode get layoutMode => _progress.layoutMode;
 
   /// The latest valid check; [count] tells two equal results apart, so each
   /// one plays its feedback motion.
@@ -160,6 +162,12 @@ class MathTesterModel extends ChangeNotifier {
 
   void setThemeMode(ThemeMode mode) {
     _progress = _progress.withThemeMode(mode);
+    _save();
+    notifyListeners();
+  }
+
+  void setLayoutMode(LayoutMode mode) {
+    _progress = _progress.withLayoutMode(mode);
     _save();
     notifyListeners();
   }

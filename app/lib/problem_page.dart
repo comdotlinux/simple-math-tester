@@ -12,6 +12,7 @@ import 'legal.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
+import 'progress.dart' show LayoutMode;
 import 'rules.dart';
 import 'slab.dart';
 
@@ -254,9 +255,11 @@ class _ProblemPageState extends State<ProblemPage> {
         final nextInStrip =
             compact && !sprinting && model.answerCorrect != null;
         // The docked phone page packs its column tighter, so the question
-        // and Skip fit above the dock on a short screen.
-        final gap = compact ? 12.0 : 24.0;
-        final button = compact
+        // and Skip fit above the dock on a short screen; the compact layout
+        // setting packs it the same way everywhere.
+        final tight = compact || model.compact;
+        final gap = tight ? 12.0 : 24.0;
+        final button = tight
             ? const WidgetStatePropertyAll(Size(48, 48))
             : null;
         final field = _CheckMotion(
@@ -341,7 +344,7 @@ class _ProblemPageState extends State<ProblemPage> {
                       Expanded(
                         child: Text(
                           sprinting ? 'Sprint' : 'Let’s practice',
-                          style: compact
+                          style: tight
                               ? theme.textTheme.headlineMedium
                               : theme.textTheme.displaySmall,
                         ),
@@ -368,7 +371,7 @@ class _ProblemPageState extends State<ProblemPage> {
                   ),
                   // The encouragement gives way to the question on a short
                   // phone; the sprint rules stay.
-                  if (sprinting || !compact) ...[
+                  if (sprinting || !tight) ...[
                     const SizedBox(height: 8),
                     Text(
                       sprinting
@@ -401,7 +404,7 @@ class _ProblemPageState extends State<ProblemPage> {
                               type: type,
                               selected: model.selectedOperations.contains(type),
                               onPressed: () => model.toggleOperation(type),
-                              compact: compact,
+                              compact: tight,
                             ),
                           ),
                         ],
@@ -412,11 +415,11 @@ class _ProblemPageState extends State<ProblemPage> {
                       key: compact ? _answerKey : null,
                       child: _QuestionCard(
                         problem: model.current,
-                        compact: compact,
+                        compact: tight,
                       ),
                     ),
                     if (!compact) ...[
-                      const SizedBox(height: 28),
+                      SizedBox(height: tight ? 16 : 28),
                       Column(
                         key: _answerKey,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -437,14 +440,14 @@ class _ProblemPageState extends State<ProblemPage> {
                       check,
                     ],
                     if (!sprinting) ...[
-                      SizedBox(height: compact ? 12 : 16),
+                      SizedBox(height: tight ? 12 : 16),
                       // Side by side when both fit, else full-width rows.
                       Flex(
                         direction: wide ? Axis.horizontal : Axis.vertical,
                         crossAxisAlignment: wide
                             ? CrossAxisAlignment.center
                             : CrossAxisAlignment.stretch,
-                        spacing: 16,
+                        spacing: tight ? 12 : 16,
                         children: [
                           if (!nextInStrip)
                             _flexed(
@@ -492,7 +495,7 @@ class _ProblemPageState extends State<ProblemPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: tight ? 12 : 16),
                       _Hints(model: model),
                     ],
                   ],
@@ -996,117 +999,169 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
     final model = context.watch<MathTesterModel>();
     final textTheme = Theme.of(context).textTheme;
     final listTileTheme = Theme.of(context).listTileTheme;
+    final compact = model.compact;
+    // Compact tiles keep their 48 px minimum height.
+    final density = compact ? VisualDensity.compact : null;
+    final rowPadding = EdgeInsetsDirectional.fromSTEB(
+      16,
+      compact ? 6 : 12,
+      24,
+      compact ? 6 : 12,
+    );
+    final rowSpacing = compact ? 8.0 : 12.0;
     return SafeArea(
       child: SingleChildScrollView(
         key: settingsSheetKey,
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          spacing: 4,
-          children: [
-            ListTile(
-              title: Semantics(
-                header: true,
-                child: Text('Starting difficulty', style: textTheme.titleLarge),
-              ),
-              subtitle: Text(
-                key: currentTierNoteKey,
-                'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
-                'starts every operation again at that difficulty.',
-              ),
-            ),
-            for (final tier in Tier.values)
+        padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 8 : 16),
+        child: ListTileTheme.merge(
+          visualDensity: density,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: compact ? 0 : 4,
+            children: [
               ListTile(
-                key: tierSettingKey(tier),
-                title: Text(tier.label),
-                selected: tier == model.tier,
-                trailing: tier == model.tier
-                    ? const Icon(Icons.check_circle)
-                    : null,
-                onTap: () {
-                  if (tier != model.tier) model.chooseTier(tier);
+                title: Semantics(
+                  header: true,
+                  child: Text(
+                    'Starting difficulty',
+                    style: textTheme.titleLarge,
+                  ),
+                ),
+                subtitle: Text(
+                  key: currentTierNoteKey,
+                  'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
+                  'starts every operation again at that difficulty.',
+                ),
+              ),
+              for (final tier in Tier.values)
+                ListTile(
+                  key: tierSettingKey(tier),
+                  title: Text(tier.label),
+                  selected: tier == model.tier,
+                  trailing: tier == model.tier
+                      ? const Icon(Icons.check_circle)
+                      : null,
+                  onTap: () {
+                    if (tier != model.tier) model.chooseTier(tier);
+                    Navigator.pop(context);
+                  },
+                ),
+              SizedBox(height: compact ? 4 : 8),
+              SwitchListTile(
+                key: soundSwitchKey,
+                title: const Text('Sound'),
+                subtitle: const Text(
+                  'A short chime for answers and milestones',
+                ),
+                value: model.sound,
+                onChanged: model.setSound,
+              ),
+              SwitchListTile(
+                key: hapticsSwitchKey,
+                title: const Text('Vibration'),
+                subtitle: const Text('A short buzz on key presses and answers'),
+                value: model.haptics,
+                onChanged: model.setHaptics,
+              ),
+              // Laid out like the switch tiles above: same insets and text
+              // styles, with the choice on its own full-width line.
+              Padding(
+                padding: rowPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: rowSpacing,
+                  children: [
+                    Text('Theme', style: listTileTheme.titleTextStyle),
+                    SegmentedButton<ThemeMode>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      segments: [
+                        // Text only: an icon beside "System" wraps it at 360 px.
+                        for (final (mode, label) in const [
+                          (ThemeMode.system, 'System'),
+                          (ThemeMode.light, 'Light'),
+                          (ThemeMode.dark, 'Dark'),
+                        ])
+                          ButtonSegment(
+                            value: mode,
+                            label: Text(
+                              label,
+                              key: themeModeKey(mode),
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
+                          ),
+                      ],
+                      selected: {model.themeMode},
+                      onSelectionChanged: (modes) =>
+                          model.setThemeMode(modes.single),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: rowPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: rowSpacing,
+                  children: [
+                    Text('Layout', style: listTileTheme.titleTextStyle),
+                    SegmentedButton<LayoutMode>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      segments: [
+                        for (final (mode, label) in const [
+                          (LayoutMode.comfortable, 'Comfortable'),
+                          (LayoutMode.compact, 'Compact'),
+                        ])
+                          ButtonSegment(
+                            value: mode,
+                            label: Text(
+                              label,
+                              key: layoutModeKey(mode),
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
+                          ),
+                      ],
+                      selected: {model.layoutMode},
+                      onSelectionChanged: (modes) =>
+                          model.setLayoutMode(modes.single),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: compact ? 4 : 8),
+              ListTile(
+                key: privacyTileKey,
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy'),
+                subtitle: const Text('What the app stores, and why'),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+                ),
+              ),
+              ListTile(
+                key: impressumTileKey,
+                leading: const Icon(Icons.open_in_new),
+                title: const Text('Impressum'),
+                subtitle: const Text('Who makes the app (opens the browser)'),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  // Closed first, so a failure notice is not hidden behind it.
                   Navigator.pop(context);
+                  if (!await model.openImpressum()) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('The browser did not open.'),
+                      ),
+                    );
+                  }
                 },
               ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              key: soundSwitchKey,
-              title: const Text('Sound'),
-              subtitle: const Text('A short chime for answers and milestones'),
-              value: model.sound,
-              onChanged: model.setSound,
-            ),
-            SwitchListTile(
-              key: hapticsSwitchKey,
-              title: const Text('Vibration'),
-              subtitle: const Text('A short buzz on key presses and answers'),
-              value: model.haptics,
-              onChanged: model.setHaptics,
-            ),
-            // Laid out like the switch tiles above: same insets and text
-            // styles, with the choice on its own full-width line.
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 24, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 12,
-                children: [
-                  Text('Theme', style: listTileTheme.titleTextStyle),
-                  SegmentedButton<ThemeMode>(
-                    expandedInsets: EdgeInsets.zero,
-                    showSelectedIcon: false,
-                    segments: [
-                      // Text only: an icon beside "System" wraps it at 360 px.
-                      for (final (mode, label) in const [
-                        (ThemeMode.system, 'System'),
-                        (ThemeMode.light, 'Light'),
-                        (ThemeMode.dark, 'Dark'),
-                      ])
-                        ButtonSegment(
-                          value: mode,
-                          label: Text(
-                            label,
-                            key: themeModeKey(mode),
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ),
-                    ],
-                    selected: {model.themeMode},
-                    onSelectionChanged: (modes) =>
-                        model.setThemeMode(modes.single),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              key: privacyTileKey,
-              leading: const Icon(Icons.privacy_tip_outlined),
-              title: const Text('Privacy'),
-              subtitle: const Text('What the app stores, and why'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
-              ),
-            ),
-            ListTile(
-              key: impressumTileKey,
-              leading: const Icon(Icons.open_in_new),
-              title: const Text('Impressum'),
-              subtitle: const Text('Who makes the app (opens the browser)'),
-              onTap: () async {
-                final messenger = ScaffoldMessenger.of(context);
-                // Closed first, so a failure notice is not hidden behind it.
-                Navigator.pop(context);
-                if (!await model.openImpressum()) {
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('The browser did not open.')),
-                  );
-                }
-              },
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
