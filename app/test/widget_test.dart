@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +27,7 @@ void main() {
     GameState game = const GameState(),
     DateTime Function()? clock,
     EdgeInsets padding = EdgeInsets.zero,
+    Stream<void> Function()? ticker,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -36,6 +39,7 @@ void main() {
       initialProblem: problem,
       progress: Progress(tier: tier, game: game),
       clock: clock,
+      ticker: ticker,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -467,6 +471,7 @@ void main() {
       find.byKey(revealStepButtonKey),
       find.byType(TextField),
       find.byKey(settingsButtonKey),
+      find.byKey(sprintButtonKey),
       for (final type in OperationType.values)
         find.byWidgetPredicate(
           (widget) => widget is Tooltip && widget.message == type.label,
@@ -831,4 +836,209 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  group('sprint', () {
+    late StreamController<void> ticks;
+    late DateTime now;
+    final start = DateTime(2026, 11, 14, 9);
+    setUp(() {
+      // Synchronous, so a tick is handled before the next pump's frame.
+      ticks = StreamController<void>.broadcast(sync: true);
+      now = start;
+    });
+    tearDown(() => ticks.close());
+
+    Future<MathTesterModel> launchSprint(
+      WidgetTester tester, {
+      Size size = const Size(390, 844),
+      double scale = 1,
+      bool disableAnimations = false,
+      GameState game = const GameState(bestSprint: 5),
+    }) async {
+      final model = await launch(
+        tester,
+        size: size,
+        scale: scale,
+        disableAnimations: disableAnimations,
+        game: game,
+        clock: () => now,
+        ticker: () => ticks.stream,
+      );
+      await tester.ensureVisible(find.byKey(sprintButtonKey));
+      await tester.tap(find.byKey(sprintButtonKey));
+      await tester.pumpAndSettle();
+      return model;
+    }
+
+    Future<void> tickTo(WidgetTester tester, int seconds) async {
+      now = start.add(Duration(seconds: seconds));
+      ticks.add(null);
+      await tester.pump();
+    }
+
+    Future<void> answer(WidgetTester tester, num value) async {
+      await tester.enterText(find.byType(TextField), formatNumber(value));
+      await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+    }
+
+    final countdown = find.byKey(sprintCountdownKey);
+
+    testWidgets('criterion 25: Next and Hint are absent; time out shows the '
+        'score and the best, announced, and a new problem', (tester) async {
+      final model = await launchSprint(tester);
+      expect(model.inSprint, isTrue);
+      expect(find.byKey(nextQuestionButtonKey), findsNothing);
+      expect(find.byKey(revealStepButtonKey), findsNothing);
+      expect(find.byKey(sprintButtonKey), findsNothing);
+      expect(find.text('60 s left'), findsOneWidget);
+      expect(
+        tester.getSemantics(countdown),
+        isSemantics(label: '60 seconds left'),
+      );
+
+      final first = model.current;
+      await answer(tester, first.result + 1);
+      expect(model.current, isNot(same(first)), reason: 'wrong moves on');
+      await answer(tester, model.current.result);
+      expect(find.text('Score: 10'), findsOneWidget);
+      expect(find.byKey(nextQuestionButtonKey), findsNothing);
+      expect(find.byKey(revealStepButtonKey), findsNothing);
+
+      await tickTo(tester, 30);
+      expect(find.text('30 s left'), findsOneWidget);
+      final onScreen = model.current;
+      await tester.enterText(find.byType(TextField), '${onScreen.result}');
+      await tickTo(tester, 60);
+      await tester.pumpAndSettle();
+
+      expect(model.inSprint, isFalse);
+      expect(countdown, findsNothing);
+      expect(model.history, hasLength(2), reason: 'time-out problem unsaved');
+      expect(model.current, isNot(same(onScreen)));
+      expect(model.game.combo, 0);
+      final result = find.byKey(sprintResultKey);
+      expect(result, findsOneWidget);
+      expect(
+        find.descendant(of: result, matching: find.text('Score: 10')),
+        findsOneWidget,
+      );
+      expect(find.text('Personal best: 10'), findsOneWidget);
+      expect(find.text('Answers by difficulty: level 1: 2'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.text('Sprint over')),
+        isSemantics(isLiveRegion: true),
+      );
+      expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
+      expect(find.byKey(revealStepButtonKey), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        '',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('criterion 25: switching to My answers ends the round with '
+        'the score so far', (tester) async {
+      final model = await launchSprint(tester);
+      await answer(tester, model.current.result);
+      final onScreen = model.current;
+      await tester.tap(find.text('My answers').last);
+      await tester.pumpAndSettle();
+      expect(model.inSprint, isFalse);
+      expect(find.text('Best sprint: 10'), findsOneWidget);
+
+      await tester.tap(find.text('Practice').first);
+      await tester.pumpAndSettle();
+      expect(countdown, findsNothing);
+      expect(find.text('Score: 10'), findsOneWidget);
+      expect(model.current, isNot(same(onScreen)));
+      expect(model.history, hasLength(1));
+    });
+
+    testWidgets('a lower score keeps the personal best', (tester) async {
+      final model = await launchSprint(
+        tester,
+        game: const GameState(bestSprint: 500),
+      );
+      await answer(tester, model.current.result);
+      await tickTo(tester, 60);
+      await tester.pumpAndSettle();
+      expect(find.text('Score: 10'), findsOneWidget);
+      expect(find.text('Personal best: 500'), findsOneWidget);
+      expect(model.game.bestSprint, 500);
+    });
+
+    testWidgets('the back gesture ends the round, not the app', (tester) async {
+      final model = await launchSprint(tester);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(model.inSprint, isFalse);
+      expect(find.byKey(homePageKey), findsOneWidget);
+      expect(find.byKey(sprintResultKey), findsOneWidget);
+    });
+
+    testWidgets('no sprint before a tier is chosen', (tester) async {
+      await launch(tester, tier: null);
+      expect(find.byKey(tierPickerKey), findsOneWidget);
+      expect(find.byKey(sprintButtonKey), findsNothing);
+    });
+
+    // A build of the question Text always creates a new RichText child, so
+    // the number of distinct RichText instances seen is its build count.
+    testWidgets('criterion 26: five ticks leave the question build count', (
+      tester,
+    ) async {
+      final model = await launchSprint(tester);
+      final builds = Set<Widget>.identity();
+      void record() => builds.add(
+        tester.widget(
+          find.descendant(
+            of: find.byKey(questionOnProblemsPageKey),
+            matching: find.byType(RichText),
+          ),
+        ),
+      );
+      record();
+      for (var second = 1; second <= 5; second++) {
+        await tickTo(tester, second);
+        expect(find.text('${60 - second} s left'), findsOneWidget);
+        record();
+      }
+      expect(builds, hasLength(1));
+
+      // The count does move when the page rebuilds.
+      model.setDraftInput('1');
+      await tester.pump();
+      record();
+      expect(builds, hasLength(2));
+    });
+
+    for (final (width, scale) in [(320.0, 2.0), (1000.0, 1.0)]) {
+      testWidgets('fits at $width, text scale $scale, with reduced motion', (
+        tester,
+      ) async {
+        final model = await launchSprint(
+          tester,
+          size: Size(width, 700),
+          scale: scale,
+          disableAnimations: true,
+          game: const GameState(bestSprint: 123456),
+        );
+        expect(tester.takeException(), isNull);
+        await answer(tester, model.current.result);
+        await tickTo(tester, 1);
+        expect(find.text('59 s left'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tickTo(tester, 60);
+        await tester.pumpAndSettle();
+        expect(find.byKey(sprintResultKey), findsOneWidget);
+        final button = find.byKey(sprintButtonKey);
+        await tester.ensureVisible(button);
+        expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+        expect(tester.takeException(), isNull);
+      });
+    }
+  });
 }

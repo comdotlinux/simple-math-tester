@@ -292,6 +292,7 @@ class _Stats extends StatelessWidget {
             const SizedBox(height: 12),
             Text('Daily streak: $streak'),
             Text('Best streak: ${game.bestStreak}'),
+            Text('Best sprint: ${game.bestSprint}'),
             Text('Total XP: ${game.xp}'),
             Text('Player level: ${playerLevel(game.xp)}'),
           ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui' show AppLifecycleState;
 
@@ -565,6 +566,191 @@ void main() {
         [saved.xp, saved.streak, saved.dailyCount, saved.lastGoalDate],
         [model.game.xp, 3, 10, '2026-11-14'],
       );
+    });
+  });
+
+  group('sprint', () {
+    late StreamController<void> ticks;
+    setUp(() => ticks = StreamController<void>.broadcast());
+    tearDown(() => ticks.close());
+
+    const plusLevel3 = Difficulty(
+      level: 3,
+      upCount: 2,
+      downCount: 1,
+      answered: 10,
+      correct: 7,
+    );
+
+    MathTesterModel sprintModel({
+      required DateTime Function() clock,
+      GameState game = const GameState(),
+      Tier? tier = Tier.easy,
+      List<Attempt> history = const [],
+      ProgressStore? store,
+    }) {
+      var drawn = 0;
+      final model = MathTesterModel(
+        initialProblem: const Problem(2, 3, OperationType.plus, 5, level: 3),
+        nextProblem: () {
+          drawn++;
+          return Problem(drawn, 1, OperationType.plus, drawn + 1, level: 3);
+        },
+        clock: clock,
+        store: store,
+        ticker: () => ticks.stream,
+        progress: Progress(
+          tier: tier,
+          game: game,
+          history: history,
+          difficulty: {OperationType.plus: plusLevel3},
+        ),
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    void check(MathTesterModel model, String input) {
+      model.setDraftInput(input);
+      model.submitAnswer();
+    }
+
+    List<int> counters(Difficulty d) => [
+      d.level,
+      d.upCount,
+      d.downCount,
+      d.answered,
+      d.correct,
+    ];
+
+    test(
+      'criterion 25: ends at 60 s, 45 of them paused, and keeps levels',
+      () async {
+        var now = start;
+        final store = MemoryProgressStore();
+        final model = sprintModel(
+          clock: () => now,
+          store: store,
+          game: const GameState(xp: 100, combo: 4, bestSprint: 30),
+        );
+        model.startSprint();
+        expect(model.inSprint, isTrue);
+        expect(model.game.combo, 0);
+        expect(model.sprintSecondsLeft.value, 60);
+        expect(model.current.question, '1 + 1');
+
+        check(model, '2'); // level 3, combo 0: 30 XP
+        expect(model.current.question, '2 + 1', reason: 'moves on when right');
+        check(model, '3'); // level 3, combo 1: 33 XP
+        check(model, '9');
+        expect(model.current.question, '4 + 1', reason: 'moves on when wrong');
+        check(model, 'x');
+        expect(model.current.question, '4 + 1', reason: 'invalid stays');
+        expect(model.validationMessage, 'Use a number for your answer.');
+        expect(model.sprintScore, 63);
+        expect(model.history.map((a) => a.sprint), [true, true, true]);
+        expect(model.revealedSteps, 0, reason: 'a wrong check reveals nothing');
+
+        now = start.add(const Duration(seconds: 15));
+        ticks.add(null);
+        await pumpEventQueue();
+        expect(model.sprintSecondsLeft.value, 45);
+        expect(model.inSprint, isTrue);
+
+        // The answer typed on screen when time runs out is not recorded.
+        model.setDraftInput('5');
+        model.handleLifecycle(AppLifecycleState.paused);
+        now = start.add(const Duration(seconds: 60));
+        model.handleLifecycle(AppLifecycleState.resumed);
+
+        expect(model.inSprint, isFalse);
+        expect(ticks.hasListener, isFalse);
+        expect(model.history, hasLength(3));
+        expect(model.current.question, '5 + 1', reason: 'a new problem');
+        expect(model.game.combo, 0);
+        expect(model.game.xp, 163);
+        expect(counters(model.difficulty[OperationType.plus]!), [
+          3,
+          2,
+          1,
+          13,
+          9,
+        ], reason: 'levels and counters as before; totals count');
+        expect(model.lastSprint!.score, 63);
+        expect(model.lastSprint!.best, 63);
+        expect(model.lastSprint!.levels, [0, 0, 3, 0, 0]);
+        expect(model.game.bestSprint, 63);
+        await pumpEventQueue();
+        final saved = Progress.decode((await store.read(progressKey))!);
+        expect([saved.game.bestSprint, saved.game.combo], [63, 0]);
+      },
+    );
+
+    test('criterion 25: My answers ends it with the score so far; a lower '
+        'score keeps the best', () {
+      final model = sprintModel(
+        clock: () => start,
+        game: const GameState(bestSprint: 500),
+      );
+      model.startSprint();
+      check(model, '2');
+      model.setCurrentPage(1);
+      expect(model.inSprint, isFalse);
+      expect(model.currentPage, 1);
+      expect(model.lastSprint!.score, 30);
+      expect(model.lastSprint!.best, 500);
+      expect(model.game.bestSprint, 500);
+      expect(model.current.question, '3 + 1', reason: 'not the one on screen');
+      expect(model.history, hasLength(1));
+    });
+
+    test('a check after the time ran out records nothing and ends it', () {
+      var now = start;
+      final model = sprintModel(clock: () => now);
+      model.startSprint();
+      now = start.add(const Duration(seconds: 61));
+      model.setDraftInput('2');
+      expect(model.submitAnswer(), isFalse);
+      expect(model.inSprint, isFalse);
+      expect(model.history, isEmpty);
+      expect(model.lastSprint!.score, 0);
+      expect(model.lastSprint!.levels, [0, 0, 0, 0, 0]);
+    });
+
+    test('Next and hints do nothing during a round', () {
+      final model = sprintModel(clock: () => start);
+      model.startSprint();
+      model.generateNextProblem();
+      model.revealStep();
+      expect(model.current.question, '1 + 1');
+      expect(model.revealedSteps, 0);
+      expect(model.history, isEmpty);
+    });
+
+    test('no sprint starts before a tier is chosen', () {
+      final model = sprintModel(clock: () => start, tier: null);
+      model.startSprint();
+      expect(model.inSprint, isFalse);
+      expect(ticks.hasListener, isFalse);
+    });
+
+    test('sprint answers count toward the 200 cap', () {
+      final old = [
+        for (var i = 0; i < Progress.historyCap; i++)
+          Attempt(
+            Problem(i, 1, OperationType.plus, i + 1),
+            firstAnswer: i + 1,
+            elapsedMs: 0,
+            answeredAt: start,
+          ),
+      ];
+      final model = sprintModel(clock: () => start, history: old);
+      model.startSprint();
+      check(model, '2');
+      expect(model.history, hasLength(Progress.historyCap));
+      expect(model.history.first.problem.lhs, 1);
+      expect(model.history.last.sprint, isTrue);
+      expect(model.history.last.problem.question, '1 + 1');
     });
   });
 }
