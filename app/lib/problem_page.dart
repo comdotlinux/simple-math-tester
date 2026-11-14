@@ -45,6 +45,7 @@ class _ProblemPageState extends State<ProblemPage> {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final theme = Theme.of(context);
+    final sprinting = model.inSprint;
     return LayoutBuilder(
       builder: (context, constraints) {
         return SingleChildScrollView(
@@ -59,42 +60,48 @@ class _ProblemPageState extends State<ProblemPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!model.canSave) ...[
-                    Text(
-                      'Progress can’t be saved on this device right now',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
-                          'Let’s practice',
+                          sprinting ? 'Sprint' : 'Let’s practice',
                           style: theme.textTheme.displaySmall,
                         ),
                       ),
-                      IconButton(
-                        key: settingsButtonKey,
-                        tooltip: 'Settings',
-                        onPressed: () => _showSettings(context),
-                        icon: const Icon(
-                          Icons.settings_outlined,
-                          semanticLabel: 'Settings',
+                      // A tier change would move levels during a round.
+                      if (!sprinting)
+                        IconButton(
+                          key: settingsButtonKey,
+                          tooltip: 'Settings',
+                          onPressed: () => _showSettings(context),
+                          icon: const Icon(
+                            Icons.settings_outlined,
+                            semanticLabel: 'Settings',
+                          ),
                         ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Take your time and give it a try.',
+                    sprinting
+                        ? 'Answer as many as you can in '
+                              '${sprintLength.inSeconds} seconds.'
+                        : 'Take your time and give it a try.',
                     style: theme.textTheme.bodyLarge,
                   ),
                   const SizedBox(height: 24),
                   if (model.tier == null)
                     const _TierPicker()
                   else ...[
+                    if (model.lastSprint case final result?) ...[
+                      _SprintResult(result: result),
+                      const SizedBox(height: 16),
+                    ],
+                    if (sprinting) ...[
+                      _SprintStatus(score: model.sprintScore),
+                      const SizedBox(height: 16),
+                    ],
                     Row(
                       children: [
                         for (final type in OperationType.values) ...[
@@ -157,16 +164,28 @@ class _ProblemPageState extends State<ProblemPage> {
                           icon: const Icon(Icons.check_circle_outline),
                           label: const Text('Check answer'),
                         ),
-                        OutlinedButton.icon(
-                          key: nextQuestionButtonKey,
-                          onPressed: model.generateNextProblem,
-                          icon: const Icon(Icons.navigate_next),
-                          label: const Text('Next question'),
-                        ),
+                        if (!sprinting) ...[
+                          OutlinedButton.icon(
+                            key: nextQuestionButtonKey,
+                            onPressed: model.generateNextProblem,
+                            icon: const Icon(Icons.navigate_next),
+                            label: const Text('Next question'),
+                          ),
+                          OutlinedButton.icon(
+                            key: sprintButtonKey,
+                            onPressed: model.startSprint,
+                            icon: const Icon(Icons.timer_outlined),
+                            label: Text(
+                              '${sprintLength.inSeconds}-second sprint',
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _Hints(model: model),
+                    if (!sprinting) ...[
+                      const SizedBox(height: 12),
+                      _Hints(model: model),
+                    ],
                   ],
                 ],
               ),
@@ -174,6 +193,102 @@ class _ProblemPageState extends State<ProblemPage> {
           ),
         );
       },
+    );
+  }
+}
+
+/// The score so far and the countdown of a running round.
+class _SprintStatus extends StatelessWidget {
+  const _SprintStatus({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final style = Theme.of(context).textTheme.titleLarge;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: tokens.paper,
+        border: Border.all(color: tokens.border),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Wrap(
+          spacing: 24,
+          runSpacing: 8,
+          children: [
+            // Only this rebuilds on a tick: a plain number, no animation.
+            ValueListenableBuilder<int>(
+              valueListenable: context
+                  .read<MathTesterModel>()
+                  .sprintSecondsLeft,
+              builder: (context, seconds, _) => Text(
+                '$seconds s left',
+                key: sprintCountdownKey,
+                semanticsLabel: '$seconds seconds left',
+                style: style,
+              ),
+            ),
+            Text('Score: $score', style: style),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The end of a round, announced through a live region.
+class _SprintResult extends StatelessWidget {
+  const _SprintResult({required this.result});
+
+  final ({int score, int best, List<int> levels}) result;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final mix = [
+      for (var level = 1; level <= result.levels.length; level++)
+        if (result.levels[level - 1] > 0)
+          'level $level: ${result.levels[level - 1]}',
+    ];
+    return Card(
+      key: sprintResultKey,
+      color: context.tokens.mint,
+      child: Semantics(
+        container: true,
+        liveRegion: true,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Sprint over', style: textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 24,
+                runSpacing: 4,
+                children: [
+                  Text('Score: ${result.score}', style: textTheme.titleMedium),
+                  Text(
+                    'Personal best: ${result.best}',
+                    style: textTheme.titleMedium,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Scores at different levels are weighted, so the mix is shown.
+              Text(
+                mix.isEmpty
+                    ? 'No answers this round.'
+                    : 'Answers by difficulty: ${mix.join(', ')}',
+                style: textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
+import 'rules.dart';
 
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
@@ -43,6 +44,8 @@ class ResultsPage extends StatelessWidget {
                         if (history.isEmpty)
                           _emptyState(context)
                         else ...[
+                          const _Stats(),
+                          const SizedBox(height: 24),
                           Text(
                             history.length == 1
                                 ? '1 question completed.'
@@ -232,4 +235,69 @@ class ResultsPage extends StatelessWidget {
       Text('Expected answer: ${formatNumber(attempt.problem.result)}'),
     ],
   );
+}
+
+/// Lifetime accuracy and level per operation, streaks, XP and player level.
+class _Stats extends StatelessWidget {
+  const _Stats();
+
+  @override
+  Widget build(BuildContext context) {
+    final difficulty = context.select(
+      (MathTesterModel model) => model.difficulty,
+    );
+    final game = context.select((MathTesterModel model) => model.game);
+    final streak = context.select((MathTesterModel model) => model.shownStreak);
+    final textTheme = Theme.of(context).textTheme;
+    final headerStyle = textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+
+    Widget cell(Widget child) =>
+        Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: child);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your stats', style: textTheme.titleLarge),
+            const SizedBox(height: 12),
+            Table(
+              columnWidths: const {0: FlexColumnWidth(2)},
+              children: [
+                TableRow(
+                  children: [
+                    for (final title in ['Operation', 'Accuracy', 'Level'])
+                      cell(Text(title, style: headerStyle)),
+                  ],
+                ),
+                for (final MapEntry(key: type, value: d) in difficulty.entries)
+                  TableRow(
+                    children: [
+                      cell(Text(type.label)),
+                      cell(
+                        d.answered == 0
+                            ? const Text('–', semanticsLabel: 'none yet')
+                            : Text(
+                                '${(100 * d.correct / d.answered).round()}%',
+                              ),
+                      ),
+                      cell(Text('${d.level}')),
+                    ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text('Daily streak: $streak'),
+            Text('Best streak: ${game.bestStreak}'),
+            Text('Best sprint: ${game.bestSprint}'),
+            Text('Total XP: ${game.xp}'),
+            Text('Player level: ${playerLevel(game.xp)}'),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -38,6 +38,16 @@ void main() {
           correct: 3,
         ),
       },
+      game: const GameState(
+        xp: 250,
+        combo: 4,
+        dailyCount: 6,
+        lastActiveDate: '2026-11-14',
+        lastGoalDate: '2026-11-13',
+        streak: 3,
+        bestStreak: 7,
+        bestSprint: 132,
+      ),
     );
 
     final decoded = Progress.decode(original.encode());
@@ -53,6 +63,20 @@ void main() {
       );
     }
     expect(decoded.difficulty[OperationType.plus]!.upCount, 2);
+    final game = decoded.game;
+    expect(
+      [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.lastActiveDate,
+        game.lastGoalDate,
+        game.streak,
+        game.bestStreak,
+        game.bestSprint,
+      ],
+      [250, 4, 6, '2026-11-14', '2026-11-13', 3, 7, 132],
+    );
     expect(decoded.history, hasLength(original.history.length));
     for (var i = 0; i < original.history.length; i++) {
       final (a, b) = (decoded.history[i], original.history[i]);
@@ -148,6 +172,21 @@ void main() {
       1,
     );
     expect(jsonDecode(Progress().encode()) as Map, isNot(contains('tier')));
+    final game = decoded.game;
+    expect(
+      [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.lastActiveDate,
+        game.lastGoalDate,
+        game.streak,
+        game.bestStreak,
+        game.bestSprint,
+      ],
+      [0, 0, 0, null, null, 0, 0, 0],
+    );
+    expect(Progress.decode('{"streak":3}').game.xp, 0);
 
     final partial = Progress.decode(
       '{"history":[{"kind":"plus","lhs":1,"rhs":2,"result":3,'
@@ -180,6 +219,13 @@ void main() {
     '{"operations": {"plus": 2}}',
     '{"operations": {"plus": {"level": "2"}}}',
     '{"operations": {"minus": {"answered": 1.5}}}',
+    '{"xp": "abc"}',
+    '{"combo": 1.5}',
+    '{"streak": true}',
+    '{"lastActiveDate": 20261114}',
+    '{"lastGoalDate": "14.11.2026"}',
+    '{"lastActiveDate": "2026-02-30"}',
+    '{"bestStreak": "9"}',
     '{"history": [{"kind": "plus", "lhs": "1", "rhs": 2, "result": 3, '
         '"answeredAt": "2026-11-14T08:00:00.000Z"}]}',
   ]) {
@@ -276,6 +322,50 @@ void main() {
     final long = Progress(history: [for (var i = 1; i <= 250; i++) attempt(i)]);
     expect(long.history, hasLength(200));
     expect(Progress.decode(long.encode()).history.first.problem.lhs, 51);
+  });
+
+  test('negative and absurd game values decode to their clamps', () {
+    List<int> values(String source) {
+      final game = Progress.decode(source).game;
+      return [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.streak,
+        game.bestStreak,
+      ];
+    }
+
+    expect(
+      values(
+        '{"xp":-5,"combo":-1,"dailyCount":-3,"streak":-2,"bestStreak":-9}',
+      ),
+      [0, 0, 0, 0, 0],
+    );
+    expect(
+      values(
+        '{"xp":9000000000000000000,"combo":5000000,"dailyCount":99999999,'
+        '"streak":123456789,"bestStreak":4}',
+      ),
+      [
+        maxStoredXp,
+        maxStoredRun,
+        maxStoredDailyCount,
+        maxStoredRun,
+        maxStoredRun,
+      ],
+    );
+    // bestStreak is never below streak.
+    expect(values('{"streak":12,"bestStreak":3}').sublist(3), [12, 12]);
+    expect(values('{"streak":12,"bestStreak":30}').sublist(3), [12, 30]);
+  });
+
+  test('a negative or absurd bestSprint decodes to its clamp', () {
+    int best(String source) => Progress.decode(source).game.bestSprint;
+    expect(best('{"bestSprint":-7}'), 0);
+    expect(best('{"bestSprint":9000000000000000000}'), 1000000000);
+    expect(best('{"bestSprint":1000000000}'), 1000000000);
+    expect(best('{"bestSprint":420}'), 420);
   });
 
   test('history and selection are unmodifiable', () {
