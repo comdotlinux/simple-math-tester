@@ -42,8 +42,13 @@ void main() {
     expect(model.canSave, isTrue);
     expect(model.selectedOperations, {OperationType.multiply});
     expect(model.history, hasLength(3));
+    // The first problem and the next both follow the saved selection.
+    expect(model.current.kind, OperationType.multiply);
+    expect(
+      tester.widget<Text>(find.byKey(questionOnProblemsPageKey)).data,
+      contains('×'),
+    );
 
-    // The next problem follows the saved selection.
     await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
     await tester.tap(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();
@@ -90,6 +95,23 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    // History rows are built lazily, so on a phone-sized screen a later row
+    // does not exist until the list is scrolled to it. Each visit starts at
+    // the top, so rows are checked top to bottom.
+    Future<Finder> inHistory(Finder finder) async {
+      final list = find.descendant(
+        of: find.byKey(resultsPageKey),
+        matching: find.byType(Scrollable),
+      );
+      for (var i = 0; i < 50 && finder.evaluate().isEmpty; i++) {
+        await tester.drag(list, const Offset(0, -100));
+        await tester.pumpAndSettle();
+      }
+      await tester.ensureVisible(finder.first);
+      await tester.pumpAndSettle();
+      return finder;
+    }
+
     Future<void> returnToPractice() async {
       await tester.ensureVisible(find.text('Practice').first);
       await tester.tap(find.text('Practice').first);
@@ -133,14 +155,18 @@ void main() {
 
     await openHistory();
     expect(find.text('1 question completed.'), findsOneWidget);
-    expect(find.text('Incorrect'), findsOneWidget);
-    expect(find.text(firstQuestion), findsWidgets);
+    expect(await inHistory(find.text('Incorrect')), findsOneWidget);
+    expect(await inHistory(find.text(firstQuestion)), findsWidgets);
     expect(
-      find.text('Your answer: ${formatNumber(correctAnswer + 1)}'),
+      await inHistory(
+        find.text('Your answer: ${formatNumber(correctAnswer + 1)}'),
+      ),
       findsWidgets,
     );
     expect(
-      find.text('Expected answer: ${formatNumber(correctAnswer)}'),
+      await inHistory(
+        find.text('Expected answer: ${formatNumber(correctAnswer)}'),
+      ),
       findsWidgets,
     );
 
@@ -178,11 +204,11 @@ void main() {
     await nextQuestion();
     await openHistory();
     expect(find.text('2 questions completed.'), findsOneWidget);
-    expect(find.text('Correct'), findsOneWidget);
-    expect(find.text('Incorrect'), findsOneWidget);
-    expect(find.text(secondQuestion), findsWidgets);
+    expect(await inHistory(find.text('Incorrect')), findsOneWidget);
+    expect(await inHistory(find.text('Correct')), findsOneWidget);
+    expect(await inHistory(find.text(secondQuestion)), findsWidgets);
     expect(
-      find.text('Your answer: ${formatNumber(secondAnswer)}'),
+      await inHistory(find.text('Your answer: ${formatNumber(secondAnswer)}')),
       findsWidgets,
     );
 
@@ -201,9 +227,19 @@ void main() {
     expect(model.history.last.hintsUsed, 2);
     await openHistory();
     expect(find.text('3 questions completed.'), findsOneWidget);
-    expect(find.text('Skipped'), findsOneWidget);
-    expect(find.text(thirdQuestion), findsWidgets);
-    expect(find.text('No answer entered'), findsOneWidget);
+    expect(await inHistory(find.text('Skipped')), findsOneWidget);
+    expect(await inHistory(find.text(thirdQuestion)), findsWidgets);
+    expect(await inHistory(find.text('No answer entered')), findsOneWidget);
     expect(model.history, hasLength(3));
+    expect(
+      model.history.map(
+        (attempt) => attempt.skipped
+            ? 'Skipped'
+            : attempt.correct
+            ? 'Correct'
+            : 'Incorrect',
+      ),
+      ['Incorrect', 'Correct', 'Skipped'],
+    );
   });
 }

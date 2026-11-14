@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -48,6 +50,45 @@ void main() {
       await pumpEventQueue();
     }
 
+    for (final type in OperationType.values) {
+      test('the first problem is a saved-selection $type, over 20 seeds', () {
+        for (var seed = 0; seed < 20; seed++) {
+          final model = MathTesterModel(
+            progress: Progress(selectedOperations: {type}),
+            random: Random(seed),
+          );
+          expect(model.current.kind, type, reason: 'seed $seed');
+          model.dispose();
+        }
+      });
+
+      test(
+        'a successful retry shows a saved-selection $type problem',
+        () async {
+          final previous = FlutterError.onError;
+          FlutterError.onError = (_) {};
+          addTearDown(() => FlutterError.onError = previous);
+          for (var seed = 0; seed < 20; seed++) {
+            final store = FakeStore({
+              progressKey: Progress(selectedOperations: {type}).encode(),
+            })..readFailures = 1;
+            final loaded = await loadProgress(store);
+            final model = MathTesterModel(
+              store: store,
+              progress: loaded.progress,
+              canSave: loaded.canSave,
+              random: Random(seed),
+            );
+            model.handleLifecycle(AppLifecycleState.resumed);
+            await pumpEventQueue();
+            expect(model.canSave, isTrue);
+            expect(model.current.kind, type, reason: 'seed $seed');
+            model.dispose();
+          }
+        },
+      );
+    }
+
     test('answers and selection changes are saved', () async {
       final store = FakeStore();
       final model = await loadModel(store);
@@ -65,7 +106,7 @@ void main() {
       final previous = FlutterError.onError;
       FlutterError.onError = (_) {};
       addTearDown(() => FlutterError.onError = previous);
-      final store = FakeStore()..writeFailures = 2;
+      final store = FakeStore()..writeFailures = 3;
       final model = await loadModel(store);
       await answerFive(model);
       expect(store.values[progressKey], isNull);
@@ -120,6 +161,34 @@ void main() {
         await pumpEventQueue();
         expect(model.history, hasLength(200));
         expect(storedHistory(store), hasLength(200));
+      },
+    );
+
+    test(
+      'changes made in no-write mode give way to a successful retry',
+      () async {
+        final previous = FlutterError.onError;
+        FlutterError.onError = (_) {};
+        addTearDown(() => FlutterError.onError = previous);
+        final saved = Progress(
+          selectedOperations: {OperationType.divide},
+          history: [attempt(4)],
+        ).encode();
+        final store = FakeStore({progressKey: saved})..readFailures = 1;
+        final model = await loadModel(store);
+        expect(model.canSave, isFalse);
+
+        model.toggleOperation(OperationType.plus);
+        await answerFive(model);
+        expect(model.history, hasLength(5));
+        expect(store.writes, isEmpty);
+
+        model.handleLifecycle(AppLifecycleState.resumed);
+        await pumpEventQueue();
+        expect(model.canSave, isTrue);
+        expect(model.selectedOperations, {OperationType.divide});
+        expect(model.history.single.problem.lhs, 4);
+        expect(store.values[progressKey], saved);
       },
     );
 
@@ -183,6 +252,31 @@ void main() {
         expect(store.writes, isEmpty);
       },
     );
+
+    testWidgets('a second bootstrap shows the second store\'s history', (
+      tester,
+    ) async {
+      await bootstrap(
+        FakeStore({
+          progressKey: Progress(history: [attempt(3)]).encode(),
+        }),
+      );
+      await tester.pump();
+      await bootstrap(
+        FakeStore({
+          progressKey: Progress(history: [attempt(8), attempt(9)]).encode(),
+        }),
+      );
+      await tester.pump();
+
+      final model = tester
+          .element(find.byKey(homePageKey))
+          .read<MathTesterModel>();
+      expect(model.history.map((a) => a.problem.lhs), [8, 9]);
+      await tester.tap(find.text('My answers').last);
+      await tester.pump();
+      expect(find.text('2 questions completed.'), findsOneWidget);
+    });
 
     testWidgets('criterion 11: the backup is written before the first frame', (
       tester,
