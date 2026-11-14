@@ -283,7 +283,9 @@ jobs:
           target: google_apis
           arch: x86_64
           working-directory: app
-          script: flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554
+          script: |
+            flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554
+            adb shell cmd connectivity airplane-mode enable && (flutter test integration_test -d emulator-5554 || flutter test integration_test -d emulator-5554)
 
   web-chrome:
     name: Test user journeys in Chrome
