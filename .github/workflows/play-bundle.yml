@@ -3,13 +3,14 @@ name: Play app bundle
 # Separate from flutter-checks.yml: a manual run of that workflow needs an
 # environment input and deploys the web build.
 # A push to main (or a manual run) builds and checks the bundle, then discards it.
-# A published GitHub release builds it with the release's version and uploads it
-# to the Play internal testing track.
+# Pushing a version tag (git tag v1.2.3 && git push origin v1.2.3) builds it with
+# that version, uploads it to the Play internal testing track and then creates
+# the GitHub release. One workflow does it all: a release created with
+# GITHUB_TOKEN would not start another workflow.
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -26,12 +27,19 @@ jobs:
     name: Build signed app bundle and check 16 KB pages
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    # Write access creates the GitHub release on a tag. The workflow runs only for
+    # pushes to this repository (no pull_request trigger), so no outside code gets it.
+    permissions:
+      contents: write
     defaults:
       run:
         shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The tag check below needs main's history.
+          fetch-depth: 0
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -94,26 +102,36 @@ jobs:
           echo "signing=$signing" >> "$GITHUB_OUTPUT"
       - name: Check the release notes filter
         run: bash ../.github/play-release-notes.test.sh
-      - name: Require the upload key for a release
-        if: github.event_name == 'release' && steps.key.outputs.signing != 'upload'
+      - name: Check the version tag
+        id: tag
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+          SIGNING: ${{ steps.key.outputs.signing }}
         run: |
-          echo "::error::A release needs the four ANDROID_* keystore secrets"
-          exit 1
+          # The tag is the version name: v1.2.3.
+          if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Tag '$TAG' is not v1.2.3"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag '$TAG' points to a commit that is not on main"
+            exit 1
+          fi
+          if [ "$SIGNING" != upload ]; then
+            echo "::error::A release needs the four ANDROID_* keystore secrets"
+            exit 1
+          fi
+          echo "version_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
       - name: Build app bundle
         id: build
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          VERSION_NAME: ${{ steps.tag.outputs.version_name }}
         run: |
           build_number=$((GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
           args=(--build-number="$build_number")
-          if [ "$GITHUB_EVENT_NAME" = release ]; then
-            # The release tag is the version name: v1.2.3 or 1.2.3.
-            if [[ ! "$TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-              echo "::error::Release tag '$TAG' is not v1.2.3 or 1.2.3"
-              exit 1
-            fi
-            args+=(--build-name="${BASH_REMATCH[1]}")
-            echo "version_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          if [ -n "$VERSION_NAME" ]; then
+            args+=(--build-name="$VERSION_NAME")
           fi
           echo "build_number=$build_number" >> "$GITHUB_OUTPUT"
           echo "Build number $build_number ${args[*]}"
@@ -211,13 +229,48 @@ jobs:
             echo "::error::The APK is signed with the Android debug certificate"
             exit 1
           fi
-      # Release only: send the bundle to the Play internal testing track. A push to
-      # main stops above and the bundle is discarded with the runner.
+      # Tag only from here on. A push to main stops above and the bundle is discarded
+      # with the runner.
+      # GitHub's automatic notes (merged pull requests since the last tag) go on the
+      # GitHub release. Play gets a short summary of them written by DeepSeek, or the
+      # automatic notes themselves when there is no DEEPSEEK_API_KEY or the call
+      # fails; either way play-release-notes.jq makes them plain, whole lines, 500
+      # characters at most.
+      - name: Write the release notes
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-flash' }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body \
+            > "$RUNNER_TEMP/github-notes.md"
+          source="$RUNNER_TEMP/github-notes.md"
+          if [ -n "$DEEPSEEK_API_KEY" ]; then
+            jq -n --arg model "$DEEPSEEK_MODEL" --rawfile notes "$RUNNER_TEMP/github-notes.md" '{
+              model: $model, stream: false, temperature: 0.3, max_tokens: 300,
+              messages: [
+                {role: "system", content: "You write Google Play release notes for Simple Math Tester, a math practice app for children. You get the merged pull requests of a release. Write 2 to 5 short lines in plain English for parents and children, each starting with \"- \", about changes they can see or feel. Leave out tests, CI, build, docs and refactoring. No Markdown, links, names or version numbers. At most 450 characters in total. If nothing is visible to users, write exactly: - Small fixes and improvements."},
+                {role: "user", content: $notes}
+              ]}' > "$RUNNER_TEMP/ai-request.json"
+            if curl -sS --fail-with-body --max-time 60 https://api.deepseek.com/chat/completions \
+                -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
+                --data @"$RUNNER_TEMP/ai-request.json" \
+                | jq -er '.choices[0].message.content | select(length > 0)' > "$RUNNER_TEMP/ai-notes.txt"; then
+              source="$RUNNER_TEMP/ai-notes.txt"
+            else
+              echo "::warning::DeepSeek summary failed; Play gets the automatic notes"
+            fi
+          fi
+          jq -nr --rawfile notes "$source" -f ../.github/play-release-notes.jq > "$RUNNER_TEMP/play-notes.txt"
+          echo "Play release notes:"
+          cat "$RUNNER_TEMP/play-notes.txt"
       # The service account signs a short-lived JWT and trades it for an access token
       # (Google's OAuth flow for service accounts); no extra API or role is needed.
       # The key exists only in a mode 600 file under $RUNNER_TEMP for this step.
       - name: Get a Play Developer API token
-        if: github.event_name == 'release'
+        if: github.ref_type == 'tag'
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
@@ -244,11 +297,10 @@ jobs:
           # A file, not a step output: outputs holding a secret are dropped.
           printf '%s' "$token" > "$RUNNER_TEMP/play-token"
       - name: Upload to the Play internal testing track
-        if: github.event_name == 'release'
+        if: github.ref_type == 'tag'
         env:
-          VERSION_NAME: ${{ steps.build.outputs.version_name }}
+          VERSION_NAME: ${{ steps.tag.outputs.version_name }}
           BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
-          NOTES: ${{ github.event.release.body }}
         run: |
           app=androidpublisher/v3/applications/com.linux.simplemathtester
           api="https://androidpublisher.googleapis.com/$app"
@@ -264,8 +316,7 @@ jobs:
             echo "::error::Play reports version code $code, expected $BUILD_NUMBER"
             exit 1
           fi
-          # Plain text, whole lines, 500 characters at most (see play-release-notes.jq).
-          notes="$(jq -nr --arg notes "$NOTES" -f ../.github/play-release-notes.jq)"
+          notes="$(cat "$RUNNER_TEMP/play-notes.txt")"
           jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:-Version $VERSION_NAME}" \
             '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
               releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
@@ -273,3 +324,10 @@ jobs:
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
           echo "::notice::Version $VERSION_NAME ($code) is on the Play internal testing track"
+      # Last, so a failed build or upload leaves no release behind; re-run the job.
+      - name: Create the GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/github-notes.md"

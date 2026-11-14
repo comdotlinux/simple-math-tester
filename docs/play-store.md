@@ -183,9 +183,21 @@ Without that file, release builds are debug-signed and Gradle prints
 
 ## Releasing to Play
 
-A published GitHub release builds the bundle with the release's version and
-uploads it to the **internal testing** track; the `.aab` is not attached to the
-release. The build number stays run number x 10 + run attempt, so it always grows.
+Pushing a version tag releases: `git tag v1.0.1 && git push origin v1.0.1`.
+`play-bundle.yml` then checks the tag (`v1.2.3`, on a commit that is on `main`),
+builds the bundle with that version, uploads it to the **internal testing** track
+and creates the GitHub release. The build number stays run number x 10 + run
+attempt, so it always grows. The `.aab` is not attached to the release.
+
+Release notes:
+
+- GitHub release: GitHub's automatic notes, the pull requests merged since the
+  previous tag.
+- Play: a 2 to 5 line summary of those notes written by DeepSeek for parents and
+  children. Without `DEEPSEEK_API_KEY`, or when the call fails, Play gets the
+  automatic notes instead. Either way `.github/play-release-notes.jq` removes
+  Markdown, HTML, links and "by @user in ..." and keeps whole lines up to Play's
+  500 characters.
 
 One-time setup (owner, about 15 minutes; the first `.aab` must already have been
 uploaded by hand, walkthrough row 8, done 2026-11-14):
@@ -205,15 +217,22 @@ uploaded by hand, walkthrough row 8, done 2026-11-14):
    `gh secret set PLAY_SERVICE_ACCOUNT_JSON --repo comdotlinux/simple-math-tester < <key file>`.
    Then keep the key file somewhere safe or move it out of Downloads.
 
+Optional, for the DeepSeek summary (the key is asked for at a hidden prompt):
+
+```
+gh secret set DEEPSEEK_API_KEY --repo comdotlinux/simple-math-tester
+gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deepseek-flash
+```
+
+`DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
+
 Each release:
 
-1. GitHub, Releases, Draft a new release. Tag: the version, `v1.0.1` (or `1.0.1`);
-   anything else fails the run. The release text becomes the Play release notes:
-   Markdown, HTML, links and "by @user in ..." are removed, and whole lines are
-   kept up to Play's 500 characters (`.github/play-release-notes.jq`). Write short
-   plain lines; an empty text sends "Version 1.0.1".
-2. Publish. The "Play app bundle" run builds, checks and uploads; its last line
-   says which version is on the internal track.
+1. On `main`, pulled: `git tag v1.0.1 && git push origin v1.0.1`.
+2. The "Play app bundle" run builds, uploads and creates the release; its log shows
+   the Play notes, and its last notice says which version is on the internal track.
+   If it fails, fix the cause and re-run the job; nothing is released until the
+   upload worked.
 3. In Play Console, promote the release from internal testing to closed testing or
    production when ready.
 
