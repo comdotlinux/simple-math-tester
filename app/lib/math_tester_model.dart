@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'operations.dart';
 import 'rules.dart';
+import 'solution_steps.dart';
 
 class MathTesterModel extends ChangeNotifier {
   MathTesterModel({
@@ -13,8 +14,7 @@ class MathTesterModel extends ChangeNotifier {
     DateTime Function()? clock,
   }) : _random = random ?? Random(),
        _clock = clock ?? DateTime.now {
-    _current = initialProblem ?? OperationType.plus.generate(_random);
-    _shownAt = _clock();
+    _show(initialProblem ?? OperationType.plus.generate(_random));
   }
 
   final Random _random;
@@ -23,8 +23,10 @@ class MathTesterModel extends ChangeNotifier {
   final Problem Function()? nextProblem;
 
   late Problem _current;
+  late List<String> _steps;
   late DateTime _shownAt;
-  bool _checked = false;
+  late bool _checked;
+  late int _revealed;
   List<Attempt> _history = List.unmodifiable(const <Attempt>[]);
   Set<OperationType> _selectedOperations = Set.unmodifiable(
     OperationType.values,
@@ -35,6 +37,11 @@ class MathTesterModel extends ChangeNotifier {
   int _currentPage = 0;
 
   Problem get current => _current;
+
+  /// Solution steps of the current problem; the first [revealedSteps] show.
+  List<String> get steps => _steps;
+  int get revealedSteps => _revealed;
+  bool get canRevealStep => _nextRevealed(HintEvent.reveal) > _revealed;
 
   /// Replaced, never mutated, so `context.select` sees every change.
   List<Attempt> get history => _history;
@@ -62,9 +69,13 @@ class MathTesterModel extends ChangeNotifier {
       return false;
     }
 
+    final firstCheck = !_checked;
     _record(input);
     _validationMessage = null;
     _answerCorrect = input == _current.result;
+    if (firstCheck && !_answerCorrect!) {
+      _revealed = _nextRevealed(HintEvent.wrongFirstCheck);
+    }
     notifyListeners();
     return true;
   }
@@ -72,14 +83,20 @@ class MathTesterModel extends ChangeNotifier {
   void generateNextProblem() {
     _record(null);
     final kinds = OperationType.values.where(_selectedOperations.contains);
-    _current =
-        nextProblem?.call() ??
-        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random);
-    _shownAt = _clock();
-    _checked = false;
+    _show(
+      nextProblem?.call() ??
+          kinds.elementAt(_random.nextInt(kinds.length)).generate(_random),
+    );
     _draftInput = '';
     _validationMessage = null;
     _answerCorrect = null;
+    notifyListeners();
+  }
+
+  /// The "Hint" and "Next step" controls.
+  void revealStep() {
+    if (!canRevealStep) return;
+    _revealed = _nextRevealed(HintEvent.reveal);
     notifyListeners();
   }
 
@@ -104,12 +121,28 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _show(Problem problem) {
+    _current = problem;
+    _steps = solutionSteps(problem);
+    _shownAt = _clock();
+    _checked = false;
+    _revealed = 0;
+  }
+
+  int _nextRevealed(HintEvent event) => nextRevealed(
+    revealed: _revealed,
+    event: event,
+    stepCount: _steps.length,
+    checked: _checked,
+  );
+
   void _record(num? answer) {
     final now = _clock();
     final attempt = historyEntry(
       problem: _current,
       alreadyChecked: _checked,
       answer: answer,
+      hintsUsed: _revealed,
       elapsedMs: now.difference(_shownAt).inMilliseconds,
       at: now,
     );

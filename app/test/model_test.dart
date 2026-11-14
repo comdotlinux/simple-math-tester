@@ -261,4 +261,71 @@ void main() {
       });
     });
   });
+
+  group('hints', () {
+    const sum = Problem(12, 3, OperationType.plus, 15);
+
+    test('steps reveal one at a time and the last needs a check', () {
+      final model = modelFor(sum);
+      expect(model.steps, hasLength(3));
+      expect(model.revealedSteps, 0);
+      model.revealStep();
+      model.revealStep();
+      expect(model.revealedSteps, 2);
+      expect(model.canRevealStep, isFalse);
+      model.revealStep();
+      expect(model.revealedSteps, 2);
+
+      model.setDraftInput('15');
+      model.submitAnswer();
+      expect(model.canRevealStep, isTrue);
+      model.revealStep();
+      expect(model.revealedSteps, 3);
+      expect(model.canRevealStep, isFalse);
+    });
+
+    test('hintsUsed counts the steps revealed before the first check', () {
+      final model = modelFor(sum);
+      model.revealStep();
+      model.setDraftInput('14');
+      model.submitAnswer();
+      expect(model.revealedSteps, 1);
+      model.revealStep();
+      model.setDraftInput('15');
+      model.submitAnswer();
+      expect(model.history.single.hintsUsed, 1);
+    });
+
+    test('a wrong first check reveals 1 step; a retry reveals none', () {
+      final model = modelFor(sum);
+      model.setDraftInput('14');
+      model.submitAnswer();
+      expect(model.revealedSteps, 1);
+      expect(model.history.single.hintsUsed, 0);
+      model.setDraftInput('13');
+      model.submitAnswer();
+      expect(model.revealedSteps, 1);
+    });
+
+    test('a correct first check reveals nothing', () {
+      final model = modelFor(sum);
+      model.setDraftInput('15');
+      model.submitAnswer();
+      expect(model.revealedSteps, 0);
+    });
+
+    test(
+      'a skip records the hints opened and the next problem starts at 0',
+      () {
+        final model = modelFor(sum);
+        model.revealStep();
+        model.revealStep();
+        model.generateNextProblem();
+        expect(model.history.single.skipped, isTrue);
+        expect(model.history.single.hintsUsed, 2);
+        expect(model.revealedSteps, 0);
+        expect(model.steps.last, contains('= 3'));
+      },
+    );
+  });
 }
