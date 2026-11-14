@@ -131,10 +131,7 @@ void gameLoopJourneys() {
 
       expect(semanticsNodesLabelled(tester, 'Daily goal: 0 of 10'), 1);
       expect(semanticsNodesLabelled(tester, 'Daily streak: 0'), 1);
-      expect(
-        textOf(tester, hudGoalKey),
-        allOf(showsNumber(0), showsNumber(dailyGoal)),
-      );
+      expect(textOf(tester, hudGoalKey), showsNumbers([0, dailyGoal]));
     });
 
     testWidgets('a goal reached yesterday keeps the streak today', (

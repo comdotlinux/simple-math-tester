@@ -89,6 +89,7 @@ void tierPickerJourneys() {
       expect(model.difficulty[OperationType.plus]!.level, 2);
       expect(model.difficulty[OperationType.minus]!.level, 5);
       await openSettings(tester);
+      expect(textOf(tester, currentTierNoteKey), contains(model.tier!.label));
       expect(
         tester
             .widget<ListTile>(find.byKey(tierSettingKey(Tier.harder)))

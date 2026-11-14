@@ -917,6 +917,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                 child: Text('Starting difficulty', style: textTheme.titleLarge),
               ),
               subtitle: Text(
+                key: currentTierNoteKey,
                 'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
                 'starts every operation again at that difficulty.',
               ),

@@ -13,6 +13,7 @@ const nextQuestionButtonKey = Key('next-question-button');
 const revealStepButtonKey = Key('reveal-step-button');
 const settingsButtonKey = Key('settings-button');
 const settingsSheetKey = Key('settings-sheet');
+const currentTierNoteKey = Key('current-tier-note');
 const tierPickerKey = Key('tier-picker');
 
 /// One per tier: the tier picker's button and the settings sheet's row.

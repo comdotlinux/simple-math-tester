@@ -210,8 +210,17 @@ Matcher showsNumber(num number) => matches(
   RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
 );
 
-/// Matches the header's level and XP text for [xp].
-Matcher showsXp(int xp) => allOf(showsNumber(playerLevel(xp)), showsNumber(xp));
+/// Matches a text whose only numbers are [numbers], in that order.
+Matcher showsNumbers(List<num> numbers) => matches(
+  RegExp(
+    '^[^0-9]*'
+    '${numbers.map((n) => RegExp.escape(formatNumber(n))).join('[^0-9]+')}'
+    '[^0-9]*\$',
+  ),
+);
+
+/// Matches the header's level and XP text for [xp]: level first, then XP.
+Matcher showsXp(int xp) => showsNumbers([playerLevel(xp), xp]);
 
 String answerFieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField)).controller!.text;

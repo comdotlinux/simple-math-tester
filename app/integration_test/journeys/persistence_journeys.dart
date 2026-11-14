@@ -126,7 +126,8 @@ void persistenceJourneys() {
       // The day's tenth right answer earns XP and fills the goal.
       await submit(tester, model.current.result);
       final xp = model.game.xp;
-      expect(xp, greaterThan(0));
+      // Level 1, no combo yet: 1 × (10 + 0).
+      expect(xp, 10);
       expect(model.shownStreak, 3);
 
       await restartWhenSaved(tester, (p) => p.game.streak == 3);

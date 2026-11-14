@@ -20,6 +20,10 @@ void settingsJourneys() {
 
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(
+          textOf(tester, currentTierNoteKey),
+          contains(modelOf(tester).tier!.label),
+        );
+        expect(
           tester
               .widget<ListTile>(find.byKey(tierSettingKey(Tier.easy)))
               .selected,

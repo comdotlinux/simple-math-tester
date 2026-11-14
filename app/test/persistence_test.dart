@@ -25,6 +25,11 @@ Attempt attempt(int lhs) => Attempt(
 List<Object?> storedHistory(FakeStore store) =>
     (jsonDecode(store.values[progressKey]!) as Map)['history'] as List;
 
+/// Matches a text that shows [number] whole, not as part of a longer number.
+Matcher showsNumber(num number) => matches(
+  RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
+);
+
 void main() {
   group('model', () {
     Future<MathTesterModel> loadModel(FakeStore store) async {
@@ -249,7 +254,7 @@ void main() {
         await tester.pump();
         expect(
           tester.widget<Text>(find.byKey(historyCountKey)).data,
-          startsWith('3 '),
+          showsNumber(3),
         );
         expect(store.log.first, 'read $progressKey');
         expect(store.writes, isEmpty);
@@ -286,7 +291,7 @@ void main() {
       await tester.pump();
       expect(
         tester.widget<Text>(find.byKey(historyCountKey)).data,
-        startsWith('2 '),
+        showsNumber(2),
       );
     });
 

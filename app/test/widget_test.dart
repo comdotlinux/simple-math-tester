@@ -40,8 +40,15 @@ void main() {
   Matcher showsNumber(num number) => matches(
     RegExp('(^|[^0-9.])${RegExp.escape(formatNumber(number))}(\$|[^0-9.])'),
   );
-  Matcher showsXp(int xp) =>
-      allOf(showsNumber(playerLevel(xp)), showsNumber(xp));
+  // Only these numbers, in this order.
+  Matcher showsNumbers(List<num> numbers) => matches(
+    RegExp(
+      '^[^0-9]*'
+      '${numbers.map((n) => RegExp.escape(formatNumber(n))).join('[^0-9]+')}'
+      '[^0-9]*\$',
+    ),
+  );
+  Matcher showsXp(int xp) => showsNumbers([playerLevel(xp), xp]);
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
@@ -582,7 +589,9 @@ void main() {
       expect(model.celebrations, 1);
       expect(tester.hasRunningAnimations, isFalse, reason: 'pop and burst');
       expect(celebrationPainter, findsNothing);
-      expect(textOf(tester, hudXpKey), showsXp(model.game.xp));
+      expect(model.game.xp, 100);
+      expect(playerLevel(model.game.xp), 2);
+      expect(textOf(tester, hudXpKey), showsXp(100));
       expect(
         tester.widget<TweenAnimationBuilder<int>>(xpCounter).duration,
         Duration.zero,
@@ -730,6 +739,7 @@ void main() {
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
+        expect(textOf(tester, currentTierNoteKey), contains(model.tier!.label));
         for (final (key, label) in [
           (soundSwitchKey, 'Sound'),
           (hapticsSwitchKey, 'Vibration'),
@@ -866,10 +876,7 @@ void main() {
       await bootstrap(store);
       await tester.pump();
       expectLabel(tester, goal(0));
-      expect(
-        textOf(tester, hudGoalKey),
-        allOf(showsNumber(0), showsNumber(dailyGoal)),
-      );
+      expect(textOf(tester, hudGoalKey), showsNumbers([0, dailyGoal]));
     });
 
     testWidgets('criterion 23: a resume after the date changed resets it', (
