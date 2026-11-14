@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:material_ui/material_ui.dart' show Table;
+import 'package:material_ui/material_ui.dart'
+    show Scrollable, ScrollableState, Table;
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
@@ -210,13 +211,15 @@ void historyJourneys() {
       );
     });
 
-    testWidgets('a long history scrolls to its last answer', (tester) async {
+    testWidgets('a long history loads more on scroll and keeps stats pinned', (
+      tester,
+    ) async {
       await startWith(
         tester,
         Progress(
           tier: Tier.easy,
           history: [
-            for (var i = 0; i < 39; i++)
+            for (var i = 0; i < 44; i++)
               attempt(Problem(1, 1, OperationType.plus, 2), 2),
             attempt(Problem(77, 23, OperationType.plus, 100), 100),
           ],
@@ -225,9 +228,38 @@ void historyJourneys() {
 
       await openHistory(tester);
 
-      expect(find.text('40 questions completed.'), findsOneWidget);
+      expect(find.text('45 questions completed.'), findsOneWidget);
+      expect(find.byKey(statsCardKey), findsOneWidget);
       expect(find.text('77 + 23'), findsNothing);
+      // The last answer is in the third page of 20, after two loads.
       expect(await inHistory(tester, find.text('77 + 23')), findsOneWidget);
+      expect(
+        await inHistory(tester, find.byKey(answersEndKey)),
+        findsOneWidget,
+      );
+      expect(find.byKey(answersLoadingKey), findsNothing);
+      // Scrolled down, the stats are a compact bar still on screen.
+      final bar = find.byKey(compactStatsKey);
+      expect(bar, findsOneWidget);
+      expect(find.byKey(statsCardKey), findsNothing);
+      final screen = tester.getRect(find.byKey(resultsPageKey));
+      expect(tester.getRect(bar).top, greaterThanOrEqualTo(screen.top));
+      expect(tester.getRect(bar).bottom, lessThan(screen.bottom));
+
+      tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byKey(resultsPageKey),
+              matching: find.byType(Scrollable),
+            ),
+          )
+          .position
+          .jumpTo(0);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(statsCardKey), findsOneWidget);
+      expect(find.text('Your stats'), findsOneWidget);
+      expect(bar, findsNothing);
     });
 
     testWidgets(

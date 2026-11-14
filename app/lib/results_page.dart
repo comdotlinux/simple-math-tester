@@ -11,8 +11,39 @@ import 'operations.dart';
 import 'rules.dart';
 import 'slab.dart';
 
-class ResultsPage extends StatelessWidget {
+class ResultsPage extends StatefulWidget {
   const ResultsPage({super.key});
+
+  @override
+  State<ResultsPage> createState() => _ResultsPageState();
+}
+
+/// Shows the answers a page at a time: the next page loads when the reader
+/// scrolls to the loading row at the end of the list. The stats card is a
+/// pinned header that shrinks to a compact bar as the list scrolls.
+class _ResultsPageState extends State<ResultsPage> {
+  static const _pageSize = 20;
+  var _shown = _pageSize;
+  var _loading = false;
+
+  // The header needs fixed extents, so hidden copies of the full card and
+  // the compact bar are laid out to measure them.
+  final _fullMeasure = GlobalKey();
+  final _compactMeasure = GlobalKey();
+  Size? _fullSize;
+  Size? _compactSize;
+
+  void _measure() {
+    if (!mounted) return;
+    final full = _fullMeasure.currentContext?.size;
+    final compact = _compactMeasure.currentContext?.size;
+    if (full != _fullSize || compact != _compactSize) {
+      setState(() {
+        _fullSize = full;
+        _compactSize = compact;
+      });
+    }
+  }
 
   static const _columnFlex = [55, 160, 250, 135];
 
@@ -21,6 +52,38 @@ class ResultsPage extends StatelessWidget {
     final history = context.select((MathTesterModel model) => model.history);
     final theme = Theme.of(context);
     final useCards = MediaQuery.sizeOf(context).width < 800;
+    final shown = min(_shown, history.length);
+    final fullSize = _fullSize;
+    final compactSize = _compactSize;
+    if (history.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    }
+
+    // The header: stats, the answer count and the table's column titles;
+    // collapsed, the compact bar over the column titles. [keyed] is false
+    // for the hidden copies that measure them.
+    Widget expanded({required bool keyed}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Stats(key: keyed ? statsCardKey : null),
+        const SizedBox(height: 24),
+        Text(
+          history.length == 1
+              ? '1 question completed.'
+              : '${history.length} questions completed.',
+          style: theme.textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        if (!useCards) _tableHeader(context),
+      ],
+    );
+    Widget collapsed({required bool keyed}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _CompactBar(key: keyed ? compactStatsKey : null),
+        if (!useCards) _tableHeader(context),
+      ],
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -44,29 +107,61 @@ class ResultsPage extends StatelessWidget {
                         const SizedBox(height: 24),
                         if (history.isEmpty)
                           _emptyState(context)
-                        else ...[
-                          const _Stats(),
-                          const SizedBox(height: 24),
-                          Text(
-                            history.length == 1
-                                ? '1 question completed.'
-                                : '${history.length} questions completed.',
-                            style: theme.textTheme.titleLarge,
+                        else
+                          // Offstage: laid out, never painted, heard or found.
+                          Offstage(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                KeyedSubtree(
+                                  key: _fullMeasure,
+                                  child: expanded(keyed: false),
+                                ),
+                                KeyedSubtree(
+                                  key: _compactMeasure,
+                                  child: collapsed(keyed: false),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          if (!useCards) _tableHeader(context),
-                        ],
                       ],
                     ),
                   ),
+                  if (history.isNotEmpty)
+                    if (fullSize == null || compactSize == null)
+                      SliverToBoxAdapter(child: expanded(keyed: true))
+                    else
+                      SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _StatsHeader(
+                          maxExtent: max(fullSize.height, compactSize.height),
+                          minExtent: compactSize.height,
+                          color: theme.scaffoldBackgroundColor,
+                          expanded: expanded(keyed: true),
+                          collapsed: collapsed(keyed: true),
+                        ),
+                      ),
                   SliverList.builder(
-                    itemCount: history.length,
-                    itemBuilder: (context, index) => useCards
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 20),
-                            child: _resultCard(context, index, history[index]),
-                          )
-                        : _tableRow(context, index, history[index]),
+                    // One extra row at the end: the loading row or the end
+                    // marker.
+                    itemCount: history.isEmpty ? 0 : shown + 1,
+                    itemBuilder: (context, index) {
+                      if (index == shown) {
+                        return shown < history.length
+                            ? _loadingRow()
+                            : _endMarker(context);
+                      }
+                      return useCards
+                          ? Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: _resultCard(
+                                context,
+                                index,
+                                history[index],
+                              ),
+                            )
+                          : _tableRow(context, index, history[index]);
+                    },
                   ),
                 ],
               ),
@@ -74,6 +169,48 @@ class ResultsPage extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  // The answers are already in memory, so a page loads on the next frame.
+  Widget _loadingRow() {
+    if (!_loading) {
+      _loading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _shown += _pageSize;
+          _loading = false;
+        });
+      });
+    }
+    return const Padding(
+      key: answersLoadingKey,
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: SizedBox.square(
+          dimension: 24,
+          child: CircularProgressIndicator(
+            strokeWidth: 3,
+            semanticsLabel: 'Loading more answers',
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _endMarker(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      key: answersEndKey,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        "That's all your answers",
+        textAlign: TextAlign.center,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 
@@ -314,8 +451,13 @@ class ResultsPage extends StatelessWidget {
 }
 
 /// Lifetime accuracy and level per operation, streaks, XP and player level.
+///
+/// [compact] is the pinned bar: icons and numbers only (screen readers hear
+/// the full labels), no table.
 class _Stats extends StatelessWidget {
-  const _Stats();
+  const _Stats({super.key, this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -331,32 +473,91 @@ class _Stats extends StatelessWidget {
     Widget cell(Widget child) =>
         Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: child);
 
-    Widget chip(String text, IconData icon, Color color, Color onColor) =>
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppTokens.radiusControl),
-            border: Border.all(
-              color: tokens.outline,
-              width: AppTokens.outlineWidth,
+    Widget chip(
+      String text,
+      String value,
+      IconData icon,
+      Color color,
+      Color onColor,
+    ) => Container(
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+          : const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppTokens.radiusControl),
+        border: Border.all(
+          color: tokens.outline,
+          width: AppTokens.outlineWidth,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: compact ? 4 : 8,
+        children: [
+          Icon(icon, size: compact ? 16 : 20, color: onColor),
+          Flexible(
+            child: Text(
+              compact ? value : text,
+              semanticsLabel: text,
+              style: (compact ? textTheme.labelMedium : const TextStyle())
+                  ?.copyWith(color: onColor, fontWeight: FontWeight.w700),
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 8,
-            children: [
-              Icon(icon, size: 20, color: onColor),
-              Flexible(
-                child: Text(
-                  text,
-                  style: TextStyle(color: onColor, fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        );
+        ],
+      ),
+    );
 
+    final chips = Wrap(
+      spacing: compact ? 6 : 10,
+      runSpacing: compact ? 6 : 8,
+      children: [
+        chip(
+          'Daily streak: $streak',
+          '$streak',
+          Icons.local_fire_department,
+          tokens.streak,
+          tokens.onStreak,
+        ),
+        chip(
+          'Best streak: ${game.bestStreak}',
+          '${game.bestStreak}',
+          // The compact bar has no words, so the two streaks differ by icon.
+          compact ? Icons.emoji_events : Icons.local_fire_department,
+          tokens.streak,
+          tokens.onStreak,
+        ),
+        chip(
+          'Best sprint: ${game.bestSprint}',
+          '${game.bestSprint}',
+          Icons.timer_outlined,
+          tokens.sprint,
+          tokens.onSprint,
+        ),
+        chip(
+          'Total XP: ${game.xp}',
+          '${game.xp}',
+          Icons.star,
+          tokens.xp,
+          tokens.onXp,
+        ),
+        chip(
+          'Player level: ${playerLevel(game.xp)}',
+          '${playerLevel(game.xp)}',
+          Icons.military_tech,
+          tokens.xp,
+          tokens.onXp,
+        ),
+      ],
+    );
+
+    if (compact) {
+      return Slab(
+        child: Card(
+          child: Padding(padding: const EdgeInsets.all(8), child: chips),
+        ),
+      );
+    }
     return Slab(
       child: Card(
         child: Padding(
@@ -366,42 +567,7 @@ class _Stats extends StatelessWidget {
             children: [
               Text('Your stats', style: textTheme.titleLarge),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 10,
-                runSpacing: 8,
-                children: [
-                  chip(
-                    'Daily streak: $streak',
-                    Icons.local_fire_department,
-                    tokens.streak,
-                    tokens.onStreak,
-                  ),
-                  chip(
-                    'Best streak: ${game.bestStreak}',
-                    Icons.local_fire_department,
-                    tokens.streak,
-                    tokens.onStreak,
-                  ),
-                  chip(
-                    'Best sprint: ${game.bestSprint}',
-                    Icons.timer_outlined,
-                    tokens.sprint,
-                    tokens.onSprint,
-                  ),
-                  chip(
-                    'Total XP: ${game.xp}',
-                    Icons.star,
-                    tokens.xp,
-                    tokens.onXp,
-                  ),
-                  chip(
-                    'Player level: ${playerLevel(game.xp)}',
-                    Icons.military_tech,
-                    tokens.xp,
-                    tokens.onXp,
-                  ),
-                ],
-              ),
+              chips,
               const SizedBox(height: 12),
               Table(
                 columnWidths: const {0: FlexColumnWidth(2)},
@@ -442,4 +608,61 @@ class _Stats extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The pinned stats bar, with room above and below it.
+class _CompactBar extends StatelessWidget {
+  const _CompactBar({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: _Stats(compact: true),
+  );
+}
+
+/// The full header at the top; as the list scrolls it is cut off from the
+/// bottom, then swapped for the collapsed one, which stays pinned.
+class _StatsHeader extends SliverPersistentHeaderDelegate {
+  _StatsHeader({
+    required this.maxExtent,
+    required this.minExtent,
+    required this.color,
+    required this.expanded,
+    required this.collapsed,
+  });
+
+  @override
+  final double maxExtent;
+  @override
+  final double minExtent;
+  final Color color;
+  final Widget expanded;
+  final Widget collapsed;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    // Rows scroll under the bar, so it paints the page colour.
+    return ColoredBox(
+      color: color,
+      child: maxExtent - shrinkOffset <= minExtent
+          ? collapsed
+          : ClipRect(
+              child: OverflowBox(
+                alignment: Alignment.topCenter,
+                minHeight: 0,
+                maxHeight: double.infinity,
+                child: expanded,
+              ),
+            ),
+    );
+  }
+
+  // The header widgets are rebuilt with the page, so always take the new ones.
+  @override
+  bool shouldRebuild(_StatsHeader oldDelegate) => true;
 }
