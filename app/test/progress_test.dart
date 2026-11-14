@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/rules.dart';
 
 Attempt attempt(int index, {num? answer = 5, bool sprint = false}) => Attempt(
   Problem(index, 3, OperationType.divide, index / 3, level: 2),
@@ -22,12 +23,36 @@ void main() {
         attempt(9, answer: null, sprint: true),
         attempt(6, answer: 2.5),
       ],
+      tier: Tier.medium,
+      difficulty: {
+        OperationType.plus: const Difficulty(
+          level: 4,
+          upCount: 2,
+          answered: 30,
+          correct: 21,
+        ),
+        OperationType.divide: const Difficulty(
+          level: 2,
+          downCount: 1,
+          answered: 7,
+          correct: 3,
+        ),
+      },
     );
 
     final decoded = Progress.decode(original.encode());
 
     expect(decoded.selectedOperations, original.selectedOperations);
     expect(decoded.extra, isEmpty);
+    expect(decoded.tier, Tier.medium);
+    for (final type in OperationType.values) {
+      final (a, b) = (decoded.difficulty[type]!, original.difficulty[type]!);
+      expect(
+        [a.level, a.upCount, a.downCount, a.answered, a.correct],
+        [b.level, b.upCount, b.downCount, b.answered, b.correct],
+      );
+    }
+    expect(decoded.difficulty[OperationType.plus]!.upCount, 2);
     expect(decoded.history, hasLength(original.history.length));
     for (var i = 0; i < original.history.length; i++) {
       final (a, b) = (decoded.history[i], original.history[i]);
@@ -91,7 +116,8 @@ void main() {
 
       final again = jsonDecode(decoded.encode()) as Map<String, Object?>;
       expect(again['theme'], 'dark');
-      expect(again['operations'], perOperation);
+      expect((again['operations']! as Map)['power'], {'level': 4});
+      expect(decoded.difficulty[OperationType.plus]!.level, 2);
       expect(again['selectedOperations'], ['plus', 'power']);
       expect((again['history']! as List).last, unknownEntry);
     },
@@ -101,6 +127,27 @@ void main() {
     final decoded = Progress.decode('{}');
     expect(decoded.selectedOperations, OperationType.values.toSet());
     expect(decoded.history, isEmpty);
+    expect(decoded.tier, isNull);
+    expect(decoded.difficulty.keys, OperationType.values);
+    for (final value in decoded.difficulty.values) {
+      expect(
+        [
+          value.level,
+          value.upCount,
+          value.downCount,
+          value.answered,
+          value.correct,
+        ],
+        [1, 0, 0, 0, 0],
+      );
+    }
+    expect(
+      Progress.decode('{"operations":{"minus":{"upCount":2}}}')
+          .difficulty[OperationType.minus]!
+          .level,
+      1,
+    );
+    expect(jsonDecode(Progress().encode()) as Map, isNot(contains('tier')));
 
     final partial = Progress.decode(
       '{"history":[{"kind":"plus","lhs":1,"rhs":2,"result":3,'
@@ -128,6 +175,11 @@ void main() {
     '{"history": "abc"}',
     '{"selectedOperations": [1]}',
     '{"schemaVersion": "abc"}',
+    '{"tier": 3}',
+    '{"operations": []}',
+    '{"operations": {"plus": 2}}',
+    '{"operations": {"plus": {"level": "2"}}}',
+    '{"operations": {"minus": {"answered": 1.5}}}',
     '{"history": [{"kind": "plus", "lhs": "1", "rhs": 2, "result": 3, '
         '"answeredAt": "2026-11-14T08:00:00.000Z"}]}',
   ]) {
@@ -135,6 +187,19 @@ void main() {
       expect(() => Progress.decode(source), throwsFormatException);
     });
   }
+
+  test(
+    'an unknown tier name asks again; a level outside 1 to 5 is clamped',
+    () {
+      final decoded = Progress.decode(
+        '{"tier":"expert","operations":{"plus":{"level":9},'
+        '"minus":{"level":0}}}',
+      );
+      expect(decoded.tier, isNull);
+      expect(decoded.difficulty[OperationType.plus]!.level, 5);
+      expect(decoded.difficulty[OperationType.minus]!.level, 1);
+    },
+  );
 
   test('a newer schemaVersion is not a decode failure', () {
     expect(

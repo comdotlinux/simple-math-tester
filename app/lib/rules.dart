@@ -2,6 +2,72 @@ import 'dart:math';
 
 import 'operations.dart';
 
+/// The starting tier sets every operation to [level].
+enum Tier {
+  easy('Easy', 1),
+  medium('Medium', 3),
+  hard('Hard', 5);
+
+  const Tier(this.label, this.level);
+
+  final String label;
+  final int level;
+}
+
+/// One operation's difficulty level and counters, and its lifetime totals.
+class Difficulty {
+  const Difficulty({
+    this.level = 1,
+    this.upCount = 0,
+    this.downCount = 0,
+    this.answered = 0,
+    this.correct = 0,
+  });
+
+  final int level;
+  final int upCount;
+  final int downCount;
+  final int answered;
+  final int correct;
+
+  /// Choosing a tier: the level is set and both counters zeroed; the
+  /// lifetime totals stay.
+  Difficulty atTier(Tier tier) =>
+      Difficulty(level: tier.level, answered: answered, correct: correct);
+}
+
+const levelUpAfter = 3;
+const levelDownAfter = 2;
+
+/// The "Difficulty counters and totals" column of the practice events table
+/// for one recorded [attempt] of that operation.
+///
+/// A skip changes nothing; retries, "Next" after a check and invalid input
+/// record no attempt and never reach this function.
+Difficulty difficultyAfter(Difficulty before, Attempt attempt) {
+  if (attempt.skipped) return before;
+  final correct = attempt.correct;
+  final hinted = attempt.hintsUsed > 0;
+  var up = correct ? (hinted ? before.upCount : before.upCount + 1) : 0;
+  var down = correct ? (hinted ? before.downCount : 0) : before.downCount + 1;
+  var level = before.level;
+  // Both counters restart at a threshold, also when the level is at a limit.
+  if (up >= levelUpAfter) {
+    level = min(level + 1, maxLevel);
+    up = down = 0;
+  } else if (down >= levelDownAfter) {
+    level = max(level - 1, 1);
+    up = down = 0;
+  }
+  return Difficulty(
+    level: level,
+    upCount: up,
+    downCount: down,
+    answered: before.answered + 1,
+    correct: before.correct + (correct ? 1 : 0),
+  );
+}
+
 /// The History column of the practice events table.
 ///
 /// [answer] is the parsed answer of a valid check, or null for "Next".
