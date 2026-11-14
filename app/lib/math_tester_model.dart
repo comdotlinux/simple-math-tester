@@ -56,6 +56,10 @@ class MathTesterModel extends ChangeNotifier {
   List<Attempt> get history => _progress.history;
   Set<OperationType> get selectedOperations => _progress.selectedOperations;
 
+  /// Null until the player picks a starting tier.
+  Tier? get tier => _progress.tier;
+  Map<OperationType, Difficulty> get difficulty => _progress.difficulty;
+
   /// False in no-write mode: saved data could not be read, so it is kept.
   bool get canSave => _canSave;
   String get draftInput => _draftInput;
@@ -122,6 +126,15 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets every operation to the tier's level and shows a new problem at
+  /// that level; the replaced problem is not recorded.
+  void chooseTier(Tier tier) {
+    _progress = _progress.withTier(tier);
+    _save();
+    _showNext();
+    notifyListeners();
+  }
+
   void setCurrentPage(int value) {
     RangeError.checkValueInInterval(value, 0, 1, 'page');
     _currentPage = value;
@@ -156,11 +169,12 @@ class MathTesterModel extends ChangeNotifier {
     if (_canSave) _writer.save(_progress.encode());
   }
 
-  /// A problem of one of the selected operations.
+  /// A problem of one of the selected operations, at that operation's level.
   Problem _draw() {
+    if (nextProblem case final next?) return next();
     final kinds = OperationType.values.where(selectedOperations.contains);
-    return nextProblem?.call() ??
-        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random, 1);
+    final kind = kinds.elementAt(_random.nextInt(kinds.length));
+    return kind.generate(_random, difficulty[kind]!.level);
   }
 
   void _showNext() {
@@ -197,7 +211,10 @@ class MathTesterModel extends ChangeNotifier {
     );
     _checked = true;
     if (attempt == null) return;
-    _progress = _progress.withAttempt(attempt);
+    final kind = attempt.problem.kind;
+    _progress = _progress
+        .withAttempt(attempt)
+        .withDifficulty(kind, difficultyAfter(difficulty[kind]!, attempt));
     _save();
   }
 }

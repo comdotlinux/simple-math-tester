@@ -3,6 +3,9 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
+import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/progress_store.dart';
+import 'package:simple_math_tester/rules.dart';
 
 void main() {
   const addition = Problem(2, 3, OperationType.plus, 5);
@@ -338,6 +341,115 @@ void main() {
         expect(model.history.single.hintsUsed, 2);
         expect(model.revealedSteps, 0);
         expect(model.steps.last, contains('= 3'));
+      },
+    );
+  });
+
+  group('difficulty', () {
+    MathTesterModel seeded({Progress? progress, ProgressStore? store}) {
+      final model = MathTesterModel(
+        random: Random(11),
+        progress: progress ?? Progress(tier: Tier.easy),
+        store: store,
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    void answer(MathTesterModel model, {required bool right}) {
+      model.setDraftInput('${model.current.result + (right ? 0 : 1)}');
+      model.submitAnswer();
+      model.generateNextProblem();
+    }
+
+    test('new problems are drawn at their operation\'s level', () {
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.easy,
+          difficulty: {
+            for (final type in OperationType.values)
+              type: Difficulty(level: type.index + 2),
+          },
+        ),
+      );
+      for (var i = 0; i < 50; i++) {
+        expect(model.current.level, model.current.kind.index + 2);
+        model.generateNextProblem();
+      }
+    });
+
+    test('the first valid check applies the rule once and saves it', () async {
+      final store = MemoryProgressStore();
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: {OperationType.plus},
+        ),
+        store: store,
+      );
+      for (var i = 0; i < 3; i++) {
+        answer(model, right: true);
+      }
+      expect(model.difficulty[OperationType.plus]!.level, 2);
+      expect(model.current.level, 2);
+
+      // A retry after a wrong first check does not count again.
+      model.setDraftInput('${model.current.result + 1}');
+      model.submitAnswer();
+      model.setDraftInput('${model.current.result}');
+      model.submitAnswer();
+      final plus = model.difficulty[OperationType.plus]!;
+      expect([plus.level, plus.upCount, plus.downCount], [2, 0, 1]);
+      expect([plus.answered, plus.correct], [4, 3]);
+
+      await pumpEventQueue();
+      final saved = Progress.decode((await store.read(progressKey))!);
+      expect(saved.difficulty[OperationType.plus]!.downCount, 1);
+      expect(saved.difficulty[OperationType.plus]!.answered, 4);
+    });
+
+    test('a hinted correct answer and a skip leave the counters', () {
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: {OperationType.minus},
+        ),
+      );
+      answer(model, right: true);
+      model.revealStep();
+      answer(model, right: true);
+      model.generateNextProblem();
+      final minus = model.difficulty[OperationType.minus]!;
+      expect([minus.upCount, minus.answered, minus.correct], [1, 2, 2]);
+      expect(model.history.map((a) => a.skipped), [false, false, true]);
+    });
+
+    test(
+      'choosing a tier resets levels and replaces the problem unrecorded',
+      () async {
+        final store = MemoryProgressStore();
+        final model = seeded(progress: Progress(), store: store);
+        expect(model.tier, isNull);
+        final before = model.current;
+
+        model.chooseTier(Tier.hard);
+        expect(model.tier, Tier.hard);
+        expect(model.current, isNot(same(before)));
+        expect(model.current.level, 5);
+        expect(model.history, isEmpty);
+        for (final value in model.difficulty.values) {
+          expect([value.level, value.upCount, value.downCount], [5, 0, 0]);
+        }
+
+        answer(model, right: false);
+        model.chooseTier(Tier.medium);
+        expect(model.current.level, 3);
+        expect(model.history, hasLength(1));
+        await pumpEventQueue();
+        expect(
+          Progress.decode((await store.read(progressKey))!).tier,
+          Tier.medium,
+        );
       },
     );
   });
