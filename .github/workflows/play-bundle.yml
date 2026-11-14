@@ -104,8 +104,9 @@ jobs:
       - name: Check 16 KB page support of the APKs built from the bundle
         run: |
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          zipalign="$(find "$sdk/build-tools" -name zipalign -type f | sort -V | tail -n 1)"
-          readelf="$(find "$sdk/ndk" -path '*/prebuilt/linux-x86_64/bin/llvm-readelf' | sort -V | tail -n 1)"
+          # || true: a missing folder must reach the clear error below, not stop pipefail.
+          zipalign="$( (find "$sdk/build-tools" -name zipalign -type f || true) | sort -V | tail -n 1)"
+          readelf="$( (find "$sdk/ndk" -path '*/prebuilt/linux-x86_64/bin/llvm-readelf' || true) | sort -V | tail -n 1)"
           if [ -z "$zipalign" ] || [ -z "$readelf" ]; then
             echo "::error::zipalign ($zipalign) or llvm-readelf ($readelf) not found under $sdk"
             exit 1
@@ -149,6 +150,32 @@ jobs:
           done < <(find "$apks" -name '*.apk' -type f | sort)
           if [ "$so_count" -eq 0 ]; then
             echo "::error::No native libraries found in the APKs"
+            exit 1
+          fi
+      # The APK Play installs carries the Play package id and is not debug-signed.
+      - name: Check package id and signer of the universal APK
+        run: |
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          tools="$( (find "$sdk/build-tools" -name apksigner -type f || true) | sort -V | tail -n 1)"
+          tools="${tools%/apksigner}"
+          if [ -z "$tools" ] || [ ! -x "$tools/aapt2" ]; then
+            echo "::error::apksigner or aapt2 not found under $sdk/build-tools"
+            exit 1
+          fi
+          java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --mode=universal \
+            --bundle=build/app/outputs/bundle/release/app-release.aab \
+            --output="$RUNNER_TEMP/universal.apks"
+          unzip -q -o "$RUNNER_TEMP/universal.apks" universal.apk -d "$RUNNER_TEMP/universal"
+          apk="$RUNNER_TEMP/universal/universal.apk"
+          package="$("$tools/aapt2" dump packagename "$apk")"
+          echo "Package: $package"
+          if [ "$package" != com.linux.simplemathtester ]; then
+            echo "::error::Package id is $package, expected com.linux.simplemathtester"
+            exit 1
+          fi
+          "$tools/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/apk-cert.txt"
+          if grep -qi 'CN=Android Debug' "$RUNNER_TEMP/apk-cert.txt"; then
+            echo "::error::The APK is signed with the Android debug certificate"
             exit 1
           fi
       - name: Upload signed app bundle

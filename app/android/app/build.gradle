@@ -10,6 +10,11 @@ def keystorePropertiesFile = rootProject.file('key.properties')
 def useUploadKey = keystorePropertiesFile.exists()
 if (useUploadKey) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    def missing = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword']
+        .findAll { !keystoreProperties[it] }
+    if (missing) {
+        throw new GradleException("key.properties is missing: ${missing.join(', ')}")
+    }
 }
 println(useUploadKey
     ? 'Release signing: upload key from key.properties'
