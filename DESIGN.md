@@ -69,6 +69,9 @@ A new problem is drawn after a reload.
   correct and daily goal, tomato wrong, orange streak flame, teal XP, lime combo,
   cyan sprint. Accents are fills; text and icons on them use their `on` colour
   (navy in light, near-black in dark). Every pair is listed in `contrastPairs`.
+  The thin daily-goal ring and XP bar use their own `goalRing` and `xpBar` roles:
+  darker green and teal in light so they reach 3:1 on white and cream, the fills
+  themselves in dark; those pairs are listed in `graphicPairs`.
 - Depth: 2px outlines and a hard 5px slab below raised cards and buttons, no blur.
   A pressed button sinks to 1px. Unselected toggles sit flat on a sunken fill.
 - Bundled Roboto 400/500/700 only. Question 64px Bold with tabular figures; titles
@@ -94,12 +97,16 @@ then Delete and a wide Check key, all slab buttons at least 48px. It edits the s
 text field, which keeps focus and accepts digits only. Phone-height pages dock the
 field, a compact feedback strip (which carries Next after a check) and a denser pad
 together below the page, and the question card drops its band, so the question,
-answer, feedback and Next stay on screen; taller pages dock the pad alone below the
-page; pages 700px and wider dock it
-beside the practice column; when docking would squeeze the question (short screens,
+answer, feedback and Next stay on screen; once the card scrolls out of view (for
+example while reading hint steps) a strip pinned over the top of the page repeats
+the question.
+Taller pages dock the pad alone below the page; pages 700px and wider dock it at the
+top of a page-coloured column beside the practice column; when docking would squeeze the question (short screens,
 large text) it sits under the field, above the feedback, so a message never moves a
 key. A keyboard button on the field hides the pad and opens the system keyboard, so
 dictation and IME stay reachable; a hardware keyboard always types and Enter checks.
+On web the switch reconnects the field, because the browser engine sets the editing
+element's `inputmode` only when it creates it.
 There is one Check button, moved into the pad while it shows. `padReplacesKeyboard`
 is the one per-platform switch for platforms where the soft keyboard cannot be kept
 closed. The celebration (`app/lib/celebration.dart`) is flat outlined confetti thrown
@@ -145,7 +152,9 @@ Try another answer.” Avoid shame, excessive punctuation, baby talk and fake re
 ## Implementation constraints
 Flutter stable, Provider retained. New runtime dependencies only where a requirement
 needs them (device storage, sound, opening the Impressum link). Support web/iOS/Android, latest OS versions,
-with native Flutter controls; no browser-only imports in shared UI. Regressions
+with native Flutter controls; no browser-only imports in shared UI or in
+`app/integration_test/` (every native job runs that folder whole); browser-only tests
+live in `app/integration_test_web/` and run only in the Chrome job. Regressions
 precede fixes. Format, analyze, tests, web build and native gates apply. Capture
 actual release-browser screenshots of both themes for empty/populated/feedback states.
 

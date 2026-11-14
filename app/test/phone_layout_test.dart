@@ -126,6 +126,49 @@ void main() {
         expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
       });
 
+      testWidgets('with two and with every hint step open, the question, '
+          'the answer, the feedback and Next stay on screen at $tag', (
+        tester,
+      ) async {
+        final model = await launchAndCheck(tester, '65');
+        // As a player reads the steps: tap Next step, then scroll to it.
+        Future<void> revealStep() async {
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(revealStepButtonKey));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await tester.pumpAndSettle();
+        }
+
+        void expectQuestionShown() {
+          // The card's question, or the dock's copy once the card scrolls
+          // away.
+          final pinned = find.byKey(pinnedQuestionKey);
+          final question = pinned.evaluate().isEmpty
+              ? find.byKey(questionOnProblemsPageKey)
+              : pinned;
+          expect(tester.widget<Text>(question).data, '48 + 27');
+          expectOnScreen(tester, question, size);
+          for (final finder in mustShow(
+            '65',
+            'Not quite. Try another answer.',
+          ).skip(1)) {
+            expectOnScreen(tester, finder, size);
+          }
+        }
+
+        await revealStep();
+        expect(model.revealedSteps, 2);
+        expectQuestionShown();
+        while (model.canRevealStep) {
+          await revealStep();
+        }
+        expect(model.revealedSteps, model.steps.length);
+        expectQuestionShown();
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('after a correct check, the question, the answer, the '
           'feedback and Next are on screen at $tag', (tester) async {
         await launchAndCheck(tester, '75');

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
@@ -25,6 +26,12 @@ class _ProblemPageState extends State<ProblemPage> {
   late final TextEditingController _controller;
   final _focus = FocusNode();
   final _answerKey = GlobalKey();
+  final _scroll = ScrollController();
+
+  /// Whether a phone page with the docked field repeats the question over
+  /// its top, because the question card is scrolled out of view (for
+  /// example while reading hints).
+  bool _questionPinned = false;
 
   /// Keeps the field's state and input connection when it moves between
   /// the page and the phone dock.
@@ -42,6 +49,19 @@ class _ProblemPageState extends State<ProblemPage> {
     _model = context.read<MathTesterModel>();
     _controller = TextEditingController(text: _model.draftInput);
     _model.addListener(_syncDraft);
+    _scroll.addListener(_pinQuestion);
+  }
+
+  /// With the phone dock the answer key marks the question card; once its
+  /// top is scrolled above the page, the page repeats the question.
+  void _pinQuestion() {
+    final card = _answerKey.currentContext?.findRenderObject();
+    var pinned = false;
+    if (card is RenderBox && card.attached && _scroll.hasClients) {
+      final top = RenderAbstractViewport.of(card).getOffsetToReveal(card, 0);
+      pinned = _scroll.offset > top.offset + 1;
+    }
+    if (pinned != _questionPinned) setState(() => _questionPinned = pinned);
   }
 
   void _syncDraft() {
@@ -57,6 +77,7 @@ class _ProblemPageState extends State<ProblemPage> {
     _model.removeListener(_syncDraft);
     _controller.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -64,6 +85,19 @@ class _ProblemPageState extends State<ProblemPage> {
   /// keyboard, or brings the pad back.
   void _toggleKeyboard() {
     setState(() => _padShown = !_padShown);
+    if (kIsWeb) {
+      // The web engine sets the editing element's inputmode only when it
+      // creates the element and never clears "none" on a config update, so
+      // a new connection carries the new keyboard type. It opens after the
+      // rebuild, also when the field had no focus: a config update sent
+      // before the semantics tree hands the engine its element crashes the
+      // engine's semantics text editing.
+      _focus.unfocus();
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focus.requestFocus(),
+      );
+      return;
+    }
     if (!_focus.hasFocus) {
       _focus.requestFocus();
       return;
@@ -192,6 +226,7 @@ class _ProblemPageState extends State<ProblemPage> {
           ),
         );
         final page = SingleChildScrollView(
+          controller: _scroll,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: EdgeInsets.symmetric(
             horizontal: width < 600 ? 16 : 24,
@@ -364,15 +399,21 @@ class _ProblemPageState extends State<ProblemPage> {
         );
         final dock = DecoratedBox(
           decoration: BoxDecoration(
-            color: tokens.surfaceRaised,
+            // Beside the page the column continues the page; below it the
+            // dock is a raised panel that the page scrolls under.
+            color: side ? tokens.surface : tokens.surfaceRaised,
             border: side ? Border(left: edge) : Border(top: edge),
           ),
           child: Padding(
-            // The extra bottom space holds the last row's slab.
-            padding: compact
+            // The extra bottom space holds the last row's slab; beside the
+            // page the pad starts level with the page's top padding.
+            padding: side
+                ? const EdgeInsets.fromLTRB(16, 24, 16, 24 + 5)
+                : compact
                 ? const EdgeInsets.fromLTRB(16, 8, 16, 8 + 5)
                 : const EdgeInsets.fromLTRB(16, 12, 16, 12 + 5),
-            child: Center(
+            child: Align(
+              alignment: side ? Alignment.topCenter : Alignment.center,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth: side ? sideWidth - AppTokens.outlineWidth : 440,
@@ -408,7 +449,33 @@ class _ProblemPageState extends State<ProblemPage> {
           direction: side ? Axis.horizontal : Axis.vertical,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(child: page),
+            Expanded(
+              // A sticky header over the page, so the page neither moves nor
+              // loses its scroll position when it shows.
+              child: LayoutBuilder(
+                builder: (context, area) => Stack(
+                  children: [
+                    Positioned.fill(child: page),
+                    // Only while the page keeps room to read below it.
+                    if (compact &&
+                        _questionPinned &&
+                        area.maxHeight >=
+                            scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48)
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        // Display only: a control scrolled under the strip
+                        // (e.g. the hint button after ensureVisible) must
+                        // still get its taps.
+                        child: IgnorePointer(
+                          child: _PinnedQuestion(problem: model.current),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
             dock,
           ],
         );
@@ -534,6 +601,39 @@ class _QuestionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The question repeated over the top of a phone page whose question card
+/// has scrolled away, so it stays in view with the docked field.
+class _PinnedQuestion extends StatelessWidget {
+  const _PinnedQuestion({required this.problem});
+
+  final Problem problem;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: context.tokens.surfaceRaised,
+      border: Border(
+        bottom: BorderSide(
+          color: context.tokens.outline,
+          width: AppTokens.outlineWidth,
+        ),
+      ),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      // The card keeps the question's semantics.
+      child: ExcludeSemantics(
+        child: Text(
+          problem.question,
+          key: pinnedQuestionKey,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+      ),
+    ),
+  );
 }
 
 /// A colour block across the top of a card, ruled off from its body.

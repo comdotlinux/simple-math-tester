@@ -32,9 +32,10 @@ mise exec -- flutter build web --release
 mise exec -- flutter build apk --release
 ```
 
-The integration command builds and launches the real Linux app, then tests wrong
-and correct answers, optional steps, navigation, and correct/incorrect/skipped
-history. On a headless Linux host, prefix it with `xvfb-run -a`.
+The integration command builds and launches the real Linux app, then runs the
+named journeys of every feature. See `app/integration_test/README.md` for the
+layout, the feature inventory, and the rule that every feature or fix adds a
+journey. On a headless Linux host, prefix it with `xvfb-run -a`.
 
 CI runs web checks first, then Linux integration. Cloudflare deployment, Android
 and iOS builds then run in parallel. Deployment downloads the tested web artifact
