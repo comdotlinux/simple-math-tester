@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/operations.dart' show formatNumber;
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -42,6 +43,29 @@ void sprintJourneys() {
       expect(model.sprintScore, greaterThan(0));
       expect(find.text('Score: ${model.sprintScore}'), findsOneWidget);
       expect(find.text('You got it!'), findsNothing);
+    });
+
+    testWidgets('in a sprint Enter checks and moves on once', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      await tapKey(tester, sprintButtonKey);
+      final model = modelOf(tester);
+      final first = model.current;
+      await typeAnswer(tester, formatNumber(first.result));
+
+      await pressEnter(tester);
+
+      final second = model.current;
+      expect(second, isNot(same(first)));
+      expect(model.history, hasLength(1));
+      expect(model.draftInput, isEmpty);
+      expect(await answerFocused(tester), isTrue);
+
+      // A second Enter on the empty field only asks for a number.
+      await pressEnter(tester);
+
+      expect(model.current, same(second));
+      expect(model.history, hasLength(1));
+      expect(find.text('Enter a number first.'), findsOneWidget);
     });
 
     testWidgets('leaving for My answers ends the round, shows the result and '

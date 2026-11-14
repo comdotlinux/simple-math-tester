@@ -323,6 +323,9 @@ void main() {
     // Schema 2 means what it says, and saving writes schema 2.
     expect(Progress.decode(Progress(tier: Tier.hard).encode()).tier, Tier.hard);
     expect(Progress.decode(old.encode()).tier, Tier.harder);
+    // Every save the app wrote carries schemaVersion, so a document without
+    // one counts as the current schema: "hard" there is the new Hard.
+    expect(Progress.decode('{"tier":"hard"}').tier, Tier.hard);
   });
 
   test('a newer schemaVersion is not a decode failure', () {
