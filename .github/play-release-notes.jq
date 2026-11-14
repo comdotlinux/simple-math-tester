@@ -5,7 +5,7 @@ def plain:
   gsub("\r"; "")
   | gsub("<[^>]*>"; "")                                  # HTML tags and comments
   | gsub("\\[(?<text>[^\\]]*)\\]\\([^)]*\\)"; "\(.text)")  # [text](url) -> text
-  | gsub(" by @[A-Za-z0-9-]+ in https?://[^ \\n]+"; "")     # "by @user in <PR>" from generated notes
+  | gsub(" by @[A-Za-z0-9-]+(\\[bot\\])? in https?://[^ \\n]+"; "")     # "by @user in <PR>" from generated notes
   | gsub("https?://[^ \\n]+"; "")                           # bare links
   | gsub("\\*\\*|__|~~|`"; "");                          # bold, strike-through, code
 def tidy:

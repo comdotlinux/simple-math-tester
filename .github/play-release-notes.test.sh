@@ -20,6 +20,10 @@ check 'markdown and generated notes become plain text' \
   $'## What\'s Changed\r\n* **Bigger** confetti by @someone in https://github.com/o/r/pull/31\r\n* See [the docs](https://x.y/z) and `code`\r\n\r\n<!-- note -->\r\n**Full Changelog**: https://github.com/o/r/compare/v1.0.0...v1.0.1' \
   $'What\'s Changed\n- Bigger confetti\n- See the docs and code'
 
+check 'bot authors are removed too' \
+  $'* Bump jq by @dependabot[bot] in https://github.com/o/r/pull/40' \
+  '- Bump jq'
+
 check 'empty input gives empty notes' '' ''
 
 long="$(printf 'x%.0s' {1..300})"
