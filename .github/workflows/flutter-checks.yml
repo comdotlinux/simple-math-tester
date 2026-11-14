@@ -49,7 +49,7 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
-      - run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver
+      - run: dart format --output=none --set-exit-if-changed lib test integration_test integration_test_web test_driver
       - run: flutter analyze
       - run: flutter test
       - run: flutter build web --release --no-web-resources-cdn --web-content-hash
@@ -345,6 +345,17 @@ jobs:
             -d web-server --browser-name=chrome --headless --driver-port=4444 \
             --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND" \
             || flutter drive --driver=test_driver/integration_test.dart --target=integration_test/app_test.dart \
+              -d web-server --browser-name=chrome --headless --driver-port=4444 \
+              --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
+      # Criterion 39: the pad's text field asks for no soft keyboard. The file imports
+      # web-only libraries, so it sits in integration_test_web/, outside the folder the
+      # Linux, Android and iOS jobs run with `flutter test integration_test`.
+      - name: Check the pad keeps the soft keyboard closed in Chrome (one retry)
+        run: |
+          flutter drive --driver=test_driver/integration_test.dart --target=integration_test_web/web_keyboard_test.dart \
+            -d web-server --browser-name=chrome --headless --driver-port=4444 \
+            --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND" \
+            || flutter drive --driver=test_driver/integration_test.dart --target=integration_test_web/web_keyboard_test.dart \
               -d web-server --browser-name=chrome --headless --driver-port=4444 \
               --release --no-web-resources-cdn --web-browser-flag="--host-resolver-rules=MAP *.* ~NOTFOUND"
 
