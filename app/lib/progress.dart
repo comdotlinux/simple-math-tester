@@ -216,14 +216,20 @@ class Progress {
     // A tier name this build does not know asks the player again.
     final tier = Tier.values.asNameMap()[_field<String>(json, 'tier')];
 
+    // Values outside what the rules can produce are clamped, as above.
+    int run(String key) => (_field<int>(json, key) ?? 0).clamp(0, maxStoredRun);
+    final streak = run('streak');
     final game = GameState(
-      xp: _field<int>(json, 'xp') ?? 0,
-      combo: _field<int>(json, 'combo') ?? 0,
-      dailyCount: _field<int>(json, 'dailyCount') ?? 0,
+      xp: (_field<int>(json, 'xp') ?? 0).clamp(0, maxStoredXp),
+      combo: run('combo'),
+      dailyCount: (_field<int>(json, 'dailyCount') ?? 0).clamp(
+        0,
+        maxStoredDailyCount,
+      ),
       lastActiveDate: _date(json, 'lastActiveDate'),
       lastGoalDate: _date(json, 'lastGoalDate'),
-      streak: _field<int>(json, 'streak') ?? 0,
-      bestStreak: _field<int>(json, 'bestStreak') ?? 0,
+      streak: streak,
+      bestStreak: max(run('bestStreak'), streak),
     );
 
     const known = {
