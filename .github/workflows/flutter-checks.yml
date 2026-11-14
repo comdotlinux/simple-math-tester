@@ -218,7 +218,7 @@ jobs:
     needs: linux-integration
     if: github.event_name != 'pull_request'
     runs-on: macos-26
-    timeout-minutes: 45
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: app
@@ -253,17 +253,18 @@ jobs:
           echo "udid=$udid" >> "$GITHUB_OUTPUT"
       # A run on main stalled here for 45 minutes: the Xcode build finished and the
       # test never started. Each attempt therefore has its own time limit, and the
-      # second attempt starts from a freshly booted simulator.
+      # second attempt starts from a freshly booted simulator. The suite itself takes
+      # 12 to 15 minutes on the simulator, so each attempt gets 25.
       - name: Run integration tests on iOS simulator (attempt 1)
         id: simulator_attempt_1
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: flutter test integration_test -d "$SIMULATOR_UDID"
       - name: Run integration tests on iOS simulator (attempt 2)
         if: steps.simulator_attempt_1.outcome != 'success'
-        timeout-minutes: 15
+        timeout-minutes: 25
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
         run: |
