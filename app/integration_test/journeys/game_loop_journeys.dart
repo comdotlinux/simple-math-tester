@@ -73,7 +73,12 @@ void gameLoopJourneys() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(model.celebrations, 1);
-      expect(_confetti, findsOneWidget);
+      // With reduced motion (CI's Android emulators set the animation scales
+      // to 0) the celebration is counted but no confetti is drawn.
+      final reduceMotion = MediaQuery.disableAnimationsOf(
+        tester.element(find.byKey(checkAnswerButtonKey)),
+      );
+      expect(_confetti, reduceMotion ? findsNothing : findsOneWidget);
       await tester.pumpAndSettle();
       expect(_confetti, findsNothing);
       expect(find.text('Level 2 · 105 XP'), findsOneWidget);
