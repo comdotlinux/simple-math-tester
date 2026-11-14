@@ -6,6 +6,9 @@ import 'package:material_ui/material_ui.dart' show ThemeMode;
 import 'operations.dart';
 import 'rules.dart';
 
+/// How much room the pages give each element; comfortable is the default.
+enum LayoutMode { comfortable, compact }
+
 /// The stored document was written by a newer build; it must not be replaced.
 class NewerProgressException implements Exception {
   const NewerProgressException(this.schemaVersion);
@@ -37,6 +40,7 @@ class Progress {
     bool sound = true,
     bool haptics = true,
     ThemeMode themeMode = ThemeMode.system,
+    LayoutMode layoutMode = LayoutMode.comfortable,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
@@ -47,6 +51,7 @@ class Progress {
          sound,
          haptics,
          themeMode,
+         layoutMode,
          const {},
          const {},
        );
@@ -61,6 +66,7 @@ class Progress {
     this.sound,
     this.haptics,
     this.themeMode,
+    this.layoutMode,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -104,6 +110,9 @@ class Progress {
   /// Light, dark, or following the system (the default).
   final ThemeMode themeMode;
 
+  /// Comfortable (the default) or compact spacing.
+  final LayoutMode layoutMode;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -128,6 +137,9 @@ class Progress {
 
   Progress withThemeMode(ThemeMode themeMode) => _copy(themeMode: themeMode);
 
+  Progress withLayoutMode(LayoutMode layoutMode) =>
+      _copy(layoutMode: layoutMode);
+
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
@@ -145,6 +157,7 @@ class Progress {
     bool? sound,
     bool? haptics,
     ThemeMode? themeMode,
+    LayoutMode? layoutMode,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -155,6 +168,7 @@ class Progress {
     sound ?? this.sound,
     haptics ?? this.haptics,
     themeMode ?? this.themeMode,
+    layoutMode ?? this.layoutMode,
     _unknownOperations,
     extra,
   );
@@ -198,6 +212,7 @@ class Progress {
     'sound': sound,
     'haptics': haptics,
     'themeMode': themeMode.name,
+    'layoutMode': layoutMode.name,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -288,6 +303,7 @@ class Progress {
       'sound',
       'haptics',
       'themeMode',
+      'layoutMode',
     };
     return Progress._(
       selected,
@@ -301,6 +317,8 @@ class Progress {
       // A missing or unknown name follows the system.
       ThemeMode.values.asNameMap()[_field<String>(json, 'themeMode')] ??
           ThemeMode.system,
+      LayoutMode.values.asNameMap()[_field<String>(json, 'layoutMode')] ??
+          LayoutMode.comfortable,
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)
