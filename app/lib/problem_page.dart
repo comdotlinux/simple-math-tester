@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
-import 'solution_steps.dart';
 
 class ProblemPage extends StatefulWidget {
   const ProblemPage({super.key});
@@ -99,7 +98,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     onSubmitted: (_) => model.submitAnswer(),
                   ),
                   const SizedBox(height: 12),
-                  _AnswerFeedback(key: ValueKey(model.current), model: model),
+                  _AnswerFeedback(model: model),
                   const SizedBox(height: 12),
                   Wrap(
                     alignment: WrapAlignment.center,
@@ -120,6 +119,8 @@ class _ProblemPageState extends State<ProblemPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  _Hints(model: model),
                 ],
               ),
             ),
@@ -130,27 +131,13 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 }
 
-class _AnswerFeedback extends StatefulWidget {
-  const _AnswerFeedback({super.key, required this.model});
+class _AnswerFeedback extends StatelessWidget {
+  const _AnswerFeedback({required this.model});
 
   final MathTesterModel model;
 
   @override
-  State<_AnswerFeedback> createState() => _AnswerFeedbackState();
-}
-
-class _AnswerFeedbackState extends State<_AnswerFeedback> {
-  bool _showSteps = false;
-
-  @override
-  void didUpdateWidget(covariant _AnswerFeedback oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.model.answerCorrect != true) _showSteps = false;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final model = widget.model;
     final message =
         model.validationMessage ??
         switch (model.answerCorrect) {
@@ -175,7 +162,6 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
         ? Icons.check_circle
         : Icons.lightbulb_outline;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final showSteps = model.answerCorrect == false || (correct && _showSteps);
 
     return AnimatedSwitcher(
       duration: reduceMotion
@@ -201,43 +187,19 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
                   color: background,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(icon, color: foreground),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            message,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: foreground,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (correct)
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          onPressed: () =>
-                              setState(() => _showSteps = !_showSteps),
-                          icon: Icon(
-                            _showSteps
-                                ? Icons.expand_less
-                                : Icons.menu_book_outlined,
-                          ),
-                          label: Text(_showSteps ? 'Hide steps' : 'Show steps'),
+                    Icon(icon, color: foreground),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        message,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: foreground,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                    if (showSteps) ...[
-                      const SizedBox(height: 16),
-                      _SolutionSteps(model: model),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -246,37 +208,57 @@ class _AnswerFeedbackState extends State<_AnswerFeedback> {
   }
 }
 
-class _SolutionSteps extends StatelessWidget {
-  const _SolutionSteps({required this.model});
+class _Hints extends StatelessWidget {
+  const _Hints({required this.model});
 
   final MathTesterModel model;
 
   @override
   Widget build(BuildContext context) {
-    final steps = solutionSteps(model.current);
+    final revealed = model.revealedSteps;
     final textStyle = Theme.of(context).textTheme.bodyMedium;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Let’s work it out',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-        const SizedBox(height: 12),
-        for (var index = 0; index < steps.length; index++) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 28,
-                child: Text('${index + 1}.', style: textStyle),
+    final reveal = model.canRevealStep
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: revealed == 0 ? hintButtonKey : nextStepButtonKey,
+              onPressed: model.revealStep,
+              icon: Icon(
+                revealed == 0 ? Icons.lightbulb_outline : Icons.navigate_next,
               ),
-              Expanded(child: Text(steps[index], style: textStyle)),
+              label: Text(revealed == 0 ? 'Hint' : 'Next step'),
+            ),
+          )
+        : null;
+    if (revealed == 0) return reveal ?? const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Let’s work it out',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            for (var index = 0; index < revealed; index++) ...[
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    child: Text('${index + 1}.', style: textStyle),
+                  ),
+                  Expanded(child: Text(model.steps[index], style: textStyle)),
+                ],
+              ),
             ],
-          ),
-          if (index < steps.length - 1) const SizedBox(height: 12),
-        ],
-      ],
+            if (reveal != null) ...[const SizedBox(height: 8), reveal],
+          ],
+        ),
+      ),
     );
   }
 }

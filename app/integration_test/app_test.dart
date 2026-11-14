@@ -46,11 +46,22 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    Future<void> tapKey(Key key) async {
+      await tester.ensureVisible(find.byKey(key));
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    int visibleSteps() => model.steps
+        .where((step) => find.text(step).evaluate().isNotEmpty)
+        .length;
+
     final firstQuestion = currentQuestion();
     final correctAnswer = model.current.result;
     await submit(correctAnswer + 1);
     expect(find.text('Not quite. Try another answer.'), findsOneWidget);
     expect(find.text('Let’s work it out'), findsOneWidget);
+    expect(visibleSteps(), 1);
     // The first valid check is recorded at once, before "Next question".
     expect(model.history, hasLength(1));
     final incorrectInput = model.history.single.firstAnswer;
@@ -59,12 +70,14 @@ void main() {
     expect(model.draftInput, '$correctAnswer');
     expect(model.answerCorrect, isTrue);
     expect(find.text('You got it!'), findsOneWidget);
-    expect(find.text('Let’s work it out'), findsNothing);
+    expect(visibleSteps(), 1);
 
-    await tester.ensureVisible(find.text('Show steps'));
-    await tester.tap(find.text('Show steps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsOneWidget);
+    // After a valid check every step, the answer included, can be opened.
+    while (find.byKey(nextStepButtonKey).evaluate().isNotEmpty) {
+      await tapKey(nextStepButtonKey);
+    }
+    expect(visibleSteps(), model.steps.length);
+    expect(find.text(model.steps.last), findsOneWidget);
 
     await openHistory();
     expect(find.text('1 question completed.'), findsOneWidget);
@@ -77,7 +90,7 @@ void main() {
     expect(currentQuestion(), firstQuestion);
     await nextQuestion();
     expect(find.text('Let’s work it out'), findsNothing);
-    expect(find.text('Show steps'), findsNothing);
+    expect(find.byKey(hintButtonKey), findsOneWidget);
     expect(model.history, hasLength(1));
 
     final secondQuestion = currentQuestion();
@@ -85,6 +98,7 @@ void main() {
     await submit(secondAnswer);
     expect(model.answerCorrect, isTrue);
     final correctInput = model.history.last.firstAnswer;
+
     await nextQuestion();
     await openHistory();
     expect(find.text('2 questions completed.'), findsOneWidget);
@@ -95,7 +109,12 @@ void main() {
 
     await returnToPractice();
     final thirdQuestion = currentQuestion();
+    await tapKey(hintButtonKey);
+    await tapKey(nextStepButtonKey);
+    expect(visibleSteps(), 2);
+    expect(find.byKey(nextStepButtonKey), findsNothing);
     await nextQuestion();
+    expect(model.history.last.hintsUsed, 2);
     await openHistory();
     expect(find.text('3 questions completed.'), findsOneWidget);
     expect(find.text('Skipped'), findsOneWidget);

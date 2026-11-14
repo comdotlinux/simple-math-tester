@@ -144,43 +144,87 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Wrong answers show steps and correct answers offer them', (
-    tester,
-  ) async {
-    await launch(
+  group('hints', () {
+    const steps = [
+      'Break 12 into 10 + 2 and 3 into 3.',
+      'Add matching places: 10 + 0 = 10; 2 + 3 = 5.',
+      'Combine the parts: 10 + 5 = 15.',
+    ];
+
+    int visibleSteps() =>
+        steps.where((step) => find.text(step).evaluate().isNotEmpty).length;
+
+    Future<void> tapKey(WidgetTester tester, Key key) async {
+      await tester.ensureVisible(find.byKey(key));
+      await tester.tap(find.byKey(key));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> check(WidgetTester tester, String answer) async {
+      await tester.ensureVisible(find.byType(TextField));
+      await tester.enterText(find.byType(TextField), answer);
+      await tapKey(tester, checkAnswerButtonKey);
+    }
+
+    Future<MathTesterModel> launchNarrow(WidgetTester tester) => launch(
       tester,
       size: const Size(320, 500),
       scale: 2,
       keyboardInset: 180,
     );
-    await tester.ensureVisible(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), '14');
-    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
-    await tester.tap(find.byKey(checkAnswerButtonKey));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsOneWidget);
-    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
-    expect(tester.takeException(), isNull);
 
-    await tester.ensureVisible(find.byType(TextField));
-    await tester.enterText(find.byType(TextField), '15');
-    await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
-    await tester.tap(find.byKey(checkAnswerButtonKey));
-    await tester.pumpAndSettle();
-    expect(find.text('You got it!'), findsOneWidget);
-    expect(find.text('Let’s work it out'), findsNothing);
+    testWidgets('criterion 7: steps reveal one at a time', (tester) async {
+      final model = await launchNarrow(tester);
+      expect(model.steps, steps);
+      expect(visibleSteps(), 0);
+      expect(find.text('Let’s work it out'), findsNothing);
+      expect(find.byKey(nextStepButtonKey), findsNothing);
 
-    await tester.ensureVisible(find.text('Show steps'));
-    await tester.tap(find.text('Show steps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsOneWidget);
-    expect(find.textContaining('Combine the parts: 10 + 5 = 15.'), findsOne);
+      await tapKey(tester, hintButtonKey);
+      expect(visibleSteps(), 1);
+      expect(find.text(steps[0]), findsOneWidget);
+      expect(find.text('Let’s work it out'), findsOneWidget);
+      expect(find.byKey(hintButtonKey), findsNothing);
 
-    await tester.ensureVisible(find.text('Hide steps'));
-    await tester.tap(find.text('Hide steps'));
-    await tester.pumpAndSettle();
-    expect(find.text('Let’s work it out'), findsNothing);
-    expect(tester.takeException(), isNull);
+      await tapKey(tester, nextStepButtonKey);
+      expect(visibleSteps(), 2);
+      // The final step states the answer and needs a valid check first.
+      expect(find.byKey(nextStepButtonKey), findsNothing);
+      expect(find.text(steps.last), findsNothing);
+
+      await check(tester, '15');
+      expect(find.text('You got it!'), findsOneWidget);
+      expect(visibleSteps(), 2);
+      await tapKey(tester, nextStepButtonKey);
+      expect(visibleSteps(), 3);
+      expect(find.text(steps.last), findsOneWidget);
+      expect(find.byKey(nextStepButtonKey), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('criterion 8: a wrong first check without hints shows 1 step', (
+      tester,
+    ) async {
+      await launchNarrow(tester);
+      await check(tester, '14');
+      expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      expect(visibleSteps(), 1);
+      expect(find.text(steps[0]), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('criterion 8: a wrong first check keeps 2 opened steps', (
+      tester,
+    ) async {
+      await launchNarrow(tester);
+      await tapKey(tester, hintButtonKey);
+      await tapKey(tester, nextStepButtonKey);
+      await check(tester, '14');
+      expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      expect(visibleSteps(), 2);
+      expect(find.text(steps.last), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets('Reduced motion suppresses feedback animation', (tester) async {
@@ -201,7 +245,12 @@ void main() {
     for (final finder in [
       find.byKey(checkAnswerButtonKey),
       find.byKey(nextQuestionButtonKey),
+      find.byKey(hintButtonKey),
       find.byType(TextField),
+      ...find
+          .byType(FilterChip)
+          .evaluate()
+          .map((chip) => find.byWidget(chip.widget)),
     ]) {
       final size = tester.getSize(finder);
       expect(size.width, greaterThanOrEqualTo(48));
