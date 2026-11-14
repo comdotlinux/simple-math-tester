@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
@@ -452,5 +453,118 @@ void main() {
         );
       },
     );
+  });
+
+  group('game loop', () {
+    MathTesterModel gameModel({
+      required DateTime Function() clock,
+      GameState game = const GameState(),
+      ProgressStore? store,
+    }) {
+      final model = MathTesterModel(
+        initialProblem: const Problem(2, 3, OperationType.plus, 5, level: 2),
+        nextProblem: () => const Problem(6, 3, OperationType.minus, 3),
+        clock: clock,
+        store: store,
+        progress: Progress(tier: Tier.easy, game: game),
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    void check(MathTesterModel model, String input) {
+      model.setDraftInput(input);
+      model.submitAnswer();
+    }
+
+    test('criterion 20: XP and combo at the first valid check only', () {
+      final model = gameModel(
+        clock: () => start,
+        game: const GameState(combo: 3, xp: 40),
+      );
+      check(model, 'abc');
+      expect([model.game.xp, model.game.combo], [40, 3]);
+      check(model, '5');
+      // Level 2, combo before 3: 2 × 13.
+      expect(
+        [model.game.xp, model.game.combo, model.game.dailyCount],
+        [66, 4, 1],
+      );
+      check(model, '4');
+      check(model, '5');
+      expect([model.game.xp, model.game.combo], [66, 4], reason: 'retry');
+      model.generateNextProblem();
+      expect([model.game.xp, model.game.combo], [66, 4], reason: 'Next');
+
+      // 6 − 3: a hint opened before the check halves the award.
+      model.revealStep();
+      check(model, '3');
+      expect([model.game.xp, model.game.combo], [66 + 7, 5]);
+      model.generateNextProblem();
+      check(model, '4');
+      expect([model.game.xp, model.game.combo], [73, 0], reason: 'wrong');
+    });
+
+    test('criterion 20: a skip sets the combo to 0 and awards nothing', () {
+      final model = gameModel(
+        clock: () => start,
+        game: const GameState(combo: 6, xp: 90),
+      );
+      model.generateNextProblem();
+      expect([model.game.xp, model.game.combo], [90, 0]);
+    });
+
+    test('the day change runs on load and on resume', () {
+      var now = DateTime(2026, 11, 14, 23, 50);
+      final model = gameModel(
+        clock: () => now,
+        game: const GameState(dailyCount: 8, lastActiveDate: '2026-11-13'),
+      );
+      expect(
+        [model.game.dailyCount, model.game.lastActiveDate],
+        [0, '2026-11-14'],
+      );
+      check(model, '5');
+      expect(model.shownDailyCount, 1);
+
+      now = DateTime(2026, 11, 15, 0, 10);
+      expect(model.shownDailyCount, 0, reason: 'shown from the clock');
+      expect(model.game.dailyCount, 1);
+      var notified = false;
+      model.addListener(() => notified = true);
+      model.handleLifecycle(AppLifecycleState.resumed);
+      expect(notified, isTrue);
+      expect(
+        [model.game.dailyCount, model.game.lastActiveDate],
+        [0, '2026-11-15'],
+      );
+    });
+
+    test('ten correct answers on one date reach the goal and save', () async {
+      final store = MemoryProgressStore();
+      final model = gameModel(
+        clock: () => start,
+        store: store,
+        game: const GameState(
+          streak: 2,
+          bestStreak: 2,
+          lastGoalDate: '2026-11-13',
+        ),
+      );
+      for (var i = 0; i < 10; i++) {
+        check(model, '${model.current.result}');
+        model.generateNextProblem();
+      }
+      expect(
+        [model.game.streak, model.shownStreak, model.game.bestStreak],
+        [3, 3, 3],
+      );
+      await pumpEventQueue();
+      final saved = Progress.decode((await store.read(progressKey))!).game;
+      expect(
+        [saved.xp, saved.streak, saved.dailyCount, saved.lastGoalDate],
+        [model.game.xp, 3, 10, '2026-11-14'],
+      );
+    });
   });
 }
