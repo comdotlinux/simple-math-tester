@@ -28,6 +28,7 @@ Future<void> bootstrap(ProgressStore store) async {
             store: store,
             progress: loaded.progress,
             canSave: loaded.canSave,
+            haptic: playHaptic,
           ),
         ),
       ],

@@ -3,12 +3,24 @@ import 'dart:math';
 import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'operations.dart';
 import 'progress.dart';
 import 'progress_store.dart';
 import 'rules.dart';
 import 'solution_steps.dart';
+
+/// What a vibration marks.
+enum Haptic { key, correct, wrong, celebrate }
+
+/// Light on a key press; stronger for a checked answer and a milestone.
+void playHaptic(Haptic haptic) => unawaited(switch (haptic) {
+  Haptic.key => HapticFeedback.lightImpact(),
+  Haptic.correct => HapticFeedback.mediumImpact(),
+  Haptic.wrong => HapticFeedback.heavyImpact(),
+  Haptic.celebrate => HapticFeedback.vibrate(),
+});
 
 class MathTesterModel extends ChangeNotifier {
   MathTesterModel({
@@ -20,7 +32,10 @@ class MathTesterModel extends ChangeNotifier {
     Progress? progress,
     this._canSave = true,
     Stream<void> Function()? ticker,
+    void Function(Haptic)? haptic,
   }) : _ticker = ticker ?? _everySecond,
+       // Silent unless given, so a model built without a binding works.
+       _haptic = haptic ?? _silent,
        _random = random ?? Random(),
        _clock = clock ?? DateTime.now,
        _store = store ?? MemoryProgressStore(),
@@ -29,11 +44,14 @@ class MathTesterModel extends ChangeNotifier {
     _show(initialProblem ?? _draw());
   }
 
+  static void _silent(Haptic _) {}
+
   static Stream<void> _everySecond() =>
       Stream.periodic(const Duration(seconds: 1));
 
   /// Wakes the sprint countdown; the time itself is read from the clock.
   final Stream<void> Function() _ticker;
+  final void Function(Haptic) _haptic;
   final Random _random;
   final DateTime Function() _clock;
   final ProgressStore _store;
@@ -58,6 +76,8 @@ class MathTesterModel extends ChangeNotifier {
   List<int> _sprintLevels = const [];
   StreamSubscription<void>? _ticks;
   ({int score, int best, List<int> levels})? _lastSprint;
+  ({int count, bool correct, bool first})? _lastCheck;
+  int _celebrations = 0;
 
   /// Whole seconds left in the sprint; its own notifier, so a tick rebuilds
   /// only the countdown.
@@ -101,6 +121,35 @@ class MathTesterModel extends ChangeNotifier {
   /// by the next practice answer or round.
   ({int score, int best, List<int> levels})? get lastSprint => _lastSprint;
 
+  bool get sound => _progress.sound;
+  bool get haptics => _progress.haptics;
+
+  /// The latest valid check; [count] tells two equal results apart, so each
+  /// one plays its feedback motion.
+  ({int count, bool correct, bool first})? get lastCheck => _lastCheck;
+
+  /// How many level-ups and reached daily goals this session has seen.
+  int get celebrations => _celebrations;
+
+  void setSound(bool on) {
+    _progress = _progress.withSwitches(sound: on);
+    _save();
+    notifyListeners();
+  }
+
+  void setHaptics(bool on) {
+    _progress = _progress.withSwitches(haptics: on);
+    _save();
+    notifyListeners();
+  }
+
+  /// A number pad key press.
+  void keyPressed() => _buzz(Haptic.key);
+
+  void _buzz(Haptic haptic) {
+    if (haptics) _haptic(haptic);
+  }
+
   void setDraftInput(String value) {
     _draftInput = value;
     _validationMessage = null;
@@ -126,7 +175,20 @@ class MathTesterModel extends ChangeNotifier {
     }
 
     final firstCheck = !_checked;
-    _record(input);
+    final correct = input == _current.result;
+    final celebrated = _record(input);
+    _lastCheck = (
+      count: (_lastCheck?.count ?? 0) + 1,
+      correct: correct,
+      first: firstCheck,
+    );
+    _buzz(
+      celebrated
+          ? Haptic.celebrate
+          : correct
+          ? Haptic.correct
+          : Haptic.wrong,
+    );
     if (inSprint) {
       _sprintLevels[_current.level - 1]++;
       _showNext();
@@ -134,7 +196,7 @@ class MathTesterModel extends ChangeNotifier {
       return true;
     }
     _validationMessage = null;
-    _answerCorrect = input == _current.result;
+    _answerCorrect = correct;
     if (firstCheck && !_answerCorrect!) {
       _revealed = _nextRevealed(HintEvent.wrongFirstCheck);
     }
@@ -302,7 +364,9 @@ class MathTesterModel extends ChangeNotifier {
     checked: _checked,
   );
 
-  void _record(num? answer) {
+  /// Returns whether the attempt raised the player level or reached the
+  /// daily goal.
+  bool _record(num? answer) {
     final now = _clock();
     final attempt = historyEntry(
       problem: _current,
@@ -314,14 +378,21 @@ class MathTesterModel extends ChangeNotifier {
       sprint: inSprint,
     );
     _checked = true;
-    if (attempt == null) return;
+    if (attempt == null) return false;
     if (!inSprint) _lastSprint = null;
     final kind = attempt.problem.kind;
+    final before = game;
     _progress = _progress
         .withAttempt(attempt)
         .withDifficulty(kind, difficultyAfter(difficulty[kind]!, attempt))
         .withGame(gameAfter(game, attempt, now));
     _save();
+    // XP grows only with the answer that also counts toward the goal.
+    final milestone =
+        playerLevel(game.xp) > playerLevel(before.xp) ||
+        (game.xp > before.xp && game.dailyCount == dailyGoal);
+    if (milestone) _celebrations++;
+    return milestone;
   }
 
   @override
