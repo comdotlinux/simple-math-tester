@@ -6,13 +6,62 @@ import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart' as app;
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
+import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/progress_store.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('real app solution and history journeys', (tester) async {
-    app.main();
+  // Each test writes its own starting document through the real plugin, so
+  // test order and data left by earlier runs do not matter.
+  Future<void> startWith(WidgetTester tester, Progress progress) async {
+    await SharedPreferencesStore().write(progressKey, progress.encode());
+    await app.main();
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('restart shows the saved history and selection', (tester) async {
+    await startWith(
+      tester,
+      Progress(
+        selectedOperations: {OperationType.multiply},
+        history: [
+          for (final lhs in [3, 4, 5])
+            Attempt(
+              Problem(lhs, 6, OperationType.multiply, lhs * 6),
+              firstAnswer: lhs * 6,
+              elapsedMs: 1500,
+              answeredAt: DateTime(2026, 11, 13, 18),
+            ),
+        ],
+      ),
+    );
+    final model = tester
+        .element(find.byKey(homePageKey))
+        .read<MathTesterModel>();
+    expect(model.canSave, isTrue);
+    expect(model.selectedOperations, {OperationType.multiply});
+    expect(model.history, hasLength(3));
+
+    // The next problem follows the saved selection.
+    await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
+    await tester.tap(find.byKey(nextQuestionButtonKey));
+    await tester.pumpAndSettle();
+    expect(model.current.kind, OperationType.multiply);
+
+    await tester.ensureVisible(find.text('My answers').last);
+    await tester.tap(find.text('My answers').last);
+    await tester.pumpAndSettle();
+    expect(find.text('4 questions completed.'), findsOneWidget);
+    expect(find.text('3 × 6'), findsWidgets);
+
+    // The skip is saved through the plugin.
+    final saved = await SharedPreferencesStore().read(progressKey);
+    expect(Progress.decode(saved!).history, hasLength(4));
+  });
+
+  testWidgets('real app solution and history journeys', (tester) async {
+    await startWith(tester, Progress());
 
     final context = tester.element(find.byKey(homePageKey));
     final model = context.read<MathTesterModel>();
