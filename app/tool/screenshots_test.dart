@@ -15,11 +15,17 @@ import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
 
-/// Writes PNGs of every screen in both themes for review. Runs only with
-/// SCREENSHOT_DIR set: `SCREENSHOT_DIR=/some/dir flutter test
-/// test/screenshots_test.dart`.
+/// Writes PNGs of every screen in both themes for review. A tool, not part of
+/// the test suite (`flutter test` only runs `test/`); run it by hand:
+/// `SCREENSHOT_DIR=/some/dir flutter test tool/screenshots_test.dart`.
 void main() {
   final dir = Platform.environment['SCREENSHOT_DIR'];
+  if (dir == null) {
+    throw StateError(
+      'Set SCREENSHOT_DIR: SCREENSHOT_DIR=/some/dir '
+      'flutter test tool/screenshots_test.dart',
+    );
+  }
   final boundary = GlobalKey();
   final now = DateTime(2026, 11, 14, 9);
   const game = GameState(
@@ -35,7 +41,6 @@ void main() {
 
   // Without the real fonts the test engine draws every glyph as a box.
   setUpAll(() async {
-    if (dir == null) return;
     // The release build has no debug banner.
     WidgetsApp.debugAllowBannerOverride = false;
     final manifest =
@@ -120,7 +125,7 @@ void main() {
     ]) {
       final tag =
           '${brightness.name}-${size.width.toInt()}x${size.height.toInt()}';
-      testWidgets('screenshots $tag', skip: dir == null, (tester) async {
+      testWidgets('screenshots $tag', (tester) async {
         final practice = await launch(tester, size, brightness);
         // Shows a switched-off operation next to the switched-on ones.
         practice.toggleOperation(OperationType.divide);

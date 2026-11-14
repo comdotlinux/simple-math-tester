@@ -85,18 +85,21 @@ class _ProblemPageState extends State<ProblemPage> {
   /// keyboard, or brings the pad back.
   void _toggleKeyboard() {
     setState(() => _padShown = !_padShown);
-    if (!_focus.hasFocus) {
-      _focus.requestFocus();
-      return;
-    }
     if (kIsWeb) {
       // The web engine sets the editing element's inputmode only when it
       // creates the element and never clears "none" on a config update, so
-      // a new connection carries the new keyboard type.
+      // a new connection carries the new keyboard type. It opens after the
+      // rebuild, also when the field had no focus: a config update sent
+      // before the semantics tree hands the engine its element crashes the
+      // engine's semantics text editing.
       _focus.unfocus();
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _focus.requestFocus(),
       );
+      return;
+    }
+    if (!_focus.hasFocus) {
+      _focus.requestFocus();
       return;
     }
     // The rebuild sends the new keyboard type; the open field then needs an
