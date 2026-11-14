@@ -19,11 +19,12 @@ file, and updates the inventory below. A pull request without one is not done.
   and `startHarness`.
 
 Every test starts from its own saved document (`startWith` writes it through
-the real `SharedPreferencesStore`, then runs `main()`), so tests never depend
+the real `SharedPreferencesStore`, then starts the app as `main()` does, with
+a `SilentSoundPlayer`), so tests never depend
 on each other or on their order. `startHarness` runs the real `MathTesterApp`
 widget on a model the test builds. Use it only where the real entry point
-cannot get there in reasonable time: a test clock for the sprint timer and a
-recorder for vibrations.
+cannot get there in reasonable time: a test clock for the sprint timer and
+recorders for vibrations and sounds.
 
 ## Running
 
@@ -86,7 +87,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 | Sprint | `sprint_journeys.dart` | starting a sprint shows the countdown and hides practice extras; a sprint answer moves straight on and adds to the score; leaving for My answers ends the round, shows the result and saves the best; a lower score keeps the saved personal best; when the time runs out the round ends with its result |
 | Settings sheet (gear) | `settings_journeys.dart` | the gear opens the settings sheet and a tap outside closes it (`closeSettings` taps the barrier above the sheet, or uses system back when the sheet fills the screen); choosing another tier resets levels and draws a new question; tapping the current tier only closes the sheet |
 | Vibration switch | `settings_journeys.dart` | the Vibration switch is saved; with Vibration off the pad keys stop buzzing |
-| Sound switch | `settings_journeys.dart` | the Sound switch stays hidden until the app plays sound (phase 7 adds its journeys) |
+| Sound switch | `sound_journeys.dart` | the Sound switch shows in settings, on by default; turning Sound off is saved and survives a restart; with Sound off no sound plays; with it on, one per checked answer (`startHarness(sounds:)` takes a counting player; every other journey starts with `SilentSoundPlayer`) |
 | Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting (the app has no in-app theme choice yet) |
 | Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; the operation selection survives a restart |
 | Unreadable saved data | `persistence_journeys.dart` | unreadable saved data is backed up and the app starts fresh |

@@ -856,10 +856,6 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
-/// Whether the app plays sound; the Sound switch shows only once it does.
-/// The saved switch already exists, so the sound phase only flips this.
-const soundPlays = false;
-
 /// A simple list of settings: the starting tier and the feedback switches.
 void _showSettings(BuildContext context) {
   showModalBottomSheet<void>(
@@ -903,13 +899,15 @@ void _showSettings(BuildContext context) {
                   },
                 ),
               const SizedBox(height: 8),
-              if (soundPlays)
-                SwitchListTile(
-                  key: soundSwitchKey,
-                  title: const Text('Sound'),
-                  value: model.sound,
-                  onChanged: model.setSound,
+              SwitchListTile(
+                key: soundSwitchKey,
+                title: const Text('Sound'),
+                subtitle: const Text(
+                  'A short chime for answers and milestones',
                 ),
+                value: model.sound,
+                onChanged: model.setSound,
+              ),
               SwitchListTile(
                 key: hapticsSwitchKey,
                 title: const Text('Vibration'),

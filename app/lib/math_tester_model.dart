@@ -10,6 +10,7 @@ import 'progress.dart';
 import 'progress_store.dart';
 import 'rules.dart';
 import 'solution_steps.dart';
+import 'sound_player.dart';
 
 /// What a vibration marks.
 enum Haptic { key, correct, wrong, celebrate }
@@ -33,6 +34,7 @@ class MathTesterModel extends ChangeNotifier {
     this._canSave = true,
     Stream<void> Function()? ticker,
     void Function(Haptic)? haptic,
+    this._sounds = const SilentSoundPlayer(),
   }) : _ticker = ticker ?? _everySecond,
        // Silent unless given, so a model built without a binding works.
        _haptic = haptic ?? _silent,
@@ -52,6 +54,7 @@ class MathTesterModel extends ChangeNotifier {
   /// Wakes the sprint countdown; the time itself is read from the clock.
   final Stream<void> Function() _ticker;
   final void Function(Haptic) _haptic;
+  SoundPlayer _sounds;
   final Random _random;
   final DateTime Function() _clock;
   final ProgressStore _store;
@@ -150,6 +153,29 @@ class MathTesterModel extends ChangeNotifier {
     if (haptics) _haptic(haptic);
   }
 
+  /// Never waits for the clip, so input is never delayed.
+  void _chime(Sound clip) {
+    if (!sound) return;
+    unawaited(Future.sync(() => _sounds.play(clip)).catchError(_soundFailed));
+  }
+
+  /// The first failure turns sound off for the session; reported once, in
+  /// debug builds only.
+  void _soundFailed(Object error, StackTrace stack) {
+    if (_sounds is SilentSoundPlayer) return;
+    _sounds = const SilentSoundPlayer();
+    if (kDebugMode) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'sound',
+          context: ErrorDescription('while playing a feedback sound'),
+        ),
+      );
+    }
+  }
+
   void setDraftInput(String value) {
     _draftInput = value;
     _validationMessage = null;
@@ -176,19 +202,20 @@ class MathTesterModel extends ChangeNotifier {
 
     final firstCheck = !_checked;
     final correct = input == _current.result;
-    final celebrated = _record(input);
+    final milestone = _record(input);
     _lastCheck = (
       count: (_lastCheck?.count ?? 0) + 1,
       correct: correct,
       first: firstCheck,
     );
     _buzz(
-      celebrated
+      milestone != null
           ? Haptic.celebrate
           : correct
           ? Haptic.correct
           : Haptic.wrong,
     );
+    _chime(milestone ?? (correct ? Sound.correct : Sound.wrong));
     if (inSprint) {
       _sprintLevels[_current.level - 1]++;
       _showNext();
@@ -364,9 +391,9 @@ class MathTesterModel extends ChangeNotifier {
     checked: _checked,
   );
 
-  /// Returns whether the attempt raised the player level or reached the
-  /// daily goal.
-  bool _record(num? answer) {
+  /// Returns the milestone the attempt reached, if any: a player level
+  /// (which wins when both happen at once) or the daily goal.
+  Sound? _record(num? answer) {
     final now = _clock();
     final attempt = historyEntry(
       problem: _current,
@@ -378,7 +405,7 @@ class MathTesterModel extends ChangeNotifier {
       sprint: inSprint,
     );
     _checked = true;
-    if (attempt == null) return false;
+    if (attempt == null) return null;
     if (!inSprint) _lastSprint = null;
     final kind = attempt.problem.kind;
     final before = game;
@@ -388,10 +415,12 @@ class MathTesterModel extends ChangeNotifier {
         .withGame(gameAfter(game, attempt, now));
     _save();
     // XP grows only with the answer that also counts toward the goal.
-    final milestone =
-        playerLevel(game.xp) > playerLevel(before.xp) ||
-        (game.xp > before.xp && game.dailyCount == dailyGoal);
-    if (milestone) _celebrations++;
+    final milestone = playerLevel(game.xp) > playerLevel(before.xp)
+        ? Sound.levelUp
+        : game.xp > before.xp && game.dailyCount == dailyGoal
+        ? Sound.goal
+        : null;
+    if (milestone != null) _celebrations++;
     return milestone;
   }
 
