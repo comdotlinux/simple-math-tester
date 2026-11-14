@@ -132,10 +132,13 @@ void practiceJourneys() {
     testWidgets('typing after feedback clears it', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
+      final wrong = formatNumber(model.current.result + 1);
       await submit(tester, model.current.result + 1);
       expect(find.text('Not quite. Try another answer.'), findsOneWidget);
 
-      await typeAnswer(tester, '7');
+      // Appending a digit always changes the text; a fixed '7' did not when
+      // the wrong answer was already 7.
+      await typeAnswer(tester, '${wrong}1');
       await tester.pumpAndSettle();
 
       expect(find.text('Not quite. Try another answer.'), findsNothing);
