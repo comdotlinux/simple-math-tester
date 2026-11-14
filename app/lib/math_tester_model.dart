@@ -4,6 +4,7 @@ import 'dart:ui' show AppLifecycleState;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart' show ThemeMode;
 
 import 'operations.dart';
 import 'progress.dart';
@@ -126,6 +127,7 @@ class MathTesterModel extends ChangeNotifier {
 
   bool get sound => _progress.sound;
   bool get haptics => _progress.haptics;
+  ThemeMode get themeMode => _progress.themeMode;
 
   /// The latest valid check; [count] tells two equal results apart, so each
   /// one plays its feedback motion.
@@ -142,6 +144,12 @@ class MathTesterModel extends ChangeNotifier {
 
   void setHaptics(bool on) {
     _progress = _progress.withSwitches(haptics: on);
+    _save();
+    notifyListeners();
+  }
+
+  void setThemeMode(ThemeMode mode) {
+    _progress = _progress.withThemeMode(mode);
     _save();
     notifyListeners();
   }

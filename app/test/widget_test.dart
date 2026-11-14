@@ -774,6 +774,40 @@ void main() {
       expect(find.byKey(settingsSheetKey), findsNothing);
       expect(model.current.question, '12 + 3');
     });
+
+    testWidgets('the theme choice switches to dark and is saved', (
+      tester,
+    ) async {
+      final store = FakeStore();
+      final model = await launch(tester, store: store);
+      Brightness shown() =>
+          Theme.of(tester.element(find.byKey(problemsPageKey))).brightness;
+      SegmentedButton<ThemeMode> choice() =>
+          tester.widget(find.byType(SegmentedButton<ThemeMode>));
+      expect(shown(), Brightness.light);
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+
+      for (final mode in ThemeMode.values) {
+        await tester.ensureVisible(find.byKey(themeModeKey(mode)));
+        await tester.pumpAndSettle();
+        expect(find.byKey(themeModeKey(mode)), findsOneWidget);
+      }
+      expect(choice().selected, {ThemeMode.system});
+
+      await tester.tap(find.byKey(themeModeKey(ThemeMode.dark)));
+      await tester.pumpAndSettle();
+      expect(model.themeMode, ThemeMode.dark);
+      expect(choice().selected, {ThemeMode.dark});
+      expect(shown(), Brightness.dark);
+      final saved = Progress.decode((await store.read(progressKey))!);
+      expect(saved.themeMode, ThemeMode.dark);
+
+      await tester.tap(find.byKey(themeModeKey(ThemeMode.light)));
+      await tester.pumpAndSettle();
+      expect(shown(), Brightness.light);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('header', () {

@@ -89,7 +89,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 | Settings sheet (gear) | `settings_journeys.dart` | the gear opens the settings sheet and a tap outside closes it (`closeSettings` taps the barrier above the sheet, or uses system back when the sheet fills the screen); the sheet lists Easy, Medium, Hard and Harder; choosing another tier resets levels and draws a new question; tapping the current tier only closes the sheet |
 | Vibration switch | `settings_journeys.dart` | the Vibration switch is saved; with Vibration off the pad keys stop buzzing |
 | Sound switch | `sound_journeys.dart` | the Sound switch shows in settings, on by default; turning Sound off is saved and survives a restart; with Sound off no sound plays; with it on, one per checked answer (`startHarness(sounds:)` takes a counting player; every other journey starts with `SilentSoundPlayer`) |
-| Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting (the app has no in-app theme choice yet) |
+| Light / dark theme | `settings_journeys.dart` | the app follows the system light or dark setting; choosing Dark makes the app dark and survives a restart; System follows the device again |
 | Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; the operation selection survives a restart |
 | Unreadable saved data | `persistence_journeys.dart` | unreadable saved data is backed up and the app starts fresh |
 | Offline web app | `tool/browser_check.mjs` | not a Flutter journey (phase 10) |

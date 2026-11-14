@@ -892,10 +892,12 @@ class _TierPicker extends StatelessWidget {
   }
 }
 
-/// A simple list of settings: the starting tier and the feedback switches.
+/// A simple list of settings: the starting tier, the feedback switches and
+/// the theme.
 Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
+  useSafeArea: true,
   isScrollControlled: true,
   builder: (context) {
     final model = context.watch<MathTesterModel>();
@@ -945,6 +947,25 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               subtitle: const Text('A short buzz on key presses and answers'),
               value: model.haptics,
               onChanged: model.setHaptics,
+            ),
+            ListTile(
+              title: const Text('Theme'),
+              subtitle: SegmentedButton<ThemeMode>(
+                segments: [
+                  for (final (mode, label, icon) in const [
+                    (ThemeMode.system, 'System', Icons.brightness_auto),
+                    (ThemeMode.light, 'Light', Icons.light_mode),
+                    (ThemeMode.dark, 'Dark', Icons.dark_mode),
+                  ])
+                    ButtonSegment(
+                      value: mode,
+                      label: Text(label, key: themeModeKey(mode)),
+                      icon: Icon(icon),
+                    ),
+                ],
+                selected: {model.themeMode},
+                onSelectionChanged: (modes) => model.setThemeMode(modes.single),
+              ),
             ),
           ],
         ),

@@ -145,5 +145,35 @@ void settingsJourneys() {
         expect(shown(), brightness);
       }
     });
+
+    testWidgets('choosing Dark makes the app dark and survives a restart; '
+        'System follows the device again', (tester) async {
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+      await startWith(tester, Progress(tier: Tier.easy));
+      Brightness shown() =>
+          Theme.of(tester.element(find.byKey(problemsPageKey))).brightness;
+      expect(shown(), Brightness.light);
+
+      await openSettings(tester);
+      await tapKey(tester, themeModeKey(ThemeMode.dark));
+      await closeSettings(tester);
+      expect(shown(), Brightness.dark);
+
+      await restartWhenSaved(tester, (p) => p.themeMode == ThemeMode.dark);
+      expect(modelOf(tester).themeMode, ThemeMode.dark);
+      expect(shown(), Brightness.dark);
+
+      await openSettings(tester);
+      await tapKey(tester, themeModeKey(ThemeMode.system));
+      await closeSettings(tester);
+      expect(shown(), Brightness.light);
+      for (final brightness in [Brightness.dark, Brightness.light]) {
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        await tester.pumpAndSettle();
+        expect(shown(), brightness);
+      }
+      await waitForSaved((p) => p.themeMode == ThemeMode.system);
+    });
   });
 }

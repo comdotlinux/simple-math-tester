@@ -26,6 +26,9 @@ const numberPadKey = Key('number-pad');
 const keyboardSwitchKey = Key('keyboard-switch');
 const soundSwitchKey = Key('sound-switch');
 const hapticsSwitchKey = Key('haptics-switch');
+
+/// One per segment of the settings sheet's theme choice.
+Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');
