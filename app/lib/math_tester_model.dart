@@ -160,7 +160,7 @@ class MathTesterModel extends ChangeNotifier {
   Problem _draw() {
     final kinds = OperationType.values.where(selectedOperations.contains);
     return nextProblem?.call() ??
-        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random);
+        kinds.elementAt(_random.nextInt(kinds.length)).generate(_random, 1);
   }
 
   void _showNext() {

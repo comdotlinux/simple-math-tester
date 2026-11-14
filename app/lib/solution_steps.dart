@@ -9,13 +9,20 @@ List<String> additionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
+  final bigger = left >= right ? left : right;
+  final smaller = left >= right ? right : left;
+  if (bigger <= 10) {
+    // Every number counted is below the sum, so none is the answer.
+    final counted = [for (var i = 1; i < smaller && i <= 3; i++) bigger + i];
+    return [
+      'Start at $bigger and count on $smaller more'
+          '${counted.isEmpty ? '.' : ': ${counted.join(', ')}, …'}',
+      'So $left + $right = $result.',
+    ];
+  }
   final calculations = <String>[];
   final totals = <int>[];
-  for (
-    var place = _highestPlace(left > right ? left : right);
-    place >= 1;
-    place ~/= 10
-  ) {
+  for (var place = _highestPlace(bigger); place >= 1; place ~/= 10) {
     final leftPart = (left ~/ place) % 10 * place;
     final rightPart = (right ~/ place) % 10 * place;
     calculations.add('$leftPart + $rightPart = ${leftPart + rightPart}');
@@ -31,17 +38,7 @@ List<String> additionSteps(Problem problem) {
     ];
   }
   // One place only, so its total would be the answer itself.
-  final bigger = left >= right ? left : right;
-  final smaller = left >= right ? right : left;
   final place = _highestPlace(bigger);
-  if (place == 1) {
-    final counted = [for (var i = 1; i < smaller && i <= 3; i++) bigger + i];
-    return [
-      'Start at $bigger and count on $smaller more'
-          '${counted.isEmpty ? '.' : ': ${counted.join(', ')}, …'}',
-      'So $left + $right = $result.',
-    ];
-  }
   final name = _placeNames[place]!;
   String count(int value) =>
       '${value ~/ place} $name${value ~/ place == 1 ? '' : 's'}';
@@ -82,6 +79,10 @@ List<String> subtractionSteps(Problem problem) {
         'what do you add to $right to make $left?',
     useHops
         ? hopText
+        : firstTen > lastTen
+        // No round number lies between them, so there is no ten to hop to.
+        ? 'Count up from $right to $left one at a time and keep track of '
+              'how many you counted.'
         : 'Count up from $right to $left in hops, for example to the next '
               'ten, and keep track of how far you went.',
     useHops
@@ -96,9 +97,28 @@ List<String> multiplicationSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
-  final split = left >= right ? left : right;
-  final multiplier = left >= right ? right : left;
+  final bigger = left >= right ? left : right;
+  final smaller = left >= right ? right : left;
+  // Split a factor that has more than one place, the bigger one if both do.
+  final splitBigger =
+      _placeParts(bigger).length > 1 || _placeParts(smaller).length == 1;
+  final split = splitBigger ? bigger : smaller;
+  final multiplier = splitBigger ? smaller : bigger;
   final parts = _placeParts(split);
+  if (parts.length == 1 && multiplier >= 10) {
+    // Both are a digit followed by zeros, such as 20 × 30. The digit product
+    // is below 100 and the result ends in at least two zeros.
+    final (leftDigit, leftZeros) = _digitAndZeros(left);
+    final (rightDigit, rightZeros) = _digitAndZeros(right);
+    final zeros = leftZeros + rightZeros;
+    return [
+      'Take the zeros off and multiply the digits: '
+          '$leftDigit × $rightDigit = ${leftDigit * rightDigit}.',
+      '$left and $right have $zeros zeros together. '
+          'Write them after ${leftDigit * rightDigit}.',
+      'So $left × $right = $result.',
+    ];
+  }
   if (parts.length == 1) {
     // Every listed count is a smaller multiple, so it stays below the result.
     final counted = [for (var i = 1; i < multiplier && i <= 3; i++) split * i];
@@ -122,23 +142,43 @@ List<String> divisionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;
-  final counted = [for (var i = 1; i < result && i <= 3; i++) right * i]
-      .join(', ');
-  final countText =
-      'Count in ${right}s: $counted, … until you reach $left. '
-      'How many ${right}s did you count?';
-  return [
-    'How many ${right}s make $left? Think: $right × ? = $left.',
-    _mentions(countText, result)
+  final tens = result ~/ 10 * 10;
+  final String middle;
+  if (tens > 0) {
+    // Counting to a quotient of 10 or more is too long; take tens first.
+    final tensText =
+        'Take tens first: $right × $tens = ${right * tens}, and '
+        '$left − ${right * tens} = ${left - right * tens} is left to share '
+        'into ${right}s.';
+    middle = _mentions(tensText, result)
+        ? 'Multiply $right by round tens until you get close to $left, '
+              'then count on in ${right}s for the rest.'
+        : tensText;
+  } else {
+    final counted = [for (var i = 1; i < result && i <= 3; i++) right * i]
+        .join(', ');
+    final countText =
+        'Count in ${right}s: $counted, … until you reach $left. '
+        'How many ${right}s did you count?';
+    middle = _mentions(countText, result)
         ? 'Count in ${right}s until you reach $left. '
               'How many ${right}s did you count?'
-        : countText,
+        : countText;
+  }
+  return [
+    'How many ${right}s make $left? Think: $right × ? = $left.',
+    middle,
     '$right × ${formatNumber(result)} = $left, '
         'so $left ÷ $right = ${formatNumber(result)}.',
   ];
 }
 
-const _placeNames = {10: 'ten', 100: 'hundred', 1000: 'thousand'};
+const _placeNames = {
+  10: 'ten',
+  100: 'hundred',
+  1000: 'thousand',
+  10000: 'ten thousand',
+};
 
 bool _mentions(String text, num value) =>
     RegExp('(?<!\\d)${formatNumber(value)}(?!\\d)').hasMatch(text);
@@ -158,4 +198,10 @@ List<int> _placeParts(int value) {
     if (part > 0) parts.add(part);
   }
   return parts;
+}
+
+/// For a number with one non-zero digit: that digit and the zeros after it.
+(int, int) _digitAndZeros(int value) {
+  final place = _highestPlace(value);
+  return (value ~/ place, '$place'.length - 1);
 }
