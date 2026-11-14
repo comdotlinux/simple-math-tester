@@ -4,7 +4,8 @@
 Active · 2026-11-14. Practice and My answers on web, iOS and Android; Google Play
 is the first store target. User approved playful learning, required native mobile
 support, then approved the engagement plan that replaces the 2026-11-13 calm brief.
-Evidence: `.omc/plans/math-tester-engagement.md`, `README.md`,
+Evidence: the engagement plan approved on 2026-11-14 (a local planning file, not
+in the repository), `README.md`,
 `app/lib/{main,home_page,problem_page,results_page}.dart`, existing tests, platform
 projects and `.omx/plans/modernize-flutter-app.md` (history of the earlier redesign).
 No existing brand assets, screenshots or design brief were supplied.
@@ -47,7 +48,7 @@ Two destinations: **Practice** and **My answers**. Practice centers one problem 
 one answer field, with operation selection (at least one stays on) and the sprint
 mode; a header shows the daily streak, daily goal, XP with level, and combo.
 My answers shows stats and a chronological review of the last 200 answers. Settings
-(starting tier, sound, haptics, Impressum, privacy) is a secondary screen, not a
+(starting tier, sound, haptics, Impressum, privacy) is a secondary sheet, not a
 third destination. Keep the current question/draft when switching destinations.
 A new problem is drawn after a reload.
 

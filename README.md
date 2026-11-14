@@ -24,7 +24,7 @@ macOS and Xcode. Android builds require an Android SDK and accepted licenses.
 Run all Flutter and Dart commands through `mise` from `app/`:
 
 ```sh
-mise exec -- dart format --output=none --set-exit-if-changed lib test integration_test
+mise exec -- dart format --output=none --set-exit-if-changed lib test integration_test test_driver
 mise exec -- flutter analyze
 mise exec -- flutter test
 mise exec -- flutter test integration_test -d linux
