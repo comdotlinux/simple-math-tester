@@ -103,6 +103,36 @@ void main() {
     },
   );
 
+  testWidgets('Results rows below the fold appear when scrolled to', (
+    tester,
+  ) async {
+    final model = await launch(tester, size: const Size(360, 640));
+    model.setDraftInput('14');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.setDraftInput('${model.current.result}');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.generateNextProblem();
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    expect(find.text('3 questions completed.'), findsOneWidget);
+    // Rows are built lazily: the last one is not on screen yet.
+    expect(find.text('Skipped'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('Skipped'),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(resultsPageKey),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Skipped'), findsOneWidget);
+    expect(find.text('Question 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [390.0, 1000.0]) {
     testWidgets('Results at width $width show the first answer', (
       tester,
