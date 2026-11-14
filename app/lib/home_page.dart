@@ -14,7 +14,14 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final page = model.currentPage == 0
-        ? const ProblemPage(key: problemsPageKey)
+        // The Android back gesture ends a sprint instead of leaving the app.
+        ? PopScope(
+            canPop: !model.inSprint,
+            onPopInvokedWithResult: (didPop, _) {
+              if (!didPop) model.endSprint();
+            },
+            child: const ProblemPage(key: problemsPageKey),
+          )
         : const ResultsPage(key: resultsPageKey);
 
     return LayoutBuilder(

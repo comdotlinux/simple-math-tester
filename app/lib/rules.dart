@@ -43,10 +43,20 @@ const levelDownAfter = 2;
 /// for one recorded [attempt] of that operation.
 ///
 /// A skip changes nothing; retries, "Next" after a check and invalid input
-/// record no attempt and never reach this function.
+/// record no attempt and never reach this function. A sprint answer counts
+/// toward the totals only: levels and counters do not change in a round.
 Difficulty difficultyAfter(Difficulty before, Attempt attempt) {
   if (attempt.skipped) return before;
   final correct = attempt.correct;
+  if (attempt.sprint) {
+    return Difficulty(
+      level: before.level,
+      upCount: before.upCount,
+      downCount: before.downCount,
+      answered: before.answered + 1,
+      correct: before.correct + (correct ? 1 : 0),
+    );
+  }
   final hinted = attempt.hintsUsed > 0;
   var up = correct ? (hinted ? before.upCount : before.upCount + 1) : 0;
   var down = correct ? (hinted ? before.downCount : 0) : before.downCount + 1;
@@ -81,6 +91,7 @@ Attempt? historyEntry({
   required int hintsUsed,
   required int elapsedMs,
   required DateTime at,
+  bool sprint = false,
 }) => alreadyChecked
     ? null
     : Attempt(
@@ -89,6 +100,7 @@ Attempt? historyEntry({
         hintsUsed: hintsUsed,
         elapsedMs: elapsedMs,
         answeredAt: at,
+        sprint: sprint,
       );
 
 const dailyGoal = 10;
@@ -116,6 +128,7 @@ class GameState {
     this.lastGoalDate,
     this.streak = 0,
     this.bestStreak = 0,
+    this.bestSprint = 0,
   });
 
   final int xp;
@@ -125,6 +138,7 @@ class GameState {
   final String? lastGoalDate;
   final int streak;
   final int bestStreak;
+  final int bestSprint;
 
   GameState _copy({
     int? xp,
@@ -134,6 +148,7 @@ class GameState {
     String? lastGoalDate,
     int? streak,
     int? bestStreak,
+    int? bestSprint,
   }) => GameState(
     xp: xp ?? this.xp,
     combo: combo ?? this.combo,
@@ -142,6 +157,7 @@ class GameState {
     lastGoalDate: lastGoalDate ?? this.lastGoalDate,
     streak: streak ?? this.streak,
     bestStreak: bestStreak ?? this.bestStreak,
+    bestSprint: bestSprint ?? this.bestSprint,
   );
 }
 
@@ -220,6 +236,7 @@ GameState dayChanged(GameState state, DateTime now) {
           : goal,
       streak: state.streak,
       bestStreak: state.bestStreak,
+      bestSprint: state.bestSprint,
     );
   }
   final today = _today(state, now);
@@ -269,6 +286,24 @@ int displayedStreak(GameState state, DateTime now) {
 /// The goal ring value: 0 after midnight even before any event.
 int goalRingValue(GameState state, DateTime now) =>
     state.lastActiveDate == localDate(now) ? state.dailyCount : 0;
+
+const sprintLength = Duration(seconds: 60);
+
+/// Clock time left in a sprint started at [start]: time in the background
+/// counts, and a clock set back never adds time.
+Duration sprintRemaining(DateTime start, DateTime now) {
+  final left = sprintLength - now.difference(start);
+  return left.isNegative
+      ? Duration.zero
+      : (left > sprintLength ? sprintLength : left);
+}
+
+/// A sprint round starts with combo 0.
+GameState sprintStarted(GameState state) => state._copy(combo: 0);
+
+/// A sprint round ends with combo 0; the best keeps the higher [score].
+GameState sprintEnded(GameState state, int score) =>
+    state._copy(combo: 0, bestSprint: max(state.bestSprint, score));
 
 enum HintEvent {
   /// "Hint" (from 0 steps) or "Next step": one more step.

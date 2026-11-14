@@ -165,6 +165,7 @@ class Progress {
     'lastGoalDate': ?game.lastGoalDate,
     'streak': game.streak,
     'bestStreak': game.bestStreak,
+    'bestSprint': game.bestSprint,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -230,6 +231,8 @@ class Progress {
       lastGoalDate: _date(json, 'lastGoalDate'),
       streak: streak,
       bestStreak: max(run('bestStreak'), streak),
+      // A sprint score is XP earned, so it shares the XP bound.
+      bestSprint: (_field<int>(json, 'bestSprint') ?? 0).clamp(0, maxStoredXp),
     );
 
     const known = {
@@ -245,6 +248,7 @@ class Progress {
       'lastGoalDate',
       'streak',
       'bestStreak',
+      'bestSprint',
     };
     return Progress._(
       selected,

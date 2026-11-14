@@ -46,6 +46,7 @@ void main() {
         lastGoalDate: '2026-11-13',
         streak: 3,
         bestStreak: 7,
+        bestSprint: 132,
       ),
     );
 
@@ -72,8 +73,9 @@ void main() {
         game.lastGoalDate,
         game.streak,
         game.bestStreak,
+        game.bestSprint,
       ],
-      [250, 4, 6, '2026-11-14', '2026-11-13', 3, 7],
+      [250, 4, 6, '2026-11-14', '2026-11-13', 3, 7, 132],
     );
     expect(decoded.history, hasLength(original.history.length));
     for (var i = 0; i < original.history.length; i++) {
@@ -180,8 +182,9 @@ void main() {
         game.lastGoalDate,
         game.streak,
         game.bestStreak,
+        game.bestSprint,
       ],
-      [0, 0, 0, null, null, 0, 0],
+      [0, 0, 0, null, null, 0, 0, 0],
     );
     expect(Progress.decode('{"streak":3}').game.xp, 0);
 
@@ -355,6 +358,14 @@ void main() {
     // bestStreak is never below streak.
     expect(values('{"streak":12,"bestStreak":3}').sublist(3), [12, 12]);
     expect(values('{"streak":12,"bestStreak":30}').sublist(3), [12, 30]);
+  });
+
+  test('a negative or absurd bestSprint decodes to its clamp', () {
+    int best(String source) => Progress.decode(source).game.bestSprint;
+    expect(best('{"bestSprint":-7}'), 0);
+    expect(best('{"bestSprint":9000000000000000000}'), 1000000000);
+    expect(best('{"bestSprint":1000000000}'), 1000000000);
+    expect(best('{"bestSprint":420}'), 420);
   });
 
   test('history and selection are unmodifiable', () {
