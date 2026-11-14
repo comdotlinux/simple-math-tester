@@ -20,6 +20,8 @@ Future<void> bootstrap(ProgressStore store) async {
   final loaded = await loadProgress(store);
   runApp(
     MultiProvider(
+      // A new key per load, so a second bootstrap builds a new model.
+      key: ObjectKey(loaded.progress),
       providers: [
         ChangeNotifierProvider(
           create: (_) => MathTesterModel(
