@@ -111,6 +111,12 @@ const xpPerLevelStep = 100;
 /// stored date came from a clock that was wrong in the future.
 const clockCorrectionDays = 7;
 
+/// Bounds for decoded game values: far above anything real play reaches, so
+/// a stored value beyond them is tidied rather than trusted.
+const maxStoredXp = 1000000000;
+const maxStoredRun = 100000;
+const maxStoredDailyCount = 10000;
+
 /// XP, combo, daily goal and streak. Dates are local calendar dates stored
 /// as `yyyy-MM-dd`; null until the first one is set.
 class GameState {
@@ -166,14 +172,27 @@ int xpFor({
 }
 
 /// The total XP at which player level [level] is reached.
-int xpForLevel(int level) => xpPerLevelStep * level * (level - 1) ~/ 2;
+int xpForLevel(int level) => xpPerLevelStep * (level * (level - 1) ~/ 2);
 
+/// The largest L with `L × (L − 1) / 2 <= xp ~/ 100`, in constant time and
+/// integer arithmetic for any 64-bit [xp].
 int playerLevel(int xp) {
-  var level = 1;
-  while (xpForLevel(level + 1) <= xp) {
-    level++;
-  }
+  if (xp < xpPerLevelStep) return 1;
+  final steps = xp ~/ xpPerLevelStep;
+  // L = (1 + sqrt(1 + 8 × steps)) / 2; 8 × steps stays below 2^63.
+  var level = (1 + _isqrt(1 + 8 * steps)) ~/ 2;
+  if ((level + 1) * level ~/ 2 <= steps) level++;
   return level;
+}
+
+/// floor(sqrt(n)) by Newton's method from a start at or above the root.
+int _isqrt(int n) {
+  var x = 1 << ((n.bitLength + 1) ~/ 2);
+  while (true) {
+    final y = (x + n ~/ x) ~/ 2;
+    if (y >= x) return x;
+    x = y;
+  }
 }
 
 /// The local calendar date of [now] as `yyyy-MM-dd`.

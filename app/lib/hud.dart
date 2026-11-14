@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -55,7 +57,8 @@ class Hud extends StatelessWidget {
                     SizedBox.square(
                       dimension: 24,
                       child: CircularProgressIndicator(
-                        value: daily / dailyGoal,
+                        // The ring fills at the goal; the text keeps the real count.
+                        value: min(daily, dailyGoal) / dailyGoal,
                         strokeWidth: 4,
                         color: tokens.teal,
                         backgroundColor: tokens.border,

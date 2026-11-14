@@ -753,14 +753,15 @@ void main() {
           size: Size(width, 700),
           scale: scale,
           padding: const EdgeInsets.only(top: 59, bottom: 34),
-          // Long values, to show the header still fits.
+          // Every value at its decode clamp, to show the header still fits.
           game: const GameState(
-            xp: 1234567,
-            combo: 999,
-            dailyCount: 6,
+            xp: maxStoredXp,
+            combo: maxStoredRun,
+            dailyCount: maxStoredDailyCount,
             lastActiveDate: '2026-11-14',
             lastGoalDate: '2026-11-14',
-            streak: 3650,
+            streak: maxStoredRun,
+            bestStreak: maxStoredRun,
           ),
           clock: () => morning,
         );
@@ -771,6 +772,13 @@ void main() {
           expect(hud.top, greaterThanOrEqualTo(59));
           expect(hud.left, greaterThanOrEqualTo(0));
           expect(hud.right, lessThanOrEqualTo(width));
+          expectLabel(tester, 'Daily streak: 100000');
+          expectLabel(tester, goal(10000));
+          expectLabel(tester, 'Combo: 100000');
+          expectLabel(
+            tester,
+            'Level 4472, 1000000000 XP, 162800 XP to level 4473',
+          );
           expect(tester.takeException(), isNull);
         }
       });
