@@ -102,6 +102,9 @@ try {
     context.on('request', (request) => requests.push(request.url()));
     await openApp(page, start);
     await page.getByRole('tab', { name: 'Practice' }).click();
+    // The first question follows the seeded multiplication-only selection.
+    await page.getByText(/^Math question: \d+ × \d+$/).waitFor();
+    check(true, `start ${start}: the first question is a multiplication`);
     await page.getByRole('textbox').fill('7');
     await page.getByRole('button', { name: 'Check answer' }).click();
     await page.waitForFunction(
