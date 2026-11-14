@@ -10,6 +10,24 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
+// History rows are built lazily, so on a phone-sized screen a row below the
+// header, the stats card or earlier rows does not exist until the list is
+// scrolled to it. Each visit starts at the top, so rows are checked top to
+// bottom.
+Future<Finder> inHistory(WidgetTester tester, Finder finder) async {
+  final list = find.descendant(
+    of: find.byKey(resultsPageKey),
+    matching: find.byType(Scrollable),
+  );
+  for (var i = 0; i < 50 && finder.evaluate().isEmpty; i++) {
+    await tester.drag(list, const Offset(0, -100));
+    await tester.pumpAndSettle();
+  }
+  await tester.ensureVisible(finder.first);
+  await tester.pumpAndSettle();
+  return finder;
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -74,7 +92,7 @@ void main() {
     await tester.tap(find.text('My answers').last);
     await tester.pumpAndSettle();
     expect(find.text('4 questions completed.'), findsOneWidget);
-    expect(find.text('3 × 6'), findsWidgets);
+    expect(await inHistory(tester, find.text('3 × 6')), findsWidgets);
 
     // The skip is saved through the plugin.
     final saved = Progress.decode(
@@ -114,23 +132,6 @@ void main() {
       await tester.ensureVisible(find.text('My answers').last);
       await tester.tap(find.text('My answers').last);
       await tester.pumpAndSettle();
-    }
-
-    // History rows are built lazily, so on a phone-sized screen a later row
-    // does not exist until the list is scrolled to it. Each visit starts at
-    // the top, so rows are checked top to bottom.
-    Future<Finder> inHistory(Finder finder) async {
-      final list = find.descendant(
-        of: find.byKey(resultsPageKey),
-        matching: find.byType(Scrollable),
-      );
-      for (var i = 0; i < 50 && finder.evaluate().isEmpty; i++) {
-        await tester.drag(list, const Offset(0, -100));
-        await tester.pumpAndSettle();
-      }
-      await tester.ensureVisible(finder.first);
-      await tester.pumpAndSettle();
-      return finder;
     }
 
     Future<void> returnToPractice() async {
@@ -176,16 +177,18 @@ void main() {
 
     await openHistory();
     expect(find.text('1 question completed.'), findsOneWidget);
-    expect(await inHistory(find.text('Incorrect')), findsOneWidget);
-    expect(await inHistory(find.text(firstQuestion)), findsWidgets);
+    expect(await inHistory(tester, find.text('Incorrect')), findsOneWidget);
+    expect(await inHistory(tester, find.text(firstQuestion)), findsWidgets);
     expect(
       await inHistory(
+        tester,
         find.text('Your answer: ${formatNumber(correctAnswer + 1)}'),
       ),
       findsWidgets,
     );
     expect(
       await inHistory(
+        tester,
         find.text('Expected answer: ${formatNumber(correctAnswer)}'),
       ),
       findsWidgets,
@@ -225,11 +228,14 @@ void main() {
     await nextQuestion();
     await openHistory();
     expect(find.text('2 questions completed.'), findsOneWidget);
-    expect(await inHistory(find.text('Incorrect')), findsOneWidget);
-    expect(await inHistory(find.text('Correct')), findsOneWidget);
-    expect(await inHistory(find.text(secondQuestion)), findsWidgets);
+    expect(await inHistory(tester, find.text('Incorrect')), findsOneWidget);
+    expect(await inHistory(tester, find.text('Correct')), findsOneWidget);
+    expect(await inHistory(tester, find.text(secondQuestion)), findsWidgets);
     expect(
-      await inHistory(find.text('Your answer: ${formatNumber(secondAnswer)}')),
+      await inHistory(
+        tester,
+        find.text('Your answer: ${formatNumber(secondAnswer)}'),
+      ),
       findsWidgets,
     );
 
@@ -248,9 +254,12 @@ void main() {
     expect(model.history.last.hintsUsed, 2);
     await openHistory();
     expect(find.text('3 questions completed.'), findsOneWidget);
-    expect(await inHistory(find.text('Skipped')), findsOneWidget);
-    expect(await inHistory(find.text(thirdQuestion)), findsWidgets);
-    expect(await inHistory(find.text('No answer entered')), findsOneWidget);
+    expect(await inHistory(tester, find.text('Skipped')), findsOneWidget);
+    expect(await inHistory(tester, find.text(thirdQuestion)), findsWidgets);
+    expect(
+      await inHistory(tester, find.text('No answer entered')),
+      findsOneWidget,
+    );
     expect(model.history, hasLength(3));
     expect(
       model.history.map(

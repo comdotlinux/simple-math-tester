@@ -244,6 +244,7 @@ void main() {
     '{"lastActiveDate": 20261114}',
     '{"lastGoalDate": "14.11.2026"}',
     '{"lastActiveDate": "2026-02-30"}',
+    '{"bestStreak": "9"}',
     '{"history": [{"kind": "plus", "lhs": "1", "rhs": 2, "result": 3, '
         '"answeredAt": "2026-11-14T08:00:00.000Z"}]}',
   ]) {
@@ -340,6 +341,50 @@ void main() {
     final long = Progress(history: [for (var i = 1; i <= 250; i++) attempt(i)]);
     expect(long.history, hasLength(200));
     expect(Progress.decode(long.encode()).history.first.problem.lhs, 51);
+  });
+
+  test('negative and absurd game values decode to their clamps', () {
+    List<int> values(String source) {
+      final game = Progress.decode(source).game;
+      return [
+        game.xp,
+        game.combo,
+        game.dailyCount,
+        game.streak,
+        game.bestStreak,
+      ];
+    }
+
+    expect(
+      values(
+        '{"xp":-5,"combo":-1,"dailyCount":-3,"streak":-2,"bestStreak":-9}',
+      ),
+      [0, 0, 0, 0, 0],
+    );
+    expect(
+      values(
+        '{"xp":9000000000000000000,"combo":5000000,"dailyCount":99999999,'
+        '"streak":123456789,"bestStreak":4}',
+      ),
+      [
+        maxStoredXp,
+        maxStoredRun,
+        maxStoredDailyCount,
+        maxStoredRun,
+        maxStoredRun,
+      ],
+    );
+    // bestStreak is never below streak.
+    expect(values('{"streak":12,"bestStreak":3}').sublist(3), [12, 12]);
+    expect(values('{"streak":12,"bestStreak":30}').sublist(3), [12, 30]);
+  });
+
+  test('a negative or absurd bestSprint decodes to its clamp', () {
+    int best(String source) => Progress.decode(source).game.bestSprint;
+    expect(best('{"bestSprint":-7}'), 0);
+    expect(best('{"bestSprint":9000000000000000000}'), 1000000000);
+    expect(best('{"bestSprint":1000000000}'), 1000000000);
+    expect(best('{"bestSprint":420}'), 420);
   });
 
   test('history and selection are unmodifiable', () {

@@ -70,7 +70,9 @@ class Hud extends StatelessWidget {
                       SizedBox.square(
                         dimension: 32,
                         child: CircularProgressIndicator(
-                          value: daily / dailyGoal,
+                          // The ring fills at the goal; the text keeps the
+                          // real count.
+                          value: min(daily, dailyGoal) / dailyGoal,
                           strokeWidth: 6,
                           strokeCap: StrokeCap.round,
                           color: tokens.correct,
@@ -195,6 +197,14 @@ class _Stat extends StatelessWidget {
     container: true,
     excludeSemantics: true,
     label: label,
-    child: Row(mainAxisSize: MainAxisSize.min, spacing: 6, children: children),
+    // The value wraps rather than overflow at large numbers and text sizes.
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      spacing: 6,
+      children: [
+        ...children.take(children.length - 1),
+        Flexible(child: children.last),
+      ],
+    ),
   );
 }

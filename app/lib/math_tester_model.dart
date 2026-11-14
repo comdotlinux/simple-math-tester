@@ -253,9 +253,6 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Flushes saves when the app goes to the background; a resume runs the
-  /// day change, and in no-write mode the first resume tries to read the
-  /// saved progress once more.
   /// Starts a sprint round on a new problem; the replaced problem is not
   /// recorded. Needs a chosen tier.
   void startSprint() {
@@ -299,6 +296,9 @@ class MathTesterModel extends ChangeNotifier {
     if (left == Duration.zero) endSprint();
   }
 
+  /// Flushes saves when the app goes to the background; a resume runs the
+  /// day change, and in no-write mode the first resume tries to read the
+  /// saved progress once more.
   void handleLifecycle(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused || AppLifecycleState.hidden:

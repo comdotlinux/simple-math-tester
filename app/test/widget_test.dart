@@ -183,6 +183,45 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('At 360x640 the first row is reachable below the stats card', (
+    tester,
+  ) async {
+    final model = await launch(tester, size: const Size(360, 640));
+    model.setDraftInput('14');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.setDraftInput('${model.current.result}');
+    model.submitAnswer();
+    model.generateNextProblem();
+    model.generateNextProblem();
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    expect(find.text('Your stats'), findsOneWidget);
+    expect(find.text('3 questions completed.'), findsOneWidget);
+    // The header and the stats card fill the first screen.
+    expect(find.text('Question 1').hitTestable(), findsNothing);
+
+    // Scroll until the row is built, then bring its whole card into view,
+    // so a taller stats card cannot leave part of the row off screen.
+    await tester.scrollUntilVisible(
+      find.text('Question 1'),
+      100,
+      scrollable: find.descendant(
+        of: find.byKey(resultsPageKey),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.ensureVisible(
+      find.ancestor(of: find.text('Question 1'), matching: find.byType(Card)),
+    );
+    await tester.pumpAndSettle();
+    // The whole first row is on screen at once.
+    expect(find.text('Question 1').hitTestable(), findsOneWidget);
+    expect(find.text('12 + 3').hitTestable(), findsOneWidget);
+    expect(find.text('Your answer: 14').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [390.0, 1000.0]) {
     testWidgets('Results at width $width show the first answer', (
       tester,
@@ -853,14 +892,15 @@ void main() {
           size: Size(width, 700),
           scale: scale,
           padding: const EdgeInsets.only(top: 59, bottom: 34),
-          // Long values, to show the header still fits.
+          // Every value at its decode clamp, to show the header still fits.
           game: const GameState(
-            xp: 1234567,
-            combo: 999,
-            dailyCount: 6,
+            xp: maxStoredXp,
+            combo: maxStoredRun,
+            dailyCount: maxStoredDailyCount,
             lastActiveDate: '2026-11-14',
             lastGoalDate: '2026-11-14',
-            streak: 3650,
+            streak: maxStoredRun,
+            bestStreak: maxStoredRun,
           ),
           clock: () => morning,
         );
@@ -871,6 +911,13 @@ void main() {
           expect(hud.top, greaterThanOrEqualTo(59));
           expect(hud.left, greaterThanOrEqualTo(0));
           expect(hud.right, lessThanOrEqualTo(width));
+          expectLabel(tester, 'Daily streak: 100000');
+          expectLabel(tester, goal(10000));
+          expectLabel(tester, 'Combo: 100000');
+          expectLabel(
+            tester,
+            'Level 4472, 1000000000 XP, 162800 XP to level 4473',
+          );
           expect(tester.takeException(), isNull);
         }
       });

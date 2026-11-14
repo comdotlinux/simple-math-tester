@@ -288,8 +288,49 @@ void main() {
         (299, 2),
         (300, 3),
         (1000, 5),
+        (-5, 1),
       ]) {
         expect(playerLevel(xp), level, reason: '$xp XP');
+      }
+    });
+
+    test('the player level matches its threshold for every XP up to 1e6', () {
+      var level = 1;
+      for (var xp = 0; xp <= 1000000; xp++) {
+        if (xpForLevel(level + 1) <= xp) level++;
+        expect(playerLevel(xp), level, reason: '$xp XP');
+      }
+    });
+
+    test('the player level of huge XP is quick, exact and monotonic', () {
+      const maxInt = 0x7FFFFFFFFFFFFFFF;
+      final watch = Stopwatch()..start();
+      final top = playerLevel(maxInt);
+      final billion = playerLevel(maxStoredXp);
+      expect(watch.elapsedMilliseconds, lessThan(50));
+
+      expect(billion, 4472);
+      expect(xpForLevel(billion), lessThanOrEqualTo(maxStoredXp));
+      expect(xpForLevel(billion + 1), greaterThan(maxStoredXp));
+
+      final steps = maxInt ~/ 100;
+      expect(top * (top - 1) ~/ 2, lessThanOrEqualTo(steps));
+      expect((top + 1) * top ~/ 2, greaterThan(steps));
+      var previous = 0;
+      for (final xp in [
+        0,
+        99,
+        100,
+        299,
+        300,
+        maxStoredXp,
+        maxInt ~/ 2,
+        maxInt - 100,
+        maxInt,
+      ]) {
+        final level = playerLevel(xp);
+        expect(level, greaterThanOrEqualTo(previous), reason: '$xp XP');
+        previous = level;
       }
     });
 
