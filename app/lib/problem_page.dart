@@ -73,15 +73,11 @@ class _ProblemPageState extends State<ProblemPage> {
                         vertical: 32,
                       ),
                       child: Text(
-                        '${model.current.left} '
-                        '${model.current.operationType.displayString} '
-                        '${model.current.right}',
+                        model.current.question,
                         key: questionOnProblemsPageKey,
                         textAlign: TextAlign.center,
                         semanticsLabel:
-                            'Math question: ${model.current.left} '
-                            '${model.current.operationType.displayString} '
-                            '${model.current.right}',
+                            'Math question: ${model.current.question}',
                         style: theme.textTheme.displaySmall,
                       ),
                     ),

@@ -3,28 +3,38 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'operations.dart';
+import 'rules.dart';
 
 class MathTesterModel extends ChangeNotifier {
-  MathTesterModel({Operation? initialOperation, this.nextOperation})
-    : current = initialOperation ?? Addition().create();
+  MathTesterModel({
+    Problem? initialProblem,
+    this.nextProblem,
+    Random? random,
+    DateTime Function()? clock,
+  }) : _random = random ?? Random(),
+       _clock = clock ?? DateTime.now {
+    _current = initialProblem ?? OperationType.plus.generate(_random);
+    _shownAt = _clock();
+  }
 
-  final Map<OperationType, Operator> operators = {
-    OperationType.plus: Addition(),
-    OperationType.minus: Subtraction(),
-    OperationType.multiply: Multiplication(),
-    OperationType.divide: Division(),
-  };
-  final _random = Random();
+  final Random _random;
+  final DateTime Function() _clock;
   @visibleForTesting
-  final Operation Function()? nextOperation;
-  final completedProblems = <Operation>{};
+  final Problem Function()? nextProblem;
 
-  Operation current;
+  late Problem _current;
+  late DateTime _shownAt;
+  bool _checked = false;
+  List<Attempt> _history = List.unmodifiable(const <Attempt>[]);
   String _draftInput = '';
   String? _validationMessage;
   bool? _answerCorrect;
   int _currentPage = 0;
 
+  Problem get current => _current;
+
+  /// Replaced, never mutated, so `context.select` sees every change.
+  List<Attempt> get history => _history;
   String get draftInput => _draftInput;
   String? get validationMessage => _validationMessage;
   bool? get answerCorrect => _answerCorrect;
@@ -48,19 +58,21 @@ class MathTesterModel extends ChangeNotifier {
       return false;
     }
 
-    current.input = input;
+    _record(input);
     _validationMessage = null;
-    _answerCorrect = current.inputCorrect();
+    _answerCorrect = input == _current.result;
     notifyListeners();
     return true;
   }
 
   void generateNextProblem() {
-    completedProblems.add(current);
-    current =
-        nextOperation?.call() ??
-        operators[OperationType.of(_random.nextInt(operators.length))]!
-            .create();
+    _record(null);
+    _current =
+        nextProblem?.call() ??
+        OperationType.values[_random.nextInt(OperationType.values.length)]
+            .generate(_random);
+    _shownAt = _clock();
+    _checked = false;
     _draftInput = '';
     _validationMessage = null;
     _answerCorrect = null;
@@ -71,5 +83,18 @@ class MathTesterModel extends ChangeNotifier {
     RangeError.checkValueInInterval(value, 0, 1, 'page');
     _currentPage = value;
     notifyListeners();
+  }
+
+  void _record(num? answer) {
+    final now = _clock();
+    final attempt = historyEntry(
+      problem: _current,
+      alreadyChecked: _checked,
+      answer: answer,
+      elapsedMs: now.difference(_shownAt).inMilliseconds,
+      at: now,
+    );
+    _checked = true;
+    if (attempt != null) _history = List.unmodifiable([..._history, attempt]);
   }
 }

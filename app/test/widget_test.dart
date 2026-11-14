@@ -20,8 +20,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
-    final model = MathTesterModel();
-    model.current = Operation(12, 3, OperationType.plus, 15);
+    final model = MathTesterModel(
+      initialProblem: const Problem(12, 3, OperationType.plus, 15),
+    );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: model,
@@ -64,7 +65,7 @@ void main() {
           await tester.tap(find.byKey(checkAnswerButtonKey));
         }
         await tester.pumpAndSettle();
-        expect(model.current.inputCorrect(), isTrue);
+        expect(model.history.single.correct, isTrue);
         expect(find.text('You got it!'), findsOneWidget);
         await tester.tap(find.byKey(nextQuestionButtonKey));
         await tester.pumpAndSettle();
@@ -74,7 +75,7 @@ void main() {
         );
         await tester.tap(find.byKey(checkAnswerButtonKey));
         await tester.pumpAndSettle();
-        expect(model.current.inputEntered(), isFalse);
+        expect(model.history, hasLength(1));
         expect(find.text('Enter a number first.'), findsOneWidget);
       },
     );
@@ -95,12 +96,31 @@ void main() {
       );
       await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
-      expect(model.completedProblems.length, 1);
+      expect(model.history.length, 1);
       await tester.tap(find.text('My answers').last);
       await tester.pumpAndSettle();
       expect(find.text('Skipped'), findsOneWidget);
     },
   );
+
+  for (final width in [390.0, 1000.0]) {
+    testWidgets('Results at width $width show the first answer', (
+      tester,
+    ) async {
+      final model = await launch(tester, size: Size(width, 900));
+      model.setDraftInput('14');
+      model.submitAnswer();
+      model.setDraftInput('15');
+      model.submitAnswer();
+      model.setCurrentPage(1);
+      await tester.pumpAndSettle();
+      expect(find.text('1 question completed.'), findsOneWidget);
+      expect(find.text('Incorrect'), findsOneWidget);
+      expect(find.text('Your answer: 14.0'), findsOneWidget);
+      expect(find.text('Expected answer: 15'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('Short viewport and keyboard inset keep practice usable', (
     tester,
@@ -120,7 +140,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(nextQuestionButtonKey));
     await tester.pumpAndSettle();
-    expect(model.completedProblems.length, 1);
+    expect(model.history.length, 1);
     expect(tester.takeException(), isNull);
   });
 

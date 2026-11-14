@@ -16,9 +16,7 @@ void main() {
     final context = tester.element(find.byKey(homePageKey));
     final model = context.read<MathTesterModel>();
 
-    String currentQuestion() =>
-        '${model.current.left} ${model.current.operationType.displayString} '
-        '${model.current.right}';
+    String currentQuestion() => model.current.question;
 
     Future<void> submit(num answer) async {
       await tester.ensureVisible(find.byType(TextField));
@@ -53,12 +51,13 @@ void main() {
     await submit(correctAnswer + 1);
     expect(find.text('Not quite. Try another answer.'), findsOneWidget);
     expect(find.text('Let’s work it out'), findsOneWidget);
+    // The first valid check is recorded at once, before "Next question".
+    expect(model.history, hasLength(1));
+    final incorrectInput = model.history.single.firstAnswer;
 
     await submit(correctAnswer);
     expect(model.draftInput, '$correctAnswer');
-    expect(model.current.input, correctAnswer);
     expect(model.answerCorrect, isTrue);
-    final correctInput = model.current.userInput;
     expect(find.text('You got it!'), findsOneWidget);
     expect(find.text('Let’s work it out'), findsNothing);
 
@@ -67,28 +66,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Let’s work it out'), findsOneWidget);
 
-    await nextQuestion();
-    expect(find.text('Let’s work it out'), findsNothing);
-    expect(find.text('Show steps'), findsNothing);
     await openHistory();
     expect(find.text('1 question completed.'), findsOneWidget);
-    expect(find.text('Correct'), findsOneWidget);
+    expect(find.text('Incorrect'), findsOneWidget);
     expect(find.text(firstQuestion), findsWidgets);
-    expect(find.text('Your answer: $correctInput'), findsWidgets);
+    expect(find.text('Your answer: $incorrectInput'), findsWidgets);
     expect(find.text('Expected answer: $correctAnswer'), findsWidgets);
 
     await returnToPractice();
+    expect(currentQuestion(), firstQuestion);
+    await nextQuestion();
+    expect(find.text('Let’s work it out'), findsNothing);
+    expect(find.text('Show steps'), findsNothing);
+    expect(model.history, hasLength(1));
+
     final secondQuestion = currentQuestion();
-    final incorrectAnswer = model.current.result + 1;
-    await submit(incorrectAnswer);
-    expect(model.answerCorrect, isFalse);
-    final incorrectInput = model.current.userInput;
+    final secondAnswer = model.current.result;
+    await submit(secondAnswer);
+    expect(model.answerCorrect, isTrue);
+    final correctInput = model.history.last.firstAnswer;
     await nextQuestion();
     await openHistory();
     expect(find.text('2 questions completed.'), findsOneWidget);
+    expect(find.text('Correct'), findsOneWidget);
     expect(find.text('Incorrect'), findsOneWidget);
     expect(find.text(secondQuestion), findsWidgets);
-    expect(find.text('Your answer: $incorrectInput'), findsWidgets);
+    expect(find.text('Your answer: $correctInput'), findsWidgets);
 
     await returnToPractice();
     final thirdQuestion = currentQuestion();
@@ -98,6 +101,6 @@ void main() {
     expect(find.text('Skipped'), findsOneWidget);
     expect(find.text(thirdQuestion), findsWidgets);
     expect(find.text('No answer entered'), findsOneWidget);
-    expect(model.completedProblems.length, 3);
+    expect(model.history, hasLength(3));
   });
 }

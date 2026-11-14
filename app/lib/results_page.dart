@@ -1,4 +1,6 @@
-import 'package:collection/collection.dart';
+import 'dart:math';
+
+import 'package:duration/duration.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -10,52 +12,62 @@ import 'operations.dart';
 class ResultsPage extends StatelessWidget {
   const ResultsPage({super.key});
 
+  static const _columnFlex = [55, 160, 250, 135];
+
   @override
   Widget build(BuildContext context) {
-    final model = context.watch<MathTesterModel>();
+    final history = context.select((MathTesterModel model) => model.history);
     final theme = Theme.of(context);
-    final operations = model.completedProblems.toList();
     final useCards = MediaQuery.sizeOf(context).width < 800;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: constraints.maxWidth < 600 ? 16 : 24,
-            vertical: 24,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('My answers', style: theme.textTheme.displaySmall),
-                  const SizedBox(height: 24),
-                  if (operations.isEmpty)
-                    _emptyState(context)
-                  else ...[
-                    Text(
-                      operations.length == 1
-                          ? '1 question completed.'
-                          : '${operations.length} questions completed.',
-                      style: theme.textTheme.titleLarge,
+        final gutter = constraints.maxWidth < 600 ? 16.0 : 24.0;
+        // Centres a column of at most 1100 px, as Center + ConstrainedBox did.
+        final horizontal = max(gutter, (constraints.maxWidth - 1100) / 2);
+        return CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontal,
+                vertical: 24,
+              ),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text('My answers', style: theme.textTheme.displaySmall),
+                        const SizedBox(height: 24),
+                        if (history.isEmpty)
+                          _emptyState(context)
+                        else ...[
+                          Text(
+                            history.length == 1
+                                ? '1 question completed.'
+                                : '${history.length} questions completed.',
+                            style: theme.textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 24),
+                          if (!useCards) _tableHeader(context),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    if (useCards)
-                      ...operations.mapIndexed(
-                        (index, operation) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: _resultCard(context, index, operation),
-                        ),
-                      )
-                    else
-                      _resultsTable(context, operations),
-                  ],
+                  ),
+                  SliverList.builder(
+                    itemCount: history.length,
+                    itemBuilder: (context, index) => useCards
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _resultCard(context, index, history[index]),
+                          )
+                        : _tableRow(context, index, history[index]),
+                  ),
                 ],
               ),
             ),
-          ),
+          ],
         );
       },
     );
@@ -97,7 +109,7 @@ class ResultsPage extends StatelessWidget {
     );
   }
 
-  Widget _resultCard(BuildContext context, int index, Operation operation) {
+  Widget _resultCard(BuildContext context, int index, Attempt attempt) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -110,79 +122,75 @@ class ResultsPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              _question(operation),
+              _question(attempt),
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 16),
-            _status(context, operation),
+            _status(context, attempt),
             const SizedBox(height: 12),
-            _answerDetails(operation),
+            _answerDetails(attempt),
             const SizedBox(height: 8),
-            Text('Time: ${operation.elapsed}'),
+            Text('Time: ${_elapsed(attempt)}'),
           ],
         ),
       ),
     );
   }
 
-  Widget _resultsTable(BuildContext context, List<Operation> operations) {
+  Widget _tableHeader(BuildContext context) {
     final headerStyle = Theme.of(context).textTheme.bodyMedium
         ?.copyWith(fontWeight: FontWeight.w700);
-    return Table(
-      columnWidths: const {
-        0: FlexColumnWidth(.55),
-        1: FlexColumnWidth(1.6),
-        2: FlexColumnWidth(2.5),
-        3: FlexColumnWidth(1.35),
-      },
-      defaultVerticalAlignment: TableCellVerticalAlignment.top,
-      border: TableBorder(
-        horizontalInside: BorderSide(color: context.tokens.border),
+    return _tableCells([
+      Text('#', style: headerStyle),
+      Text('Question', style: headerStyle),
+      Text('Answer', style: headerStyle),
+      Text('Time', style: headerStyle),
+    ]);
+  }
+
+  Widget _tableRow(BuildContext context, int index, Attempt attempt) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.tokens.border)),
       ),
-      children: [
-        TableRow(
+      child: _tableCells([
+        Text('${index + 1}'),
+        Text(_question(attempt)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _tableCell(Text('#', style: headerStyle)),
-            _tableCell(Text('Question', style: headerStyle)),
-            _tableCell(Text('Answer', style: headerStyle)),
-            _tableCell(Text('Time', style: headerStyle)),
+            _status(context, attempt),
+            const SizedBox(height: 8),
+            _answerDetails(attempt),
           ],
         ),
-        ...operations.mapIndexed(
-          (index, operation) => TableRow(
-            children: [
-              _tableCell(Text('${index + 1}')),
-              _tableCell(Text(_question(operation))),
-              _tableCell(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _status(context, operation),
-                    const SizedBox(height: 8),
-                    _answerDetails(operation),
-                  ],
-                ),
-              ),
-              _tableCell(Text(operation.elapsed)),
-            ],
-          ),
-        ),
-      ],
+        Text(_elapsed(attempt)),
+      ]),
     );
   }
+
+  Widget _tableCells(List<Widget> cells) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (var column = 0; column < cells.length; column++)
+        Expanded(flex: _columnFlex[column], child: _tableCell(cells[column])),
+    ],
+  );
 
   Widget _tableCell(Widget child) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     child: child,
   );
 
-  String _question(Operation operation) =>
-      '${operation.left} ${operation.operationType.displayString} '
-      '${operation.right}';
+  String _question(Attempt attempt) => attempt.problem.question;
 
-  Widget _status(BuildContext context, Operation operation) {
-    final skipped = !operation.inputEntered();
-    final correct = !skipped && operation.inputCorrect();
+  String _elapsed(Attempt attempt) => attempt.skipped
+      ? 'Not Available'
+      : prettyDuration(Duration(milliseconds: attempt.elapsedMs));
+
+  Widget _status(BuildContext context, Attempt attempt) {
+    final skipped = attempt.skipped;
+    final correct = attempt.correct;
     final color = skipped
         ? context.tokens.muted
         : correct
@@ -212,16 +220,16 @@ class ResultsPage extends StatelessWidget {
     );
   }
 
-  Widget _answerDetails(Operation operation) => Column(
+  Widget _answerDetails(Attempt attempt) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        operation.inputEntered()
-            ? 'Your answer: ${operation.userInput}'
-            : 'No answer entered',
+        attempt.skipped
+            ? 'No answer entered'
+            : 'Your answer: ${attempt.firstAnswer}',
       ),
       const SizedBox(height: 4),
-      Text('Expected answer: ${operation.result}'),
+      Text('Expected answer: ${attempt.problem.result}'),
     ],
   );
 }
