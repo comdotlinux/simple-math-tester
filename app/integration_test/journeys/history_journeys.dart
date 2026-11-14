@@ -230,19 +230,21 @@ void historyJourneys() {
       expect(await inHistory(tester, find.text('77 + 23')), findsOneWidget);
     });
 
-    testWidgets('going back to Practice keeps the current question', (
-      tester,
-    ) async {
-      await startWith(tester, Progress(tier: Tier.easy));
-      final model = modelOf(tester);
-      final question = model.current.question;
-      await submit(tester, model.current.result + 1);
-      await openHistory(tester);
+    testWidgets(
+      'going back to Practice keeps the current question, the answer focused',
+      (tester) async {
+        await startWith(tester, Progress(tier: Tier.easy));
+        final model = modelOf(tester);
+        final question = model.current.question;
+        await submit(tester, model.current.result + 1);
+        await openHistory(tester);
 
-      await returnToPractice(tester);
+        await returnToPractice(tester);
 
-      expect(model.current.question, question);
-      expect(questionOnScreen(tester), question);
-    });
+        expect(model.current.question, question);
+        expect(questionOnScreen(tester), question);
+        expect(await answerFocused(tester), isTrue);
+      },
+    );
   });
 }

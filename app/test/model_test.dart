@@ -54,6 +54,47 @@ void main() {
     expect(model.history.single.firstAnswer, 4);
   });
 
+  test('checkOrNext checks, moves on only for the answer it checked', () {
+    final model = modelFor(addition);
+    expect(model.answerChecked, isFalse);
+    model.setDraftInput('4');
+    model.checkOrNext();
+    expect([model.answerCorrect, model.answerChecked], [false, true]);
+    model.setDraftInput('5');
+    model.checkOrNext();
+    expect(model.answerCorrect, isTrue, reason: 'a new answer is checked');
+    expect(model.current, same(addition));
+    model.checkOrNext();
+    expect(model.current, isNot(same(addition)));
+    expect([model.answerCorrect, model.answerChecked], [null, false]);
+    expect(model.history, hasLength(1));
+  });
+
+  test('Enter on a wrong answer left unchanged moves on, no extra row', () {
+    final model = modelFor(addition);
+    model.setDraftInput('4');
+    model.checkOrNext();
+    expect(model.answerCorrect, isFalse);
+    model.checkOrNext();
+    expect(model.current, isNot(same(addition)));
+    expect(model.history, hasLength(1));
+    expect(model.history.single.firstAnswer, 4);
+  });
+
+  test('Enter after a hint, with no check, checks the answer', () {
+    final model = modelFor(addition);
+    model.revealStep();
+    expect(model.revealedSteps, 1);
+    model.checkOrNext();
+    expect(model.current, same(addition), reason: 'empty: no skip');
+    expect(model.validationMessage, 'Enter a number first.');
+    model.setDraftInput('5');
+    model.checkOrNext();
+    expect(model.current, same(addition));
+    expect(model.answerCorrect, isTrue);
+    expect(model.history.single.hintsUsed, 1);
+  });
+
   test('a retry after a correct first check keeps the entry', () {
     var now = start;
     final model = modelFor(addition, clock: () => now);
@@ -725,6 +766,19 @@ void main() {
       expect(model.current.question, '1 + 1');
       expect(model.revealedSteps, 0);
       expect(model.history, isEmpty);
+    });
+
+    test('Enter checks every answer once and never skips a problem', () {
+      final model = sprintModel(clock: () => start);
+      model.startSprint();
+      model.setDraftInput('2');
+      model.checkOrNext();
+      expect(model.history, hasLength(1));
+      expect(model.current.question, '2 + 1', reason: 'moved on once');
+      expect(model.answerCorrect, isNull);
+      model.checkOrNext();
+      expect(model.history, hasLength(1), reason: 'empty: no skip');
+      expect(model.current.question, '2 + 1');
     });
 
     test('no sprint starts before a tier is chosen', () {
