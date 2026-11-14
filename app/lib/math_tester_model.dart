@@ -22,6 +22,7 @@ class MathTesterModel extends ChangeNotifier {
        _clock = clock ?? DateTime.now,
        _store = store ?? MemoryProgressStore(),
        _progress = progress ?? Progress() {
+    _progress = _withDayChange(_progress);
     _show(initialProblem ?? _draw());
   }
 
@@ -59,6 +60,12 @@ class MathTesterModel extends ChangeNotifier {
   /// Null until the player picks a starting tier.
   Tier? get tier => _progress.tier;
   Map<OperationType, Difficulty> get difficulty => _progress.difficulty;
+  GameState get game => _progress.game;
+
+  /// Read from the clock on every call, so a rebuild after midnight shows
+  /// the new date without any event.
+  int get shownStreak => displayedStreak(game, _clock());
+  int get shownDailyCount => goalRingValue(game, _clock());
 
   /// False in no-write mode: saved data could not be read, so it is kept.
   bool get canSave => _canSave;
@@ -141,15 +148,20 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Flushes saves when the app goes to the background; in no-write mode
-  /// the first resume tries to read the saved progress once more.
+  /// Flushes saves when the app goes to the background; a resume runs the
+  /// day change, and in no-write mode the first resume tries to read the
+  /// saved progress once more.
   void handleLifecycle(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused || AppLifecycleState.hidden:
         if (_canSave) _writer.flush();
-      case AppLifecycleState.resumed when !_canSave && !_retried:
-        _retried = true;
-        _retryLoad();
+      case AppLifecycleState.resumed:
+        _progress = _withDayChange(_progress);
+        notifyListeners();
+        if (!_canSave && !_retried) {
+          _retried = true;
+          _retryLoad();
+        }
       default:
     }
   }
@@ -157,13 +169,16 @@ class MathTesterModel extends ChangeNotifier {
   Future<void> _retryLoad() async {
     final loaded = await loadProgress(_store, clock: _clock);
     if (!loaded.canSave) return;
-    _progress = loaded.progress;
+    _progress = _withDayChange(loaded.progress);
     _canSave = true;
     // The problem on screen came from the default selection; it is not
     // recorded, as after any reload.
     _showNext();
     notifyListeners();
   }
+
+  Progress _withDayChange(Progress progress) =>
+      progress.withGame(dayChanged(progress.game, _clock()));
 
   void _save() {
     if (_canSave) _writer.save(_progress.encode());
@@ -214,7 +229,8 @@ class MathTesterModel extends ChangeNotifier {
     final kind = attempt.problem.kind;
     _progress = _progress
         .withAttempt(attempt)
-        .withDifficulty(kind, difficultyAfter(difficulty[kind]!, attempt));
+        .withDifficulty(kind, difficultyAfter(difficulty[kind]!, attempt))
+        .withGame(gameAfter(game, attempt, now));
     _save();
   }
 }
