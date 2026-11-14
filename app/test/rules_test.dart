@@ -97,6 +97,19 @@ void main() {
       ]);
     });
 
+    test('a sprint answer counts toward the totals and freezes the rest', () {
+      const start = Difficulty(level: 3, upCount: 2, downCount: 1);
+      Attempt sprint(bool right) => Attempt(
+        problem,
+        firstAnswer: right ? 5 : 4,
+        elapsedMs: 0,
+        answeredAt: DateTime(2026, 11, 14),
+        sprint: true,
+      );
+      expect(state(difficultyAfter(start, sprint(true))), [3, 2, 1, 1, 1]);
+      expect(state(apply(start, sprint(false), 3)), [3, 2, 1, 3, 0]);
+    });
+
     test('criterion 18: a skip changes neither counter nor the totals', () {
       const start = Difficulty(level: 3, upCount: 1, downCount: 1);
       final skip = answer(right: false, hints: 1, skip: true);
@@ -416,6 +429,35 @@ void main() {
       const state = GameState(dailyCount: 6, lastActiveDate: '2026-11-14');
       expect(goalRingValue(state, DateTime(2026, 11, 14, 23, 59)), 6);
       expect(goalRingValue(state, DateTime(2026, 11, 15, 0, 1)), 0);
+    });
+  });
+
+  group('sprint', () {
+    final start = DateTime(2026, 11, 14, 9);
+
+    test('remaining time is clock time, never below 0 or above 60 s', () {
+      Duration at(int seconds) =>
+          sprintRemaining(start, start.add(Duration(seconds: seconds)));
+      expect(at(0), sprintLength);
+      expect(sprintLength, const Duration(seconds: 60));
+      expect(at(15), const Duration(seconds: 45));
+      expect(at(60), Duration.zero);
+      expect(at(500), Duration.zero);
+      expect(at(-30), sprintLength, reason: 'a clock set back adds nothing');
+    });
+
+    test('combo is 0 at start and end; the best keeps the higher score', () {
+      const playing = GameState(xp: 300, combo: 7, bestSprint: 80);
+      expect(sprintStarted(playing).combo, 0);
+      expect(sprintStarted(playing).xp, 300);
+      final lower = sprintEnded(playing, 50);
+      expect([lower.combo, lower.bestSprint, lower.xp], [0, 80, 300]);
+      expect(sprintEnded(playing, 81).bestSprint, 81);
+    });
+
+    test('the clock correction keeps the best sprint', () {
+      const ahead = GameState(lastActiveDate: '2026-12-30', bestSprint: 90);
+      expect(dayChanged(ahead, start).bestSprint, 90);
     });
   });
 }

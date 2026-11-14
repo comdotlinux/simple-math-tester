@@ -165,6 +165,7 @@ class Progress {
     'lastGoalDate': ?game.lastGoalDate,
     'streak': game.streak,
     'bestStreak': game.bestStreak,
+    'bestSprint': game.bestSprint,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -224,6 +225,7 @@ class Progress {
       lastGoalDate: _date(json, 'lastGoalDate'),
       streak: _field<int>(json, 'streak') ?? 0,
       bestStreak: _field<int>(json, 'bestStreak') ?? 0,
+      bestSprint: _field<int>(json, 'bestSprint') ?? 0,
     );
 
     const known = {
@@ -239,6 +241,7 @@ class Progress {
       'lastGoalDate',
       'streak',
       'bestStreak',
+      'bestSprint',
     };
     return Progress._(
       selected,
