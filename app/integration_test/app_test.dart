@@ -139,7 +139,8 @@ void main() {
       // tester.enterText cannot be used: integration tests have no fake text
       // input, and the framework drops its client id -1 message when asserts
       // are off, so in release and profile builds the field stayed empty.
-      final text = '$answer';
+      // The answer is formatted as the app shows numbers, so 4.0 is typed 4.
+      final text = formatNumber(answer);
       tester
           .state<EditableTextState>(find.byType(EditableText))
           .updateEditingValue(
@@ -193,7 +194,7 @@ void main() {
     expect(model.history.single.firstAnswer, correctAnswer + 1);
 
     await submit(correctAnswer);
-    expect(model.draftInput, '$correctAnswer');
+    expect(model.draftInput, formatNumber(correctAnswer));
     expect(model.answerCorrect, isTrue);
     expect(find.text('You got it!'), findsOneWidget);
     expect(visibleSteps(), 1);

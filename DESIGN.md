@@ -61,28 +61,56 @@ A new problem is drawn after a reload.
    reducible, and both themes keep full contrast.
 
 ## Visual language
-- Two themes follow the system setting: light playful and dark neon. Flat solid
-  colours, no purple, no gradients. Pale accents always use dark ink.
-- Heavy numerals and large type for the problem. Use bundled Flutter typography; no
-  network-loaded fonts or new font package. Weight and scale carry hierarchy. Body
-  at least 16px; avoid uppercase paragraph text.
-- Spacing 8/12/16/24/32/48; 24–32px main card radii. Hard offset shadows give
-  buttons a pressed look; no soft heavy shadows. Large editorial heading, small
-  section label.
+- Two themes follow the system setting. Light playful: warm sunny page `#FFF6E3`,
+  white cards, navy ink `#18213B` for text, outlines and slabs. Dark neon: near-black
+  page `#0B0F17`, card `#161C29`, warm white ink `#F5F2E9`, aqua outlines `#5CE1E6`
+  over deep teal slabs `#1C5A66`. Flat solid colours, no purple, no gradients.
+- Colour has one job in both themes: yellow primary action, blue operations, green
+  correct and daily goal, tomato wrong, orange streak flame, teal XP, lime combo,
+  cyan sprint. Accents are fills; text and icons on them use their `on` colour
+  (navy in light, near-black in dark). Every pair is listed in `contrastPairs`.
+  The thin daily-goal ring and XP bar use their own `goalRing` and `xpBar` roles:
+  darker green and teal in light so they reach 3:1 on white and cream, the fills
+  themselves in dark; those pairs are listed in `graphicPairs`.
+- Depth: 2px outlines and a hard 5px slab below raised cards and buttons, no blur.
+  A pressed button sinks to 1px. Unselected toggles sit flat on a sunken fill.
+- Bundled Roboto 400/500/700 only. Question 64px Bold with tabular figures; titles
+  36px Bold; body at least 16px; avoid uppercase paragraph text. Weight and scale
+  carry hierarchy.
+- Spacing 8/12/16/24/32/48; radii 28px cards, 18px controls.
 - Decorative arithmetic shapes made with native widgets, excluded from semantics.
 - Feedback motion (pop on correct, shake on wrong, XP count-up, particle burst on
   level-up and goal) stays brief; zero duration under disableAnimations.
-- Sound has a switch; haptics have a switch. Both default on.
+- Sound has a switch; haptics have a switch. Both default on. The Sound switch
+  shows in settings only once sound plays (`soundPlays`).
 
 ## Components
-`app/lib/app_theme.dart` owns colors and global theme; both themes share one set of
-tokens. Adaptive navigation shell, persistent header, practice workbook card, answer
-field, number pad, feedback strip, sprint card and results rows share tokens.
-Buttons have minimum 48px height. No general-purpose component framework needed.
-The on-screen number pad has digits, backspace and a large Check key. It edits the
-same text field. A keyboard toggle hides the pad and opens the system keyboard, so
+`app/lib/app_theme.dart` owns colours, shape values and every component theme; the
+`AppTokens` roles exist once per theme and no widget names a colour. `Slab`
+(`app/lib/slab.dart`) is the one shared widget: the hard slab under a card or
+button. Adaptive navigation shell, game-style header (flame, goal ring, combo, XP
+bar), question card with an operation band, one row of four operation toggles,
+answer field, feedback strip, hint steps, sprint card, stats chips and result rows
+share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
+The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
+then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
+text field, which keeps focus and accepts digits only. Phone-height pages dock the
+field, a compact feedback strip (which carries Next after a check) and a denser pad
+together below the page, and the question card drops its band, so the question,
+answer, feedback and Next stay on screen; once the card scrolls out of view (for
+example while reading hint steps) a strip pinned over the top of the page repeats
+the question.
+Taller pages dock the pad alone below the page; pages 700px and wider dock it at the
+top of a page-coloured column beside the practice column; when docking would squeeze the question (short screens,
+large text) it sits under the field, above the feedback, so a message never moves a
+key. A keyboard button on the field hides the pad and opens the system keyboard, so
 dictation and IME stay reachable; a hardware keyboard always types and Enter checks.
-There is one Check button, moved into the pad while it shows.
+On web the switch reconnects the field, because the browser engine sets the editing
+element's `inputmode` only when it creates it.
+There is one Check button, moved into the pad while it shows. `padReplacesKeyboard`
+is the one per-platform switch for platforms where the soft keyboard cannot be kept
+closed. The celebration (`app/lib/celebration.dart`) is flat outlined confetti thrown
+from both side edges, clear of the question.
 
 ## Accessibility
 Target WCAG AA contrast in both themes: 4.5:1 normal text, 3:1 large text/UI
@@ -102,8 +130,11 @@ short viewports, keyboard insets and 200% text scale. Results wrap, never clip.
 Initial: a clear question with an empty labeled answer field; before a starting tier
 is chosen, a tier picker covers Practice. Invalid: inline hint, no submission.
 The first valid check is the answer on record; retries are allowed and do not change
-it. Correct: encouraging confirmation, combo and XP. Wrong: invitation to try again
-with the first hint opened. Hints are progressive: Hint shows one step, Next step
+it. Correct: encouraging confirmation, combo and XP; a correct first check pops the
+answer and the header XP counts up. Wrong: invitation to try again with the first
+hint opened and a short shake. A level-up or the reached daily goal throws one
+confetti burst. Motion never blocks typing and never loops. Haptics: a light tap per
+pad key, stronger on correct, wrong and a milestone, all behind the haptics switch. Hints are progressive: Hint shows one step, Next step
 shows another, and only the last step states the answer. Next skips and records
 Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
 check moves to the next problem; the result card shows score beside the personal
@@ -118,7 +149,9 @@ Try another answer.” Avoid shame, excessive punctuation, baby talk and fake re
 ## Implementation constraints
 Flutter stable, Provider retained. New runtime dependencies only where a requirement
 needs them (device storage, sound, opening the Impressum link). Support web/iOS/Android, latest OS versions,
-with native Flutter controls; no browser-only imports in shared UI. Regressions
+with native Flutter controls; no browser-only imports in shared UI or in
+`app/integration_test/` (every native job runs that folder whole); browser-only tests
+live in `app/integration_test_web/` and run only in the Chrome job. Regressions
 precede fixes. Format, analyze, tests, web build and native gates apply. Capture
 actual release-browser screenshots of both themes for empty/populated/feedback states.
 
