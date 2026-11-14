@@ -9,6 +9,7 @@ import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
+import 'package:simple_math_tester/sound_player.dart';
 
 // History rows are built lazily, so on a phone-sized screen a row below the
 // header, the stats card or earlier rows does not exist until the list is
@@ -36,7 +37,7 @@ void main() {
   // tier, so the tier picker does not cover the practice page.
   Future<void> startWith(WidgetTester tester, Progress progress) async {
     await SharedPreferencesStore().write(progressKey, progress.encode());
-    await app.main();
+    await app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
     await tester.pumpAndSettle();
   }
 
@@ -270,6 +271,35 @@ void main() {
             : 'Incorrect',
       ),
       ['Incorrect', 'Correct', 'Skipped'],
+    );
+  });
+
+  testWidgets('the Sound switch shows and its setting survives a restart', (
+    tester,
+  ) async {
+    await startWith(tester, Progress(tier: Tier.easy));
+    await tester.ensureVisible(find.byKey(settingsButtonKey));
+    await tester.tap(find.byKey(settingsButtonKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byKey(soundSwitchKey)),
+      isSemantics(hasToggledState: true, isToggled: true),
+    );
+    await tester.tap(find.byKey(soundSwitchKey));
+    await tester.pumpAndSettle();
+    final saved = Progress.decode(
+      (await SharedPreferencesStore().read(progressKey))!,
+    );
+    expect(saved.sound, isFalse);
+
+    await app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(settingsButtonKey));
+    await tester.tap(find.byKey(settingsButtonKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byKey(soundSwitchKey)),
+      isSemantics(hasToggledState: true, isToggled: false),
     );
   });
 }

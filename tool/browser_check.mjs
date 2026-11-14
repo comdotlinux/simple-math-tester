@@ -100,6 +100,13 @@ try {
 
     const requests = [];
     context.on('request', (request) => requests.push(request.url()));
+    // The four sounds preload at start; their files are content-hashed.
+    const sounds = new Map();
+    page.on('response', (response) => {
+      if (new URL(response.url()).pathname.startsWith('/assets/assets/sounds/')) {
+        sounds.set(response.url(), response.status());
+      }
+    });
     await openApp(page, start);
     await page.getByRole('tab', { name: 'Practice' }).click();
     // The first question follows the seeded multiplication-only selection.
@@ -112,6 +119,11 @@ try {
       progressKey,
     );
     await expectHistory(page, 4);
+    for (let i = 0; i < 100 && sounds.size < 4; i++) await page.waitForTimeout(100);
+    check(
+      sounds.size === 4 && [...sounds.values()].every((status) => status === 200 || status === 206),
+      `start ${start}: the four sound files load: ${JSON.stringify([...sounds])}`,
+    );
     const foreign = requests.filter((url) => new URL(url).origin !== origin);
     check(
       requests.length > 0 && foreign.length === 0,

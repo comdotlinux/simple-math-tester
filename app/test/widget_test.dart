@@ -13,7 +13,6 @@ import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
-import 'package:simple_math_tester/problem_page.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
@@ -713,10 +712,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(find.textContaining('Now: Easy.'), findsOneWidget);
-        // No Sound switch promises sound before any plays.
-        expect(soundPlays, isFalse);
-        expect(find.byKey(soundSwitchKey), findsNothing);
-        for (final (key, label) in [(hapticsSwitchKey, 'Vibration')]) {
+        for (final (key, label) in [
+          (soundSwitchKey, 'Sound'),
+          (hapticsSwitchKey, 'Vibration'),
+        ]) {
           await tester.ensureVisible(find.byKey(key));
           await tester.pumpAndSettle();
           expect(tester.getSemantics(find.byKey(key)).label, startsWith(label));
@@ -1676,9 +1675,9 @@ void main() {
       await tester.tap(find.byKey(hapticsSwitchKey));
       await tester.pumpAndSettle();
       expect([model.sound, model.haptics], [true, false]);
-      // The Sound switch is hidden until sound plays; its value saves alike.
-      model.setSound(false);
+      await tester.tap(find.byKey(soundSwitchKey));
       await tester.pumpAndSettle();
+      expect([model.sound, model.haptics], [false, false]);
       final saved = Progress.decode((await store.read(progressKey))!);
       expect([saved.sound, saved.haptics], [false, false]);
 
@@ -1686,14 +1685,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
-      expect(
-        tester.getSemantics(find.byKey(hapticsSwitchKey)),
-        isSemantics(hasToggledState: true, isToggled: false),
-      );
-      expect(
-        tester.element(find.byKey(homePageKey)).read<MathTesterModel>().sound,
-        isFalse,
-      );
+      for (final key in [soundSwitchKey, hapticsSwitchKey]) {
+        expect(
+          tester.getSemantics(find.byKey(key)),
+          isSemantics(hasToggledState: true, isToggled: false),
+        );
+      }
     });
 
     // Visible means inside the screen's safe area and, for a control in a

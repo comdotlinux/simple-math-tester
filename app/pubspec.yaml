@@ -14,6 +14,7 @@ dependencies:
   provider: ^6.1.5+1
   material_ui: ^1.11.0
   shared_preferences: ^2.5.6
+  audioplayers: ^6.8.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -23,6 +24,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/sounds/correct.wav
+    - assets/sounds/wrong.wav
+    - assets/sounds/level_up.wav
+    - assets/sounds/goal.wav
   # Bundled so the web build never fetches Roboto from fonts.gstatic.com; the
   # web engine downloads it whenever no family is named exactly "Roboto".
   fonts:

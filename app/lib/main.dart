@@ -8,15 +8,20 @@ import 'home_page.dart';
 import 'keys.dart';
 import 'math_tester_model.dart';
 import 'progress_store.dart';
+import 'sound_player.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await bootstrap(SharedPreferencesStore());
+  await bootstrap(SharedPreferencesStore(), AudioplayersSoundPlayer());
 }
 
 /// Loads saved progress (and backs up unreadable progress) before the model
-/// exists, so no save can run before the read has finished.
-Future<void> bootstrap(ProgressStore store) async {
+/// exists, so no save can run before the read has finished. Silent unless a
+/// player is given, so tests need no audio sink.
+Future<void> bootstrap(
+  ProgressStore store, [
+  SoundPlayer sounds = const SilentSoundPlayer(),
+]) async {
   final loaded = await loadProgress(store);
   runApp(
     MultiProvider(
@@ -29,6 +34,7 @@ Future<void> bootstrap(ProgressStore store) async {
             progress: loaded.progress,
             canSave: loaded.canSave,
             haptic: playHaptic,
+            sounds: sounds,
           ),
         ),
       ],

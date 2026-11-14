@@ -10,6 +10,7 @@ const types = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
   '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png',
   '.ttf': 'font/ttf', '.otf': 'font/otf', '.bin': 'application/octet-stream',
+  '.wav': 'audio/wav',
 };
 
 async function file(path) {

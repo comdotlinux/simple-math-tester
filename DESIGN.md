@@ -78,8 +78,8 @@ A new problem is drawn after a reload.
 - Decorative arithmetic shapes made with native widgets, excluded from semantics.
 - Feedback motion (pop on correct, shake on wrong, XP count-up, particle burst on
   level-up and goal) stays brief; zero duration under disableAnimations.
-- Sound has a switch; haptics have a switch. Both default on. The Sound switch
-  shows in settings only once sound plays (`soundPlays`).
+- Sound has a switch; haptics have a switch. Both default on. Sound never
+  waits, never blocks input, and goes quiet for the session after a failure.
 
 ## Components
 `app/lib/app_theme.dart` owns colours, shape values and every component theme; the
@@ -127,7 +127,10 @@ it. Correct: encouraging confirmation, combo and XP; a correct first check pops 
 answer and the header XP counts up. Wrong: invitation to try again with the first
 hint opened and a short shake. A level-up or the reached daily goal throws one
 confetti burst. Motion never blocks typing and never loops. Haptics: a light tap per
-pad key, stronger on correct, wrong and a milestone, all behind the haptics switch. Hints are progressive: Hint shows one step, Next step
+pad key, stronger on correct, wrong and a milestone, all behind the haptics switch. Sound: a short
+chime on correct, a soft low pair on wrong, an arpeggio on a level-up and a chord on
+the daily goal (one clip per check; the level-up wins), all behind the Sound switch.
+Hints are progressive: Hint shows one step, Next step
 shows another, and only the last step states the answer. Next skips and records
 Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
 check moves to the next problem; the result card shows score beside the personal
