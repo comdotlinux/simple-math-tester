@@ -43,6 +43,10 @@ edit them there, not in Play Console. Every app language has its own listing in
 - After that pull request is merged, push all listings to Play by hand:
   `gh workflow run play-listing.yml` (from `main`). It replaces the title and
   both descriptions of every language in one edit; Google reviews the change.
+  By default it also shoots the seven phone screenshots in every language and
+  replaces each listing's phone screenshots with them (untick `screenshots`
+  for texts only). See [play-store/README.md](play-store/README.md), which
+  also says how to add a language.
 
 Play language codes (Play Console Help, "Add translations and localized
 assets"): `de-DE`, `pl-PL`, `hi-IN`, `mr-IN`, `te-IN`, `ta-IN`, `ml-IN`,
@@ -61,7 +65,7 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 |---|---|---|
 | App icon | 512 x 512 PNG | [`play-store/icon-512.png`](play-store/icon-512.png) |
 | Feature graphic | 1024 x 500 PNG or JPEG, no alpha | [`play-store/feature-graphic-1024x500.png`](play-store/feature-graphic-1024x500.png) |
-| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 | `play-store/phone-1-practice.png` to `play-store/phone-7-compact.png`, uploaded in that order |
+| Phone screenshots | 2 to 8, 9:16, 1080 x 1920 | Shot and uploaded per language by `play-listing.yml`, in the order of `play-store/phone-1-practice.png` to `play-store/phone-7-compact.png` (the English ones) |
 
 ## App content declarations
 
