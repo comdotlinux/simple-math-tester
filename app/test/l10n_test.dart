@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -35,6 +36,15 @@ void main() {
         .map((file) => file.path)
         .where((path) => path.endsWith('.arb') && !path.endsWith('_en.arb'))
         .toList();
+
+    test('every supported language has an English name', () {
+      expect(
+        englishLanguageNames.keys,
+        unorderedEquals(
+          AppLocalizations.supportedLocales.map((l) => l.languageCode),
+        ),
+      );
+    });
 
     test('every supported language has an ARB file', () {
       expect(
@@ -99,9 +109,11 @@ void main() {
       await tester.ensureVisible(find.byKey(languageTileKey));
       await tester.tap(find.byKey(languageTileKey));
       await tester.pumpAndSettle();
-      // Each language is named in itself.
+      // Each language is named in itself, with its English name below.
       expect(find.text('Deutsch'), findsOneWidget);
+      expect(find.text('German'), findsOneWidget);
       expect(find.text('தமிழ்'), findsOneWidget);
+      expect(find.text('Tamil'), findsOneWidget);
       await tester.ensureVisible(find.byKey(languageOptionKey('ta')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(languageOptionKey('ta')));
