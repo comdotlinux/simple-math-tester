@@ -1222,7 +1222,7 @@ String? _languageName(String? code) =>
     code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
 
 /// "System" and every translated language, each named in its own language
-/// with its English name below (none for English itself).
+/// with its English name in small type on the same line (none for English).
 Future<void> _showLanguages(BuildContext context) => showDialog<void>(
   context: context,
   builder: (context) {
@@ -1238,10 +1238,23 @@ Future<void> _showLanguages(BuildContext context) => showDialog<void>(
         ])
           ListTile(
             key: languageOptionKey(code),
-            title: Text(_languageName(code) ?? l.languageSystem),
-            subtitle: code == null || code == 'en'
-                ? null
-                : Text(englishLanguageNames[code]!),
+            title: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(_languageName(code) ?? l.languageSystem),
+                if (code != null && code != 'en') ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      englishLanguageNames[code]!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
             selected: code == model.language,
             trailing: code == model.language
                 ? const Icon(Icons.check_circle)
