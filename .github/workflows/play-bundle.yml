@@ -27,6 +27,10 @@ jobs:
     name: Build signed app bundle and check 16 KB pages
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    # Tag runs use the `release` environment, which only v* tags may deploy to, so
+    # its secrets (signing key, Play, DeepSeek) never reach a branch run. Builds on
+    # main get none of them and sign with a throwaway key.
+    environment: ${{ github.ref_type == 'tag' && 'release' || '' }}
     # Write access creates the GitHub release on a tag. The workflow runs only for
     # pushes to this repository (no pull_request trigger), so no outside code gets it.
     permissions:
@@ -36,14 +40,14 @@ jobs:
         shell: bash
         working-directory: app
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The tag check below needs main's history.
           fetch-depth: 0
           # The job's token can write; keep it out of .git/config so the build and
           # its dependencies never see it. Only the gh steps get it, through GH_TOKEN.
           persist-credentials: false
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           java-version: '21'

@@ -226,6 +226,24 @@ gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deep
 
 `DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
 
+**Keep the release secrets in the `release` environment.** Only `v*` tags may
+deploy to it, so a pushed branch with a changed workflow cannot read them. To move
+them from the repository (each command reads a file or asks at a hidden prompt):
+
+```
+R=comdotlinux/simple-math-tester
+base64 -w0 ~/upload-keystore.jks | gh secret set ANDROID_KEYSTORE_BASE64 --repo $R --env release
+gh secret set ANDROID_KEYSTORE_PASSWORD --repo $R --env release
+gh secret set ANDROID_KEY_PASSWORD --repo $R --env release
+gh secret set ANDROID_KEY_ALIAS --repo $R --env release --body upload
+gh secret set PLAY_SERVICE_ACCOUNT_JSON --repo $R --env release < <key file>
+gh secret set DEEPSEEK_API_KEY --repo $R --env release
+```
+
+Then remove the repository-level copies of those six secrets (Settings, Secrets
+and variables, Actions, Repository secrets); while a repository copy exists, any
+workflow run can still read it. Push the next tag and check the release run.
+
 Each release:
 
 1. On `main`, pulled: `git tag v1.0.1 && git push origin v1.0.1`.
