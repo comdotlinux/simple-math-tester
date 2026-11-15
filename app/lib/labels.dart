@@ -47,3 +47,18 @@ String formatElapsed(AppLocalizations l, int ms, {bool abbreviated = false}) {
           : l.durationSeconds(seconds),
   ].join(abbreviated ? ', ' : ' ');
 }
+
+/// Each app language's name in English, shown under its own name in the
+/// language picker. A test keeps it in step with the supported locales.
+const englishLanguageNames = {
+  'en': 'English',
+  'de': 'German',
+  'pl': 'Polish',
+  'hi': 'Hindi',
+  'mr': 'Marathi',
+  'te': 'Telugu',
+  'ta': 'Tamil',
+  'ml': 'Malayalam',
+  'fr': 'French',
+  'ro': 'Romanian',
+};

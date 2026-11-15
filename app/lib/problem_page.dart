@@ -1221,7 +1221,8 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
 String? _languageName(String? code) =>
     code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
 
-/// "System" and every translated language, each named in its own language.
+/// "System" and every translated language, each named in its own language
+/// with its English name below (none for English itself).
 Future<void> _showLanguages(BuildContext context) => showDialog<void>(
   context: context,
   builder: (context) {
@@ -1238,6 +1239,9 @@ Future<void> _showLanguages(BuildContext context) => showDialog<void>(
           ListTile(
             key: languageOptionKey(code),
             title: Text(_languageName(code) ?? l.languageSystem),
+            subtitle: code == null || code == 'en'
+                ? null
+                : Text(englishLanguageNames[code]!),
             selected: code == model.language,
             trailing: code == model.language
                 ? const Icon(Icons.check_circle)
