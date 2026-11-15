@@ -37,6 +37,9 @@ Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
 
 /// One per segment of the settings sheet's layout choice.
 Key layoutModeKey(Enum mode) => Key('layout-mode-${mode.name}');
+
+/// One per swatch of the settings sheet's colour choice.
+Key paletteKey(Enum palette) => Key('palette-${palette.name}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
+import 'app_theme.dart' show AppPalette;
 import 'legal.dart';
 import 'operations.dart';
 import 'progress.dart';
@@ -140,6 +141,7 @@ class MathTesterModel extends ChangeNotifier {
   ThemeMode get themeMode => _progress.themeMode;
   bool get compact => _progress.layoutMode == LayoutMode.compact;
   LayoutMode get layoutMode => _progress.layoutMode;
+  AppPalette get palette => _progress.palette;
 
   /// The latest valid check; [count] tells two equal results apart, so each
   /// one plays its feedback motion.
@@ -168,6 +170,12 @@ class MathTesterModel extends ChangeNotifier {
 
   void setLayoutMode(LayoutMode mode) {
     _progress = _progress.withLayoutMode(mode);
+    _save();
+    notifyListeners();
+  }
+
+  void setPalette(AppPalette palette) {
+    _progress = _progress.withPalette(palette);
     _save();
     notifyListeners();
   }

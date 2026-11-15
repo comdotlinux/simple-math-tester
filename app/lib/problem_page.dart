@@ -1090,6 +1090,31 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               Padding(
                 padding: rowPadding,
                 child: Column(
+                  // Stretch: the Wrap below would otherwise shrink the
+                  // column and the sheet would centre it.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: rowSpacing,
+                  children: [
+                    Text('Colours', style: listTileTheme.titleTextStyle),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final palette in AppPalette.values)
+                          _Swatch(
+                            key: paletteKey(palette),
+                            palette: palette,
+                            selected: palette == model.palette,
+                            onTap: () => model.setPalette(palette),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: rowPadding,
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: rowSpacing,
                   children: [
@@ -1490,6 +1515,64 @@ class _Hints extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The colour themes' names, as the settings sheet shows them.
+const _paletteNames = {
+  AppPalette.sunny: 'Sunny',
+  AppPalette.ocean: 'Ocean',
+  AppPalette.forest: 'Forest',
+  AppPalette.berry: 'Berry',
+  AppPalette.sunset: 'Sunset',
+};
+
+/// One colour theme's accent as a round button at least 48 px across; a
+/// check and a thicker edge mark the chosen one.
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    super.key,
+    required this.palette,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppPalette palette;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final own = AppTokens.of(palette, Theme.of(context).brightness);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: _paletteNames[palette],
+      child: InkResponse(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox.square(
+          dimension: 52,
+          child: Center(
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: own.primary,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: context.tokens.outline,
+                  width: selected ? 4 : AppTokens.outlineWidth,
+                ),
+              ),
+              child: selected
+                  ? Icon(Icons.check, color: own.onPrimary, size: 26)
+                  : null,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
