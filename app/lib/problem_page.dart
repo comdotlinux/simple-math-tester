@@ -1117,6 +1117,16 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   ],
                 ),
               ),
+              // Eleven choices: a dialog, not a segmented row.
+              ListTile(
+                key: languageTileKey,
+                leading: const Icon(Icons.translate),
+                title: Text(l.language),
+                subtitle: Text(
+                  _languageName(model.language) ?? l.languageSystem,
+                ),
+                onTap: () => _showLanguages(context),
+              ),
               SizedBox(height: compact ? 4 : 8),
               ListTile(
                 key: privacyTileKey,
@@ -1163,6 +1173,41 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
           ),
         ),
       ),
+    );
+  },
+);
+
+/// A language's name in that language, such as "Deutsch"; null for none.
+String? _languageName(String? code) =>
+    code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
+
+/// "System" and every translated language, each named in its own language.
+Future<void> _showLanguages(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (context) {
+    final model = context.read<MathTesterModel>();
+    final l = AppLocalizations.of(context);
+    return SimpleDialog(
+      title: Text(l.language),
+      children: [
+        for (final code in [
+          null,
+          for (final locale in AppLocalizations.supportedLocales)
+            locale.languageCode,
+        ])
+          ListTile(
+            key: languageOptionKey(code),
+            title: Text(_languageName(code) ?? l.languageSystem),
+            selected: code == model.language,
+            trailing: code == model.language
+                ? const Icon(Icons.check_circle)
+                : null,
+            onTap: () {
+              model.setLanguage(code);
+              Navigator.pop(context);
+            },
+          ),
+      ],
     );
   },
 );
