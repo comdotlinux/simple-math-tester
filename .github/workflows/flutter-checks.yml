@@ -453,3 +453,5 @@ jobs:
           # Run at the repository root, so functions/ (the Impressum route) is uploaded too.
           command: pages deploy app/build/web --project-name=simple-math-tester
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          # Exact version, so npm cannot pull a newer wrangler into the job with the token.
+          wranglerVersion: '4.162.0'
