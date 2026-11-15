@@ -182,6 +182,16 @@ extension AppTokensContext on BuildContext {
   AppTokens get tokens => Theme.of(this).extension<AppTokens>()!;
 }
 
+/// The bundled fonts for scripts Roboto lacks (see pubspec.yaml). Named on
+/// every style with Roboto, so the web engine finds these glyphs locally and
+/// never downloads a fallback font.
+const fontFallback = [
+  'NotoSansDevanagari',
+  'NotoSansTelugu',
+  'NotoSansTamil',
+  'NotoSansMalayalam',
+];
+
 ThemeData buildAppTheme(Brightness brightness) {
   final t = brightness == Brightness.light ? AppTokens.light : AppTokens.dark;
   // Written out in full so no generated colour can land in the purple range.
@@ -256,6 +266,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       );
   const buttonText = TextStyle(
     fontFamily: 'Roboto',
+    fontFamilyFallback: fontFallback,
     fontSize: 17,
     fontWeight: FontWeight.w700,
   );
@@ -265,6 +276,7 @@ ThemeData buildAppTheme(Brightness brightness) {
     brightness: brightness,
     colorScheme: scheme,
     fontFamily: 'Roboto',
+    fontFamilyFallback: fontFallback,
   );
   const tabular = [FontFeature.tabularFigures()];
   return base.copyWith(
@@ -314,7 +326,12 @@ ThemeData buildAppTheme(Brightness brightness) {
             letterSpacing: .3,
           ),
         )
-        .apply(fontFamily: 'Roboto', bodyColor: t.ink, displayColor: t.ink),
+        .apply(
+          fontFamily: 'Roboto',
+          fontFamilyFallback: fontFallback,
+          bodyColor: t.ink,
+          displayColor: t.ink,
+        ),
     iconTheme: IconThemeData(color: t.ink),
     filledButtonTheme: FilledButtonThemeData(
       style: ButtonStyle(
@@ -374,15 +391,21 @@ ThemeData buildAppTheme(Brightness brightness) {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       labelStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         color: t.inkMuted,
         fontWeight: FontWeight.w500,
       ),
       floatingLabelStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         color: t.ink,
         fontWeight: FontWeight.w700,
       ),
-      hintStyle: TextStyle(fontFamily: 'Roboto', color: t.inkMuted),
+      hintStyle: TextStyle(
+        fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
+        color: t.inkMuted,
+      ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppTokens.radiusControl),
         borderSide: BorderSide(color: t.outline, width: AppTokens.outlineWidth),
@@ -430,6 +453,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       titleTextStyle: buttonText,
       subtitleTextStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         fontSize: 16,
         color: t.inkMuted,
       ),
@@ -445,6 +469,7 @@ ThemeData buildAppTheme(Brightness brightness) {
         textStyle: const WidgetStatePropertyAll(
           TextStyle(
             fontFamily: 'Roboto',
+            fontFamilyFallback: fontFallback,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -474,6 +499,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       ),
       textStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         color: t.surface,
         fontSize: 16,
       ),
@@ -495,6 +521,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontFamily: 'Roboto',
+          fontFamilyFallback: fontFallback,
           fontSize: 14,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
@@ -513,12 +540,14 @@ ThemeData buildAppTheme(Brightness brightness) {
       unselectedIconTheme: IconThemeData(color: t.ink),
       selectedLabelTextStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: t.ink,
       ),
       unselectedLabelTextStyle: TextStyle(
         fontFamily: 'Roboto',
+        fontFamilyFallback: fontFallback,
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: t.ink,

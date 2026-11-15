@@ -46,3 +46,27 @@ flutter:
         # Also serves w800: a Black (900) file would draw headings heavier than before.
         - asset: assets/fonts/Roboto-Bold.ttf
           weight: 700
+    # Fallbacks for the Indian scripts (hi, mr: Devanagari; te; ta; ml),
+    # bundled for the same reason: the web engine would otherwise fetch Noto
+    # fonts from fonts.gstatic.com. Unhinted, regular and bold only, to keep
+    # the bundle small.
+    - family: NotoSansDevanagari
+      fonts:
+        - asset: assets/fonts/NotoSansDevanagari-Regular.ttf
+        - asset: assets/fonts/NotoSansDevanagari-Bold.ttf
+          weight: 700
+    - family: NotoSansTelugu
+      fonts:
+        - asset: assets/fonts/NotoSansTelugu-Regular.ttf
+        - asset: assets/fonts/NotoSansTelugu-Bold.ttf
+          weight: 700
+    - family: NotoSansTamil
+      fonts:
+        - asset: assets/fonts/NotoSansTamil-Regular.ttf
+        - asset: assets/fonts/NotoSansTamil-Bold.ttf
+          weight: 700
+    - family: NotoSansMalayalam
+      fonts:
+        - asset: assets/fonts/NotoSansMalayalam-Regular.ttf
+        - asset: assets/fonts/NotoSansMalayalam-Bold.ttf
+          weight: 700
