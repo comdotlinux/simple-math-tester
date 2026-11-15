@@ -115,7 +115,7 @@
   "reportProblem": "Signaler un problème",
   "reportProblemSubtitle": "Sur GitHub (ouvre le navigateur)",
   "appVersionTitle": "Version {version}",
-  "releaseNotesSubtitle": "Nouveautés sur GitHub (ouvre le navigateur)",
+  "releaseNotesSubtitle": "Les nouveautés, sur GitHub (ouvre le navigateur)",
   "browserDidNotOpen": "Le navigateur ne s’est pas ouvert.",
   "stepSoResult": "Donc {left} {op} {right} = {result}.",
   "stepAddCountOn": "Commence à {bigger} et compte encore {smaller}.",

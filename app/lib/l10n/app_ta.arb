@@ -115,7 +115,7 @@
   "reportProblem": "சிக்கலைத் தெரிவி",
   "reportProblemSubtitle": "GitHub-இல் (பிரவுசரில் திறக்கும்)",
   "appVersionTitle": "பதிப்பு {version}",
-  "releaseNotesSubtitle": "புதியவை, GitHub-இல் (பிரவுசரில் திறக்கும்)",
+  "releaseNotesSubtitle": "புதிதாக என்ன, GitHub-இல் (பிரவுசரில் திறக்கும்)",
   "browserDidNotOpen": "பிரவுசர் திறக்கவில்லை.",
   "stepSoResult": "ஆக, {left} {op} {right} = {result}.",
   "stepAddCountOn": "{bigger}-இலிருந்து தொடங்கி இன்னும் {smaller} எண்ணு.",
