@@ -644,6 +644,19 @@
   "@reportProblemSubtitle": {
     "description": "Settings row description. Keep 'GitHub'."
   },
+  "appVersionTitle": "Version {version}",
+  "@appVersionTitle": {
+    "description": "Settings row title showing the installed app version, e.g. 'Version 1.1.1'.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "releaseNotesSubtitle": "What's new, on GitHub (opens the browser)",
+  "@releaseNotesSubtitle": {
+    "description": "Settings row description under the version; tapping opens the release notes. Keep 'GitHub'."
+  },
   "browserDidNotOpen": "The browser did not open.",
   "@browserDidNotOpen": {
     "description": "Error message when the web browser could not be opened."

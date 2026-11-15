@@ -30,6 +30,7 @@ const hapticsSwitchKey = Key('haptics-switch');
 const privacyTileKey = Key('privacy-tile');
 const impressumTileKey = Key('impressum-tile');
 const reportProblemTileKey = Key('report-problem-tile');
+const appVersionTileKey = Key('app-version-tile');
 const privacyPageKey = Key('privacy-page');
 
 /// One per segment of the settings sheet's theme choice.

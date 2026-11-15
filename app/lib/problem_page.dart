@@ -1194,6 +1194,21 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   }
                 },
               ),
+              ListTile(
+                key: appVersionTileKey,
+                leading: const Icon(Icons.info_outline),
+                title: Text(l.appVersionTitle(appVersion)),
+                subtitle: Text(l.releaseNotesSubtitle),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(context);
+                  if (!await model.openReleaseNotes()) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(l.browserDidNotOpen)),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),

@@ -40,4 +40,13 @@ void main() {
     };
     expect(addresses, {impressumUrl.toString()});
   });
+
+  test('an untagged build links to the list of releases', () {
+    // Under test the version is the pubspec default, which has no release.
+    expect(appVersion, '1.0.0');
+    expect(
+      releaseNotesUrl.toString(),
+      'https://github.com/comdotlinux/simple-math-tester/releases',
+    );
+  });
 }

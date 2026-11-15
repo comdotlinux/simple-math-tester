@@ -54,7 +54,14 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test integration_test integration_test_web test_driver tool
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build web --release --no-web-resources-cdn --web-content-hash
+      # Settings shows the version: the web build from main takes the newest
+      # release tag, as the pubspec version is never bumped.
+      - name: Build web
+        run: |
+          git fetch --quiet --depth=1 origin '+refs/tags/v*:refs/tags/v*'
+          tag=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n 1)
+          echo "Version name: ${tag#v}"
+          flutter build web --release --no-web-resources-cdn --web-content-hash ${tag:+--build-name="${tag#v}"}
       - name: Stamp the service worker with this build
         run: ../tool/stamp_service_worker.sh build/web
       # Criterion 61: both pages ship and are precached; the Impressum shell has the

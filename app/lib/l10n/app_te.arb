@@ -114,6 +114,8 @@
   "impressumSubtitle": "యాప్‌ను ఎవరు తయారుచేస్తారు (బ్రౌజర్ తెరుచుకుంటుంది)",
   "reportProblem": "సమస్యను తెలియజేయి",
   "reportProblemSubtitle": "GitHub లో (బ్రౌజర్ తెరుచుకుంటుంది)",
+  "appVersionTitle": "వెర్షన్ {version}",
+  "releaseNotesSubtitle": "కొత్తవి, GitHub లో (బ్రౌజర్ తెరుచుకుంటుంది)",
   "browserDidNotOpen": "బ్రౌజర్ తెరుచుకోలేదు.",
   "stepSoResult": "అంటే {left} {op} {right} = {result}.",
   "stepAddCountOn": "{bigger} నుంచి మొదలుపెట్టి ఇంకా {smaller} ముందుకు లెక్కపెట్టు.",

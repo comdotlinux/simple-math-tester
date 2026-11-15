@@ -114,6 +114,8 @@
   "impressumSubtitle": "Kto tworzy aplikację (otwiera przeglądarkę)",
   "reportProblem": "Zgłoś problem",
   "reportProblemSubtitle": "W serwisie GitHub (otwiera przeglądarkę)",
+  "appVersionTitle": "Wersja {version}",
+  "releaseNotesSubtitle": "Co nowego, w serwisie GitHub (otwiera przeglądarkę)",
   "browserDidNotOpen": "Nie udało się otworzyć przeglądarki.",
   "stepSoResult": "Czyli {left} {op} {right} = {result}.",
   "stepAddCountOn": "Zacznij od {bigger} i dolicz jeszcze {smaller}.",

@@ -209,6 +209,15 @@ class MathTesterModel extends ChangeNotifier {
     }
   }
 
+  /// Opens this version's GitHub release; false when nothing opened it.
+  Future<bool> openReleaseNotes() async {
+    try {
+      return await _openLink(releaseNotesUrl);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// A number pad key press.
   void keyPressed() => _buzz(Haptic.key);
 
