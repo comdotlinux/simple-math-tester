@@ -172,7 +172,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "pl": {
     "languageName": "ba118bf7fc9c",
@@ -347,7 +351,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "hi": {
     "languageName": "ba118bf7fc9c",
@@ -522,7 +530,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "mr": {
     "languageName": "ba118bf7fc9c",
@@ -697,7 +709,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "te": {
     "languageName": "ba118bf7fc9c",
@@ -872,7 +888,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "ta": {
     "languageName": "ba118bf7fc9c",
@@ -1047,7 +1067,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "ml": {
     "languageName": "ba118bf7fc9c",
@@ -1222,7 +1246,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "fr": {
     "languageName": "ba118bf7fc9c",
@@ -1397,7 +1425,11 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   },
   "ro": {
     "languageName": "ba118bf7fc9c",
@@ -1572,6 +1604,10 @@
     "privacyChangesHeading": "4364c34e3191",
     "privacyChanges": "cce65dd89bb6",
     "appVersionTitle": "a18745121bb8",
-    "releaseNotesSubtitle": "d59ac81834d4"
+    "releaseNotesSubtitle": "d59ac81834d4",
+    "updateReminderTitle": "f26f3275e735",
+    "updateReminderSubtitle": "f2d6d4c8dae2",
+    "updateReminderDismiss": "a0e63d7c7125",
+    "updateReminderLater": "77617f560df1"
   }
 }
