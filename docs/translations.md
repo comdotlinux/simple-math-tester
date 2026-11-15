@@ -22,13 +22,15 @@ Language overrides it.
 
 1. Add or change the text in `app_en.arb`, with a description, and use it in
    the code through `AppLocalizations.of(context)`.
-2. Run the **Translate new and changed strings** workflow (Actions tab, Run
-   workflow). It translates only the keys that are missing or whose English
-   changed, checks placeholders, plurals and digits, runs the translation
-   tests, and opens a pull request.
-3. Checks do not start on their own for a pull request the workflow opens
-   (GitHub does not start workflows for its own token): run the Flutter
-   checks workflow on that branch, or close and reopen the pull request.
+2. Merge it. On `main`, a change to `app_en.arb` (or to the language list in
+   `tool/translate.mjs`) starts the **Translate new and changed strings**
+   workflow by itself; it can also be run by hand from `main` (Actions tab,
+   Run workflow). For each language it translates only the keys missing from
+   that language's file or whose English changed, checks placeholders,
+   plurals and digits, runs the translation tests, and opens a pull request
+   from the branch `translations/auto`, or updates the open one.
+3. The workflow starts the Flutter checks on that branch itself. Review and
+   merge the pull request.
 
 Locally the same script runs with your own key:
 
@@ -38,8 +40,8 @@ node tool/translate.mjs --dry-run                      # lists what would change
 ```
 
 `DEEPSEEK_MODEL` picks the model (default `deepseek-flash`). The workflow
-uses the repository secret `DEEPSEEK_API_KEY` and the variable
-`DEEPSEEK_MODEL`.
+runs only on `main`, uses the `release` environment secret `DEEPSEEK_API_KEY`,
+and the variable `DEEPSEEK_MODEL`.
 
 The workflow needs **Settings > Actions > General > Workflow permissions >
 Allow GitHub Actions to create and approve pull requests** turned on in the
@@ -48,7 +50,7 @@ repository settings; without it the last step fails.
 ## A new language
 
 1. Add its code to `languages` in `tool/translate.mjs`.
-2. Run the workflow. It creates `app_<code>.arb`, including `languageName`,
+2. Merge it; the workflow runs and creates `app_<code>.arb`, including `languageName`,
    the language's name in itself, which the language list shows.
 3. If the language uses a script that Roboto and the bundled Noto Sans
    fonts (Devanagari, Telugu, Tamil, Malayalam) do not cover, bundle a Noto
