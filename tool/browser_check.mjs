@@ -199,6 +199,38 @@ try {
       `offline ${path} shows the Impressum shell with its error line`,
     );
   }
+
+  // Each Indian script draws from the bundled fonts: with any glyph missing,
+  // the web engine would fetch a Noto font from fonts.gstatic.com.
+  stopServer = await serve(firstBuild);
+  for (const code of ['hi', 'te', 'ta', 'ml']) {
+    const texts = JSON.parse(
+      await readFile(new URL(`../app/lib/l10n/app_${code}.arb`, import.meta.url), 'utf8'),
+    );
+    const scriptContext = await browser.newContext();
+    scriptContext.setDefaultTimeout(60_000);
+    const scriptPage = await scriptContext.newPage();
+    await scriptPage.goto(`${origin}/version.json`);
+    await scriptPage.evaluate(
+      ([key, value]) => localStorage.setItem(key, value),
+      [progressKey, JSON.stringify(JSON.stringify({ ...seededDocument, language: code }))],
+    );
+    const requests = [];
+    scriptContext.on('request', (request) => requests.push(request.url()));
+    await scriptPage.goto(origin + '/');
+    await scriptPage.locator('flt-semantics-placeholder').evaluate((el) => el.click());
+    await scriptPage.getByRole('tab', { name: texts.practice }).waitFor();
+    await scriptPage.getByText(texts.practiceTitle, { exact: true }).waitFor();
+    // A fallback font download starts after the frame that misses a glyph.
+    await scriptPage.waitForTimeout(2000);
+    const foreign = requests.filter((url) => new URL(url).origin !== origin);
+    check(
+      foreign.length === 0,
+      `${code}: the app draws in its language with all ${requests.length} requests to ${origin}` +
+        (foreign.length ? `; others: ${foreign.join(', ')}` : ''),
+    );
+    await scriptContext.close();
+  }
 } finally {
   await stopServer();
   await browser.close();
