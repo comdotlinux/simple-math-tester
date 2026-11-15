@@ -33,6 +33,9 @@ enum AppColor {
   onSprint,
 }
 
+/// The colour themes a player can pick; sunny is the default.
+enum AppPalette { sunny, ocean, forest, berry, sunset }
+
 @immutable
 class AppTokens extends ThemeExtension<AppTokens> {
   const AppTokens(this.colors);
@@ -98,6 +101,115 @@ class AppTokens extends ThemeExtension<AppTokens> {
     AppColor.goalRing: Color(0xFF3BF08C),
     AppColor.xpBar: Color(0xFF2FEAD5),
   });
+
+  /// What each palette other than sunny changes in [light] and [dark]: the
+  /// page, the ink and the accent. Answer, streak and XP colours stay.
+  static const _palettes =
+      <AppPalette, (Map<AppColor, Color>, Map<AppColor, Color>)>{
+        AppPalette.ocean: (
+          {
+            AppColor.surface: Color(0xFFE8F4FF),
+            AppColor.surfaceSunken: Color(0xFFCFE3F7),
+            AppColor.ink: Color(0xFF0B2545),
+            AppColor.inkMuted: Color(0xFF3D5878),
+            AppColor.outline: Color(0xFF0B2545),
+            AppColor.shadow: Color(0xFF0B2545),
+            AppColor.primary: Color(0xFF4FB3FF),
+            AppColor.onPrimary: Color(0xFF0B2545),
+          },
+          {
+            AppColor.surface: Color(0xFF07111F),
+            AppColor.surfaceRaised: Color(0xFF102035),
+            AppColor.surfaceSunken: Color(0xFF1A2E48),
+            AppColor.ink: Color(0xFFEAF4FF),
+            AppColor.inkMuted: Color(0xFFA3B8D1),
+            AppColor.outline: Color(0xFF5CC8FF),
+            AppColor.shadow: Color(0xFF164A73),
+            AppColor.primary: Color(0xFF5CC8FF),
+            AppColor.onPrimary: Color(0xFF07111F),
+          },
+        ),
+        AppPalette.forest: (
+          {
+            AppColor.surface: Color(0xFFEEF7E6),
+            AppColor.surfaceSunken: Color(0xFFD8EBC8),
+            AppColor.ink: Color(0xFF14301C),
+            AppColor.inkMuted: Color(0xFF45604B),
+            AppColor.outline: Color(0xFF14301C),
+            AppColor.shadow: Color(0xFF14301C),
+            AppColor.primary: Color(0xFF6FD66B),
+            AppColor.onPrimary: Color(0xFF14301C),
+          },
+          {
+            AppColor.surface: Color(0xFF08130C),
+            AppColor.surfaceRaised: Color(0xFF122218),
+            AppColor.surfaceSunken: Color(0xFF1D3324),
+            AppColor.ink: Color(0xFFEEF7E9),
+            AppColor.inkMuted: Color(0xFFA6BFAA),
+            AppColor.outline: Color(0xFF6EE58A),
+            AppColor.shadow: Color(0xFF1E5A30),
+            AppColor.primary: Color(0xFF6EE58A),
+            AppColor.onPrimary: Color(0xFF08130C),
+          },
+        ),
+        // Raspberry pink, kept clear of the purple range.
+        AppPalette.berry: (
+          {
+            AppColor.surface: Color(0xFFFFEEF4),
+            AppColor.surfaceSunken: Color(0xFFF7D6E3),
+            AppColor.ink: Color(0xFF3A0F24),
+            AppColor.inkMuted: Color(0xFF6B3F55),
+            AppColor.outline: Color(0xFF3A0F24),
+            AppColor.shadow: Color(0xFF3A0F24),
+            AppColor.primary: Color(0xFFFF7EB3),
+            AppColor.onPrimary: Color(0xFF3A0F24),
+          },
+          {
+            AppColor.surface: Color(0xFF16080F),
+            AppColor.surfaceRaised: Color(0xFF26121C),
+            AppColor.surfaceSunken: Color(0xFF381C2A),
+            AppColor.ink: Color(0xFFFFF0F6),
+            AppColor.inkMuted: Color(0xFFD1A8BB),
+            AppColor.outline: Color(0xFFFF8CC0),
+            AppColor.shadow: Color(0xFF6B2347),
+            AppColor.primary: Color(0xFFFF8CC0),
+            AppColor.onPrimary: Color(0xFF16080F),
+          },
+        ),
+        AppPalette.sunset: (
+          {
+            AppColor.surface: Color(0xFFFFF0E6),
+            AppColor.surfaceSunken: Color(0xFFF9DCC8),
+            AppColor.ink: Color(0xFF3B1A0A),
+            AppColor.inkMuted: Color(0xFF6E4A38),
+            AppColor.outline: Color(0xFF3B1A0A),
+            AppColor.shadow: Color(0xFF3B1A0A),
+            AppColor.primary: Color(0xFFFF9447),
+            AppColor.onPrimary: Color(0xFF3B1A0A),
+          },
+          {
+            AppColor.surface: Color(0xFF140C07),
+            AppColor.surfaceRaised: Color(0xFF241811),
+            AppColor.surfaceSunken: Color(0xFF35251A),
+            AppColor.ink: Color(0xFFFFF3EA),
+            AppColor.inkMuted: Color(0xFFC9B2A3),
+            AppColor.outline: Color(0xFFFFA05C),
+            AppColor.shadow: Color(0xFF6B3415),
+            AppColor.primary: Color(0xFFFFA05C),
+            AppColor.onPrimary: Color(0xFF140C07),
+          },
+        ),
+      };
+
+  /// [palette]'s tokens for [brightness]; sunny is [light] or [dark] itself.
+  static AppTokens of(AppPalette palette, Brightness brightness) {
+    final base = brightness == Brightness.light ? light : dark;
+    final changes = _palettes[palette];
+    if (changes == null) return base;
+    return base.copyWith(
+      colors: brightness == Brightness.light ? changes.$1 : changes.$2,
+    );
+  }
 
   /// The (text or icon, background) pairs widgets draw; each must reach
   /// 4.5 to 1 in both themes.
@@ -192,8 +304,11 @@ const fontFallback = [
   'NotoSansMalayalam',
 ];
 
-ThemeData buildAppTheme(Brightness brightness) {
-  final t = brightness == Brightness.light ? AppTokens.light : AppTokens.dark;
+ThemeData buildAppTheme(
+  Brightness brightness, [
+  AppPalette palette = AppPalette.sunny,
+]) {
+  final t = AppTokens.of(palette, brightness);
   // Written out in full so no generated colour can land in the purple range.
   final scheme = ColorScheme(
     brightness: brightness,

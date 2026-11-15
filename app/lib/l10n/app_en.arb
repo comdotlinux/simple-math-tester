@@ -588,6 +588,30 @@
   "@layoutCompact": {
     "description": "Layout choice with less space. Short; narrow segmented button."
   },
+  "colours": "Colours",
+  "@colours": {
+    "description": "Settings row title: the colour theme, chosen with round colour swatches."
+  },
+  "paletteSunny": "Sunny",
+  "@paletteSunny": {
+    "description": "Colour theme name (yellow), read by screen readers on its swatch. One short word."
+  },
+  "paletteOcean": "Ocean",
+  "@paletteOcean": {
+    "description": "Colour theme name (blue), read by screen readers on its swatch. One short word."
+  },
+  "paletteForest": "Forest",
+  "@paletteForest": {
+    "description": "Colour theme name (green), read by screen readers on its swatch. One short word."
+  },
+  "paletteBerry": "Berry",
+  "@paletteBerry": {
+    "description": "Colour theme name (pink/purple), read by screen readers on its swatch. One short word."
+  },
+  "paletteSunset": "Sunset",
+  "@paletteSunset": {
+    "description": "Colour theme name (orange/red), read by screen readers on its swatch. One short word."
+  },
   "language": "Language",
   "@language": {
     "description": "Settings row title for the app language."

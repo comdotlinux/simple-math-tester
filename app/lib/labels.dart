@@ -1,3 +1,4 @@
+import 'app_theme.dart' show AppPalette;
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
@@ -17,6 +18,16 @@ extension TierLabel on Tier {
     Tier.medium => l.tierMedium,
     Tier.hard => l.tierHard,
     Tier.harder => l.tierHarder,
+  };
+}
+
+extension PaletteLabel on AppPalette {
+  String label(AppLocalizations l) => switch (this) {
+    AppPalette.sunny => l.paletteSunny,
+    AppPalette.ocean => l.paletteOcean,
+    AppPalette.forest => l.paletteForest,
+    AppPalette.berry => l.paletteBerry,
+    AppPalette.sunset => l.paletteSunset,
   };
 }
 

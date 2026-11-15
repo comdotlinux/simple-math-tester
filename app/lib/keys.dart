@@ -43,6 +43,9 @@ Key layoutModeKey(Enum mode) => Key('layout-mode-${mode.name}');
 const languageTileKey = Key('language-tile');
 Key languageOptionKey(String? code) =>
     Key('language-option-${code ?? 'system'}');
+
+/// One per swatch of the settings sheet's colour choice.
+Key paletteKey(Enum palette) => Key('palette-${palette.name}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');

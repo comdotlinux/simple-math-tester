@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
@@ -69,6 +70,7 @@ void main() {
     double keyboard = 0,
     LayoutMode layout = LayoutMode.comfortable,
     List<Attempt> history = const [],
+    AppPalette palette = AppPalette.sunny,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -83,6 +85,7 @@ void main() {
         game: game,
         layoutMode: layout,
         history: history,
+        palette: palette,
         language: language,
       ),
       clock: () => now,
@@ -295,6 +298,24 @@ void main() {
           await shoot(tester, '$tag-9c-settings-language');
           await tester.tap(find.byKey(languageTileKey));
           await shoot(tester, '$tag-9d-language-list');
+
+          // Every colour theme: the practice page and the chosen swatch.
+          for (final palette in AppPalette.values) {
+            final themed = await launch(
+              tester,
+              size,
+              brightness,
+              palette: palette,
+            );
+            themed.toggleOperation(OperationType.divide);
+            await shoot(tester, '$tag-12-${palette.name}-practice');
+            await tester.ensureVisible(find.byKey(settingsButtonKey));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(settingsButtonKey));
+            await tester.pumpAndSettle();
+            await tester.ensureVisible(find.byKey(paletteKey(palette)));
+            await shoot(tester, '$tag-12-${palette.name}-settings-colours');
+          }
 
           // The compact layout setting.
           const compact = LayoutMode.compact;

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
+import 'app_theme.dart' show AppPalette;
 import 'legal.dart';
 import 'operations.dart';
 import 'progress.dart';
@@ -144,6 +145,7 @@ class MathTesterModel extends ChangeNotifier {
   bool get compact => _progress.layoutMode == LayoutMode.compact;
   LayoutMode get layoutMode => _progress.layoutMode;
   String? get language => _progress.language;
+  AppPalette get palette => _progress.palette;
 
   /// The latest valid check; [count] tells two equal results apart, so each
   /// one plays its feedback motion.
@@ -179,6 +181,12 @@ class MathTesterModel extends ChangeNotifier {
   /// [code] is a language code such as `de`; null follows the system.
   void setLanguage(String? code) {
     _progress = _progress.withLanguage(code);
+    _save();
+    notifyListeners();
+  }
+
+  void setPalette(AppPalette palette) {
+    _progress = _progress.withPalette(palette);
     _save();
     notifyListeners();
   }

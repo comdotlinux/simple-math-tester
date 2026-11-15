@@ -72,6 +72,7 @@ class _MathTesterAppState extends State<MathTesterApp> {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.select((MathTesterModel m) => m.palette);
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
@@ -88,8 +89,8 @@ class _MathTesterAppState extends State<MathTesterApp> {
         final code? => Locale(code),
         null => null,
       },
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
+      theme: buildAppTheme(Brightness.light, palette),
+      darkTheme: buildAppTheme(Brightness.dark, palette),
       themeMode: context.select((MathTesterModel m) => m.themeMode),
       home: const MyHomePage(key: homePageKey),
     );
