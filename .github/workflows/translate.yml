@@ -43,6 +43,10 @@ jobs:
       actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The job's token can write; keep it out of .git/config so pub packages
+          # and the tests never see it. Only the last step gets it, through GH_TOKEN.
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
@@ -86,7 +90,8 @@ jobs:
           git switch -C "$branch"
           git add app/lib/l10n play/listing
           git commit -m 'Translate new and changed strings'
-          git push --force origin "$branch"
+          # The token goes in the URL of this one push; GitHub masks it in the log.
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
             gh pr create --base main --head "$branch" \

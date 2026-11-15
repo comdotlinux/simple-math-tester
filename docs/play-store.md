@@ -234,10 +234,17 @@ gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deep
 
 `DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
 
-**Keep the release secrets in the `release` environment.** Only `v*` tags and
-`main` (for the promote workflow) may deploy to it, so a pushed branch with a
-changed workflow cannot read them. To move
-them from the repository (each command reads a file or asks at a hidden prompt):
+**Keep the release secrets in the `release` environment.** Two settings guard
+them:
+
+- Only `main` and `v*` tags may deploy to the environment, so a run on any other
+  branch never gets them.
+- A ruleset lets only admins create or move `v*` tags, and `main` changes only
+  through a pull request. A writer cannot tag an off-main commit whose workflow
+  was changed to print the secrets.
+
+To move them from the repository (each command reads a file or asks at a hidden
+prompt):
 
 ```
 R=comdotlinux/simple-math-tester
@@ -256,10 +263,14 @@ workflow run can still read it. Push the next tag and check the release run.
 Each release:
 
 1. On `main`, pulled: `git tag v1.0.1 && git push origin v1.0.1`.
-2. The "Play app bundle" run builds, uploads and creates the release; its log shows
-   the Play notes, and its last notice says which version is on the internal track.
-   If it fails, fix the cause and re-run the job; nothing is released until the
-   upload worked. A re-run uploads a new build number with the same version.
+2. The "Play app bundle" run has two jobs, which run without approval. `bundle`
+   builds and signs with only the signing key; `upload` gets the Play and DeepSeek
+   keys, runs no build tools, uploads the signed bundle and creates the release.
+   Its log shows the Play notes, and its last notice says which version is on the
+   internal track. If it fails, fix the cause and re-run all jobs; nothing is
+   released until the upload worked. A re-run uploads a new build number with the
+   same version. Re-running only the failed `upload` job sends the same build again,
+   which works only if Play did not take it yet.
    The first tag's GitHub notes list every pull request merged so far.
 3. Promote the release to closed testing or production when ready (below).
 

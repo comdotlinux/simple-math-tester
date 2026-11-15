@@ -7,6 +7,10 @@ name: Play app bundle
 # that version, uploads it to the Play internal testing track and then creates
 # the GitHub release. One workflow does it all: a release created with
 # GITHUB_TOKEN would not start another workflow.
+# Two jobs, so no secret meets code it does not need: `bundle` runs Gradle, pub and
+# Flutter with only the signing key, and hands the signed bundle on as an artifact;
+# `upload` gets the Play and DeepSeek keys and runs no build tooling. On a tag both
+# jobs use the `release` environment.
 on:
   push:
     branches: [main]
@@ -28,13 +32,13 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     # Tag runs use the `release` environment (only v* tags and main may deploy to
-    # it), so its secrets (signing key, Play, DeepSeek) never reach other branches.
-    # This job's builds on main don't use it and sign with a throwaway key.
+    # it), so its secrets never reach other branches. This job reads only the
+    # signing key from it. Builds on main don't use it and sign with a throwaway key.
     environment: ${{ github.ref_type == 'tag' && 'release' || '' }}
-    # Write access creates the GitHub release on a tag. The workflow runs only for
-    # pushes to this repository (no pull_request trigger), so no outside code gets it.
-    permissions:
-      contents: write
+    outputs:
+      version_name: ${{ steps.tag.outputs.version_name }}
+      build_number: ${{ steps.build.outputs.build_number }}
+      aab_sha256: ${{ steps.aab.outputs.sha256 }}
     defaults:
       run:
         shell: bash
@@ -44,8 +48,6 @@ jobs:
         with:
           # The tag check below needs main's history.
           fetch-depth: 0
-          # The job's token can write; keep it out of .git/config so the build and
-          # its dependencies never see it. Only the gh steps get it, through GH_TOKEN.
           persist-credentials: false
       - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
@@ -239,7 +241,59 @@ jobs:
             exit 1
           fi
       # Tag only from here on. A push to main stops above and the bundle is discarded
-      # with the runner.
+      # with the runner. The digest goes to the upload job as a job output.
+      - name: Hash the app bundle
+        id: aab
+        if: github.ref_type == 'tag'
+        run: |
+          sha256="$(sha256sum build/app/outputs/bundle/release/app-release.aab | cut -d ' ' -f 1)"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+          echo "App bundle sha256: $sha256"
+      - name: Hand the app bundle to the upload job
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-release-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 7
+
+  upload:
+    name: Upload to Google Play and create the GitHub release
+    needs: bundle
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # Play and DeepSeek keys come from the `release` environment. No Gradle, pub or
+    # Flutter runs here: only curl, jq and gh on the bundle the build job signed.
+    environment: release
+    # Write access creates the GitHub release. The workflow runs only for pushes to
+    # this repository (no pull_request trigger), so no outside code gets it.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The job's token can write; only the gh steps get it, through GH_TOKEN.
+          persist-credentials: false
+      - name: Download the app bundle
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: app-release-aab
+          path: app/build/app/outputs/bundle/release
+      - name: Check the app bundle digest
+        env:
+          AAB_SHA256: ${{ needs.bundle.outputs.aab_sha256 }}
+        run: |
+          if [ -z "$AAB_SHA256" ]; then
+            echo "::error::The build job passed no app bundle digest"
+            exit 1
+          fi
+          echo "$AAB_SHA256  build/app/outputs/bundle/release/app-release.aab" | sha256sum -c -
       # GitHub's automatic notes (merged pull requests since the last tag) go on the
       # GitHub release. Play gets a short summary of them written by DeepSeek, or the
       # automatic notes themselves when there is no DEEPSEEK_API_KEY or the call
@@ -248,7 +302,6 @@ jobs:
       # language of play/listing/; the upload sends the valid ones
       # (play-release-notes-languages.jq). A missing translation never fails a release.
       - name: Write the release notes
-        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
@@ -311,15 +364,13 @@ jobs:
       # .github/play-token.sh: a short-lived JWT signed by the service account, traded
       # for an access token. play-promote.yml uses it too.
       - name: Get a Play Developer API token
-        if: github.ref_type == 'tag'
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: bash ../.github/play-token.sh "$RUNNER_TEMP/play-token"
       - name: Upload to the Play internal testing track
-        if: github.ref_type == 'tag'
         env:
-          VERSION_NAME: ${{ steps.tag.outputs.version_name }}
-          BUILD_NUMBER: ${{ steps.build.outputs.build_number }}
+          VERSION_NAME: ${{ needs.bundle.outputs.version_name }}
+          BUILD_NUMBER: ${{ needs.bundle.outputs.build_number }}
         run: |
           app=androidpublisher/v3/applications/com.linux.simplemathtester
           api="https://androidpublisher.googleapis.com/$app"
@@ -350,10 +401,10 @@ jobs:
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
           echo "::notice::Version $VERSION_NAME ($code) is on the Play internal testing track"
-      # Last, so a failed build or upload leaves no release behind; re-run the job.
-      # A re-run uploads a new build (attempt + 1) with the same version name.
+      # Last, so a failed build or upload leaves no release behind. Re-run all jobs:
+      # that uploads a new build (attempt + 1) with the same version name. Re-running
+      # only this job sends the same build again, which Play refuses once it has it.
       - name: Create the GitHub release
-        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
