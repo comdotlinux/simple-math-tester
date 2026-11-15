@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1198,16 +1199,48 @@ void main() {
       expect(find.text('The browser did not open.'), findsNothing);
     });
 
-    for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
-      ('reports false', (_) async => false),
-      ('throws', (_) async => throw StateError('no browser')),
-    ]) {
-      testWidgets('when the opener $name, a notice says so', (tester) async {
-        await launch(tester, openLink: opener);
-        await tapInSheet(tester, impressumTileKey);
+    testWidgets('Report a problem opens a prefilled GitHub issue', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tapInSheet(tester, reportProblemTileKey);
 
-        expect(find.text('The browser did not open.'), findsOneWidget);
-      });
+      final uri = opened.single;
+      expect(uri.scheme, 'https');
+      expect(uri.host, 'github.com');
+      expect(uri.path, '/comdotlinux/simple-math-tester/issues/new');
+      expect(uri.queryParameters.keys, unorderedEquals(['title', 'body']));
+      // Flutter defines it from the pubspec version under test too.
+      expect(appVersion, '1.0.0');
+      // The version and platform only: no progress, answers or settings.
+      expect(
+        uri.queryParameters['body'],
+        'What happened?\n\n\nWhat did you expect?\n\n\n'
+        'App version: $appVersion\n'
+        'Platform: ${defaultTargetPlatform.name}\n',
+      );
+      expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    for (final tile in [impressumTileKey, reportProblemTileKey]) {
+      for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
+        ('reports false', (_) async => false),
+        ('throws', (_) async => throw StateError('no browser')),
+      ]) {
+        testWidgets('when the opener $name for $tile, a notice says so', (
+          tester,
+        ) async {
+          await launch(tester, openLink: opener);
+          await tapInSheet(tester, tile);
+
+          expect(find.text('The browser did not open.'), findsOneWidget);
+        });
+      }
     }
   });
 

@@ -181,6 +181,15 @@ class MathTesterModel extends ChangeNotifier {
     }
   }
 
+  /// Opens a new GitHub issue in the browser; false when nothing opened it.
+  Future<bool> openProblemReport() async {
+    try {
+      return await _openLink(problemReportUrl);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// A number pad key press.
   void keyPressed() => _buzz(Haptic.key);
 

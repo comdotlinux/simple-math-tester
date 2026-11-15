@@ -1,8 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// The provider identification on the production site. Its text sits behind
 /// a bot check there, never in this repository, so the app only links to it.
 final impressumUrl = Uri.parse('https://math.munich-tech.de/impressum');
+
+/// The app version: Flutter defines this from `--build-name`, or from the
+/// pubspec version when none is given.
+const appVersion = String.fromEnvironment(
+  'FLUTTER_BUILD_NAME',
+  defaultValue: 'unknown',
+);
+
+/// A new GitHub issue, prefilled with the version and platform only: never
+/// progress, answers or anything personal.
+Uri get problemReportUrl =>
+    Uri.https('github.com', '/comdotlinux/simple-math-tester/issues/new', {
+      'title': 'Problem: ',
+      'body':
+          'What happened?\n\n\nWhat did you expect?\n\n\n'
+          'App version: $appVersion\n'
+          'Platform: ${kIsWeb ? 'web' : defaultTargetPlatform.name}\n',
+    });
 
 /// Hands [uri] to the system browser, outside the app.
 Future<bool> openInBrowser(Uri uri) =>
@@ -17,7 +36,7 @@ const privacyPolicy = <(String, List<String>)>[
     [
       'Simple Math Tester is a free arithmetic practice app for children, '
           'without ads. This policy covers the Android and iOS apps and the '
-          'web version. Last updated: 14 November 2026.',
+          'web version. Last updated: 15 November 2026.',
     ],
   ),
   (
@@ -65,6 +84,15 @@ const privacyPolicy = <(String, List<String>)>[
           'loads Cloudflare Turnstile, which receives the visitor\'s IP '
           'address and browser signals to tell people from bots. See the '
           'Cloudflare privacy policy.',
+    ],
+  ),
+  (
+    'Reporting a problem',
+    [
+      'Report a problem in the settings opens a new issue on GitHub in your '
+          'browser, prefilled with the app version and platform. The app '
+          'sends nothing itself. If you submit the report, it is public, and '
+          'GitHub\'s own privacy policy applies.',
     ],
   ),
   (
