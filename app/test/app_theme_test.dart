@@ -105,6 +105,43 @@ void main() {
     }
   });
 
+  test('every colour theme keeps every pair readable and no purple', () {
+    expect(AppTokens.of(AppPalette.sunny, Brightness.light), AppTokens.light);
+    expect(AppTokens.of(AppPalette.sunny, Brightness.dark), AppTokens.dark);
+    for (final palette in AppPalette.values) {
+      for (final brightness in Brightness.values) {
+        final tokens = AppTokens.of(palette, brightness);
+        final theme = buildAppTheme(brightness, palette);
+        expect(theme.extension<AppTokens>()!.colors, tokens.colors);
+        expect(tokens.colors.keys.toSet(), AppColor.values.toSet());
+        final where = '${palette.name} ${brightness.name}';
+        for (final (foreground, background) in AppTokens.contrastPairs) {
+          expect(
+            contrast(tokens.colors[foreground]!, tokens.colors[background]!),
+            greaterThanOrEqualTo(4.5),
+            reason: '$where $foreground on $background',
+          );
+        }
+        for (final (graphic, background) in AppTokens.graphicPairs) {
+          expect(
+            contrast(tokens.colors[graphic]!, tokens.colors[background]!),
+            greaterThanOrEqualTo(3),
+            reason: '$where $graphic on $background',
+          );
+        }
+        for (final color in tokens.colors.values) {
+          final hsv = HSVColor.fromColor(color);
+          if (hsv.saturation < .15) continue;
+          expect(
+            hsv.hue < 250 || hsv.hue > 320,
+            isTrue,
+            reason: '$where $color has hue ${hsv.hue}',
+          );
+        }
+      }
+    }
+  });
+
   test('criterion 33: ink, muted ink and every on-role are in a pair', () {
     final foregrounds = {for (final (fg, _) in AppTokens.contrastPairs) fg};
     for (final role in AppColor.values) {
