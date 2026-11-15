@@ -199,8 +199,9 @@ Release notes:
   automatic notes instead. Either way `.github/play-release-notes.jq` removes
   Markdown, HTML, links and "by @user in ..." and keeps whole lines up to Play's
   500 characters.
-- Play, other languages: the same DeepSeek call translates the summary into
-  every language in `play/listing/`. Only languages that have a store listing
+- Play, other languages: when the DeepSeek summary worked, a second DeepSeek
+  call translates it into every language in `play/listing/` (a failed second
+  call leaves the English summary untouched). Only languages that have a store listing
   on Play get notes (`.github/play-release-notes-languages.jq`); a translation
   that is missing, longer than 500 characters or has non-Western digits is left
   out, and those users see the English notes. A failed translation never fails
