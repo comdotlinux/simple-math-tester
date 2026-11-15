@@ -26,11 +26,14 @@ class SilentSoundPlayer implements SoundPlayer {
 }
 
 /// iOS: mixes with other audio and obeys the silent switch. Android: plays
-/// as a UI sound without taking audio focus.
+/// as game audio on the media volume (the one the volume keys change in the
+/// app) without taking audio focus. The earlier assistanceSonification usage
+/// played on the system stream, which phones tie to the ringer: silent in
+/// vibrate or silent mode, and not raised by the volume keys.
 final feedbackAudioContext = AudioContext(
   android: const AudioContextAndroid(
     contentType: AndroidContentType.sonification,
-    usageType: AndroidUsageType.assistanceSonification,
+    usageType: AndroidUsageType.game,
     audioFocus: AndroidAudioFocus.none,
   ),
   iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),

@@ -184,6 +184,33 @@ void main() {
     test('the context is iOS ambient and Android focus none', () {
       expect(feedbackAudioContext.iOS.category, AVAudioSessionCategory.ambient);
       expect(feedbackAudioContext.android.audioFocus, AndroidAudioFocus.none);
+      // Media volume, not the system stream that vibrate mode mutes.
+      expect(feedbackAudioContext.android.usageType, AndroidUsageType.game);
+    });
+
+    test('Android haptics go to the vibrator with a length per kind', () async {
+      final calls = <MethodCall>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(vibrateChannel, (call) async {
+            calls.add(call);
+            return null;
+          });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(vibrateChannel, null),
+      );
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      for (final haptic in Haptic.values) {
+        playHaptic(haptic);
+      }
+      await pumpEventQueue();
+      expect(calls.map((c) => '${c.method} ${c.arguments}'), [
+        'vibrate 20',
+        'vibrate 40',
+        'vibrate 80',
+        'vibrate 160',
+      ]);
     });
 
     test('every clip is declared in pubspec.yaml', () async {
