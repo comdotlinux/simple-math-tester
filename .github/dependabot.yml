@@ -1,0 +1,29 @@
+# Weekly update PRs, one grouped PR per ecosystem. Dependabot PRs run the
+# normal PR checks and get no Actions secrets.
+# Gradle (app/android) is left out: Flutter sets the Android Gradle plugin and
+# Kotlin versions; they move with `flutter upgrade`.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pub
+    directory: /app
+    schedule:
+      interval: weekly
+    groups:
+      pub:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /tool
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
