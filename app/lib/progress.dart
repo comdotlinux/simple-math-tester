@@ -45,6 +45,7 @@ class Progress {
     LayoutMode layoutMode = LayoutMode.comfortable,
     String? language,
     AppPalette palette = AppPalette.sunny,
+    String? updateReminderDate,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
@@ -58,6 +59,7 @@ class Progress {
          layoutMode,
          language,
          palette,
+         updateReminderDate,
          const {},
          const {},
        );
@@ -75,6 +77,7 @@ class Progress {
     this.layoutMode,
     this.language,
     this.palette,
+    this.updateReminderDate,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -127,6 +130,10 @@ class Progress {
   /// The colour theme; sunny is the default.
   final AppPalette palette;
 
+  /// The `yyyy-MM-dd` day the next update reminder counts its 30 days from:
+  /// the first launch that offers reminders, then each reminder's day.
+  final String? updateReminderDate;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -156,6 +163,8 @@ class Progress {
 
   Progress withLanguage(String? language) => _copy(language: (language,));
   Progress withPalette(AppPalette palette) => _copy(palette: palette);
+  Progress withUpdateReminderDate(String date) =>
+      _copy(updateReminderDate: date);
 
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
@@ -178,6 +187,7 @@ class Progress {
     // A record, so null (follow the system) can be set.
     (String?,)? language,
     AppPalette? palette,
+    String? updateReminderDate,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -191,6 +201,7 @@ class Progress {
     layoutMode ?? this.layoutMode,
     language == null ? this.language : language.$1,
     palette ?? this.palette,
+    updateReminderDate ?? this.updateReminderDate,
     _unknownOperations,
     extra,
   );
@@ -237,6 +248,7 @@ class Progress {
     'layoutMode': layoutMode.name,
     'language': ?language,
     'palette': palette.name,
+    'updateReminderDate': ?updateReminderDate,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -330,6 +342,7 @@ class Progress {
       'layoutMode',
       'language',
       'palette',
+      'updateReminderDate',
     };
     return Progress._(
       selected,
@@ -352,6 +365,7 @@ class Progress {
           .firstOrNull,
       AppPalette.values.asNameMap()[_field<String>(json, 'palette')] ??
           AppPalette.sunny,
+      _date(json, 'updateReminderDate'),
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)

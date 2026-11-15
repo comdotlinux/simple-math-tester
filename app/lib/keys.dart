@@ -31,6 +31,8 @@ const privacyTileKey = Key('privacy-tile');
 const impressumTileKey = Key('impressum-tile');
 const reportProblemTileKey = Key('report-problem-tile');
 const appVersionTileKey = Key('app-version-tile');
+const updateReminderKey = Key('update-reminder');
+const updateReminderDismissKey = Key('update-reminder-dismiss');
 const privacyPageKey = Key('privacy-page');
 
 /// One per segment of the settings sheet's theme choice.

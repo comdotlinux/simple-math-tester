@@ -34,6 +34,24 @@ Uri get releaseNotesUrl => Uri.https(
       : '/comdotlinux/simple-math-tester/releases',
 );
 
+/// Whether the app offers a monthly reminder to check for updates: Android
+/// only, where it opens Google Play. The web app updates itself.
+bool get updateRemindersSupported =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// This app's store page, tried in order: the Play Store app, then the Play
+/// web page. An App Store link for iOS would go here too.
+final storeUrls = [
+  Uri(
+    scheme: 'market',
+    host: 'details',
+    queryParameters: {'id': 'com.linux.simplemathtester'},
+  ),
+  Uri.https('play.google.com', '/store/apps/details', {
+    'id': 'com.linux.simplemathtester',
+  }),
+];
+
 /// Hands [uri] to the system browser, outside the app.
 Future<bool> openInBrowser(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);

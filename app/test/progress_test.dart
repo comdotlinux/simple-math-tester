@@ -241,6 +241,22 @@ void main() {
     );
   });
 
+  test('the update reminder date round trips and is absent by default', () {
+    final json = jsonDecode(
+      Progress().withUpdateReminderDate('2026-11-15').encode(),
+    ) as Map<String, Object?>;
+    expect(json['updateReminderDate'], '2026-11-15');
+    final decoded = Progress.decode(jsonEncode(json));
+    expect(decoded.updateReminderDate, '2026-11-15');
+    expect(decoded.extra, isEmpty);
+    expect(Progress().updateReminderDate, isNull);
+    expect(Progress.decode('{}').updateReminderDate, isNull);
+    expect(
+      jsonDecode(Progress().encode()) as Map,
+      isNot(contains('updateReminderDate')),
+    );
+  });
+
   test('a selection of only unknown kinds offers every known kind', () {
     final decoded = Progress.decode('{"selectedOperations":["power"]}');
     expect(decoded.selectedOperations, OperationType.values.toSet());
@@ -267,6 +283,7 @@ void main() {
     '{"lastActiveDate": 20261114}',
     '{"lastGoalDate": "14.11.2026"}',
     '{"lastActiveDate": "2026-02-30"}',
+    '{"updateReminderDate": "15.11.2026"}',
     '{"bestStreak": "9"}',
     '{"history": [{"kind": "plus", "lhs": "1", "rhs": 2, "result": 3, '
         '"answeredAt": "2026-11-14T08:00:00.000Z"}]}',

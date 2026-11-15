@@ -44,6 +44,7 @@ class MyHomePage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Hud(),
+                      const _UpdateReminder(),
                       Expanded(child: page),
                     ],
                   )
@@ -78,6 +79,7 @@ class MyHomePage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const Hud(),
+                            const _UpdateReminder(),
                             Expanded(child: page),
                           ],
                         ),
@@ -117,6 +119,60 @@ class MyHomePage extends StatelessWidget {
               : null,
         );
       },
+    );
+  }
+}
+
+/// A monthly row under the header suggesting a look at Google Play. It never
+/// checks anything itself: the app sends nothing, it only opens the store.
+class _UpdateReminder extends StatelessWidget {
+  const _UpdateReminder();
+
+  @override
+  Widget build(BuildContext context) {
+    final show = context.select(
+      (MathTesterModel m) => m.showUpdateReminder && !m.inSprint,
+    );
+    if (!show) return const SizedBox.shrink();
+    final model = context.read<MathTesterModel>();
+    final l = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    return DecoratedBox(
+      key: updateReminderKey,
+      decoration: BoxDecoration(
+        color: tokens.surfaceRaised,
+        border: Border(
+          bottom: BorderSide(
+            color: tokens.outline,
+            width: AppTokens.outlineWidth,
+          ),
+        ),
+      ),
+      child: ListTile(
+        leading: const Icon(Icons.system_update_outlined),
+        title: Text(l.updateReminderTitle),
+        subtitle: Text(l.updateReminderSubtitle),
+        trailing: IconButton(
+          key: updateReminderDismissKey,
+          icon: const Icon(Icons.close),
+          tooltip: l.updateReminderDismiss,
+          onPressed: () {
+            final messenger = ScaffoldMessenger.of(context);
+            model.dismissUpdateReminder();
+            messenger.showSnackBar(
+              SnackBar(content: Text(l.updateReminderLater)),
+            );
+          },
+        ),
+        onTap: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          if (!await model.openStore()) {
+            messenger.showSnackBar(
+              SnackBar(content: Text(l.browserDidNotOpen)),
+            );
+          }
+        },
+      ),
     );
   }
 }

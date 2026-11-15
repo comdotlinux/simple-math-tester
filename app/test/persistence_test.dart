@@ -56,6 +56,49 @@ void main() {
       await pumpEventQueue();
     }
 
+    test('the update reminder date is saved at the first launch, kept by a '
+        'restart and moved by closing the reminder', () async {
+      final store = FakeStore();
+      var now = DateTime(2026, 11, 15, 9);
+      Future<MathTesterModel> start() async {
+        final loaded = await loadProgress(store);
+        final model = MathTesterModel(
+          store: store,
+          progress: loaded.progress,
+          clock: () => now,
+          updateReminders: true,
+        );
+        addTearDown(model.dispose);
+        await pumpEventQueue();
+        return model;
+      }
+
+      String? saved() =>
+          Progress.decode(store.values[progressKey]!).updateReminderDate;
+
+      expect((await start()).showUpdateReminder, isFalse);
+      expect(saved(), '2026-11-15');
+
+      now = DateTime(2026, 12, 15, 9);
+      final model = await start();
+      expect(model.showUpdateReminder, isTrue);
+      expect(saved(), '2026-11-15');
+
+      model.dismissUpdateReminder();
+      await pumpEventQueue();
+      expect(saved(), '2026-12-15');
+      expect((await start()).showUpdateReminder, isFalse);
+    });
+
+    test('without reminders, a launch saves nothing', () async {
+      final store = FakeStore();
+      final model = MathTesterModel(store: store);
+      addTearDown(model.dispose);
+      await pumpEventQueue();
+      expect(store.writes, isEmpty);
+      expect(model.showUpdateReminder, isFalse);
+    });
+
     for (final type in OperationType.values) {
       test('the first problem is a saved-selection $type, over 20 seeds', () {
         for (var seed = 0; seed < 20; seed++) {
