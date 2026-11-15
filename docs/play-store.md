@@ -234,7 +234,7 @@ gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deep
 
 `DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
 
-**Keep the release secrets in the `release` environment.** Three settings guard
+**Keep the release secrets in the `release` environment.** Two settings guard
 them:
 
 - Only `main` and `v*` tags may deploy to the environment, so a run on any other
@@ -242,9 +242,6 @@ them:
 - A ruleset lets only admins create or move `v*` tags, and `main` changes only
   through a pull request. A writer cannot tag an off-main commit whose workflow
   was changed to print the secrets.
-- The owner is a required reviewer: every run that uses the environment waits for
-  approval (Actions, the run, Review deployments) before it gets a secret. That
-  covers the translate, store listing and promote workflows too.
 
 To move them from the repository (each command reads a file or asks at a hidden
 prompt):
@@ -266,7 +263,7 @@ workflow run can still read it. Push the next tag and check the release run.
 Each release:
 
 1. On `main`, pulled: `git tag v1.0.1 && git push origin v1.0.1`.
-2. The "Play app bundle" run has two jobs, and each waits for approval. `bundle`
+2. The "Play app bundle" run has two jobs, which run without approval. `bundle`
    builds and signs with only the signing key; `upload` gets the Play and DeepSeek
    keys, runs no build tools, uploads the signed bundle and creates the release.
    Its log shows the Play notes, and its last notice says which version is on the

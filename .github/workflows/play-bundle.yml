@@ -9,8 +9,8 @@ name: Play app bundle
 # GITHUB_TOKEN would not start another workflow.
 # Two jobs, so no secret meets code it does not need: `bundle` runs Gradle, pub and
 # Flutter with only the signing key, and hands the signed bundle on as an artifact;
-# `upload` gets the Play and DeepSeek keys and runs no build tooling. On a tag each
-# job uses the `release` environment, so each waits for its own approval.
+# `upload` gets the Play and DeepSeek keys and runs no build tooling. On a tag both
+# jobs use the `release` environment.
 on:
   push:
     branches: [main]
