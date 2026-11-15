@@ -115,7 +115,7 @@
   "reportProblem": "പ്രശ്നം അറിയിക്കുക",
   "reportProblemSubtitle": "GitHub-ൽ (ബ്രൗസറിൽ തുറക്കും)",
   "appVersionTitle": "പതിപ്പ് {version}",
-  "releaseNotesSubtitle": "പുതിയതെന്ത്, GitHub-ൽ (ബ്രൗസറിൽ തുറക്കും)",
+  "releaseNotesSubtitle": "പുതിയതെന്തെല്ലാം, GitHub-ൽ (ബ്രൗസർ തുറക്കും)",
   "browserDidNotOpen": "ബ്രൗസർ തുറന്നില്ല.",
   "stepSoResult": "അപ്പോൾ {left} {op} {right} = {result}.",
   "stepAddCountOn": "{bigger}-ൽ തുടങ്ങി {smaller} എണ്ണം കൂടി എണ്ണൂ.",
