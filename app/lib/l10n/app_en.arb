@@ -661,6 +661,22 @@
   "@browserDidNotOpen": {
     "description": "Error message when the web browser could not be opened."
   },
+  "updateReminderTitle": "Check for updates",
+  "@updateReminderTitle": {
+    "description": "Title of the monthly reminder under the header; tapping it opens the app's Google Play page. The app checks nothing itself."
+  },
+  "updateReminderSubtitle": "See if a new version is on Google Play",
+  "@updateReminderSubtitle": {
+    "description": "Line under the update reminder's title; tapping opens Google Play. Keep 'Google Play'."
+  },
+  "updateReminderDismiss": "Not now",
+  "@updateReminderDismiss": {
+    "description": "Tooltip of the close button that hides the update reminder for a month."
+  },
+  "updateReminderLater": "We’ll remind you again in a month.",
+  "@updateReminderLater": {
+    "description": "Short message after the update reminder is closed: it comes back in about a month."
+  },
   "stepSoResult": "So {left} {op} {right} = {result}.",
   "@stepSoResult": {
     "description": "Hint step that explains a sum to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given. {op} is a math symbol.",

@@ -7,6 +7,7 @@ import 'app_theme.dart';
 import 'home_page.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
+import 'legal.dart';
 import 'math_tester_model.dart';
 import 'progress_store.dart';
 import 'sound_player.dart';
@@ -38,6 +39,7 @@ Future<void> bootstrap(
             haptic: playHaptic,
             sounds: sounds,
             openLink: openLink,
+            updateReminders: updateRemindersSupported,
           ),
         ),
       ],

@@ -74,6 +74,8 @@ void main() {
     bool canSave = true,
     List<Attempt> history = const [],
     Future<bool> Function(Uri)? openLink,
+    bool updateReminders = false,
+    String? updateReminderDate,
     // Phones start with the system keyboard; this opens the pad as a
     // player does, with the keyboard button.
     bool usePad = false,
@@ -91,6 +93,7 @@ void main() {
         game: game,
         haptics: haptics,
         history: history,
+        updateReminderDate: updateReminderDate,
       ),
       clock: clock,
       ticker: ticker,
@@ -98,6 +101,7 @@ void main() {
       store: store,
       canSave: canSave,
       openLink: openLink,
+      updateReminders: updateReminders,
     );
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
@@ -1282,6 +1286,177 @@ void main() {
         });
       }
     }
+  });
+
+  group('update reminder', () {
+    final reminder = find.byKey(updateReminderKey);
+    const later = 'We’ll remind you again in a month.';
+
+    /// Moves the clock and resumes the app, which rebuilds from the clock.
+    Future<void> resumeAt(
+      WidgetTester tester,
+      MathTesterModel model,
+      void Function() move,
+    ) async {
+      move();
+      model.handleLifecycle(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the first reminder comes 30 days after the first launch', (
+      tester,
+    ) async {
+      var now = DateTime(2026, 11, 15, 9);
+      final model = await launch(
+        tester,
+        clock: () => now,
+        updateReminders: true,
+      );
+      expect(reminder, findsNothing);
+
+      await resumeAt(tester, model, () => now = DateTime(2026, 12, 14, 23));
+      expect(reminder, findsNothing);
+      await resumeAt(tester, model, () => now = DateTime(2026, 12, 15, 0, 1));
+      expect(reminder, findsOneWidget);
+      expect(find.text('Check for updates'), findsOneWidget);
+      expect(
+        find.text('See if a new version is on Google Play'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('closing it hides it for another 30 days, and a sprint hides '
+        'it too', (tester) async {
+      var now = DateTime(2026, 11, 15, 9);
+      final opened = <Uri>[];
+      final model = await launch(
+        tester,
+        clock: () => now,
+        updateReminders: true,
+        updateReminderDate: '2026-10-01',
+        ticker: () => const Stream.empty(),
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      expect(reminder, findsOneWidget);
+
+      model.startSprint();
+      await tester.pump();
+      expect(reminder, findsNothing);
+      model.endSprint();
+      await tester.pump();
+      expect(reminder, findsOneWidget);
+
+      await tester.tap(find.byKey(updateReminderDismissKey));
+      await tester.pump();
+      expect(reminder, findsNothing);
+      expect(find.text(later), findsOneWidget);
+      expect(opened, isEmpty);
+
+      await resumeAt(tester, model, () => now = DateTime(2026, 12, 14, 9));
+      expect(reminder, findsNothing);
+      await resumeAt(tester, model, () => now = DateTime(2026, 12, 15, 9));
+      expect(reminder, findsOneWidget);
+    });
+
+    testWidgets('a tap opens the Play Store app and counts as closed', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        updateReminders: true,
+        updateReminderDate: '2000-01-01',
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tester.tap(reminder);
+      await tester.pumpAndSettle();
+
+      expect(opened, [
+        Uri.parse('market://details?id=com.linux.simplemathtester'),
+      ]);
+      expect(reminder, findsNothing);
+      expect(find.text(later), findsNothing);
+      expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    testWidgets('without the Play Store app, a tap opens the Play web page', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        updateReminders: true,
+        updateReminderDate: '2000-01-01',
+        openLink: (uri) async {
+          opened.add(uri);
+          if (uri.scheme == 'market') throw StateError('no store app');
+          return true;
+        },
+      );
+      await tester.tap(reminder);
+      await tester.pumpAndSettle();
+
+      expect(opened, storeUrls);
+      expect(opened.last.scheme, 'https');
+      expect(opened.last.host, 'play.google.com');
+      expect(opened.last.path, '/store/apps/details');
+      expect(opened.last.queryParameters, {'id': 'com.linux.simplemathtester'});
+      expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
+      ('reports false', (_) async => false),
+      ('throws', (_) async => throw StateError('no browser')),
+    ]) {
+      testWidgets('when the opener $name, a notice says so', (tester) async {
+        await launch(
+          tester,
+          updateReminders: true,
+          updateReminderDate: '2000-01-01',
+          openLink: opener,
+        );
+        await tester.tap(reminder);
+        await tester.pumpAndSettle();
+
+        expect(find.text('The browser did not open.'), findsOneWidget);
+        expect(reminder, findsNothing);
+      });
+    }
+
+    testWidgets('it never shows where reminders are off, such as the web', (
+      tester,
+    ) async {
+      final store = FakeStore();
+      await launch(tester, store: store, updateReminderDate: '2000-01-01');
+      expect(reminder, findsNothing);
+      expect(store.writes, isEmpty);
+    });
+
+    testWidgets(
+      'reminders are on for Android only',
+      (tester) async {
+        expect(
+          updateRemindersSupported,
+          defaultTargetPlatform == TargetPlatform.android,
+        );
+        final store = FakeStore({
+          progressKey: Progress(updateReminderDate: '2000-01-01').encode(),
+        });
+        await bootstrap(store);
+        await tester.pumpAndSettle();
+        expect(
+          reminder,
+          defaultTargetPlatform == TargetPlatform.android
+              ? findsOneWidget
+              : findsNothing,
+        );
+      },
+      variant: TargetPlatformVariant({
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+      }),
+    );
   });
 
   group('header', () {

@@ -42,6 +42,7 @@ class MathTesterModel extends ChangeNotifier {
     void Function(Haptic)? haptic,
     this._sounds = const SilentSoundPlayer(),
     Future<bool> Function(Uri)? openLink,
+    this._updateReminders = false,
   }) : _openLink = openLink ?? openInBrowser,
        _ticker = ticker ?? _everySecond,
        // Silent unless given, so a model built without a binding works.
@@ -51,6 +52,11 @@ class MathTesterModel extends ChangeNotifier {
        _store = store ?? MemoryProgressStore(),
        _progress = progress ?? Progress() {
     _progress = _withDayChange(_progress);
+    // The first reminder comes 30 days after the first launch, not at once.
+    // Saved with the next save, so a launch alone still writes nothing.
+    if (_updateReminders && _progress.updateReminderDate == null) {
+      _progress = _progress.withUpdateReminderDate(localDate(_clock()));
+    }
     _show(initialProblem ?? _draw());
   }
 
@@ -64,6 +70,7 @@ class MathTesterModel extends ChangeNotifier {
   final void Function(Haptic) _haptic;
   SoundPlayer _sounds;
   final Future<bool> Function(Uri) _openLink;
+  final bool _updateReminders;
   final Random _random;
   final DateTime Function() _clock;
   final ProgressStore _store;
@@ -146,6 +153,37 @@ class MathTesterModel extends ChangeNotifier {
   LayoutMode get layoutMode => _progress.layoutMode;
   String? get language => _progress.language;
   AppPalette get palette => _progress.palette;
+
+  /// Whether the reminder to check for updates shows: 30 days after the
+  /// last one (or the first launch). Read from the clock on every call.
+  bool get showUpdateReminder {
+    final from = _progress.updateReminderDate;
+    if (!_updateReminders || from == null) return false;
+    final day = DateTime.parse(from);
+    final due = localDate(DateTime(day.year, day.month, day.day + 30));
+    return localDate(_clock()).compareTo(due) >= 0;
+  }
+
+  /// Hides the update reminder for another 30 days.
+  void dismissUpdateReminder() {
+    _progress = _progress.withUpdateReminderDate(localDate(_clock()));
+    _save();
+    notifyListeners();
+  }
+
+  /// Dismisses the update reminder and opens this app's store page, trying
+  /// each of [storeUrls]; false when none opened.
+  Future<bool> openStore() async {
+    dismissUpdateReminder();
+    for (final url in storeUrls) {
+      try {
+        if (await _openLink(url)) return true;
+      } catch (_) {
+        // The next one may still open.
+      }
+    }
+    return false;
+  }
 
   /// The latest valid check; [count] tells two equal results apart, so each
   /// one plays its feedback motion.
