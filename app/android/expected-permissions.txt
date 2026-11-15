@@ -1,1 +1,2 @@
+android.permission.VIBRATE
 com.linux.simplemathtester.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
