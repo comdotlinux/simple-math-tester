@@ -1,0 +1,63 @@
+# Translations
+
+The app is in English (the source) and German, Polish, Hindi, Marathi,
+Telugu, Tamil, Malayalam, French and Romanian. It follows the device
+language, English when that language has no translation; Settings >
+Language overrides it.
+
+## Where the texts are
+
+- `app/lib/l10n/app_en.arb` is the template: every text the app shows, each
+  with a description for translators. Placeholders such as `{count}` and ICU
+  plurals stay as they are in every language, and digits stay Western (0-9).
+- `app/lib/l10n/app_<code>.arb` holds one language. `flutter pub get` (and
+  every build) generates the Dart classes from these files; they are not
+  committed.
+- `app/lib/l10n/translation_sources.json` records which English text each
+  translation was made from, so a changed English text is translated again.
+- `app/test/l10n_test.dart` checks that every language has every key with
+  the same placeholders, and that each language fits a 360x640 phone.
+
+## A new or changed text
+
+1. Add or change the text in `app_en.arb`, with a description, and use it in
+   the code through `AppLocalizations.of(context)`.
+2. Run the **Translate new and changed strings** workflow (Actions tab, Run
+   workflow). It translates only the keys that are missing or whose English
+   changed, checks placeholders, plurals and digits, runs the translation
+   tests, and opens a pull request.
+3. Checks do not start on their own for a pull request the workflow opens
+   (GitHub does not start workflows for its own token): run the Flutter
+   checks workflow on that branch, or close and reopen the pull request.
+
+Locally the same script runs with your own key:
+
+```sh
+DEEPSEEK_API_KEY=... node tool/translate.mjs           # writes the ARB files
+node tool/translate.mjs --dry-run                      # lists what would change
+```
+
+`DEEPSEEK_MODEL` picks the model (default `deepseek-flash`). The workflow
+uses the repository secret `DEEPSEEK_API_KEY` and the variable
+`DEEPSEEK_MODEL`.
+
+The workflow needs **Settings > Actions > General > Workflow permissions >
+Allow GitHub Actions to create and approve pull requests** turned on in the
+repository settings; without it the last step fails.
+
+## A new language
+
+1. Add its code to `languages` in `tool/translate.mjs`.
+2. Run the workflow. It creates `app_<code>.arb`, including `languageName`,
+   the language's name in itself, which the language list shows.
+3. If the language uses a script that Roboto and the bundled Noto Sans
+   fonts (Devanagari, Telugu, Tamil, Malayalam) do not cover, bundle a Noto
+   Sans font for it: add the regular and bold files with their licence under
+   `app/assets/fonts/`, list the family in `app/pubspec.yaml`, add it to
+   `fontFallback` in `app/lib/app_theme.dart`, and add the language to the
+   script check at the end of `tool/browser_check.mjs`. Without the font the
+   web app would download one from fonts.gstatic.com, which the privacy
+   policy rules out.
+
+Machine translations are a start: a native speaker should read them, above
+all the privacy policy.

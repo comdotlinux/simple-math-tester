@@ -41,7 +41,6 @@ void main() {
         AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet(),
         {'en', for (final path in arbs) readArb(path)['@@locale']},
       );
-      expect(arbs, hasLength(9));
     });
 
     for (final path in arbs) {
