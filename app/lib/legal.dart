@@ -36,8 +36,8 @@ Uri get releaseNotesUrl => Uri.https(
 
 /// Whether the app offers a monthly reminder to check for updates: Android
 /// only, where it opens Google Play. The web app updates itself.
-bool get updateRemindersSupported =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+// SCREENSHOT ONLY, never merge: shows the reminder on web.
+bool get updateRemindersSupported => true;
 
 /// This app's store page, tried in order: the Play Store app, then the Play
 /// web page. An App Store link for iOS would go here too.
