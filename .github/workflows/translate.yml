@@ -1,9 +1,22 @@
 name: Translate new and changed strings
 
-# Manual only: translates what changed in app/lib/l10n/app_en.arb with
-# DeepSeek and opens a pull request. See docs/translations.md.
+# Translates only what is missing or changed (per language: keys absent from
+# its ARB file, or whose English text changed since it was translated) with
+# DeepSeek and opens or updates one pull request. Runs on main only: by itself
+# when the English texts or the language list change, or by hand.
+# See docs/translations.md.
 on:
+  push:
+    branches: [main]
+    paths:
+      - app/lib/l10n/app_en.arb
+      - tool/translate.mjs
   workflow_dispatch:
+
+# One run at a time; a newer push queues behind the running one.
+concurrency:
+  group: translate
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -14,16 +27,24 @@ env:
 jobs:
   translate:
     name: Translate and open a pull request
+    # A manual run on another branch does nothing.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04
     timeout-minutes: 20
+    # DEEPSEEK_API_KEY is a `release` environment secret (v* tags and main only).
+    environment: release
     permissions:
       contents: write
       pull-requests: write
+      # Starts the Flutter checks on the pull request branch.
+      actions: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
+      - name: List missing and changed strings
+        run: node tool/translate.mjs --dry-run
       - name: Translate with DeepSeek
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
@@ -41,7 +62,7 @@ jobs:
         run: |
           flutter pub get --enforce-lockfile
           flutter test test/l10n_test.dart test/solution_steps_test.dart
-      - name: Open a pull request
+      - name: Open or update the pull request
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -50,13 +71,21 @@ jobs:
             echo "Every translation is up to date."
             exit 0
           fi
-          branch="translations/run-${GITHUB_RUN_ID}"
+          # One branch, rebuilt from main each run, so open translations collect
+          # in a single pull request.
+          branch=translations/auto
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch -c "$branch"
+          git switch -C "$branch"
           git add app/lib/l10n
           git commit -m 'Translate new and changed strings'
-          git push origin "$branch"
-          gh pr create --base main --head "$branch" \
-            --title 'Translate new and changed strings' \
-            --body "Machine translations from DeepSeek (workflow run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Placeholders, plurals and digits were checked, and test/l10n_test.dart passed. Checks do not start on their own for this pull request: run the Flutter checks workflow on this branch, or close and reopen it."
+          git push --force origin "$branch"
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head "$branch" \
+              --title 'Translate new and changed strings' \
+              --body "Machine translations from DeepSeek of the strings that were missing or whose English changed (latest run: $run_url). Placeholders, plurals and digits were checked, and test/l10n_test.dart passed. The Flutter checks are started on this branch by the workflow."
+          fi
+          # A pull request pushed with GITHUB_TOKEN starts no workflow by itself;
+          # a dispatch does.
+          gh workflow run flutter-checks.yml --ref "$branch" -f environment-name=none
