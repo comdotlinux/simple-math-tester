@@ -47,9 +47,21 @@ The workflow needs **Settings > Actions > General > Workflow permissions >
 Allow GitHub Actions to create and approve pull requests** turned on in the
 repository settings; without it the last step fails.
 
+## The Play store listing
+
+`play/listing/en-US.json` holds the English store title and descriptions;
+`tool/translate_listing.mjs` translates them the same way into
+`play/listing/<Play code>.json`, with hashes in
+`play/listing/translation_sources.json`. The Translate workflow runs it too,
+so listing translations arrive in the same pull request. Locally:
+`node tool/translate_listing.mjs --dry-run`, or `--check` for Play's length
+limits. Pushing the listings to Play is a separate, manual workflow; see
+"Store listing" in [play-store.md](play-store.md).
+
 ## A new language
 
-1. Add its code to `languages` in `tool/translate.mjs`.
+1. Add its code to `languages` in `tool/translate.mjs`, and its Play store
+   listing code to `playCodes` in `tool/translate_listing.mjs`.
 2. Merge it; the workflow runs and creates `app_<code>.arb`, including `languageName`,
    the language's name in itself, which the language list shows.
 3. If the language uses a script that Roboto and the bundled Noto Sans

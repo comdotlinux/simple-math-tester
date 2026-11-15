@@ -32,7 +32,7 @@ track='{"track":"internal","releases":[
   {"name":"1.1.0 (311)","versionCodes":["311"],"status":"completed",
    "releaseNotes":[{"language":"en-US","text":"- Bigger confetti"}]},
   {"name":"1.1.0 (312)","versionCodes":["312"],"status":"completed",
-   "releaseNotes":[{"language":"en-US","text":"- Newest build"}]},
+   "releaseNotes":[{"language":"en-US","text":"- Newest build"},{"language":"de-DE","text":"- Neuester Build"}]},
   {"name":"1.1.01 (400)","versionCodes":["400"],"status":"completed"}]}'
 
 lookup() { # name, version name, track, rollout, expected JSON ('' = must fail)
@@ -48,8 +48,8 @@ lookup() { # name, version name, track, rollout, expected JSON ('' = must fail)
 
 lookup 'full rollout, release without notes' 1.0.0 alpha 100 \
   '{"track":"alpha","releases":[{"name":"1.0.0 (181)","versionCodes":["181"],"status":"completed"}]}'
-lookup 'newest build of a version, staged' 1.1.0 production 20 \
-  '{"track":"production","releases":[{"name":"1.1.0 (312)","versionCodes":["312"],"status":"inProgress","userFraction":0.2,"releaseNotes":[{"language":"en-US","text":"- Newest build"}]}]}'
+lookup 'newest build of a version, staged, notes in every language' 1.1.0 production 20 \
+  '{"track":"production","releases":[{"name":"1.1.0 (312)","versionCodes":["312"],"status":"inProgress","userFraction":0.2,"releaseNotes":[{"language":"en-US","text":"- Newest build"},{"language":"de-DE","text":"- Neuester Build"}]}]}'
 lookup 'missing version fails' 2.0.0 alpha 100 ''
 lookup '1.1.0 does not match 1.1.01' 1.1.01 alpha 100 \
   '{"track":"alpha","releases":[{"name":"1.1.01 (400)","versionCodes":["400"],"status":"completed"}]}'

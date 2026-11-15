@@ -50,9 +50,9 @@ export function stale(template, arb, sources) {
   );
 }
 
-const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
+export const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
 
-async function readJson(url, fallback) {
+export async function readJson(url, fallback) {
   try {
     return JSON.parse(await readFile(url, 'utf8'));
   } catch (error) {

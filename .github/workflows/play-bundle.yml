@@ -244,7 +244,9 @@ jobs:
       # GitHub release. Play gets a short summary of them written by DeepSeek, or the
       # automatic notes themselves when there is no DEEPSEEK_API_KEY or the call
       # fails; either way play-release-notes.jq makes them plain, whole lines, 500
-      # characters at most.
+      # characters at most. A second call translates a DeepSeek summary into every
+      # language of play/listing/; the upload sends the valid ones
+      # (play-release-notes-languages.jq). A missing translation never fails a release.
       - name: Write the release notes
         if: github.ref_type == 'tag'
         env:
@@ -279,6 +281,33 @@ jobs:
           jq -nr --rawfile notes "$source" -f ../.github/play-release-notes.jq > "$RUNNER_TEMP/play-notes.txt"
           echo "Play release notes:"
           cat "$RUNNER_TEMP/play-notes.txt"
+          # Translations of the summary by Play language code, from a second call so a
+          # failed translation never costs the English summary.
+          echo '{}' > "$RUNNER_TEMP/ai-answer.json"
+          # || true: no translations yet means nothing to translate.
+          languages="$(cd ../play/listing && ls -- *.json | sed 's/\.json$//' \
+            | { grep -vxE 'en-US|translation_sources' || true; } | paste -sd, -)"
+          if [ "$source" = "$RUNNER_TEMP/ai-notes.txt" ] && [ -n "$languages" ]; then
+            jq -n --arg model "$DEEPSEEK_MODEL" --arg languages "$languages" \
+              --rawfile notes "$RUNNER_TEMP/play-notes.txt" '{
+              model: $model, stream: false, temperature: 0.2, max_tokens: 4000,
+              thinking: {type: "disabled"},
+              response_format: {type: "json_object"},
+              messages: [
+                {role: "system", content: ("You translate Google Play release notes of Simple Math Tester, a math practice app for children, from English into each of these Google Play languages: " + $languages + ". Keep the same lines, each starting with \"- \", in simple words a child understands. Keep the name Simple Math Tester. Digits are always Western 0-9. At most 450 characters per language. Answer with one JSON object that maps each language code to its notes, nothing else.")},
+                {role: "user", content: $notes}
+              ]}' > "$RUNNER_TEMP/ai-translate-request.json"
+            if curl -sS --fail-with-body --max-time 120 https://api.deepseek.com/chat/completions \
+                -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
+                --data @"$RUNNER_TEMP/ai-translate-request.json" > "$RUNNER_TEMP/ai-translate-response.json" \
+              && jq -e '.choices[0].message.content | fromjson | objects' "$RUNNER_TEMP/ai-translate-response.json" \
+                > "$RUNNER_TEMP/ai-translations.json"; then
+              cp "$RUNNER_TEMP/ai-translations.json" "$RUNNER_TEMP/ai-answer.json"
+            else
+              reason="$(jq -r '.error.message // .choices[0].finish_reason // empty' "$RUNNER_TEMP/ai-translate-response.json" 2>/dev/null || true)"
+              echo "::warning::DeepSeek translation of the notes failed (${reason:-no response}); Play gets English notes only"
+            fi
+          fi
       # .github/play-token.sh: a short-lived JWT signed by the service account, traded
       # for an access token. play-promote.yml uses it too.
       - name: Get a Play Developer API token
@@ -307,9 +336,16 @@ jobs:
             exit 1
           fi
           notes="$(cat "$RUNNER_TEMP/play-notes.txt")"
-          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:-Version $VERSION_NAME}" \
+          # Notes go only to languages that have a store listing; Play rejects others.
+          # A failed lookup sends English alone rather than failing the release.
+          listed="$(curl -sS --fail-with-body "${auth[@]}" "$api/edits/$edit/listings" \
+            | jq -c '[.listings[]?.language]')" || listed='[]'
+          jq -n --arg english "${notes:-Version $VERSION_NAME}" --slurpfile answer "$RUNNER_TEMP/ai-answer.json" \
+            --argjson listed "$listed" -f ../.github/play-release-notes-languages.jq > "$RUNNER_TEMP/release-notes.json"
+          echo "Release notes languages: $(jq -c 'map(.language)' "$RUNNER_TEMP/release-notes.json")"
+          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --slurpfile notes "$RUNNER_TEMP/release-notes.json" \
             '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
-              releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
+              releaseNotes: $notes[0]}]}' > "$RUNNER_TEMP/track.json"
           curl -sS --fail-with-body -X PUT "${auth[@]}" -H 'Content-Type: application/json' \
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null

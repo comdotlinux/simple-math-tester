@@ -2,15 +2,18 @@ name: Translate new and changed strings
 
 # Translates only what is missing or changed (per language: keys absent from
 # its ARB file, or whose English text changed since it was translated) with
-# DeepSeek and opens or updates one pull request. Runs on main only: by itself
-# when the English texts or the language list change, or by hand.
-# See docs/translations.md.
+# DeepSeek and opens or updates one pull request. The Play store listing
+# (play/listing/en-US.json) is translated the same way, into the same pull
+# request. Runs on main only: by itself when the English texts or the language
+# list change, or by hand. See docs/translations.md.
 on:
   push:
     branches: [main]
     paths:
       - app/lib/l10n/app_en.arb
       - tool/translate.mjs
+      - play/listing/en-US.json
+      - tool/translate_listing.mjs
   workflow_dispatch:
 
 # One run at a time; a newer push queues behind the running one.
@@ -44,12 +47,16 @@ jobs:
         with:
           node-version: '22'
       - name: List missing and changed strings
-        run: node tool/translate.mjs --dry-run
+        run: |
+          node tool/translate.mjs --dry-run
+          node tool/translate_listing.mjs --dry-run
       - name: Translate with DeepSeek
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
-        run: node tool/translate.mjs
+        run: |
+          node tool/translate.mjs
+          node tool/translate_listing.mjs
       # A pull request opened with GITHUB_TOKEN starts no other workflow, so
       # the translations are checked here before it is opened.
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -67,7 +74,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # Status, not diff: a new language's ARB file is untracked.
-          if [ -z "$(git status --porcelain -- app/lib/l10n)" ]; then
+          if [ -z "$(git status --porcelain -- app/lib/l10n play/listing)" ]; then
             echo "Every translation is up to date."
             exit 0
           fi
@@ -77,14 +84,14 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -C "$branch"
-          git add app/lib/l10n
+          git add app/lib/l10n play/listing
           git commit -m 'Translate new and changed strings'
           git push --force origin "$branch"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
             gh pr create --base main --head "$branch" \
               --title 'Translate new and changed strings' \
-              --body "Machine translations from DeepSeek of the strings that were missing or whose English changed (latest run: $run_url). Placeholders, plurals and digits were checked, and test/l10n_test.dart passed. The Flutter checks are started on this branch by the workflow."
+              --body "Machine translations from DeepSeek of the strings and Play listing texts that were missing or whose English changed (latest run: $run_url). Placeholders, plurals, digits and Play's length limits were checked, and test/l10n_test.dart passed. After merging, push listing changes with the Play store listing workflow. The Flutter checks are started on this branch by the workflow."
           fi
           # A pull request pushed with GITHUB_TOKEN starts no workflow by itself;
           # a dispatch does.
