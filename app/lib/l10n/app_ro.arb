@@ -117,7 +117,7 @@
   "appVersionTitle": "Versiunea {version}",
   "releaseNotesSubtitle": "Ce e nou, pe GitHub (deschide browserul)",
   "browserDidNotOpen": "Browserul nu s-a deschis.",
-  "updateReminderTitle": "Caută actualizări",
+  "updateReminderTitle": "Vezi dacă sunt actualizări",
   "updateReminderSubtitle": "Vezi dacă e o versiune nouă pe Google Play",
   "updateReminderDismiss": "Nu acum",
   "updateReminderLater": "Îți reamintim peste o lună.",
