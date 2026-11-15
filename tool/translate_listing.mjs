@@ -45,6 +45,29 @@ export function problem(field, source, text) {
   return null;
 }
 
+/** [text] with every decimal digit of any script turned into Western 0-9. */
+export function westernDigits(text) {
+  if (typeof text !== 'string') return text;
+  return text.replace(/(?![0-9])\p{Nd}/gu, (digit) => {
+    // Digits come in runs of ten from zero (some runs follow each other, such
+    // as the mathematical digits), so the value is the distance from the run's start, mod 10.
+    let start = digit.codePointAt(0);
+    while (/\p{Nd}/u.test(String.fromCodePoint(start - 1))) start--;
+    return String((digit.codePointAt(0) - start) % 10);
+  });
+}
+
+/** What DeepSeek is told about a rejected [field] before it tries again. */
+export function retryNote(field, why) {
+  const length = why.match(/^(\d+) characters/);
+  if (length) {
+    return `Your ${field} had ${length[1]} characters; Play allows at most ${limits[field]}. Write a shorter one.`;
+  }
+  if (why.endsWith('missing')) return `Your ${field} lost ${why.replace(/ missing$/, '')}: keep it exactly, in Latin letters.`;
+  if (why === 'non-Western digits') return `Your ${field} had non-Western digits: use only Western digits 0-9.`;
+  return `Your ${field} was ${why}: write the whole translation.`;
+}
+
 /** The fields of a listing that are missing or whose English changed. */
 export function stale(english, listing, sources) {
   return fields.filter((f) => !(f in listing) || sources[f] !== hash(english[f]));
@@ -58,16 +81,21 @@ export function check(name, english, listing) {
     .map(([f, why]) => `${name}: ${f}: ${why}`);
 }
 
-async function ask(model, key, english, language, keys) {
+async function ask(model, key, english, language, keys, rejected) {
   const system = [
     `You translate the Google Play store listing of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Parents read it. Use natural, friendly, simple words a native speaker would use in an app store, not a word-by-word translation.',
     `Keep these names unchanged, in Latin letters: ${brands.join(', ')}, Google Play, Android.`,
     'Digits are always Western 0-9. Keep the line breaks and the "- " list items of the English text.',
     `Hard limits in characters: title ${limits.title}, shortDescription ${limits.shortDescription}, fullDescription ${limits.fullDescription}.`,
+    'The fields to translate are under "translate". If "yourRejectedAnswers" is there, your last answer for those fields was rejected: fix exactly the problem it names.',
     'Answer with one JSON object that maps each requested field to its translated text, nothing else.',
   ].join('\n');
-  const user = JSON.stringify(Object.fromEntries(keys.map((k) => [k, english[k]])));
+  const user = JSON.stringify({
+    translate: Object.fromEntries(keys.map((k) => [k, english[k]])),
+    // The previous attempt's rejected answers and why, so the retry can fix them.
+    ...(Object.keys(rejected).length ? { yourRejectedAnswers: rejected } : {}),
+  });
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
@@ -114,7 +142,8 @@ async function main() {
   if (!dryRun && !key) throw new Error('DEEPSEEK_API_KEY is not set');
 
   const sources = await readJson(sourcesFile, {});
-  let failures = 0;
+  const failed = [];
+  let translated = 0;
   for (const language of languages) {
     const code = playCodes[language];
     const file = new URL(`${code}.json`, dir);
@@ -124,34 +153,55 @@ async function main() {
     console.log(`${code}: ${keys.length} to translate${keys.length ? `: ${keys.join(', ')}` : ''}`);
     if (dryRun || keys.length === 0) continue;
 
-    // One retry for answers that fail the checks.
-    for (let attempt = 1; attempt <= 2 && keys.length > 0; attempt++) {
-      const answer = await ask(model, key, english, language, keys);
-      const rejected = [];
+    const accepted = {};
+    let rejected = {};
+    let why = {};
+    for (let attempt = 1; attempt <= 3 && keys.length > 0; attempt++) {
+      let answer;
+      try {
+        answer = await ask(model, key, english, language, keys, rejected);
+      } catch (error) {
+        console.log(`${code}: attempt ${attempt} failed: ${error.message}`);
+        why = Object.fromEntries(keys.map((k) => [k, 'no answer']));
+        continue;
+      }
+      rejected = {};
+      why = {};
       for (const k of keys) {
-        const why = problem(k, english[k], answer[k]);
-        if (why) {
-          rejected.push(k);
-          console.log(`${code}: ${k} rejected (attempt ${attempt}): ${why}`);
+        const text = westernDigits(answer[k]);
+        const reason = problem(k, english[k], text);
+        if (reason) {
+          why[k] = reason;
+          rejected[k] = { yourAnswer: text, problem: retryNote(k, reason) };
+          console.log(`${code}: ${k} rejected (attempt ${attempt}): ${reason}`);
         } else {
-          listing[k] = answer[k];
-          sources[code][k] = hash(english[k]);
+          accepted[k] = text;
         }
       }
-      keys = rejected;
+      keys = Object.keys(why);
     }
-    failures += keys.length;
-    // A listing is pushed only when complete; a partial one waits for the next run.
+    failed.push(...keys.map((k) => `${code} ${k} (${why[k]})`));
+    // A listing file is always complete, so play-listing.yml can push it: a new
+    // language with a failed field waits for the next run. A field that failed in
+    // an existing listing keeps its old text and old hash, so it stays stale.
+    Object.assign(listing, accepted);
     if (fields.every((f) => f in listing)) {
       const out = Object.fromEntries(fields.map((f) => [f, listing[f]]));
       await writeFile(file, `${JSON.stringify(out, null, 2)}\n`);
+      for (const k of Object.keys(accepted)) sources[code][k] = hash(english[k]);
+      translated += Object.keys(accepted).length;
+    } else if (Object.keys(accepted).length) {
+      failed.push(`${code} not written: ${Object.keys(accepted).join(', ')} translated but the listing is incomplete`);
     }
   }
   if (!dryRun) {
     const sorted = Object.fromEntries(languages.map((l) => [playCodes[l], sources[playCodes[l]]]));
     await writeFile(sourcesFile, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  if (failures > 0) throw new Error(`${failures} listing texts could not be translated; see above`);
+  if (failed.length === 0) return;
+  console.log(`Not translated, retried on the next run:\n- ${failed.join('\n- ')}`);
+  // Nothing at all worked: most likely the key, model or endpoint is wrong.
+  if (translated === 0) throw new Error('No listing text could be translated; see above');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

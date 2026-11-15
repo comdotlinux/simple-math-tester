@@ -37,9 +37,12 @@ edit them there, not in Play Console. Every app language has its own listing in
 
 - On `main`, a change to `en-US.json` starts the **Translate new and changed
   strings** workflow (see [translations.md](translations.md)). It translates
-  only the fields whose English changed, checks Play's limits, Western digits
-  and the name "Simple Math Tester", and puts the files into the same
-  `translations/auto` pull request as the app strings.
+  only the fields whose English changed, turns other digits into Western 0-9,
+  checks Play's limits and the name "Simple Math Tester" (up to three tries,
+  each told why the last one was rejected), and puts the files into the same
+  `translations/auto` pull request as the app strings. A text that still fails
+  is listed in the run log and tried again on the next run; the others are
+  kept. A new language's file appears only once all three fields passed.
 - After that pull request is merged, push all listings to Play by hand:
   `gh workflow run play-listing.yml` (from `main`). It replaces the title and
   both descriptions of every language in one edit; Google reviews the change.

@@ -3,7 +3,39 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { hash, languages } from './translate.mjs';
-import { check, limits, playCodes, problem, stale } from './translate_listing.mjs';
+import {
+  check,
+  limits,
+  playCodes,
+  problem,
+  retryNote,
+  stale,
+  westernDigits,
+} from './translate_listing.mjs';
+
+test('digits of any script become Western digits', () => {
+  assert.equal(westernDigits('६०-सेकंद'), '60-सेकंद'); // Devanagari
+  assert.equal(westernDigits('௧௨ ٣٤ ൯'), '12 34 9'); // Tamil, Arabic-Indic, Malayalam
+  assert.equal(westernDigits('𝟎𝟗 𝟘𝟡'), '09 09'); // two runs of mathematical digits in a row
+  assert.equal(westernDigits('60 seconds'), '60 seconds');
+  assert.equal(westernDigits(undefined), undefined);
+});
+
+test('a retry is told why the last answer was rejected', () => {
+  assert.equal(
+    retryNote('shortDescription', '100 characters, Play allows 80'),
+    'Your shortDescription had 100 characters; Play allows at most 80. Write a shorter one.',
+  );
+  assert.equal(
+    retryNote('title', '"Simple Math Tester" missing'),
+    'Your title lost "Simple Math Tester": keep it exactly, in Latin letters.',
+  );
+  assert.equal(
+    retryNote('fullDescription', 'non-Western digits'),
+    'Your fullDescription had non-Western digits: use only Western digits 0-9.',
+  );
+  assert.equal(retryNote('title', 'empty'), 'Your title was empty: write the whole translation.');
+});
 
 test('every app language has a Play listing code', () => {
   assert.deepEqual(Object.keys(playCodes).sort(), [...languages].sort());
