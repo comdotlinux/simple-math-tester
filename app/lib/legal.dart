@@ -25,6 +25,15 @@ Uri get problemReportUrl =>
           'Platform: ${kIsWeb ? 'web' : defaultTargetPlatform.name}\n',
     });
 
+/// The GitHub release of this version, with its notes. A build without a
+/// tagged version name (the web build from main) gets the list of releases.
+Uri get releaseNotesUrl => Uri.https(
+  'github.com',
+  RegExp(r'^\d+\.\d+\.\d+$').hasMatch(appVersion) && appVersion != '1.0.0'
+      ? '/comdotlinux/simple-math-tester/releases/tag/v$appVersion'
+      : '/comdotlinux/simple-math-tester/releases',
+);
+
 /// Hands [uri] to the system browser, outside the app.
 Future<bool> openInBrowser(Uri uri) =>
     launchUrl(uri, mode: LaunchMode.externalApplication);

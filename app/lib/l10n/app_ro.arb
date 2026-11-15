@@ -114,6 +114,8 @@
   "impressumSubtitle": "Cine face aplicația (deschide browserul)",
   "reportProblem": "Raportează o problemă",
   "reportProblemSubtitle": "Pe GitHub (deschide browserul)",
+  "appVersionTitle": "Versiunea {version}",
+  "releaseNotesSubtitle": "Ce e nou, pe GitHub (deschide browserul)",
   "browserDidNotOpen": "Browserul nu s-a deschis.",
   "stepSoResult": "Deci {left} {op} {right} = {result}.",
   "stepAddCountOn": "Începe de la {bigger} și mai numără {smaller}.",

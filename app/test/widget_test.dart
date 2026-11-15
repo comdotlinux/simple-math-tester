@@ -1237,7 +1237,37 @@ void main() {
       expect(find.text('The browser did not open.'), findsNothing);
     });
 
-    for (final tile in [impressumTileKey, reportProblemTileKey]) {
+    testWidgets('the version row shows the version and opens its release', (
+      tester,
+    ) async {
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        openLink: (uri) async => (opened..add(uri)).isNotEmpty,
+      );
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(appVersionTileKey));
+      await tester.pumpAndSettle();
+      expect(find.text('Version $appVersion'), findsOneWidget);
+      expect(
+        find.text("What's new, on GitHub (opens the browser)"),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(appVersionTileKey));
+      await tester.pumpAndSettle();
+
+      expect(opened, [releaseNotesUrl]);
+      expect(find.byKey(settingsSheetKey), findsNothing);
+    });
+
+    for (final tile in [
+      impressumTileKey,
+      reportProblemTileKey,
+      appVersionTileKey,
+    ]) {
       for (final (name, opener) in <(String, Future<bool> Function(Uri))>[
         ('reports false', (_) async => false),
         ('throws', (_) async => throw StateError('no browser')),

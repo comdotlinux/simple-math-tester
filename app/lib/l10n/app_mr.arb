@@ -114,6 +114,8 @@
   "impressumSubtitle": "ॲप कोण बनवते (ब्राउझर उघडेल)",
   "reportProblem": "समस्या कळव",
   "reportProblemSubtitle": "GitHub वर (ब्राउझर उघडेल)",
+  "appVersionTitle": "आवृत्ती {version}",
+  "releaseNotesSubtitle": "नवीन काय, GitHub वर (ब्राउझर उघडेल)",
   "browserDidNotOpen": "ब्राउझर उघडला नाही.",
   "stepSoResult": "म्हणजे {left} {op} {right} = {result}.",
   "stepAddCountOn": "{bigger} पासून सुरू कर आणि आणखी {smaller} पुढे मोज.",
