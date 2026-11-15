@@ -19,7 +19,8 @@ copy or layout does not break them. This holds here and in `test/`.
    A control without a key gets one in `lib/keys.dart`.
 2. Assertions find widgets by key and compare them with model values or
    shared values from `lib/`: `textOf(tester, key)` with `showsNumber(n)` or
-   `showsXp(xp)`, `Tier.label`, `OperationType.label`, `statsColumns`.
+   `showsXp(xp)`, `tier.label(en)`, `type.label(en)`, `statsColumns(en)` (`en`, the English
+   texts, is in `support/helpers.dart`).
    Literal copy stays only where the wording itself is the behaviour:
    feedback messages, the Skip / Next question / Check answer / Hint / Next
    step labels, a history row's verdict and answer lines, the sprint's mix

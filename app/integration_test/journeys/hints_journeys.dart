@@ -55,7 +55,7 @@ void hintsJourneys() {
 
       expect(visibleSteps(tester), 2);
       expect(revealEnabled(tester), isFalse);
-      expect(find.text(model.steps.last), findsNothing);
+      expect(find.text(model.steps.last(en)), findsNothing);
     });
 
     testWidgets('a wrong first check opens the first step', (tester) async {
@@ -84,7 +84,7 @@ void hintsJourneys() {
       }
 
       expect(visibleSteps(tester), model.steps.length);
-      expect(find.text(model.steps.last), findsOneWidget);
+      expect(find.text(model.steps.last(en)), findsOneWidget);
     });
 
     testWidgets('hints used before Next are saved with the skip', (

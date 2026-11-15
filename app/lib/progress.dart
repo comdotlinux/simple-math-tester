@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
+import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
 
@@ -41,6 +42,7 @@ class Progress {
     bool haptics = true,
     ThemeMode themeMode = ThemeMode.system,
     LayoutMode layoutMode = LayoutMode.comfortable,
+    String? language,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
          const [],
@@ -52,6 +54,7 @@ class Progress {
          haptics,
          themeMode,
          layoutMode,
+         language,
          const {},
          const {},
        );
@@ -67,6 +70,7 @@ class Progress {
     this.haptics,
     this.themeMode,
     this.layoutMode,
+    this.language,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -113,6 +117,9 @@ class Progress {
   /// Comfortable (the default) or compact spacing.
   final LayoutMode layoutMode;
 
+  /// The app language's code, such as `de`; null follows the system.
+  final String? language;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -140,6 +147,8 @@ class Progress {
   Progress withLayoutMode(LayoutMode layoutMode) =>
       _copy(layoutMode: layoutMode);
 
+  Progress withLanguage(String? language) => _copy(language: (language,));
+
   /// Sets [tier] and resets every known operation to its level.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
@@ -158,6 +167,8 @@ class Progress {
     bool? haptics,
     ThemeMode? themeMode,
     LayoutMode? layoutMode,
+    // A record, so null (follow the system) can be set.
+    (String?,)? language,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -169,6 +180,7 @@ class Progress {
     haptics ?? this.haptics,
     themeMode ?? this.themeMode,
     layoutMode ?? this.layoutMode,
+    language == null ? this.language : language.$1,
     _unknownOperations,
     extra,
   );
@@ -213,6 +225,7 @@ class Progress {
     'haptics': haptics,
     'themeMode': themeMode.name,
     'layoutMode': layoutMode.name,
+    'language': ?language,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -304,6 +317,7 @@ class Progress {
       'haptics',
       'themeMode',
       'layoutMode',
+      'language',
     };
     return Progress._(
       selected,
@@ -319,6 +333,11 @@ class Progress {
           ThemeMode.system,
       LayoutMode.values.asNameMap()[_field<String>(json, 'layoutMode')] ??
           LayoutMode.comfortable,
+      // A language this build has no translation for follows the system.
+      AppLocalizations.supportedLocales
+          .map((locale) => locale.languageCode)
+          .where((code) => code == _field<String>(json, 'language'))
+          .firstOrNull,
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)

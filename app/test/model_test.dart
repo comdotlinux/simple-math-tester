@@ -9,6 +9,8 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
+import 'en.dart';
+
 void main() {
   const addition = Problem(2, 3, OperationType.plus, 5);
   final start = DateTime(2026, 11, 14, 9);
@@ -38,7 +40,7 @@ void main() {
       expect(model.submitAnswer(), isTrue);
       expect(model.answerCorrect, isTrue);
       expect(model.history.single.correct, isTrue);
-      expect(model.validationMessage, isNull);
+      expect(model.inputProblem, isNull);
     });
   }
 
@@ -87,7 +89,7 @@ void main() {
     expect(model.revealedSteps, 1);
     model.checkOrNext();
     expect(model.current, same(addition), reason: 'empty: no skip');
-    expect(model.validationMessage, 'Enter a number first.');
+    expect(model.inputProblem, InputProblem.empty);
     model.setDraftInput('5');
     model.checkOrNext();
     expect(model.current, same(addition));
@@ -175,7 +177,7 @@ void main() {
     expect(model.history.single.correct, isTrue);
     expect(model.draftInput, isEmpty);
     expect(model.answerCorrect, isNull);
-    expect(model.validationMessage, isNull);
+    expect(model.inputProblem, isNull);
     expect(model.submitAnswer(), isFalse);
     expect(model.history, hasLength(1));
   });
@@ -207,7 +209,7 @@ void main() {
       model.setDraftInput(text);
 
       expect(model.submitAnswer(), isFalse);
-      expect(model.validationMessage, isNotEmpty);
+      expect(model.inputProblem, isNotNull);
       expect(model.answerCorrect, isNull);
       expect(model.history, isEmpty);
     });
@@ -217,7 +219,7 @@ void main() {
     final model = modelFor(addition);
     model.submitAnswer();
     model.setDraftInput(' 5 ');
-    expect(model.validationMessage, isNull);
+    expect(model.inputProblem, isNull);
     model.setCurrentPage(1);
     model.setCurrentPage(0);
     expect(model.current, same(addition));
@@ -383,7 +385,7 @@ void main() {
         expect(model.history.single.skipped, isTrue);
         expect(model.history.single.hintsUsed, 2);
         expect(model.revealedSteps, 0);
-        expect(model.steps.last, contains('= 3'));
+        expect(model.steps.last(en), contains('= 3'));
       },
     );
   });
@@ -687,7 +689,7 @@ void main() {
         expect(model.current.question, '4 + 1', reason: 'moves on when wrong');
         check(model, 'x');
         expect(model.current.question, '4 + 1', reason: 'invalid stays');
-        expect(model.validationMessage, 'Use a number for your answer.');
+        expect(model.inputProblem, InputProblem.notANumber);
         expect(model.sprintScore, 63);
         expect(model.history.map((a) => a.sprint), [true, true, true]);
         expect(model.revealedSteps, 0, reason: 'a wrong check reveals nothing');

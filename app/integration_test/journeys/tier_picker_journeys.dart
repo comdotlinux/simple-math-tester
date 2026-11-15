@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -16,7 +17,7 @@ void tierPickerJourneys() {
 
       expect(find.byKey(tierPickerKey), findsOneWidget);
       // The lineup itself is the behaviour: Easy, Medium, Hard, Harder.
-      expect(Tier.values.map((tier) => tier.label), [
+      expect(Tier.values.map((tier) => tier.label(en)), [
         'Easy',
         'Medium',
         'Hard',
@@ -26,7 +27,7 @@ void tierPickerJourneys() {
         expect(
           find.descendant(
             of: find.byKey(tierOptionKey(tier)),
-            matching: find.text(tier.label),
+            matching: find.text(tier.label(en)),
           ),
           findsOneWidget,
         );
@@ -56,7 +57,7 @@ void tierPickerJourneys() {
     });
 
     for (final (tier, level) in [(Tier.hard, 4), (Tier.harder, 5)]) {
-      testWidgets('choosing ${tier.label} starts every operation at level '
+      testWidgets('choosing ${tier.label(en)} starts every operation at level '
           '$level', (tester) async {
         await startWith(tester, Progress());
 
@@ -89,7 +90,10 @@ void tierPickerJourneys() {
       expect(model.difficulty[OperationType.plus]!.level, 2);
       expect(model.difficulty[OperationType.minus]!.level, 5);
       await openSettings(tester);
-      expect(textOf(tester, currentTierNoteKey), contains(model.tier!.label));
+      expect(
+        textOf(tester, currentTierNoteKey),
+        contains(model.tier!.label(en)),
+      );
       expect(
         tester
             .widget<ListTile>(find.byKey(tierSettingKey(Tier.harder)))

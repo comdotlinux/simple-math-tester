@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart'
     show Scrollable, ScrollableState, Table;
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/results_page.dart' show statsColumns;
@@ -116,14 +117,14 @@ void historyJourneys() {
         }
       }
 
-      for (final column in statsColumns) {
+      for (final column in statsColumns(en)) {
         expect(inTable(column), findsOneWidget);
       }
-      expectRow(OperationType.plus.label, '67%', '3');
-      expectRow(OperationType.minus.label, '25%', '2');
+      expectRow(OperationType.plus.label(en), '67%', '3');
+      expectRow(OperationType.minus.label(en), '25%', '2');
       // Never answered: a dash, at the tier's level.
-      expectRow(OperationType.multiply.label, '–', '1');
-      expectRow(OperationType.divide.label, '100%', '4');
+      expectRow(OperationType.multiply.label(en), '–', '1');
+      expectRow(OperationType.divide.label(en), '100%', '4');
     });
 
     testWidgets('an incorrect row shows your answer and the expected one', (

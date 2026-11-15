@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
 import 'math_tester_model.dart';
 import 'rules.dart';
 
@@ -20,6 +21,7 @@ class Hud extends StatelessWidget {
     final xp = context.select((MathTesterModel m) => m.game.xp);
     final combo = context.select((MathTesterModel m) => m.game.combo);
     final canSave = context.select((MathTesterModel m) => m.canSave);
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final strong = textTheme.bodyMedium?.copyWith(
@@ -54,7 +56,7 @@ class Hud extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   _Stat(
-                    label: 'Daily streak: $streak',
+                    label: l.dailyStreak('$streak'),
                     children: [
                       _Badge(
                         icon: Icons.local_fire_department,
@@ -65,7 +67,7 @@ class Hud extends StatelessWidget {
                     ],
                   ),
                   _Stat(
-                    label: 'Daily goal: $daily of $dailyGoal',
+                    label: l.dailyGoal('$daily', '$dailyGoal'),
                     children: [
                       SizedBox.square(
                         dimension: 32,
@@ -82,7 +84,7 @@ class Hud extends StatelessWidget {
                     ],
                   ),
                   _Stat(
-                    label: 'Combo: $combo',
+                    label: l.combo('$combo'),
                     children: [
                       _Badge(
                         icon: Icons.bolt,
@@ -95,9 +97,12 @@ class Hud extends StatelessWidget {
                   Semantics(
                     container: true,
                     excludeSemantics: true,
-                    label:
-                        'Level $level, $xp XP, '
-                        '${levelEnd - xp} XP to level ${level + 1}',
+                    label: l.levelProgressSemantics(
+                      '$level',
+                      '$xp',
+                      '${levelEnd - xp}',
+                      '${level + 1}',
+                    ),
                     child: SizedBox(
                       // Full width on a phone, so the level fits on one line.
                       width: min(constraints.maxWidth, 260),
@@ -116,7 +121,7 @@ class Hud extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Level $level · $shown XP',
+                                l.levelAndXp('$level', '$shown'),
                                 key: hudXpKey,
                                 style: strong,
                               ),
@@ -150,7 +155,7 @@ class Hud extends StatelessWidget {
             if (!canSave) ...[
               const SizedBox(height: 8),
               Text(
-                'Progress can’t be saved on this device right now',
+                l.cantSave,
                 key: cantSaveNoticeKey,
                 style: textTheme.bodyMedium,
               ),

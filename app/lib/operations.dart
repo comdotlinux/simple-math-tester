@@ -32,28 +32,20 @@ const List<(Range, Range)> _productLevels = [
 /// The registry of operation kinds: each kind declares its level-table row,
 /// its calculation and its step writer here and nowhere else.
 enum OperationType {
-  plus('+', 'Addition', _sumLevels, _add, additionSteps),
-  minus('−', 'Subtraction', _sumLevels, _subtract, subtractionSteps),
-  multiply(
-    '×',
-    'Multiplication',
-    _productLevels,
-    _multiply,
-    multiplicationSteps,
-  ),
-  divide('÷', 'Division', _productLevels, _divide, divisionSteps);
+  plus('+', _sumLevels, _add, additionSteps),
+  minus('−', _sumLevels, _subtract, subtractionSteps),
+  multiply('×', _productLevels, _multiply, multiplicationSteps),
+  divide('÷', _productLevels, _divide, divisionSteps);
 
   final String displayString;
-  final String label;
 
   /// The two ranges drawn from at each level; index 0 is level 1.
   final List<(Range, Range)> levels;
   final num Function(int lhs, int rhs) calculate;
-  final List<String> Function(Problem problem) steps;
+  final List<SolutionStep> Function(Problem problem) steps;
 
   const OperationType(
     this.displayString,
-    this.label,
     this.levels,
     this.calculate,
     this.steps,

@@ -37,6 +37,12 @@ Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
 
 /// One per segment of the settings sheet's layout choice.
 Key layoutModeKey(Enum mode) => Key('layout-mode-${mode.name}');
+
+/// The settings row that opens the language choice, and one key per choice
+/// (a language code such as `de`; null is "System").
+const languageTileKey = Key('language-tile');
+Key languageOptionKey(String? code) =>
+    Key('language-option-${code ?? 'system'}');
 const pinnedQuestionKey = Key('pinned-question');
 const practiceNavKey = Key('practice-nav');
 const myAnswersNavKey = Key('my-answers-nav');

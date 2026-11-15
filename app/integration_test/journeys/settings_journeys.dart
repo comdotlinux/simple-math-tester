@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -22,7 +23,7 @@ void settingsJourneys() {
         expect(find.byKey(settingsSheetKey), findsOneWidget);
         expect(
           textOf(tester, currentTierNoteKey),
-          contains(modelOf(tester).tier!.label),
+          contains(modelOf(tester).tier!.label(en)),
         );
         expect(
           tester
@@ -34,7 +35,7 @@ void settingsJourneys() {
           expect(
             find.descendant(
               of: find.byKey(tierSettingKey(tier)),
-              matching: find.text(tier.label),
+              matching: find.text(tier.label(en)),
             ),
             findsOneWidget,
           );
