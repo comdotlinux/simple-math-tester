@@ -1,0 +1,67 @@
+name: Play store listing
+
+# Manual only: pushes every listing in play/listing/ (en-US.json and the
+# translations the Translate workflow made) to Google Play in one edit. Each
+# language's title, short and full description are replaced. Google reviews
+# listing changes before users see them. See "Store listing" in
+# docs/play-store.md.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  listing:
+    name: Push the store listings to Play
+    # The Play key is a `release` environment secret, which only v* tags and main get.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    environment: release
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Check the listings against Play's limits
+        run: node tool/translate_listing.mjs --check
+      - name: Get a Play Developer API token
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bash .github/play-token.sh "$RUNNER_TEMP/play-token"
+      - name: Update the listings
+        run: |
+          api=https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.linux.simplemathtester
+          auth=(-H "Authorization: Bearer $(cat "$RUNNER_TEMP/play-token")")
+          # --fail-with-body keeps Google's error JSON; print it to stderr, which a pipe
+          # or $(...) does not swallow.
+          play() {
+            local body
+            if ! body="$(curl -sS --fail-with-body "${auth[@]}" "$@")"; then
+              {
+                echo "$body"
+                echo "::error::Play API call failed: $(jq -r '.error.message // empty' <<< "$body" 2>/dev/null || true)"
+                echo "::error::Listings need the service account permission 'Manage store presence' (Play Console, Users and permissions)"
+              } >&2
+              return 1
+            fi
+            printf '%s' "$body"
+          }
+          edit="$(play -X POST "$api/edits" | jq -er .id)"
+          for file in play/listing/*.json; do
+            language="$(basename "$file" .json)"
+            if [ "$language" = translation_sources ]; then continue; fi
+            jq --arg language "$language" '{language: $language, title, shortDescription, fullDescription}' \
+              "$file" > "$RUNNER_TEMP/listing.json"
+            play -X PUT -H 'Content-Type: application/json' --data @"$RUNNER_TEMP/listing.json" \
+              "$api/edits/$edit/listings/$language" > /dev/null
+            echo "Updated $language"
+          done
+          play -X POST "$api/edits/$edit:commit" > /dev/null
+          echo "::notice::Store listings sent to Play. Google reviews them before users see them."

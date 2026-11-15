@@ -28,29 +28,30 @@ project `simple-math-tester` (also reachable at `simple-math-tester.pages.dev`).
 Only `/impressum` uses the Turnstile check; the app and every other page load
 without it. Cloudflare Pages redirects `/privacy.html` to `/privacy`; both work.
 
-### Short description (80 characters at most)
+### Title and descriptions
 
-> Friendly math practice for kids: add, subtract, multiply and divide.
+The English title (30 characters at most), short description (80) and full
+description (4000) live in [`play/listing/en-US.json`](../play/listing/en-US.json);
+edit them there, not in Play Console. Every app language has its own listing in
+`play/listing/<code>.json`, translated by DeepSeek:
 
-### Full description (4000 characters at most)
+- On `main`, a change to `en-US.json` starts the **Translate new and changed
+  strings** workflow (see [translations.md](translations.md)). It translates
+  only the fields whose English changed, checks Play's limits, Western digits
+  and the name "Simple Math Tester", and puts the files into the same
+  `translations/auto` pull request as the app strings.
+- After that pull request is merged, push all listings to Play by hand:
+  `gh workflow run play-listing.yml` (from `main`). It replaces the title and
+  both descriptions of every language in one edit; Google reviews the change.
 
-> Simple Math Tester is a friendly arithmetic workbook for children who are
-> starting school math.
->
-> Practise addition, subtraction, multiplication and division, alone or mixed.
-> Each kind of exercise has five difficulty levels. Start at Easy, Medium, Hard
-> or Harder, and the app adapts to how well you answer.
->
-> - Big, clear numbers and an on-screen number pad.
-> - A wrong answer can be retried or skipped, and worked steps show how to solve it.
-> - "My answers" lets you review what you practised.
-> - Combos, experience points, player levels, a daily goal and a daily streak
->   reward real progress.
-> - Relaxed practice has no timer. When you want speed, try the 60-second sprint.
-> - Sound and vibration can be switched off.
->
-> Private by design: no accounts, no ads, no tracking and no data collection.
-> Progress is saved only on your device, and the app works fully offline.
+Play language codes (Play Console Help, "Add translations and localized
+assets"): `de-DE`, `pl-PL`, `hi-IN`, `mr-IN`, `te-IN`, `ta-IN`, `ml-IN`,
+`fr-FR` and `ro` (Romanian has no region). `playCodes` in
+`tool/translate_listing.mjs` maps the app's languages to them.
+
+One time (owner): in Play Console, Users and permissions, give the service
+account (see "Releasing to Play") **Manage store presence** as well. Without it
+`play-listing.yml` fails and prints Google's error.
 
 ## Graphics
 
@@ -198,6 +199,12 @@ Release notes:
   automatic notes instead. Either way `.github/play-release-notes.jq` removes
   Markdown, HTML, links and "by @user in ..." and keeps whole lines up to Play's
   500 characters.
+- Play, other languages: the same DeepSeek call translates the summary into
+  every language in `play/listing/`. Only languages that have a store listing
+  on Play get notes (`.github/play-release-notes-languages.jq`); a translation
+  that is missing, longer than 500 characters or has non-Western digits is left
+  out, and those users see the English notes. A failed translation never fails
+  the release. Promotion copies the notes in every language.
 
 One-time setup (owner, about 15 minutes; the first `.aab` must already have been
 uploaded by hand, walkthrough row 8, done 2026-11-14):

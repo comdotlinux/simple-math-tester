@@ -244,7 +244,9 @@ jobs:
       # GitHub release. Play gets a short summary of them written by DeepSeek, or the
       # automatic notes themselves when there is no DEEPSEEK_API_KEY or the call
       # fails; either way play-release-notes.jq makes them plain, whole lines, 500
-      # characters at most.
+      # characters at most. The same call translates the summary into every
+      # language of play/listing/; the upload sends the valid ones
+      # (play-release-notes-languages.jq). A missing translation never fails a release.
       - name: Write the release notes
         if: github.ref_type == 'tag'
         env:
@@ -256,21 +258,31 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body \
             > "$RUNNER_TEMP/github-notes.md"
           source="$RUNNER_TEMP/github-notes.md"
+          # Translations by Play language code; none unless DeepSeek answers.
+          echo '{}' > "$RUNNER_TEMP/ai-answer.json"
           if [ -n "$DEEPSEEK_API_KEY" ]; then
-            jq -n --arg model "$DEEPSEEK_MODEL" --rawfile notes "$RUNNER_TEMP/github-notes.md" '{
-              model: $model, stream: false, temperature: 0.3, max_tokens: 300,
+            # || true: no translations yet is fine, English alone is asked for.
+            languages="$(cd ../play/listing && ls -- *.json | sed 's/\.json$//' \
+              | { grep -vxE 'en-US|translation_sources' || true; } | paste -sd, -)"
+            jq -n --arg model "$DEEPSEEK_MODEL" --arg languages "$languages" \
+              --rawfile notes "$RUNNER_TEMP/github-notes.md" '{
+              model: $model, stream: false, temperature: 0.3, max_tokens: 8000,
               # Thinking is on by default and spends max_tokens before any answer.
               thinking: {type: "disabled"},
+              response_format: {type: "json_object"},
               messages: [
-                {role: "system", content: "You write Google Play release notes for Simple Math Tester, a math practice app for children. You get the merged pull requests of a release. Write 2 to 5 short lines in plain English for parents and children, each starting with \"- \", about changes they can see or feel. Leave out tests, CI, build, docs and refactoring. No Markdown, links, names or version numbers. At most 450 characters in total. If nothing is visible to users, write exactly: - Small fixes and improvements."},
+                {role: "system", content: ("You write Google Play release notes for Simple Math Tester, a math practice app for children. You get the merged pull requests of a release. Write 2 to 5 short lines in plain English for parents and children, each starting with \"- \", about changes they can see or feel. Leave out tests, CI, build, docs and refactoring. No Markdown, links, names or version numbers. At most 450 characters in total. If nothing is visible to users, write exactly: - Small fixes and improvements.\nThen translate those lines into each of these Google Play languages: " + $languages + ". Keep the same lines, each starting with \"- \", in simple words a child understands; keep the name Simple Math Tester; digits are always Western 0-9; at most 450 characters each.\nAnswer with one JSON object that maps \"en-US\" and each of those language codes to its notes, nothing else.")},
                 {role: "user", content: $notes}
               ]}' > "$RUNNER_TEMP/ai-request.json"
-            if curl -sS --fail-with-body --max-time 60 https://api.deepseek.com/chat/completions \
+            if curl -sS --fail-with-body --max-time 240 https://api.deepseek.com/chat/completions \
                 -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
                 --data @"$RUNNER_TEMP/ai-request.json" > "$RUNNER_TEMP/ai-response.json" \
-              && jq -er '.choices[0].message.content | select(length > 0)' "$RUNNER_TEMP/ai-response.json" \
+              && jq -e '.choices[0].message.content | fromjson | objects' "$RUNNER_TEMP/ai-response.json" \
+                > "$RUNNER_TEMP/ai-object.json" \
+              && jq -er '.["en-US"] | strings | select(length > 0)' "$RUNNER_TEMP/ai-object.json" \
                 > "$RUNNER_TEMP/ai-notes.txt"; then
               source="$RUNNER_TEMP/ai-notes.txt"
+              cp "$RUNNER_TEMP/ai-object.json" "$RUNNER_TEMP/ai-answer.json"
             else
               reason="$(jq -r '.error.message // .choices[0].finish_reason // empty' "$RUNNER_TEMP/ai-response.json" 2>/dev/null || true)"
               echo "::warning::DeepSeek summary failed (${reason:-no response}); Play gets the automatic notes"
@@ -307,9 +319,16 @@ jobs:
             exit 1
           fi
           notes="$(cat "$RUNNER_TEMP/play-notes.txt")"
-          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --arg notes "${notes:-Version $VERSION_NAME}" \
+          # Notes go only to languages that have a store listing; Play rejects others.
+          # A failed lookup sends English alone rather than failing the release.
+          listed="$(curl -sS --fail-with-body "${auth[@]}" "$api/edits/$edit/listings" \
+            | jq -c '[.listings[]?.language]')" || listed='[]'
+          jq -n --arg english "${notes:-Version $VERSION_NAME}" --slurpfile answer "$RUNNER_TEMP/ai-answer.json" \
+            --argjson listed "$listed" -f ../.github/play-release-notes-languages.jq > "$RUNNER_TEMP/release-notes.json"
+          echo "Release notes languages: $(jq -c 'map(.language)' "$RUNNER_TEMP/release-notes.json")"
+          jq -n --arg name "$VERSION_NAME ($code)" --arg code "$code" --slurpfile notes "$RUNNER_TEMP/release-notes.json" \
             '{track: "internal", releases: [{name: $name, versionCodes: [$code], status: "completed",
-              releaseNotes: [{language: "en-US", text: $notes}]}]}' > "$RUNNER_TEMP/track.json"
+              releaseNotes: $notes[0]}]}' > "$RUNNER_TEMP/track.json"
           curl -sS --fail-with-body -X PUT "${auth[@]}" -H 'Content-Type: application/json' \
             --data @"$RUNNER_TEMP/track.json" "$api/edits/$edit/tracks/internal" > /dev/null
           curl -sS --fail-with-body -X POST "${auth[@]}" "$api/edits/$edit:commit" > /dev/null
