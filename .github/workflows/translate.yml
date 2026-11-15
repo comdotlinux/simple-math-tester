@@ -1,0 +1,62 @@
+name: Translate new and changed strings
+
+# Manual only: translates what changed in app/lib/l10n/app_en.arb with
+# DeepSeek and opens a pull request. See docs/translations.md.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.50.0'
+
+jobs:
+  translate:
+    name: Translate and open a pull request
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Translate with DeepSeek
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
+        run: node tool/translate.mjs
+      # A pull request opened with GITHUB_TOKEN starts no other workflow, so
+      # the translations are checked here before it is opened.
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Check the translations
+        working-directory: app
+        run: |
+          flutter pub get --enforce-lockfile
+          flutter test test/l10n_test.dart test/solution_steps_test.dart
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Status, not diff: a new language's ARB file is untracked.
+          if [ -z "$(git status --porcelain -- app/lib/l10n)" ]; then
+            echo "Every translation is up to date."
+            exit 0
+          fi
+          branch="translations/run-${GITHUB_RUN_ID}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add app/lib/l10n
+          git commit -m 'Translate new and changed strings'
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title 'Translate new and changed strings' \
+            --body "Machine translations from DeepSeek (workflow run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Placeholders, plurals and digits were checked, and test/l10n_test.dart passed. Checks do not start on their own for this pull request: run the Flutter checks workflow on this branch, or close and reopen it."

@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
 import 'slab.dart';
 
 /// The one per-platform decision: whether the pad replaces the system
@@ -78,6 +79,7 @@ class NumberPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final keyHeight = NumberPad.keyHeight(
       MediaQuery.textScalerOf(context),
@@ -131,10 +133,10 @@ class NumberPad extends StatelessWidget {
                 padding: noPadding,
                 backgroundColor: WidgetStatePropertyAll(tokens.surfaceSunken),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.backspace_outlined,
                 size: 28,
-                semanticLabel: 'Delete',
+                semanticLabel: l.padDelete,
               ),
             ),
           ),
@@ -149,8 +151,8 @@ class NumberPad extends StatelessWidget {
                 size: 28,
               ),
               label: next
-                  ? const Text('Next', semanticsLabel: 'Next question')
-                  : const Text('Check answer'),
+                  ? Text(l.next, semanticsLabel: l.nextQuestion)
+                  : Text(l.checkAnswer),
             ),
           ),
         ]),

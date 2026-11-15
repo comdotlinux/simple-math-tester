@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
+import 'labels.dart';
 import 'legal.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
@@ -56,7 +58,7 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// What the answer block last showed, to bring it back into view only
   /// when that changes.
-  (Problem, bool?, String?, bool, bool, bool)? _revealed;
+  (Problem, bool?, InputProblem?, bool, bool, bool)? _revealed;
 
   /// The problem and check the field last took focus for.
   Object? _focusedFor;
@@ -93,7 +95,7 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 
   Object? get _answerState =>
-      (_model.current, _model.lastCheck, _model.validationMessage);
+      (_model.current, _model.lastCheck, _model.inputProblem);
 
   /// The answer comes first: a new problem or a check, also one made from
   /// a button reached with Tab, puts the focus back on the field.
@@ -142,7 +144,7 @@ class _ProblemPageState extends State<ProblemPage> {
     final shown = (
       model.current,
       model.answerCorrect,
-      model.validationMessage,
+      model.inputProblem,
       docked,
       compact,
       showPad,
@@ -188,6 +190,7 @@ class _ProblemPageState extends State<ProblemPage> {
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
     final theme = Theme.of(context);
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final sprinting = model.inSprint;
     final pad = NumberPad(
@@ -266,21 +269,19 @@ class _ProblemPageState extends State<ProblemPage> {
             textInputAction: TextInputAction.done,
             style: theme.textTheme.headlineMedium,
             decoration: InputDecoration(
-              labelText: 'Your answer',
+              labelText: l.answerLabel,
               contentPadding: compact
                   ? const EdgeInsets.symmetric(horizontal: 16, vertical: 10)
                   : null,
               // Beside Check the field is too narrow for the hint; the
               // label and the number keyboard say enough.
-              hintText: keyDock ? null : 'Type a number',
+              hintText: keyDock ? null : l.answerHint,
               suffixIcon: _padAvailable
                   ? Padding(
                       padding: const EdgeInsetsDirectional.only(end: 8),
                       child: IconButton(
                         key: keyboardSwitchKey,
-                        tooltip: _padShown
-                            ? 'Use the keyboard'
-                            : 'Use the number pad',
+                        tooltip: _padShown ? l.useKeyboard : l.useNumberPad,
                         onPressed: _toggleKeyboard,
                         icon: Icon(
                           _padShown ? Icons.keyboard_outlined : Icons.dialpad,
@@ -306,8 +307,8 @@ class _ProblemPageState extends State<ProblemPage> {
             icon: const Icon(Icons.check_circle_outline),
             // Beside the docked field a short label leaves the field room.
             label: Text(
-              keyDock ? 'Check' : 'Check answer',
-              semanticsLabel: 'Check answer',
+              keyDock ? l.check : l.checkAnswer,
+              semanticsLabel: l.checkAnswer,
             ),
           ),
         );
@@ -331,7 +332,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          sprinting ? 'Sprint' : 'Let’s practice',
+                          sprinting ? l.sprintTitle : l.practiceTitle,
                           style: tight
                               ? theme.textTheme.headlineMedium
                               : theme.textTheme.displaySmall,
@@ -344,14 +345,14 @@ class _ProblemPageState extends State<ProblemPage> {
                           radius: AppTokens.radiusControl,
                           child: IconButton(
                             key: settingsButtonKey,
-                            tooltip: 'Settings',
+                            tooltip: l.settings,
                             onPressed: () =>
                                 _showSettings(context).whenComplete(() {
                                   if (mounted) _focus.requestFocus();
                                 }),
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.settings_outlined,
-                              semanticLabel: 'Settings',
+                              semanticLabel: l.settings,
                             ),
                           ),
                         ),
@@ -363,9 +364,8 @@ class _ProblemPageState extends State<ProblemPage> {
                     const SizedBox(height: 8),
                     Text(
                       sprinting
-                          ? 'Answer as many as you can in '
-                                '${sprintLength.inSeconds} seconds.'
-                          : 'Take your time and give it a try.',
+                          ? l.sprintRules('${sprintLength.inSeconds}')
+                          : l.practiceEncouragement,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: tokens.inkMuted,
                       ),
@@ -456,8 +456,8 @@ class _ProblemPageState extends State<ProblemPage> {
                                   ),
                                   label: Text(
                                     model.answerChecked
-                                        ? 'Next question'
-                                        : 'Skip',
+                                        ? l.nextQuestion
+                                        : l.skip,
                                   ),
                                 ),
                               ),
@@ -476,7 +476,7 @@ class _ProblemPageState extends State<ProblemPage> {
                                 ).copyWith(minimumSize: button),
                                 icon: const Icon(Icons.timer_outlined),
                                 label: Text(
-                                  '${sprintLength.inSeconds}-second sprint',
+                                  l.sprintButton('${sprintLength.inSeconds}'),
                                 ),
                               ),
                             ),
@@ -668,13 +668,14 @@ class _QuestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     Widget question(TextStyle? style) => Text(
       problem.question,
       key: questionOnProblemsPageKey,
       textAlign: TextAlign.center,
-      semanticsLabel: 'Math question: ${problem.question}',
+      semanticsLabel: l.mathQuestion(problem.question),
       style: style,
     );
     return Slab(
@@ -690,7 +691,7 @@ class _QuestionCard extends StatelessWidget {
                 child: _Band(
                   color: tokens.operation,
                   child: Text(
-                    problem.kind.label,
+                    problem.kind.label(l),
                     style: textTheme.labelMedium?.copyWith(
                       color: tokens.onOperation,
                     ),
@@ -782,6 +783,7 @@ class _SprintStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final style = Theme.of(context).textTheme.headlineMedium
         ?.copyWith(color: tokens.onSprint);
@@ -813,16 +815,16 @@ class _SprintStatus extends StatelessWidget {
                         .read<MathTesterModel>()
                         .sprintSecondsLeft,
                     builder: (context, seconds, _) => Text(
-                      '$seconds s left',
+                      l.sprintSecondsLeft(seconds),
                       key: sprintCountdownKey,
-                      semanticsLabel: '$seconds seconds left',
+                      semanticsLabel: l.sprintSecondsLeftSemantics(seconds),
                       style: style,
                     ),
                   ),
                 ),
               ],
             ),
-            Text('Score: $score', key: sprintScoreKey, style: style),
+            Text(l.score('$score'), key: sprintScoreKey, style: style),
           ],
         ),
       ),
@@ -838,12 +840,13 @@ class _SprintResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final mix = [
       for (var level = 1; level <= result.levels.length; level++)
         if (result.levels[level - 1] > 0)
-          'level $level: ${result.levels[level - 1]}',
+          l.sprintLevelCount('$level', '${result.levels[level - 1]}'),
     ];
     Widget tile(String text, Key key) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -871,7 +874,7 @@ class _SprintResult extends StatelessWidget {
                     Icon(Icons.emoji_events, color: tokens.onSprint),
                     Expanded(
                       child: Text(
-                        'Sprint over',
+                        l.sprintOver,
                         style: textTheme.titleLarge?.copyWith(
                           color: tokens.onSprint,
                         ),
@@ -889,9 +892,9 @@ class _SprintResult extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        tile('Score: ${result.score}', sprintResultScoreKey),
+                        tile(l.score('${result.score}'), sprintResultScoreKey),
                         tile(
-                          'Personal best: ${result.best}',
+                          l.personalBest('${result.best}'),
                           sprintResultBestKey,
                         ),
                       ],
@@ -901,8 +904,8 @@ class _SprintResult extends StatelessWidget {
                     // shown.
                     Text(
                       mix.isEmpty
-                          ? 'No answers this round.'
-                          : 'Answers by difficulty: ${mix.join(', ')}',
+                          ? l.noAnswersThisRound
+                          : l.answersByDifficulty(mix.join(', ')),
                       style: textTheme.bodyMedium?.copyWith(
                         color: tokens.inkMuted,
                       ),
@@ -926,6 +929,7 @@ class _TierPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = context.read<MathTesterModel>();
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     return Slab(
@@ -938,15 +942,11 @@ class _TierPicker extends StatelessWidget {
             children: [
               Semantics(
                 header: true,
-                child: Text(
-                  'How hard should it start?',
-                  style: textTheme.headlineMedium,
-                ),
+                child: Text(l.tierPickerTitle, style: textTheme.headlineMedium),
               ),
               const SizedBox(height: 8),
               Text(
-                'Questions get easier or harder as you answer. '
-                'You can change this later in settings.',
+                l.tierPickerBody,
                 style: textTheme.bodyMedium?.copyWith(color: tokens.inkMuted),
               ),
               for (final tier in Tier.values) ...[
@@ -960,7 +960,7 @@ class _TierPicker extends StatelessWidget {
                     child: Row(
                       spacing: 12,
                       children: [
-                        Expanded(child: Text(tier.label)),
+                        Expanded(child: Text(tier.label(l))),
                         const Icon(Icons.arrow_forward),
                       ],
                     ),
@@ -985,6 +985,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   useSafeArea: true,
   builder: (context) {
     final model = context.watch<MathTesterModel>();
+    final l = AppLocalizations.of(context);
     final textTheme = Theme.of(context).textTheme;
     final listTileTheme = Theme.of(context).listTileTheme;
     final compact = model.compact;
@@ -1011,20 +1012,19 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                 title: Semantics(
                   header: true,
                   child: Text(
-                    'Starting difficulty',
+                    l.startingDifficulty,
                     style: textTheme.titleLarge,
                   ),
                 ),
                 subtitle: Text(
                   key: currentTierNoteKey,
-                  'Now: ${model.tier?.label ?? 'not chosen'}. Choosing one '
-                  'starts every operation again at that difficulty.',
+                  l.currentTier(model.tier?.label(l) ?? l.tierNotChosen),
                 ),
               ),
               for (final tier in Tier.values)
                 ListTile(
                   key: tierSettingKey(tier),
-                  title: Text(tier.label),
+                  title: Text(tier.label(l)),
                   selected: tier == model.tier,
                   trailing: tier == model.tier
                       ? const Icon(Icons.check_circle)
@@ -1037,17 +1037,15 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               SizedBox(height: compact ? 4 : 8),
               SwitchListTile(
                 key: soundSwitchKey,
-                title: const Text('Sound'),
-                subtitle: const Text(
-                  'A short chime for answers and milestones',
-                ),
+                title: Text(l.sound),
+                subtitle: Text(l.soundSubtitle),
                 value: model.sound,
                 onChanged: model.setSound,
               ),
               SwitchListTile(
                 key: hapticsSwitchKey,
-                title: const Text('Vibration'),
-                subtitle: const Text('A short buzz on key presses and answers'),
+                title: Text(l.vibration),
+                subtitle: Text(l.vibrationSubtitle),
                 value: model.haptics,
                 onChanged: model.setHaptics,
               ),
@@ -1059,16 +1057,16 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: rowSpacing,
                   children: [
-                    Text('Theme', style: listTileTheme.titleTextStyle),
+                    Text(l.theme, style: listTileTheme.titleTextStyle),
                     SegmentedButton<ThemeMode>(
                       expandedInsets: EdgeInsets.zero,
                       showSelectedIcon: false,
                       segments: [
                         // Text only: an icon beside "System" wraps it at 360 px.
-                        for (final (mode, label) in const [
-                          (ThemeMode.system, 'System'),
-                          (ThemeMode.light, 'Light'),
-                          (ThemeMode.dark, 'Dark'),
+                        for (final (mode, label) in [
+                          (ThemeMode.system, l.themeSystem),
+                          (ThemeMode.light, l.themeLight),
+                          (ThemeMode.dark, l.themeDark),
                         ])
                           ButtonSegment(
                             value: mode,
@@ -1095,7 +1093,7 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   spacing: rowSpacing,
                   children: [
-                    Text('Colours', style: listTileTheme.titleTextStyle),
+                    Text(l.colours, style: listTileTheme.titleTextStyle),
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
@@ -1118,14 +1116,14 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   spacing: rowSpacing,
                   children: [
-                    Text('Layout', style: listTileTheme.titleTextStyle),
+                    Text(l.layout, style: listTileTheme.titleTextStyle),
                     SegmentedButton<LayoutMode>(
                       expandedInsets: EdgeInsets.zero,
                       showSelectedIcon: false,
                       segments: [
-                        for (final (mode, label) in const [
-                          (LayoutMode.comfortable, 'Comfortable'),
-                          (LayoutMode.compact, 'Compact'),
+                        for (final (mode, label) in [
+                          (LayoutMode.comfortable, l.layoutComfortable),
+                          (LayoutMode.compact, l.layoutCompact),
                         ])
                           ButtonSegment(
                             value: mode,
@@ -1144,12 +1142,22 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   ],
                 ),
               ),
+              // Eleven choices: a dialog, not a segmented row.
+              ListTile(
+                key: languageTileKey,
+                leading: const Icon(Icons.translate),
+                title: Text(l.language),
+                subtitle: Text(
+                  _languageName(model.language) ?? l.languageSystem,
+                ),
+                onTap: () => _showLanguages(context),
+              ),
               SizedBox(height: compact ? 4 : 8),
               ListTile(
                 key: privacyTileKey,
                 leading: const Icon(Icons.privacy_tip_outlined),
-                title: const Text('Privacy'),
-                subtitle: const Text('What the app stores, and why'),
+                title: Text(l.privacy),
+                subtitle: Text(l.privacySubtitle),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
@@ -1158,17 +1166,15 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               ListTile(
                 key: impressumTileKey,
                 leading: const Icon(Icons.open_in_new),
-                title: const Text('Impressum'),
-                subtitle: const Text('Who makes the app (opens the browser)'),
+                title: Text(l.impressum),
+                subtitle: Text(l.impressumSubtitle),
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   // Closed first, so a failure notice is not hidden behind it.
                   Navigator.pop(context);
                   if (!await model.openImpressum()) {
                     messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('The browser did not open.'),
-                      ),
+                      SnackBar(content: Text(l.browserDidNotOpen)),
                     );
                   }
                 },
@@ -1176,16 +1182,14 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
               ListTile(
                 key: reportProblemTileKey,
                 leading: const Icon(Icons.bug_report_outlined),
-                title: const Text('Report a problem'),
-                subtitle: const Text('On GitHub (opens the browser)'),
+                title: Text(l.reportProblem),
+                subtitle: Text(l.reportProblemSubtitle),
                 onTap: () async {
                   final messenger = ScaffoldMessenger.of(context);
                   Navigator.pop(context);
                   if (!await model.openProblemReport()) {
                     messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('The browser did not open.'),
-                      ),
+                      SnackBar(content: Text(l.browserDidNotOpen)),
                     );
                   }
                 },
@@ -1198,6 +1202,41 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
   },
 );
 
+/// A language's name in that language, such as "Deutsch"; null for none.
+String? _languageName(String? code) =>
+    code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
+
+/// "System" and every translated language, each named in its own language.
+Future<void> _showLanguages(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (context) {
+    final model = context.read<MathTesterModel>();
+    final l = AppLocalizations.of(context);
+    return SimpleDialog(
+      title: Text(l.language),
+      children: [
+        for (final code in [
+          null,
+          for (final locale in AppLocalizations.supportedLocales)
+            locale.languageCode,
+        ])
+          ListTile(
+            key: languageOptionKey(code),
+            title: Text(_languageName(code) ?? l.languageSystem),
+            selected: code == model.language,
+            trailing: code == model.language
+                ? const Icon(Icons.check_circle)
+                : null,
+            onTap: () {
+              model.setLanguage(code);
+              Navigator.pop(context);
+            },
+          ),
+      ],
+    );
+  },
+);
+
 /// The bundled privacy policy, readable offline.
 class _PrivacyPage extends StatelessWidget {
   const _PrivacyPage();
@@ -1205,7 +1244,9 @@ class _PrivacyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final [(title, intro), ...sections] = privacyPolicy;
+    final [(title, intro), ...sections] = privacyPolicy(
+      AppLocalizations.of(context),
+    );
     return Scaffold(
       key: privacyPageKey,
       appBar: AppBar(title: Text(title)),
@@ -1255,10 +1296,11 @@ class _OperationToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final foreground = selected ? tokens.onOperation : tokens.inkMuted;
     return Tooltip(
-      message: type.label,
+      message: type.label(l),
       excludeFromSemantics: true,
       // One node: the button's tap action, the name and the selected state.
       child: MergeSemantics(
@@ -1284,7 +1326,7 @@ class _OperationToggle extends StatelessWidget {
                   ),
                   child: Text(
                     type.displayString,
-                    semanticsLabel: type.label,
+                    semanticsLabel: type.label(l),
                     style: TextStyle(
                       fontSize: compact ? 26 : 30,
                       fontWeight: FontWeight.w700,
@@ -1330,13 +1372,18 @@ class _AnswerFeedback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final message =
-        model.validationMessage ??
+        switch (model.inputProblem) {
+          InputProblem.empty => l.enterNumberFirst,
+          InputProblem.notANumber => l.useNumber,
+          null => null,
+        } ??
         switch (model.answerCorrect) {
           null => null,
-          true => 'You got it!',
-          false => 'Not quite. Try another answer.',
+          true => l.feedbackCorrect,
+          false => l.feedbackWrong,
         };
     final (background, foreground, icon) = switch (model.answerCorrect) {
       null => (tokens.primary, tokens.onPrimary, Icons.info_outline),
@@ -1405,10 +1452,7 @@ class _AnswerFeedback extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                           icon: const Icon(Icons.navigate_next),
-                          label: const Text(
-                            'Next',
-                            semanticsLabel: 'Next question',
-                          ),
+                          label: Text(l.next, semanticsLabel: l.nextQuestion),
                         ),
                       ),
                   ],
@@ -1426,6 +1470,7 @@ class _Hints extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final revealed = model.revealedSteps;
@@ -1444,7 +1489,7 @@ class _Hints extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Let’s work it out', style: textTheme.titleLarge),
+                    Text(l.workItOut, style: textTheme.titleLarge),
                     for (var index = 0; index < revealed; index++) ...[
                       const SizedBox(height: 14),
                       Semantics(
@@ -1480,7 +1525,7 @@ class _Hints extends StatelessWidget {
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Text(
-                                  model.steps[index],
+                                  model.steps[index](l),
                                   style: textTheme.bodyLarge,
                                 ),
                               ),
@@ -1510,7 +1555,7 @@ class _Hints extends StatelessWidget {
               icon: Icon(
                 revealed == 0 ? Icons.lightbulb_outline : Icons.navigate_next,
               ),
-              label: Text(revealed == 0 ? 'Hint' : 'Next step'),
+              label: Text(revealed == 0 ? l.hint : l.nextStep),
             ),
           ),
         ),
@@ -1520,14 +1565,6 @@ class _Hints extends StatelessWidget {
 }
 
 /// The colour themes' names, as the settings sheet shows them.
-const _paletteNames = {
-  AppPalette.sunny: 'Sunny',
-  AppPalette.ocean: 'Ocean',
-  AppPalette.forest: 'Forest',
-  AppPalette.berry: 'Berry',
-  AppPalette.sunset: 'Sunset',
-};
-
 /// One colour theme's accent as a round button at least 48 px across; a
 /// check and a thicker edge mark the chosen one.
 class _Swatch extends StatelessWidget {
@@ -1548,7 +1585,7 @@ class _Swatch extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: _paletteNames[palette],
+      label: palette.label(AppLocalizations.of(context)),
       child: InkResponse(
         onTap: onTap,
         customBorder: const CircleBorder(),

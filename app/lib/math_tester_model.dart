@@ -26,6 +26,9 @@ void playHaptic(Haptic haptic) => unawaited(switch (haptic) {
   Haptic.celebrate => HapticFeedback.vibrate(),
 });
 
+/// Why a check did not count: the answer field is empty or not a number.
+enum InputProblem { empty, notANumber }
+
 class MathTesterModel extends ChangeNotifier {
   MathTesterModel({
     Problem? initialProblem,
@@ -72,12 +75,12 @@ class MathTesterModel extends ChangeNotifier {
   final Problem Function()? nextProblem;
 
   late Problem _current;
-  late List<String> _steps;
+  late List<SolutionStep> _steps;
   late DateTime _shownAt;
   late bool _checked;
   late int _revealed;
   String _draftInput = '';
-  String? _validationMessage;
+  InputProblem? _inputProblem;
   bool? _answerCorrect;
   int _currentPage = 0;
   DateTime? _sprintStart;
@@ -95,7 +98,7 @@ class MathTesterModel extends ChangeNotifier {
   Problem get current => _current;
 
   /// Solution steps of the current problem; the first [revealedSteps] show.
-  List<String> get steps => _steps;
+  List<SolutionStep> get steps => _steps;
   int get revealedSteps => _revealed;
   bool get canRevealStep => _nextRevealed(HintEvent.reveal) > _revealed;
 
@@ -122,7 +125,7 @@ class MathTesterModel extends ChangeNotifier {
   /// outlives the page (a visit to "My answers", a resized window), for this
   /// session only and never saved.
   bool? padChosen;
-  String? get validationMessage => _validationMessage;
+  InputProblem? get inputProblem => _inputProblem;
   bool? get answerCorrect => _answerCorrect;
   int get currentPage => _currentPage;
 
@@ -141,6 +144,7 @@ class MathTesterModel extends ChangeNotifier {
   ThemeMode get themeMode => _progress.themeMode;
   bool get compact => _progress.layoutMode == LayoutMode.compact;
   LayoutMode get layoutMode => _progress.layoutMode;
+  String? get language => _progress.language;
   AppPalette get palette => _progress.palette;
 
   /// The latest valid check; [count] tells two equal results apart, so each
@@ -170,6 +174,13 @@ class MathTesterModel extends ChangeNotifier {
 
   void setLayoutMode(LayoutMode mode) {
     _progress = _progress.withLayoutMode(mode);
+    _save();
+    notifyListeners();
+  }
+
+  /// [code] is a language code such as `de`; null follows the system.
+  void setLanguage(String? code) {
+    _progress = _progress.withLanguage(code);
     _save();
     notifyListeners();
   }
@@ -230,7 +241,7 @@ class MathTesterModel extends ChangeNotifier {
 
   void setDraftInput(String value) {
     _draftInput = value;
-    _validationMessage = null;
+    _inputProblem = null;
     _answerCorrect = null;
     notifyListeners();
   }
@@ -244,9 +255,9 @@ class MathTesterModel extends ChangeNotifier {
     }
     final input = double.tryParse(_draftInput.trim());
     if (input == null || !input.isFinite) {
-      _validationMessage = _draftInput.trim().isEmpty
-          ? 'Enter a number first.'
-          : 'Use a number for your answer.';
+      _inputProblem = _draftInput.trim().isEmpty
+          ? InputProblem.empty
+          : InputProblem.notANumber;
       _answerCorrect = null;
       notifyListeners();
       return false;
@@ -274,7 +285,7 @@ class MathTesterModel extends ChangeNotifier {
       notifyListeners();
       return true;
     }
-    _validationMessage = null;
+    _inputProblem = null;
     _answerCorrect = correct;
     if (firstCheck && !_answerCorrect!) {
       _revealed = _nextRevealed(HintEvent.wrongFirstCheck);
@@ -435,7 +446,7 @@ class MathTesterModel extends ChangeNotifier {
   void _showNext() {
     _show(_draw());
     _draftInput = '';
-    _validationMessage = null;
+    _inputProblem = null;
     _answerCorrect = null;
   }
 

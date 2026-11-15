@@ -11,6 +11,7 @@ import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/celebration.dart';
 import 'package:simple_math_tester/hud.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
@@ -19,6 +20,7 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
+import 'en.dart';
 import 'fake_store.dart';
 
 void main() {
@@ -582,7 +584,7 @@ void main() {
 
     testWidgets('criterion 7: steps reveal one at a time', (tester) async {
       final model = await launchNarrow(tester);
-      expect(model.steps, steps);
+      expect([for (final step in model.steps) step(en)], steps);
       expect(visibleSteps(), 0);
       expect(find.byKey(solutionStepsKey), findsNothing);
       expect(revealLabel('Hint'), findsOneWidget);
@@ -766,7 +768,7 @@ void main() {
           await launch(tester, size: Size(width, 900), scale: scale);
           final rects = [
             for (final type in OperationType.values)
-              tester.getRect(tooltip(type.label)),
+              tester.getRect(tooltip(type.label(en))),
           ];
           final card = tester.getRect(
             find.ancestor(
@@ -856,7 +858,7 @@ void main() {
         find.byKey(keyboardSwitchKey),
         for (final type in OperationType.values)
           find.byWidgetPredicate(
-            (widget) => widget is Tooltip && widget.message == type.label,
+            (widget) => widget is Tooltip && widget.message == type.label(en),
           ),
         ...padKeys(),
       ]) {
@@ -887,7 +889,8 @@ void main() {
             find.byKey(keyboardSwitchKey),
             for (final type in OperationType.values)
               find.byWidgetPredicate(
-                (widget) => widget is Tooltip && widget.message == type.label,
+                (widget) =>
+                    widget is Tooltip && widget.message == type.label(en),
               ),
           ];
           await launch(
@@ -955,7 +958,11 @@ void main() {
           expect(size.width, greaterThanOrEqualTo(48));
           expect(
             tester.getSemantics(button),
-            isSemantics(label: tier.label, isButton: true, hasTapAction: true),
+            isSemantics(
+              label: tier.label(en),
+              isButton: true,
+              hasTapAction: true,
+            ),
           );
         }
         expect(tester.takeException(), isNull);
@@ -987,7 +994,7 @@ void main() {
         tester.element(
           find.descendant(
             of: find.byKey(tierOptionKey(Tier.hard)),
-            matching: find.text(Tier.hard.label),
+            matching: find.text(Tier.hard.label(en)),
           ),
         ),
       ).requestFocus();
@@ -1019,7 +1026,10 @@ void main() {
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
         expect(find.byKey(settingsSheetKey), findsOneWidget);
-        expect(textOf(tester, currentTierNoteKey), contains(model.tier!.label));
+        expect(
+          textOf(tester, currentTierNoteKey),
+          contains(model.tier!.label(en)),
+        );
         for (final (key, label) in [
           (soundSwitchKey, 'Sound'),
           (hapticsSwitchKey, 'Vibration'),
@@ -1046,7 +1056,7 @@ void main() {
           expect(
             tester.getSemantics(tierTile(tier)),
             isSemantics(
-              label: tier.label,
+              label: tier.label(en),
               isSelected: tier == Tier.easy,
               hasTapAction: true,
             ),
@@ -1442,7 +1452,7 @@ void main() {
         lessThan(tester.getRect(find.byKey(historyCountKey)).top),
       );
       final addition = find.ancestor(
-        of: find.text(OperationType.plus.label),
+        of: find.text(OperationType.plus.label(en)),
         matching: find.byType(Table),
       );
       expect(addition, findsOneWidget);

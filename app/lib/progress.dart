@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
 import 'app_theme.dart' show AppPalette;
+import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
 
@@ -42,6 +43,7 @@ class Progress {
     bool haptics = true,
     ThemeMode themeMode = ThemeMode.system,
     LayoutMode layoutMode = LayoutMode.comfortable,
+    String? language,
     AppPalette palette = AppPalette.sunny,
   }) : this._(
          selectedOperations ?? OperationType.values.toSet(),
@@ -54,6 +56,7 @@ class Progress {
          haptics,
          themeMode,
          layoutMode,
+         language,
          palette,
          const {},
          const {},
@@ -70,6 +73,7 @@ class Progress {
     this.haptics,
     this.themeMode,
     this.layoutMode,
+    this.language,
     this.palette,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
@@ -117,6 +121,9 @@ class Progress {
   /// Comfortable (the default) or compact spacing.
   final LayoutMode layoutMode;
 
+  /// The app language's code, such as `de`; null follows the system.
+  final String? language;
+
   /// The colour theme; sunny is the default.
   final AppPalette palette;
 
@@ -147,6 +154,7 @@ class Progress {
   Progress withLayoutMode(LayoutMode layoutMode) =>
       _copy(layoutMode: layoutMode);
 
+  Progress withLanguage(String? language) => _copy(language: (language,));
   Progress withPalette(AppPalette palette) => _copy(palette: palette);
 
   /// Sets [tier] and resets every known operation to its level.
@@ -167,6 +175,8 @@ class Progress {
     bool? haptics,
     ThemeMode? themeMode,
     LayoutMode? layoutMode,
+    // A record, so null (follow the system) can be set.
+    (String?,)? language,
     AppPalette? palette,
   }) => Progress._(
     selected ?? selectedOperations,
@@ -179,6 +189,7 @@ class Progress {
     haptics ?? this.haptics,
     themeMode ?? this.themeMode,
     layoutMode ?? this.layoutMode,
+    language == null ? this.language : language.$1,
     palette ?? this.palette,
     _unknownOperations,
     extra,
@@ -224,6 +235,7 @@ class Progress {
     'haptics': haptics,
     'themeMode': themeMode.name,
     'layoutMode': layoutMode.name,
+    'language': ?language,
     'palette': palette.name,
   });
 
@@ -316,6 +328,7 @@ class Progress {
       'haptics',
       'themeMode',
       'layoutMode',
+      'language',
       'palette',
     };
     return Progress._(
@@ -332,6 +345,11 @@ class Progress {
           ThemeMode.system,
       LayoutMode.values.asNameMap()[_field<String>(json, 'layoutMode')] ??
           LayoutMode.comfortable,
+      // A language this build has no translation for follows the system.
+      AppLocalizations.supportedLocales
+          .map((locale) => locale.languageCode)
+          .where((code) => code == _field<String>(json, 'language'))
+          .firstOrNull,
       AppPalette.values.asNameMap()[_field<String>(json, 'palette')] ??
           AppPalette.sunny,
       unknownOperations,

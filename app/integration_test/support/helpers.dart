@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/main.dart' as app;
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -12,6 +13,9 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 import 'package:simple_math_tester/sound_player.dart';
+
+/// The English texts, which the journeys expect on screen.
+final en = lookupAppLocalizations(const Locale('en'));
 
 /// Writes [progress] as the saved document through the real plugin, then
 /// launches the real app on it, so no test depends on another or on data
@@ -260,7 +264,7 @@ bool revealEnabled(WidgetTester tester) =>
 /// How many of the current problem's solution steps are on screen.
 int visibleSteps(WidgetTester tester) =>
     modelOf(tester).steps
-        .where((step) => find.text(step).evaluate().isNotEmpty)
+        .where((step) => find.text(step(en)).evaluate().isNotEmpty)
         .length;
 
 // History rows are built lazily, so on a phone-sized screen a row below the

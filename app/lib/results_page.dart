@@ -1,11 +1,12 @@
 import 'dart:math';
 
-import 'package:duration/duration.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
+import 'labels.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
 import 'rules.dart';
@@ -47,6 +48,8 @@ class _ResultsPageState extends State<ResultsPage> {
 
   static const _columnFlex = [55, 160, 250, 135];
 
+  AppLocalizations get _l => AppLocalizations.of(context);
+
   @override
   Widget build(BuildContext context) {
     final history = context.select((MathTesterModel model) => model.history);
@@ -70,9 +73,7 @@ class _ResultsPageState extends State<ResultsPage> {
         _Stats(dense: compact),
         SizedBox(height: compact ? 12 : 24),
         Text(
-          history.length == 1
-              ? '1 question completed.'
-              : '${history.length} questions completed.',
+          _l.questionsCompleted(history.length),
           key: keyed ? historyCountKey : null,
           style: compact
               ? theme.textTheme.titleMedium
@@ -109,7 +110,7 @@ class _ResultsPageState extends State<ResultsPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'My answers',
+                          _l.myAnswers,
                           style: compact
                               ? theme.textTheme.headlineMedium
                               : theme.textTheme.displaySmall,
@@ -209,15 +210,15 @@ class _ResultsPageState extends State<ResultsPage> {
         });
       });
     }
-    return const Padding(
+    return Padding(
       key: answersLoadingKey,
-      padding: EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
         child: SizedBox.square(
           dimension: 24,
           child: CircularProgressIndicator(
             strokeWidth: 3,
-            semanticsLabel: 'Loading more answers',
+            semanticsLabel: _l.loadingMoreAnswers,
           ),
         ),
       ),
@@ -230,7 +231,7 @@ class _ResultsPageState extends State<ResultsPage> {
       key: answersEndKey,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Text(
-        "That's all your answers",
+        _l.allAnswersShown,
         textAlign: TextAlign.center,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
@@ -302,14 +303,14 @@ class _ResultsPageState extends State<ResultsPage> {
               ),
               const SizedBox(height: 24),
               Text(
-                'No answers yet.',
+                _l.noAnswersYet,
                 key: noResultsOnResultsPageKey,
                 textAlign: TextAlign.center,
                 style: textTheme.headlineMedium,
               ),
               const SizedBox(height: 12),
               Text(
-                'Try a question, then come back to see your work here.',
+                _l.noAnswersHint,
                 textAlign: TextAlign.center,
                 style: textTheme.bodyLarge?.copyWith(color: tokens.inkMuted),
               ),
@@ -323,7 +324,7 @@ class _ResultsPageState extends State<ResultsPage> {
                     key: emptyStatePracticeButtonKey,
                     onPressed: () => model.setCurrentPage(0),
                     icon: const Icon(Icons.calculate_outlined),
-                    label: const Text('Practice'),
+                    label: Text(_l.practice),
                   ),
                 ),
               ),
@@ -345,7 +346,7 @@ class _ResultsPageState extends State<ResultsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Question ${index + 1}',
+                _l.questionNumber('${index + 1}'),
                 style: textTheme.labelMedium?.copyWith(color: muted),
               ),
               const SizedBox(height: 4),
@@ -356,7 +357,7 @@ class _ResultsPageState extends State<ResultsPage> {
               _answerDetails(attempt),
               const SizedBox(height: 4),
               Text(
-                'Time: ${_elapsed(attempt)}',
+                _l.timeTaken(_elapsed(attempt)),
                 style: TextStyle(color: muted),
               ),
             ],
@@ -373,16 +374,16 @@ class _ResultsPageState extends State<ResultsPage> {
   Widget _compactRow(BuildContext context, int index, Attempt attempt) {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    final (status, color, onColor, icon) = _verdict(tokens, attempt);
+    final (status, color, onColor, icon) = _verdict(_l, tokens, attempt);
     final expected = formatNumber(attempt.problem.result);
     final entered = attempt.skipped
-        ? 'No answer entered'
-        : 'Your answer: ${formatNumber(attempt.firstAnswer!)}';
+        ? _l.noAnswerEntered
+        : _l.yourAnswer(formatNumber(attempt.firstAnswer!));
     final said = attempt.skipped
-        ? 'no answer'
+        ? _l.saidNoAnswer
         : attempt.correct
         ? null
-        : 'said ${formatNumber(attempt.firstAnswer!)}';
+        : _l.saidAnswer(formatNumber(attempt.firstAnswer!));
     final muted = textTheme.bodyMedium?.copyWith(color: tokens.inkMuted);
     final row = Slab(
       child: Card(
@@ -426,10 +427,7 @@ class _ResultsPageState extends State<ResultsPage> {
               ),
               if (!attempt.skipped)
                 Text(
-                  prettyDuration(
-                    Duration(milliseconds: attempt.elapsedMs),
-                    abbreviated: true,
-                  ),
+                  formatElapsed(_l, attempt.elapsedMs, abbreviated: true),
                   style: muted,
                 ),
             ],
@@ -439,16 +437,21 @@ class _ResultsPageState extends State<ResultsPage> {
     );
     return Semantics(
       container: true,
-      label:
-          'Question ${index + 1}, ${_question(attempt)}, $status, $entered, '
-          'Expected answer: $expected, Time: ${_elapsed(attempt)}',
+      label: _l.answerRowSemantics(
+        '${index + 1}',
+        _question(attempt),
+        status,
+        entered,
+        expected,
+        _elapsed(attempt),
+      ),
       child: ExcludeSemantics(
         child: said == null
             ? row
             : Tooltip(
                 message: attempt.skipped
-                    ? 'No answer entered'
-                    : 'You said ${formatNumber(attempt.firstAnswer!)}',
+                    ? _l.noAnswerEntered
+                    : _l.youSaid(formatNumber(attempt.firstAnswer!)),
                 child: row,
               ),
       ),
@@ -460,9 +463,9 @@ class _ResultsPageState extends State<ResultsPage> {
         ?.copyWith(color: context.tokens.inkMuted);
     return _tableCells([
       Text('#', style: headerStyle),
-      Text('Question', style: headerStyle),
-      Text('Answer', style: headerStyle),
-      Text('Time', style: headerStyle),
+      Text(_l.columnQuestion, style: headerStyle),
+      Text(_l.columnAnswer, style: headerStyle),
+      Text(_l.columnTime, style: headerStyle),
     ]);
   }
 
@@ -509,28 +512,29 @@ class _ResultsPageState extends State<ResultsPage> {
   String _question(Attempt attempt) => attempt.problem.question;
 
   String _elapsed(Attempt attempt) => attempt.skipped
-      ? 'Not Available'
-      : prettyDuration(Duration(milliseconds: attempt.elapsedMs));
+      ? _l.timeNotAvailable
+      : formatElapsed(_l, attempt.elapsedMs);
 
   /// The verdict's word, role colours and icon, shared by card and row.
   static (String, Color, Color, IconData) _verdict(
+    AppLocalizations l,
     AppTokens tokens,
     Attempt attempt,
   ) => attempt.skipped
       ? (
-          'Skipped',
+          l.verdictSkipped,
           tokens.surfaceSunken,
           tokens.ink,
           Icons.remove_circle_outline,
         )
       : attempt.correct
-      ? ('Correct', tokens.correct, tokens.onCorrect, Icons.check_circle)
-      : ('Incorrect', tokens.wrong, tokens.onWrong, Icons.refresh);
+      ? (l.verdictCorrect, tokens.correct, tokens.onCorrect, Icons.check_circle)
+      : (l.verdictIncorrect, tokens.wrong, tokens.onWrong, Icons.refresh);
 
   /// The verdict as a word and an icon on a block of its role colour.
   Widget _status(BuildContext context, Attempt attempt) {
     final tokens = context.tokens;
-    final (label, background, foreground, icon) = _verdict(tokens, attempt);
+    final (label, background, foreground, icon) = _verdict(_l, tokens, attempt);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -562,17 +566,21 @@ class _ResultsPageState extends State<ResultsPage> {
     children: [
       Text(
         attempt.skipped
-            ? 'No answer entered'
-            : 'Your answer: ${formatNumber(attempt.firstAnswer!)}',
+            ? _l.noAnswerEntered
+            : _l.yourAnswer(formatNumber(attempt.firstAnswer!)),
       ),
       const SizedBox(height: 4),
-      Text('Expected answer: ${formatNumber(attempt.problem.result)}'),
+      Text(_l.expectedAnswer(formatNumber(attempt.problem.result))),
     ],
   );
 }
 
 /// The stats table's column headings.
-const statsColumns = ['Operation', 'Accuracy', 'Level'];
+List<String> statsColumns(AppLocalizations l) => [
+  l.statsOperation,
+  l.statsAccuracy,
+  l.statsLevel,
+];
 
 /// Lifetime accuracy and level per operation, streaks, XP and player level.
 ///
@@ -593,6 +601,7 @@ class _Stats extends StatelessWidget {
     );
     final game = context.select((MathTesterModel model) => model.game);
     final streak = context.select((MathTesterModel model) => model.shownStreak);
+    final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final headerStyle = textTheme.labelMedium?.copyWith(color: tokens.inkMuted);
@@ -651,7 +660,7 @@ class _Stats extends StatelessWidget {
       alignment: compact ? WrapAlignment.center : WrapAlignment.start,
       children: [
         chip(
-          'Daily streak: $streak',
+          l.dailyStreak('$streak'),
           '$streak',
           dailyStreakStatKey,
           Icons.local_fire_department,
@@ -659,7 +668,7 @@ class _Stats extends StatelessWidget {
           tokens.onStreak,
         ),
         chip(
-          'Best streak: ${game.bestStreak}',
+          l.bestStreak('${game.bestStreak}'),
           '${game.bestStreak}',
           bestStreakStatKey,
           // The compact bar has no words, so the two streaks differ by icon.
@@ -668,7 +677,7 @@ class _Stats extends StatelessWidget {
           tokens.onStreak,
         ),
         chip(
-          'Best sprint: ${game.bestSprint}',
+          l.bestSprint('${game.bestSprint}'),
           '${game.bestSprint}',
           bestSprintStatKey,
           Icons.timer_outlined,
@@ -676,7 +685,7 @@ class _Stats extends StatelessWidget {
           tokens.onSprint,
         ),
         chip(
-          'Total XP: ${game.xp}',
+          l.totalXp('${game.xp}'),
           '${game.xp}',
           totalXpStatKey,
           Icons.star,
@@ -684,7 +693,7 @@ class _Stats extends StatelessWidget {
           tokens.onXp,
         ),
         chip(
-          'Player level: ${playerLevel(game.xp)}',
+          l.playerLevel('${playerLevel(game.xp)}'),
           '${playerLevel(game.xp)}',
           playerLevelStatKey,
           Icons.military_tech,
@@ -710,7 +719,7 @@ class _Stats extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Your stats',
+                l.yourStats,
                 style: dense ? textTheme.titleMedium : textTheme.titleLarge,
               ),
               SizedBox(height: dense ? 8 : 12),
@@ -727,7 +736,7 @@ class _Stats extends StatelessWidget {
                 children: [
                   TableRow(
                     children: [
-                      for (final title in statsColumns)
+                      for (final title in statsColumns(l))
                         cell(Text(title, style: headerStyle)),
                     ],
                   ),
@@ -735,10 +744,10 @@ class _Stats extends StatelessWidget {
                       in difficulty.entries)
                     TableRow(
                       children: [
-                        cell(Text(type.label)),
+                        cell(Text(type.label(l))),
                         cell(
                           d.answered == 0
-                              ? const Text('–', semanticsLabel: 'none yet')
+                              ? Text('–', semanticsLabel: l.noneYet)
                               : Text(
                                   '${(100 * d.correct / d.answered).round()}%',
                                   style: textTheme.titleMedium,

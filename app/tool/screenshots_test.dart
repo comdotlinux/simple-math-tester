@@ -19,6 +19,7 @@ import 'package:simple_math_tester/rules.dart';
 /// Writes PNGs of every screen in both themes for review. A tool, not part of
 /// the test suite (`flutter test` only runs `test/`); run it by hand:
 /// `SCREENSHOT_DIR=/some/dir flutter test tool/screenshots_test.dart`.
+/// SCREENSHOT_LANGUAGES=de,hi shoots those languages (default: English).
 void main() {
   final dir = Platform.environment['SCREENSHOT_DIR'];
   if (dir == null) {
@@ -27,6 +28,8 @@ void main() {
       'flutter test tool/screenshots_test.dart',
     );
   }
+  final languages = Platform.environment['SCREENSHOT_LANGUAGES']?.split(',');
+  String? language;
   final boundary = GlobalKey();
   final now = DateTime(2026, 11, 14, 9);
   const game = GameState(
@@ -83,6 +86,7 @@ void main() {
         layoutMode: layout,
         history: history,
         palette: palette,
+        language: language,
       ),
       clock: () => now,
       ticker: ticks == null ? null : () => ticks.stream,
@@ -190,176 +194,189 @@ void main() {
   // SCREENSHOT_SIZE=450x800 (with SCREENSHOT_PIXEL_RATIO=2.4) shoots only
   // that size: the Play Store phone screenshots, 1080x1920.
   final only = Platform.environment['SCREENSHOT_SIZE']?.split('x');
-  for (final brightness in Brightness.values) {
-    for (final size
-        in only != null
-            ? [Size(double.parse(only[0]), double.parse(only[1]))]
-            : const [
-                Size(360, 640),
-                Size(412, 720),
-                Size(360, 800),
-                Size(800, 1000),
-                Size(1280, 900),
-              ]) {
-      final tag =
-          '${brightness.name}-${size.width.toInt()}x${size.height.toInt()}';
-      testWidgets('screenshots $tag', (tester) async {
-        final practice = await launch(tester, size, brightness);
-        // Shows a switched-off operation next to the switched-on ones.
-        practice.toggleOperation(OperationType.divide);
-        await shoot(tester, '$tag-1-practice');
+  for (final code in languages ?? const [null]) {
+    for (final brightness in Brightness.values) {
+      for (final size
+          in only != null
+              ? [Size(double.parse(only[0]), double.parse(only[1]))]
+              : const [
+                  Size(360, 640),
+                  Size(412, 720),
+                  Size(360, 800),
+                  Size(800, 1000),
+                  Size(1280, 900),
+                ]) {
+        final tag =
+            '${code == null ? '' : '$code-'}${brightness.name}-'
+            '${size.width.toInt()}x${size.height.toInt()}';
+        testWidgets('screenshots $tag', (tester) async {
+          language = code;
+          final practice = await launch(tester, size, brightness);
+          // Shows a switched-off operation next to the switched-on ones.
+          practice.toggleOperation(OperationType.divide);
+          await shoot(tester, '$tag-1-practice');
 
-        // Phones start with the system keyboard, so there this shows the pad.
-        await tester.tap(find.byKey(keyboardSwitchKey));
-        await shoot(tester, '$tag-1b-switched');
-        await tester.tap(find.byKey(keyboardSwitchKey));
-        await tester.pumpAndSettle();
+          // Phones start with the system keyboard, so there this shows the pad.
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await shoot(tester, '$tag-1b-switched');
+          await tester.tap(find.byKey(keyboardSwitchKey));
+          await tester.pumpAndSettle();
 
-        // The page itself keeps the feedback in view.
-        await check(tester, '75');
-        await shoot(tester, '$tag-2-correct');
+          // The page itself keeps the feedback in view.
+          await check(tester, '75');
+          await shoot(tester, '$tag-2-correct');
 
-        final wrong = await launch(tester, size, brightness);
-        await check(tester, '65');
-        // As the player sees it: one hint open, the page where it stopped.
-        await shoot(tester, '$tag-3-wrong');
-        wrong.revealStep();
-        await tester.pumpAndSettle();
-        await tester.ensureVisible(find.byKey(revealStepButtonKey));
-        await shoot(tester, '$tag-3b-wrong-hints');
+          final wrong = await launch(tester, size, brightness);
+          await check(tester, '65');
+          // As the player sees it: one hint open, the page where it stopped.
+          await shoot(tester, '$tag-3-wrong');
+          wrong.revealStep();
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await shoot(tester, '$tag-3b-wrong-hints');
 
-        // One answer short of the daily goal: the next correct one bursts.
-        final goal = await launch(
-          tester,
-          size,
-          brightness,
-          game: const GameState(
-            xp: 340,
-            dailyCount: 9,
-            lastActiveDate: '2026-11-14',
-          ),
-        );
-        goal.setDraftInput('75');
-        goal.submitAnswer();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-        await tester.pump(const Duration(milliseconds: 350));
-        await shoot(tester, '$tag-2b-celebration', settle: false);
-        await tester.pumpAndSettle();
-
-        await launch(tester, size, brightness, tier: null);
-        await shoot(tester, '$tag-4-tier-picker');
-
-        final ticks = StreamController<void>.broadcast(sync: true);
-        addTearDown(ticks.close);
-        final sprint = await launch(tester, size, brightness, ticks: ticks);
-        sprint.startSprint();
-        await tester.pumpAndSettle();
-        for (var i = 0; i < 2; i++) {
-          sprint.setDraftInput(formatNumber(sprint.current.result));
-          sprint.submitAnswer();
-        }
-        await shoot(tester, '$tag-5-sprint');
-
-        sprint.endSprint();
-        await shoot(tester, '$tag-6-sprint-result');
-
-        final history = await launch(tester, size, brightness);
-        answer(history);
-        history.setCurrentPage(1);
-        await shoot(tester, '$tag-7-answers');
-
-        // Scrolled down a long list, the stats are a pinned compact bar.
-        answer(history, more: 22);
-        await tester.pumpAndSettle();
-        scrollAnswers(tester, 1200);
-        await shoot(tester, '$tag-7b-answers-scrolled');
-
-        final empty = await launch(tester, size, brightness);
-        empty.setCurrentPage(1);
-        await shoot(tester, '$tag-8-answers-empty');
-
-        await launch(tester, size, brightness);
-        await tester.ensureVisible(find.byKey(settingsButtonKey));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(settingsButtonKey));
-        await tester.pumpAndSettle();
-        await shoot(tester, '$tag-9-settings');
-        await tester.ensureVisible(find.byKey(themeModeKey(ThemeMode.dark)));
-        await shoot(tester, '$tag-9b-settings-theme');
-
-        // Every colour theme: the practice page and the chosen swatch.
-        for (final palette in AppPalette.values) {
-          final themed = await launch(
+          // One answer short of the daily goal: the next correct one bursts.
+          final goal = await launch(
             tester,
             size,
             brightness,
-            palette: palette,
+            game: const GameState(
+              xp: 340,
+              dailyCount: 9,
+              lastActiveDate: '2026-11-14',
+            ),
           );
-          themed.toggleOperation(OperationType.divide);
-          await shoot(tester, '$tag-12-${palette.name}-practice');
+          goal.setDraftInput('75');
+          goal.submitAnswer();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          await tester.pump(const Duration(milliseconds: 350));
+          await shoot(tester, '$tag-2b-celebration', settle: false);
+          await tester.pumpAndSettle();
+
+          await launch(tester, size, brightness, tier: null);
+          await shoot(tester, '$tag-4-tier-picker');
+
+          final ticks = StreamController<void>.broadcast(sync: true);
+          addTearDown(ticks.close);
+          final sprint = await launch(tester, size, brightness, ticks: ticks);
+          sprint.startSprint();
+          await tester.pumpAndSettle();
+          for (var i = 0; i < 2; i++) {
+            sprint.setDraftInput(formatNumber(sprint.current.result));
+            sprint.submitAnswer();
+          }
+          await shoot(tester, '$tag-5-sprint');
+
+          sprint.endSprint();
+          await shoot(tester, '$tag-6-sprint-result');
+
+          final history = await launch(tester, size, brightness);
+          answer(history);
+          history.setCurrentPage(1);
+          await shoot(tester, '$tag-7-answers');
+
+          // Scrolled down a long list, the stats are a pinned compact bar.
+          answer(history, more: 22);
+          await tester.pumpAndSettle();
+          scrollAnswers(tester, 1200);
+          await shoot(tester, '$tag-7b-answers-scrolled');
+
+          final empty = await launch(tester, size, brightness);
+          empty.setCurrentPage(1);
+          await shoot(tester, '$tag-8-answers-empty');
+
+          await launch(tester, size, brightness);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byKey(paletteKey(palette)));
-          await shoot(tester, '$tag-12-${palette.name}-settings-colours');
-        }
+          await shoot(tester, '$tag-9-settings');
+          await tester.ensureVisible(find.byKey(themeModeKey(ThemeMode.dark)));
+          await shoot(tester, '$tag-9b-settings-theme');
+          await tester.ensureVisible(find.byKey(languageTileKey));
+          await shoot(tester, '$tag-9c-settings-language');
+          await tester.tap(find.byKey(languageTileKey));
+          await shoot(tester, '$tag-9d-language-list');
 
-        // The compact layout setting.
-        const compact = LayoutMode.compact;
-        // Long numbers, so the "said" part is cut short on a small phone.
-        Attempt big(int lhs, int rhs, OperationType kind, int result, int? a) =>
-            Attempt(
-              Problem(lhs, rhs, kind, result, level: 5),
-              firstAnswer: a,
-              elapsedMs: 12000,
-              answeredAt: now,
+          // Every colour theme: the practice page and the chosen swatch.
+          for (final palette in AppPalette.values) {
+            final themed = await launch(
+              tester,
+              size,
+              brightness,
+              palette: palette,
             );
-        final dense = await launch(
-          tester,
-          size,
-          brightness,
-          layout: compact,
-          history: [
-            big(9876, 8765, OperationType.plus, 18641, 18651),
-            big(4321, 1234, OperationType.minus, 3087, null),
-            big(29, 87, OperationType.multiply, 2523, 2523),
-            big(8642, 9753, OperationType.plus, 18395, 18359),
-          ],
-        );
-        dense.toggleOperation(OperationType.divide);
-        await shoot(tester, '$tag-11-compact-practice');
-        dense.setCurrentPage(1);
-        await shoot(tester, '$tag-11b-compact-answers');
-        // The long rows just under the pinned bar.
-        await tester.pumpAndSettle();
-        scrollAnswers(tester, 300);
-        await shoot(tester, '$tag-11b2-compact-answers-long');
-        scrollAnswers(tester, 0);
-        answer(dense, more: 22);
-        await tester.pumpAndSettle();
-        scrollAnswers(tester, 600);
-        await shoot(tester, '$tag-11c-compact-answers-scrolled');
-        await launch(tester, size, brightness, layout: compact);
-        await tester.ensureVisible(find.byKey(settingsButtonKey));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(settingsButtonKey));
-        await tester.pumpAndSettle();
-        await shoot(tester, '$tag-11d-compact-settings');
-        await tester.ensureVisible(find.byKey(layoutModeKey(compact)));
-        await shoot(tester, '$tag-11e-compact-settings-layout');
+            themed.toggleOperation(OperationType.divide);
+            await shoot(tester, '$tag-12-${palette.name}-practice');
+            await tester.ensureVisible(find.byKey(settingsButtonKey));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(settingsButtonKey));
+            await tester.pumpAndSettle();
+            await tester.ensureVisible(find.byKey(paletteKey(palette)));
+            await shoot(tester, '$tag-12-${palette.name}-settings-colours');
+          }
 
-        // A phone with its own number keyboard up.
-        if (size.shortestSide < 600 && size.height < 800) {
-          await launch(tester, size, brightness, keyboard: 260);
-          await shoot(tester, '$tag-10-system-keyboard');
-          await check(tester, '65');
-          await shoot(tester, '$tag-10b-system-keyboard-wrong');
-          await check(tester, '75');
-          await shoot(tester, '$tag-10c-system-keyboard-correct');
-        }
-      });
+          // The compact layout setting.
+          const compact = LayoutMode.compact;
+          // Long numbers, so the "said" part is cut short on a small phone.
+          Attempt big(
+            int lhs,
+            int rhs,
+            OperationType kind,
+            int result,
+            int? a,
+          ) => Attempt(
+            Problem(lhs, rhs, kind, result, level: 5),
+            firstAnswer: a,
+            elapsedMs: 12000,
+            answeredAt: now,
+          );
+          final dense = await launch(
+            tester,
+            size,
+            brightness,
+            layout: compact,
+            history: [
+              big(9876, 8765, OperationType.plus, 18641, 18651),
+              big(4321, 1234, OperationType.minus, 3087, null),
+              big(29, 87, OperationType.multiply, 2523, 2523),
+              big(8642, 9753, OperationType.plus, 18395, 18359),
+            ],
+          );
+          dense.toggleOperation(OperationType.divide);
+          await shoot(tester, '$tag-11-compact-practice');
+          dense.setCurrentPage(1);
+          await shoot(tester, '$tag-11b-compact-answers');
+          // The long rows just under the pinned bar.
+          await tester.pumpAndSettle();
+          scrollAnswers(tester, 300);
+          await shoot(tester, '$tag-11b2-compact-answers-long');
+          scrollAnswers(tester, 0);
+          answer(dense, more: 22);
+          await tester.pumpAndSettle();
+          scrollAnswers(tester, 600);
+          await shoot(tester, '$tag-11c-compact-answers-scrolled');
+          await launch(tester, size, brightness, layout: compact);
+          await tester.ensureVisible(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await shoot(tester, '$tag-11d-compact-settings');
+          await tester.ensureVisible(find.byKey(layoutModeKey(compact)));
+          await shoot(tester, '$tag-11e-compact-settings-layout');
+
+          // A phone with its own number keyboard up.
+          if (size.shortestSide < 600 && size.height < 800) {
+            await launch(tester, size, brightness, keyboard: 260);
+            await shoot(tester, '$tag-10-system-keyboard');
+            await check(tester, '65');
+            await shoot(tester, '$tag-10b-system-keyboard-wrong');
+            await check(tester, '75');
+            await shoot(tester, '$tag-10c-system-keyboard-correct');
+          }
+        });
+      }
     }
   }
 }

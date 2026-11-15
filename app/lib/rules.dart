@@ -4,14 +4,13 @@ import 'operations.dart';
 
 /// The starting tier sets every operation to [level].
 enum Tier {
-  easy('Easy', 1),
-  medium('Medium', 3),
-  hard('Hard', 4),
-  harder('Harder', 5);
+  easy(1),
+  medium(3),
+  hard(4),
+  harder(5);
 
-  const Tier(this.label, this.level);
+  const Tier(this.level);
 
-  final String label;
   final int level;
 }
 

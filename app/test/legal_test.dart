@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
+import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/legal.dart';
 
 void main() {
@@ -18,10 +20,9 @@ void main() {
         '${m[1] == 'p' ? 'p' : 'h'}: ${text(m[2]!)}',
     ];
     final inApp = [
-      for (final (heading, paragraphs) in privacyPolicy) ...[
-        'h: $heading',
-        for (final p in paragraphs) 'p: $p',
-      ],
+      for (final (heading, paragraphs) in privacyPolicy(
+        lookupAppLocalizations(const Locale('en')),
+      )) ...['h: $heading', for (final p in paragraphs) 'p: $p'],
     ];
 
     expect(inApp, fromHtml);

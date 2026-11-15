@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -13,6 +14,7 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
 
+import 'en.dart';
 import 'fake_store.dart';
 
 Attempt attempt(int lhs) => Attempt(
@@ -235,9 +237,9 @@ void main() {
           final selected =
               type == OperationType.minus || type == OperationType.divide;
           expect(
-            tester.getSemantics(find.bySemanticsLabel(type.label)),
+            tester.getSemantics(find.bySemanticsLabel(type.label(en))),
             matchesSemantics(
-              label: type.label,
+              label: type.label(en),
               isButton: true,
               hasTapAction: true,
               hasFocusAction: true,

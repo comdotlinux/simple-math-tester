@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'home_page.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
 import 'math_tester_model.dart';
 import 'progress_store.dart';
 import 'sound_player.dart';
@@ -75,7 +76,19 @@ class _MathTesterAppState extends State<MathTesterApp> {
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
-      title: 'Math Tester',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+      // material_ui's own delegates: flutter_localizations' Material ones
+      // serve package:flutter/material.dart, not this app's widgets.
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      // English first, so an unsupported system language falls back to it.
+      supportedLocales: AppLocalizations.supportedLocales,
+      locale: switch (context.select((MathTesterModel m) => m.language)) {
+        final code? => Locale(code),
+        null => null,
+      },
       theme: buildAppTheme(Brightness.light, palette),
       darkTheme: buildAppTheme(Brightness.dark, palette),
       themeMode: context.select((MathTesterModel m) => m.themeMode),

@@ -5,6 +5,7 @@ import 'app_theme.dart';
 import 'celebration.dart';
 import 'hud.dart';
 import 'keys.dart';
+import 'l10n/app_localizations.dart';
 import 'math_tester_model.dart';
 import 'problem_page.dart';
 import 'results_page.dart';
@@ -15,6 +16,7 @@ class MyHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = context.watch<MathTesterModel>();
+    final l = AppLocalizations.of(context);
     final page = model.currentPage == 0
         // The Android back gesture ends a sprint instead of leaving the app.
         ? PopScope(
@@ -52,16 +54,16 @@ class MyHomePage extends StatelessWidget {
                         labelType: constraints.maxWidth >= 1000
                             ? null
                             : NavigationRailLabelType.all,
-                        destinations: const [
+                        destinations: [
                           NavigationRailDestination(
-                            icon: Icon(Icons.calculate_outlined),
-                            selectedIcon: Icon(Icons.calculate),
-                            label: Text('Practice', key: practiceNavKey),
+                            icon: const Icon(Icons.calculate_outlined),
+                            selectedIcon: const Icon(Icons.calculate),
+                            label: Text(l.practice, key: practiceNavKey),
                           ),
                           NavigationRailDestination(
-                            icon: Icon(Icons.checklist_outlined),
-                            selectedIcon: Icon(Icons.checklist),
-                            label: Text('My answers', key: myAnswersNavKey),
+                            icon: const Icon(Icons.checklist_outlined),
+                            selectedIcon: const Icon(Icons.checklist),
+                            label: Text(l.myAnswers, key: myAnswersNavKey),
                           ),
                         ],
                         selectedIndex: model.currentPage,
@@ -94,18 +96,18 @@ class MyHomePage extends StatelessWidget {
                     ),
                   ),
                   child: NavigationBar(
-                    destinations: const [
+                    destinations: [
                       NavigationDestination(
                         key: practiceNavKey,
-                        icon: Icon(Icons.calculate_outlined),
-                        selectedIcon: Icon(Icons.calculate),
-                        label: 'Practice',
+                        icon: const Icon(Icons.calculate_outlined),
+                        selectedIcon: const Icon(Icons.calculate),
+                        label: l.practice,
                       ),
                       NavigationDestination(
                         key: myAnswersNavKey,
-                        icon: Icon(Icons.checklist_outlined),
-                        selectedIcon: Icon(Icons.checklist),
-                        label: 'My answers',
+                        icon: const Icon(Icons.checklist_outlined),
+                        selectedIcon: const Icon(Icons.checklist),
+                        label: l.myAnswers,
                       ),
                     ],
                     selectedIndex: model.currentPage,

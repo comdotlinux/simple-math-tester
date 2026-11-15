@@ -1,11 +1,18 @@
+import 'l10n/app_localizations.dart';
 import 'operations.dart';
 
 // Every writer returns at least 2 steps, and only the last one states the
 // result: no earlier step contains it as a number unless it equals an operand.
 
-List<String> solutionSteps(Problem problem) => problem.kind.steps(problem);
+/// One step, written in the language of [AppLocalizations]. The number of
+/// steps never depends on the language; a step may still pick its wording by
+/// the translated text.
+typedef SolutionStep = String Function(AppLocalizations l);
 
-List<String> additionSteps(Problem problem) {
+List<SolutionStep> solutionSteps(Problem problem) =>
+    problem.kind.steps(problem);
+
+List<SolutionStep> additionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
@@ -15,9 +22,10 @@ List<String> additionSteps(Problem problem) {
     // Every number counted is below the sum, so none is the answer.
     final counted = [for (var i = 1; i < smaller && i <= 3; i++) bigger + i];
     return [
-      'Start at $bigger and count on $smaller more'
-          '${counted.isEmpty ? '.' : ': ${counted.join(', ')}, …'}',
-      'So $left + $right = $result.',
+      (l) => counted.isEmpty
+          ? l.stepAddCountOn('$bigger', '$smaller')
+          : l.stepAddCountOnList('$bigger', '$smaller', counted.join(', ')),
+      (l) => l.stepSoResult('$left', '+', '$right', result),
     ];
   }
   final calculations = <String>[];
@@ -31,32 +39,42 @@ List<String> additionSteps(Problem problem) {
   if (totals.where((total) => total > 0).length > 1) {
     // Each place total is smaller than the sum because another one is not 0.
     return [
-      'Break $left into ${_placeParts(left).join(' + ')} and $right into '
-          '${_placeParts(right).join(' + ')}.',
-      'Add matching places: ${calculations.join('; ')}.',
-      'Combine the parts: ${totals.join(' + ')} = $result.',
+      (l) => l.stepAddBreak(
+        '$left',
+        _placeParts(left).join(' + '),
+        '$right',
+        _placeParts(right).join(' + '),
+      ),
+      (l) => l.stepAddMatching(calculations.join('; ')),
+      (l) => l.stepAddCombine(totals.join(' + '), result),
     ];
   }
   // One place only, so its total would be the answer itself.
   final place = _highestPlace(bigger);
   return [
-    '$left is ${_count(left, place)} and $right is ${_count(right, place)}. '
-        'Add ${left ~/ place} + ${right ~/ place}, then make it '
-        '${_placeNames[place]}s.',
-    'So $left + $right = $result.',
+    (l) => l.stepAddOnePlace(
+      '$left',
+      _count(l, left, place),
+      '$right',
+      _count(l, right, place),
+      '${left ~/ place}',
+      '${right ~/ place}',
+      _placeName(l, place),
+    ),
+    (l) => l.stepSoResult('$left', '+', '$right', result),
   ];
 }
 
-List<String> subtractionSteps(Problem problem) {
+List<SolutionStep> subtractionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;
+  final shown = formatNumber(result);
   if (left == right) {
     return [
-      'Find the difference between $left and $right.',
-      'Both numbers are the same, so taking one away from the other leaves '
-          'nothing.',
-      'So $left − $right = ${formatNumber(result)}.',
+      (l) => l.stepSubSameFind('$left', '$right'),
+      (l) => l.stepSubSame,
+      (l) => l.stepSoResult('$left', '−', '$right', shown),
     ];
   }
   final firstTen = (right + 9) ~/ 10 * 10;
@@ -68,48 +86,57 @@ List<String> subtractionSteps(Problem problem) {
       (lastTen, left),
     ],
   ].where((hop) => hop.$1 < hop.$2).toList();
-  final hopText =
-      'Hop to round numbers: '
-      '${hops.map((hop) => 'from ${hop.$1} up to ${hop.$2} is ${hop.$2 - hop.$1}').join('; ')}.';
-  final useHops = hops.length > 1 && !_mentions(hopText, result);
+  String hopText(AppLocalizations l) => l.stepSubHops(
+    hops
+        .map(
+          (hop) => l.stepSubHop('${hop.$1}', '${hop.$2}', '${hop.$2 - hop.$1}'),
+        )
+        .join('; '),
+  );
+  bool useHops(AppLocalizations l) =>
+      hops.length > 1 && !_mentions(hopText(l), result);
   // Two round numbers have a single hop; take away in the largest place
   // they share instead.
   var place = 1;
-  while (_placeNames.containsKey(place * 10) &&
+  while (_placeNames.contains(place * 10) &&
       left % (place * 10) == 0 &&
       right % (place * 10) == 0) {
     place *= 10;
   }
-  final roundText = place == 1
-      ? ''
-      : '$left is ${_count(left, place)} and $right is '
-            '${_count(right, place)}. Take away ${left ~/ place} − '
-            '${right ~/ place}, then make it ${_placeNames[place]}s.';
+  String roundText(AppLocalizations l) => l.stepSubRound(
+    '$left',
+    _count(l, left, place),
+    '$right',
+    _count(l, right, place),
+    '${left ~/ place}',
+    '${right ~/ place}',
+    _placeName(l, place),
+  );
   // A result equal to [right] is already in the question, so it may appear.
-  final useRound =
-      place > 1 && (result == right || !_mentions(roundText, result));
+  bool useRound(AppLocalizations l) =>
+      place > 1 && (result == right || !_mentions(roundText(l), result));
   return [
-    'Find the difference between $left and $right: '
-        'what do you add to $right to make $left?',
-    useHops
-        ? hopText
-        : useRound
-        ? roundText
+    (l) => l.stepSubFind('$left', '$right'),
+    (l) => useHops(l)
+        ? hopText(l)
+        : useRound(l)
+        ? roundText(l)
         : firstTen > lastTen
         // No round number lies between them, so there is no ten to hop to.
-        ? 'Count up from $right to $left one at a time and keep track of '
-              'how many you counted.'
-        : 'Count up from $right to $left in hops, for example to the next '
-              'ten, and keep track of how far you went.',
-    useHops
-        ? 'Add the hops: ${hops.map((hop) => hop.$2 - hop.$1).join(' + ')} = '
-              '${formatNumber(result)}. So $left − $right = ${formatNumber(result)}.'
-        : 'So $left − $right = ${formatNumber(result)}. '
-              'Check: ${formatNumber(result)} + $right = $left.',
+        ? l.stepSubCountOnes('$right', '$left')
+        : l.stepSubCountHops('$right', '$left'),
+    (l) => useHops(l)
+        ? l.stepSubAddHops(
+            hops.map((hop) => hop.$2 - hop.$1).join(' + '),
+            shown,
+            '$left',
+            '$right',
+          )
+        : l.stepSubCheck('$left', '$right', shown),
   ];
 }
 
-List<String> multiplicationSteps(Problem problem) {
+List<SolutionStep> multiplicationSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
@@ -127,78 +154,91 @@ List<String> multiplicationSteps(Problem problem) {
     final (leftDigit, leftZeros) = _digitAndZeros(left);
     final (rightDigit, rightZeros) = _digitAndZeros(right);
     final zeros = leftZeros + rightZeros;
+    final product = '${leftDigit * rightDigit}';
     return [
-      'Take the zeros off and multiply the digits: '
-          '$leftDigit × $rightDigit = ${leftDigit * rightDigit}.',
-      '$left and $right have $zeros zeros together. '
-          'Write them after ${leftDigit * rightDigit}.',
-      'So $left × $right = $result.',
+      (l) => l.stepMulZeros('$leftDigit', '$rightDigit', product),
+      (l) => l.stepMulZerosWrite(zeros, '$left', '$right', product),
+      (l) => l.stepSoResult('$left', '×', '$right', result),
     ];
   }
   if (parts.length == 1) {
     // Every listed count is a smaller multiple, so it stays below the result.
     final counted = [for (var i = 1; i < multiplier && i <= 3; i++) split * i];
     return [
-      '$left × $right means $multiplier groups of $split.',
-      'Count in ${split}s, $multiplier times: ${counted.join(', ')}, …',
-      'So $left × $right = $result.',
+      (l) => l.stepMulGroups('$left', '$right', '$multiplier', '$split'),
+      (l) => l.stepMulCountIn('$split', '$multiplier', counted.join(', ')),
+      (l) => l.stepSoResult('$left', '×', '$right', result),
     ];
   }
   // Each product is smaller than the result because the other parts add more.
   final products = parts.map((part) => multiplier * part).toList();
   return [
-    'Split $split into ${parts.join(' + ')}.',
-    'Multiply each part by $multiplier: '
-        '${parts.map((part) => '$multiplier × $part = ${multiplier * part}').join('; ')}.',
-    'Add the products: ${products.join(' + ')} = $result.',
+    (l) => l.stepMulSplit('$split', parts.join(' + ')),
+    (l) => l.stepMulEach(
+      '$multiplier',
+      parts
+          .map((part) => '$multiplier × $part = ${multiplier * part}')
+          .join('; '),
+    ),
+    (l) => l.stepMulAdd(products.join(' + '), result),
   ];
 }
 
-List<String> divisionSteps(Problem problem) {
+List<SolutionStep> divisionSteps(Problem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;
+  final shown = formatNumber(result);
   final tens = result ~/ 10 * 10;
-  final String middle;
+  final SolutionStep middle;
   if (tens > 0) {
     // Counting to a quotient of 10 or more is too long; take tens first.
-    final tensText =
-        'Take tens first: $right × $tens = ${right * tens}, and '
-        '$left − ${right * tens} = ${left - right * tens} is left to share '
-        'into ${right}s.';
-    middle = _mentions(tensText, result)
-        ? 'Multiply $right by round tens until you get close to $left, '
-              'then count on in ${right}s for the rest.'
-        : tensText;
+    middle = (l) {
+      final tensText = l.stepDivTens(
+        '$right',
+        '$tens',
+        '${right * tens}',
+        '$left',
+        '${left - right * tens}',
+      );
+      return _mentions(tensText, result)
+          ? l.stepDivRoundTens('$right', '$left')
+          : tensText;
+    };
   } else {
     final counted = [for (var i = 1; i < result && i <= 3; i++) right * i]
         .join(', ');
-    final countText =
-        'Count in ${right}s: $counted, … until you reach $left. '
-        'How many ${right}s did you count?';
-    middle = _mentions(countText, result)
-        ? 'Count in ${right}s until you reach $left. '
-              'How many ${right}s did you count?'
-        : countText;
+    middle = (l) {
+      final countText = l.stepDivCountList('$right', counted, '$left');
+      return _mentions(countText, result)
+          ? l.stepDivCount('$right', '$left')
+          : countText;
+    };
   }
   return [
-    'How many ${right}s make $left? Think: $right × ? = $left.',
+    (l) => l.stepDivHowMany('$right', '$left'),
     middle,
-    '$right × ${formatNumber(result)} = $left, '
-        'so $left ÷ $right = ${formatNumber(result)}.',
+    (l) => l.stepDivResult('$right', shown, '$left'),
   ];
 }
 
-const _placeNames = {
-  10: 'ten',
-  100: 'hundred',
-  1000: 'thousand',
-  10000: 'ten thousand',
+const _placeNames = {10, 100, 1000, 10000};
+
+/// The plural name of [place], as in "then make it hundreds".
+String _placeName(AppLocalizations l, int place) => switch (place) {
+  10 => l.placeTens,
+  100 => l.placeHundreds,
+  1000 => l.placeThousands,
+  _ => l.placeTenThousands,
 };
 
 /// [value] counted in [place]s, such as "5 thousands" or "1 ten".
-String _count(int value, int place) =>
-    '${value ~/ place} ${_placeNames[place]}${value ~/ place == 1 ? '' : 's'}';
+String _count(AppLocalizations l, int value, int place) => switch (place) {
+  10 => l.countTens(value ~/ place),
+  100 => l.countHundreds(value ~/ place),
+  1000 => l.countThousands(value ~/ place),
+  _ => l.countTenThousands(value ~/ place),
+};
 
 bool _mentions(String text, num value) =>
     RegExp('(?<!\\d)${formatNumber(value)}(?!\\d)').hasMatch(text);
