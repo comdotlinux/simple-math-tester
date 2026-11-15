@@ -27,9 +27,9 @@ jobs:
     name: Build signed app bundle and check 16 KB pages
     runs-on: ubuntu-26.04
     timeout-minutes: 30
-    # Tag runs use the `release` environment, which only v* tags may deploy to, so
-    # its secrets (signing key, Play, DeepSeek) never reach a branch run. Builds on
-    # main get none of them and sign with a throwaway key.
+    # Tag runs use the `release` environment (only v* tags and main may deploy to
+    # it), so its secrets (signing key, Play, DeepSeek) never reach other branches.
+    # This job's builds on main don't use it and sign with a throwaway key.
     environment: ${{ github.ref_type == 'tag' && 'release' || '' }}
     # Write access creates the GitHub release on a tag. The workflow runs only for
     # pushes to this repository (no pull_request trigger), so no outside code gets it.

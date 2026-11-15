@@ -30,8 +30,8 @@ jobs:
     name: Promote to a Play track
     runs-on: ubuntu-26.04
     timeout-minutes: 10
-    # The Play key is (or will be) a `release` environment secret, which only v*
-    # tags may deploy to: start the run on the version tag (gh workflow run --ref).
+    # The Play key is (or will be) a `release` environment secret; that environment
+    # allows only v* tags and main, so run this from main (the default).
     environment: release
     defaults:
       run:

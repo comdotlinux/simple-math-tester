@@ -226,8 +226,9 @@ gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deep
 
 `DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
 
-**Keep the release secrets in the `release` environment.** Only `v*` tags may
-deploy to it, so a pushed branch with a changed workflow cannot read them. To move
+**Keep the release secrets in the `release` environment.** Only `v*` tags and
+`main` (for the promote workflow) may deploy to it, so a pushed branch with a
+changed workflow cannot read them. To move
 them from the repository (each command reads a file or asks at a hidden prompt):
 
 ```
@@ -260,19 +261,18 @@ Each release:
 internal testing track to closed testing (Play track `alpha`) or production. It
 does not rebuild: it reads the internal track, takes the release named
 `<version> (<build number>)` (the newest build if a tag was built twice), and
-puts the same build and the same Play release notes on the target track. Start
-it on the version tag, because only `v*` tags may use the `release` environment:
+puts the same build and the same Play release notes on the target track. It runs
+from `main` (the `release` environment allows `v*` tags and `main`):
 
 ```
-gh workflow run play-promote.yml --ref v1.1.0 -f version=v1.1.0 -f track=closed-testing
-gh workflow run play-promote.yml --ref v1.1.0 -f version=v1.1.0 -f track=production -f rollout=100
+gh workflow run play-promote.yml -f version=v1.1.0 -f track=closed-testing
+gh workflow run play-promote.yml -f version=v1.1.0 -f track=production -f rollout=100
 ```
 
 `rollout` is a percent from 1 to 100 (default 100). Below 100 is a staged
 rollout; to widen it, run the same command again with a larger percent, and 100
 completes it. The run's last notice says which version is on which track at what
-percent. The workflow exists only from the tag after this change on; promote
-older versions in Play Console.
+percent.
 
 - Production, one time: in Play Console, Users and permissions, give the service
   account **Release to production, exclude devices, and use Play App Signing** as
