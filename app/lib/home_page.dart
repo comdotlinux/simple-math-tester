@@ -137,15 +137,13 @@ class _UpdateReminder extends StatelessWidget {
     final model = context.read<MathTesterModel>();
     final l = AppLocalizations.of(context);
     final tokens = context.tokens;
-    return DecoratedBox(
+    return Material(
       key: updateReminderKey,
-      decoration: BoxDecoration(
-        color: tokens.surfaceRaised,
-        border: Border(
-          bottom: BorderSide(
-            color: tokens.outline,
-            width: AppTokens.outlineWidth,
-          ),
+      color: tokens.surfaceRaised,
+      shape: Border(
+        bottom: BorderSide(
+          color: tokens.outline,
+          width: AppTokens.outlineWidth,
         ),
       ),
       child: ListTile(

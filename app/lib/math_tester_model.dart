@@ -53,9 +53,9 @@ class MathTesterModel extends ChangeNotifier {
        _progress = progress ?? Progress() {
     _progress = _withDayChange(_progress);
     // The first reminder comes 30 days after the first launch, not at once.
+    // Saved with the next save, so a launch alone still writes nothing.
     if (_updateReminders && _progress.updateReminderDate == null) {
       _progress = _progress.withUpdateReminderDate(localDate(_clock()));
-      _save();
     }
     _show(initialProblem ?? _draw());
   }

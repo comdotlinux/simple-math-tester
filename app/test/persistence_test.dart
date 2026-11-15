@@ -56,8 +56,8 @@ void main() {
       await pumpEventQueue();
     }
 
-    test('the update reminder date is saved at the first launch, kept by a '
-        'restart and moved by closing the reminder', () async {
+    test('the update reminder date is set at the first launch, saved with '
+        'the next save, kept by a restart and moved by closing it', () async {
       final store = FakeStore();
       var now = DateTime(2026, 11, 15, 9);
       Future<MathTesterModel> start() async {
@@ -76,7 +76,11 @@ void main() {
       String? saved() =>
           Progress.decode(store.values[progressKey]!).updateReminderDate;
 
-      expect((await start()).showUpdateReminder, isFalse);
+      final first = await start();
+      expect(first.showUpdateReminder, isFalse);
+      expect(store.writes, isEmpty);
+      first.setSound(false);
+      await pumpEventQueue();
       expect(saved(), '2026-11-15');
 
       now = DateTime(2026, 12, 15, 9);

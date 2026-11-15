@@ -1307,18 +1307,12 @@ void main() {
       tester,
     ) async {
       var now = DateTime(2026, 11, 15, 9);
-      final store = FakeStore();
       final model = await launch(
         tester,
         clock: () => now,
-        store: store,
         updateReminders: true,
       );
       expect(reminder, findsNothing);
-      expect(
-        Progress.decode(store.values[progressKey]!).updateReminderDate,
-        '2026-11-15',
-      );
 
       await resumeAt(tester, model, () => now = DateTime(2026, 12, 14, 23));
       expect(reminder, findsNothing);
