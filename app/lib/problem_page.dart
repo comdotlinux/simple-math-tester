@@ -1148,6 +1148,23 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                   }
                 },
               ),
+              ListTile(
+                key: reportProblemTileKey,
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('Report a problem'),
+                subtitle: const Text('On GitHub (opens the browser)'),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(context);
+                  if (!await model.openProblemReport()) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('The browser did not open.'),
+                      ),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),
