@@ -102,3 +102,8 @@ lint/tmp/
 
 # Wrangler (Cloudflare CLI) local cache
 .cloudflare/
+
+# Local secrets (Wrangler dev vars, env files)
+.dev.vars
+.env
+.env.*
