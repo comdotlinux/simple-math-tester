@@ -1,0 +1,107 @@
+name: Promote Play release
+
+# Manual only: moves a version that play-bundle.yml put on the internal testing
+# track to closed testing or production, with the same build and release notes.
+# No rebuild. Run it again with a larger rollout to widen a staged production
+# rollout. See "Promoting a release" in docs/play-store.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag on the internal track, for example v1.1.0'
+        required: true
+        type: string
+      track:
+        description: 'Target track'
+        required: true
+        type: choice
+        options: [closed-testing, production]
+      rollout:
+        description: 'Percent of users, 1 to 100 (below 100 is a staged rollout)'
+        required: true
+        type: string
+        default: '100'
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote to a Play track
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    # The Play key is (or will be) a `release` environment secret, which only v*
+    # tags may deploy to: start the run on the version tag (gh workflow run --ref).
+    environment: release
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the inputs
+        id: inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          TRACK: ${{ inputs.track }}
+          ROLLOUT: ${{ inputs.rollout }}
+        run: |
+          name="$(bash .github/play-promote-inputs.sh "$VERSION" "$ROLLOUT")"
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "$VERSION" ]; then
+            echo "::error::The run started on tag $GITHUB_REF_NAME but promotes $VERSION"
+            exit 1
+          fi
+          case "$TRACK" in
+            closed-testing) play_track=alpha ;;
+            production) play_track=production ;;
+            *) echo "::error::Unknown track '$TRACK'"; exit 1 ;;
+          esac
+          {
+            echo "name=$name"
+            echo "play_track=$play_track"
+            echo "rollout=$((10#$ROLLOUT))"
+          } >> "$GITHUB_OUTPUT"
+      - name: Get a Play Developer API token
+        env:
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bash .github/play-token.sh "$RUNNER_TEMP/play-token"
+      - name: Put the internal release on the target track
+        env:
+          NAME: ${{ steps.inputs.outputs.name }}
+          PLAY_TRACK: ${{ steps.inputs.outputs.play_track }}
+          TRACK: ${{ inputs.track }}
+          ROLLOUT: ${{ steps.inputs.outputs.rollout }}
+        run: |
+          api=https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.linux.simplemathtester
+          auth=(-H "Authorization: Bearer $(cat "$RUNNER_TEMP/play-token")")
+          # --fail-with-body keeps Google's error JSON; print it to stderr, which a pipe
+          # or $(...) does not swallow.
+          play() {
+            local body
+            if ! body="$(curl -sS --fail-with-body "${auth[@]}" "$@")"; then
+              {
+                echo "$body"
+                echo "::error::Play API call failed: $(jq -r '.error.message // empty' <<< "$body" 2>/dev/null || true)"
+                if [ "$PLAY_TRACK" = production ]; then
+                  echo "::error::Production needs the service account permission 'Release to production, exclude devices, and use Play App Signing' (Play Console, Users and permissions) and production access granted by Google"
+                fi
+              } >&2
+              return 1
+            fi
+            printf '%s' "$body"
+          }
+          edit="$(play -X POST "$api/edits" | jq -er .id)"
+          play "$api/edits/$edit/tracks/internal" > "$RUNNER_TEMP/internal.json"
+          if ! jq --arg name "$NAME" --arg track "$PLAY_TRACK" --arg rollout "$ROLLOUT" \
+              -f .github/play-promote.jq "$RUNNER_TEMP/internal.json" > "$RUNNER_TEMP/track.json"; then
+            echo "::error::Version $NAME is not on the internal testing track; push its tag first"
+            exit 1
+          fi
+          echo "Track update:"
+          cat "$RUNNER_TEMP/track.json"
+          play -X PUT -H 'Content-Type: application/json' --data @"$RUNNER_TEMP/track.json" \
+            "$api/edits/$edit/tracks/$PLAY_TRACK" > /dev/null
+          play -X POST "$api/edits/$edit:commit" > /dev/null
+          release="$(jq -r '.releases[0].name' "$RUNNER_TEMP/track.json")"
+          echo "::notice::Version $release is on the $TRACK track at $ROLLOUT%. Google reviews it before users get it."

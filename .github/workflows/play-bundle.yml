@@ -109,6 +109,8 @@ jobs:
           echo "signing=$signing" >> "$GITHUB_OUTPUT"
       - name: Check the release notes filter
         run: bash ../.github/play-release-notes.test.sh
+      - name: Check the promote inputs and track lookup
+        run: bash ../.github/play-promote.test.sh
       - name: Check the version tag
         id: tag
         if: github.ref_type == 'tag'
@@ -277,36 +279,13 @@ jobs:
           jq -nr --rawfile notes "$source" -f ../.github/play-release-notes.jq > "$RUNNER_TEMP/play-notes.txt"
           echo "Play release notes:"
           cat "$RUNNER_TEMP/play-notes.txt"
-      # The service account signs a short-lived JWT and trades it for an access token
-      # (Google's OAuth flow for service accounts); no extra API or role is needed.
-      # The key exists only in a mode 600 file under $RUNNER_TEMP for this step.
+      # .github/play-token.sh: a short-lived JWT signed by the service account, traded
+      # for an access token. play-promote.yml uses it too.
       - name: Get a Play Developer API token
         if: github.ref_type == 'tag'
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
-        run: |
-          if [ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]; then
-            echo "::error::A release needs the PLAY_SERVICE_ACCOUNT_JSON secret"
-            exit 1
-          fi
-          umask 077
-          key="$RUNNER_TEMP/play-key.pem"
-          jq -er .private_key <<< "$PLAY_SERVICE_ACCOUNT_JSON" > "$key"
-          email="$(jq -er .client_email <<< "$PLAY_SERVICE_ACCOUNT_JSON")"
-          token_uri="$(jq -er .token_uri <<< "$PLAY_SERVICE_ACCOUNT_JSON")"
-          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
-          now="$(date +%s)"
-          header="$(printf '%s' '{"alg":"RS256","typ":"JWT"}' | b64url)"
-          claims="$(jq -cn --arg iss "$email" --arg aud "$token_uri" --argjson iat "$now" \
-            '{iss: $iss, scope: "https://www.googleapis.com/auth/androidpublisher", aud: $aud,
-              iat: $iat, exp: ($iat + 600)}' | b64url)"
-          signature="$(printf '%s.%s' "$header" "$claims" | openssl dgst -sha256 -sign "$key" | b64url)"
-          token="$(curl -sS --fail-with-body "$token_uri" \
-            --data-urlencode 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer' \
-            --data-urlencode "assertion=$header.$claims.$signature" | jq -er .access_token)"
-          echo "::add-mask::$token"
-          # A file, not a step output: outputs holding a secret are dropped.
-          printf '%s' "$token" > "$RUNNER_TEMP/play-token"
+        run: bash ../.github/play-token.sh "$RUNNER_TEMP/play-token"
       - name: Upload to the Play internal testing track
         if: github.ref_type == 'tag'
         env:
