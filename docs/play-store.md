@@ -156,7 +156,7 @@ command line or printed. Rows 1 to 3 start only after the push run of
 | 7 | Owner | Fill the store listing: texts from this file, graphics from `docs/play-store/`. |
 | 8 | Owner | Done (2026-11-14): build 181 uploaded to Internal testing, Play App Signing accepted, installed from Play. |
 | 9 | Owner | Testing, Closed testing: create a track, add 15 or more testers by e-mail list (12 are required; the extra ones cover opt-outs, which would restart the count for that tester), roll out, and send them the opt-in link. They must stay opted in for 14 consecutive days. |
-| 10 | Owner | For every later version: publish a GitHub release (see "Releasing to Play" below). The build lands on the internal testing track; promote it to closed testing in Play Console. |
+| 10 | Owner | For every later version: publish a GitHub release (see "Releasing to Play" below). The build lands on the internal testing track; promote it to closed testing with `play-promote.yml` ("Promoting a release" below). |
 | 11 | Owner | After 14 days: "Apply for production access", answer the questions about the test, then create the production release. |
 
 ## How the bundle is built
@@ -226,8 +226,9 @@ gh variable set DEEPSEEK_MODEL --repo comdotlinux/simple-math-tester --body deep
 
 `DEEPSEEK_MODEL` is optional (default `deepseek-flash`).
 
-**Keep the release secrets in the `release` environment.** Only `v*` tags may
-deploy to it, so a pushed branch with a changed workflow cannot read them. To move
+**Keep the release secrets in the `release` environment.** Only `v*` tags and
+`main` (for the promote workflow) may deploy to it, so a pushed branch with a
+changed workflow cannot read them. To move
 them from the repository (each command reads a file or asks at a hidden prompt):
 
 ```
@@ -252,7 +253,38 @@ Each release:
    If it fails, fix the cause and re-run the job; nothing is released until the
    upload worked. A re-run uploads a new build number with the same version.
    The first tag's GitHub notes list every pull request merged so far.
-3. In Play Console, promote the release from internal testing to closed testing or
-   production when ready.
+3. Promote the release to closed testing or production when ready (below).
+
+### Promoting a release
+
+`.github/workflows/play-promote.yml` (manual only) moves a version that is on the
+internal testing track to closed testing (Play track `alpha`) or production. It
+does not rebuild: it reads the internal track, takes the release named
+`<version> (<build number>)` (the newest build if a tag was built twice), and
+puts the same build and the same Play release notes on the target track. It runs
+from `main` (the `release` environment allows `v*` tags and `main`):
+
+```
+gh workflow run play-promote.yml -f version=v1.1.0 -f track=closed-testing
+gh workflow run play-promote.yml -f version=v1.1.0 -f track=production -f rollout=100
+```
+
+`rollout` is a percent from 1 to 100 (default 100). Below 100 is a staged
+rollout; to widen it, run the same command again with a larger percent, and 100
+completes it. The run's last notice says which version is on which track at what
+percent.
+
+- Production, one time: in Play Console, Users and permissions, give the service
+  account **Release to production, exclude devices, and use Play App Signing** as
+  well. Without it, or without production access, the run fails and prints
+  Google's error.
+- A new personal developer account gets production access only after a closed
+  test with at least 12 testers opted in for 14 consecutive days (walkthrough rows
+  9 to 11).
+- Google reviews every release on closed testing and production before users get
+  it.
+- Play sends no notice when a review is approved (real-time developer
+  notifications cover only purchases and subscriptions), so nothing can promote
+  automatically on approval. Each promotion is a manual run.
 
 The App Store (iOS) is not set up yet.
