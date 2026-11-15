@@ -5,19 +5,103 @@ name: Play store listing
 # language's title, short and full description are replaced. Google reviews
 # listing changes before users see them. See "Store listing" in
 # docs/play-store.md.
+# It also shoots the seven phone screenshots in every app language and, in the
+# same edit, replaces each listing's phone screenshots with them.
 on:
   workflow_dispatch:
+    inputs:
+      screenshots:
+        description: 'Also replace the phone screenshots (off: texts only)'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 jobs:
+  # No secrets and no environment: runs on any ref, so a branch run makes the
+  # artifact for review while the push job is skipped.
+  screenshots:
+    name: Shoot the phone screenshots
+    if: inputs.screenshots
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      # Writes app:Play language pairs, en:en-US first. The trailing `-` fills
+      # process.argv[1], which the imported modules read to decide whether to run main().
+      - name: Map app languages to Play languages
+        working-directory: .
+        run: |
+          node -e "Promise.all([import('./tool/translate.mjs'), import('./tool/translate_listing.mjs')]).then(([{ languages }, { playCodes }]) => {
+            const missing = languages.filter((l) => !playCodes[l]);
+            if (missing.length) throw new Error('No Play language code for ' + missing.join(', '));
+            console.log(['en:en-US', ...languages.map((l) => l + ':' + playCodes[l])].join(' '));
+          })" - > "$RUNNER_TEMP/codes.txt"
+          cat "$RUNNER_TEMP/codes.txt"
+      - name: Shoot every language
+        run: |
+          export SCREENSHOT_DIR="$RUNNER_TEMP/raw" SCREENSHOT_SIZE=450x800 SCREENSHOT_PIXEL_RATIO=2.4
+          mkdir -p "$SCREENSHOT_DIR"
+          flutter test tool/screenshots_test.dart
+          codes="$(tr ' ' '\n' < "$RUNNER_TEMP/codes.txt" | cut -d: -f1 | grep -vx en | paste -sd,)"
+          SCREENSHOT_LANGUAGES="$codes" flutter test tool/screenshots_test.dart
+      # The shot-to-file table is in docs/play-store/README.md.
+      - name: Convert to 1080 x 1920 PNG without alpha
+        run: |
+          im=magick; command -v magick > /dev/null || im=convert
+          out="$RUNNER_TEMP/phone-screenshots"
+          for pair in $(cat "$RUNNER_TEMP/codes.txt"); do
+            code="${pair%%:*}" play="${pair#*:}"
+            prefix="$code-"; if [ "$code" = en ]; then prefix=; fi
+            mkdir -p "$out/$play"
+            for map in light-450x800-1b-switched:phone-1-practice light-450x800-2b-celebration:phone-2-correct \
+                light-450x800-3b-wrong-hints:phone-3-hints light-450x800-5-sprint:phone-4-sprint \
+                light-450x800-7-answers:phone-5-my-answers dark-450x800-1b-switched:phone-6-dark \
+                light-450x800-11b-compact-answers:phone-7-compact; do
+              "$im" "$RUNNER_TEMP/raw/$prefix${map%%:*}.png" -background white -alpha remove -alpha off \
+                "PNG24:$out/$play/${map#*:}.png"
+            done
+          done
+          bad=0
+          for png in "$out"/*/*.png; do
+            read -r size alpha < <(identify -format '%wx%h %A\n' "$png")
+            echo "$png $size alpha=$alpha"
+            if [ "$size" != 1080x1920 ] || [ "$alpha" = True ] || [ "$alpha" = Blend ]; then
+              echo "::error::$png is $size alpha=$alpha, not 1080x1920 without alpha"
+              bad=1
+            fi
+          done
+          exit "$bad"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: phone-screenshots
+          path: ${{ runner.temp }}/phone-screenshots
+          retention-days: 7
+          if-no-files-found: error
+
   listing:
     name: Push the store listings to Play
+    needs: screenshots
     # The Play key is a `release` environment secret, which only v* tags and main get.
-    if: github.ref == 'refs/heads/main'
+    # Also runs when the screenshots job was skipped (texts only).
+    if: github.ref == 'refs/heads/main' && !cancelled() && !failure()
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment: release
     defaults:
       run:
@@ -29,6 +113,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
+      - name: Download the phone screenshots
+        if: inputs.screenshots
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: phone-screenshots
+          path: ${{ runner.temp }}/phone-screenshots
       - name: Check the listings against Play's limits
         run: node tool/translate_listing.mjs --check
       - name: Get a Play Developer API token
@@ -36,8 +126,11 @@ jobs:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: bash .github/play-token.sh "$RUNNER_TEMP/play-token"
       - name: Update the listings
+        env:
+          SCREENSHOTS: ${{ inputs.screenshots }}
         run: |
           api=https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.linux.simplemathtester
+          upload=https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/com.linux.simplemathtester
           auth=(-H "Authorization: Bearer $(cat "$RUNNER_TEMP/play-token")")
           # --fail-with-body keeps Google's error JSON; print it to stderr, which a pipe
           # or $(...) does not swallow.
@@ -62,6 +155,21 @@ jobs:
             play -X PUT -H 'Content-Type: application/json' --data @"$RUNNER_TEMP/listing.json" \
               "$api/edits/$edit/listings/$language" > /dev/null
             echo "Updated $language"
+            if [ "$SCREENSHOTS" = true ]; then
+              shots="$RUNNER_TEMP/phone-screenshots/$language"
+              if ! compgen -G "$shots/phone-*.png" > /dev/null; then
+                echo "::error::No phone screenshots for $language"
+                exit 1
+              fi
+              # Only the phone screenshots: the icon and feature graphic stay as they are.
+              play -X DELETE "$api/edits/$edit/listings/$language/phoneScreenshots" > /dev/null
+              # The glob sorts phone-1 to phone-7, the order Play shows them in.
+              for png in "$shots"/phone-*.png; do
+                play -X POST -H 'Content-Type: image/png' --data-binary @"$png" \
+                  "$upload/edits/$edit/listings/$language/phoneScreenshots?uploadType=media" > /dev/null
+              done
+              echo "Replaced the phone screenshots of $language"
+            fi
           done
           play -X POST "$api/edits/$edit:commit" > /dev/null
           echo "::notice::Store listings sent to Play. Google reviews them before users see them."
