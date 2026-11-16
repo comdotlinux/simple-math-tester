@@ -94,7 +94,7 @@
   "volumeOff": "Volumul media al telefonului este oprit, așa că nu se aude nimic.",
   "vibration": "Vibrație",
   "vibrationSubtitle": "Vibrație scurtă la atingeri și răspunsuri (folosește setarea de feedback tactil a telefonului)",
-  "touchFeedbackOff": "Feedbackul tactil al telefonului este oprit, așa că nu există vibrație.",
+  "touchFeedbackOff": "Feedbackul tactil al telefonului este oprit, așa că nu vibrează.",
   "openPhoneSettings": "Deschide setările",
   "theme": "Temă",
   "themeSystem": "Sistem",
