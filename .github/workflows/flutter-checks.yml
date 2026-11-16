@@ -54,6 +54,10 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed lib test integration_test integration_test_web test_driver tool
       - run: flutter analyze
       - run: flutter test
+      - name: Check the Play release notes and promote scripts
+        run: |
+          bash ../.github/play-release-notes.test.sh
+          bash ../.github/play-promote.test.sh
       # Settings shows the version: the web build from main takes the newest
       # release tag, as the pubspec version is never bumped.
       - name: Build web

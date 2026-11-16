@@ -1,8 +1,9 @@
 name: Promote Play release
 
 # Manual only: moves a version that play-bundle.yml put on the internal testing
-# track to closed testing or production, with the same build and release notes.
-# No rebuild. Run it again with a larger rollout to widen a staged production
+# track to closed testing or production, with the same build. No rebuild. The
+# release notes are written again (play-release-notes.sh) for the changes since
+# the version that was on the target track, or since notes-since. Run it again with a larger rollout to widen a staged production
 # rollout. See "Promoting a release" in docs/play-store.md.
 on:
   workflow_dispatch:
@@ -21,6 +22,11 @@ on:
         required: true
         type: string
         default: '100'
+      notes-since:
+        description: 'Optional tag the release notes start from, for example v1.1.4 (default: the version on the target track)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -39,6 +45,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # play-promote-changes.sh needs the tags and main's history.
+          fetch-depth: 0
           persist-credentials: false
       - name: Check the inputs
         id: inputs
@@ -66,12 +74,20 @@ jobs:
         env:
           PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: bash .github/play-token.sh "$RUNNER_TEMP/play-token"
+      # The notes are written again for what the target track's users get: the changes
+      # from the version they have (or notes-since) to this one, summed up and
+      # translated like play-bundle.yml does. Without a start, the release keeps the
+      # notes it has on the internal track.
       - name: Put the internal release on the target track
         env:
+          VERSION: ${{ inputs.version }}
           NAME: ${{ steps.inputs.outputs.name }}
           PLAY_TRACK: ${{ steps.inputs.outputs.play_track }}
           TRACK: ${{ inputs.track }}
           ROLLOUT: ${{ steps.inputs.outputs.rollout }}
+          NOTES_SINCE: ${{ inputs.notes-since }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-flash' }}
         run: |
           api=https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.linux.simplemathtester
           auth=(-H "Authorization: Bearer $(cat "$RUNNER_TEMP/play-token")")
@@ -97,6 +113,24 @@ jobs:
               -f .github/play-promote.jq "$RUNNER_TEMP/internal.json" > "$RUNNER_TEMP/track.json"; then
             echo "::error::Version $NAME is not on the internal testing track; push its tag first"
             exit 1
+          fi
+          # Read before the update: the version the target track's users have now.
+          play "$api/edits/$edit/tracks/$PLAY_TRACK" > "$RUNNER_TEMP/target.json"
+          current="$(jq -r -f .github/play-track-version.jq "$RUNNER_TEMP/target.json")"
+          echo "On the $TRACK track now: ${current:-nothing}"
+          bash .github/play-promote-changes.sh "$VERSION" "$NOTES_SINCE" "$current" > "$RUNNER_TEMP/changes.md"
+          if [ -s "$RUNNER_TEMP/changes.md" ]; then
+            echo "Changes:"
+            cat "$RUNNER_TEMP/changes.md"
+            bash .github/play-release-notes.sh "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP"
+            notes="$(cat "$RUNNER_TEMP/play-notes.txt")"
+            # Notes go only to languages that have a store listing; Play rejects others.
+            listed="$(play "$api/edits/$edit/listings" | jq -c '[.listings[]?.language]')" || listed='[]'
+            jq -n --arg english "${notes:-Version $NAME}" --slurpfile answer "$RUNNER_TEMP/ai-answer.json" \
+              --argjson listed "$listed" -f .github/play-release-notes-languages.jq > "$RUNNER_TEMP/release-notes.json"
+            jq --slurpfile notes "$RUNNER_TEMP/release-notes.json" '.releases[0].releaseNotes = $notes[0]' \
+              "$RUNNER_TEMP/track.json" > "$RUNNER_TEMP/track-notes.json"
+            mv "$RUNNER_TEMP/track-notes.json" "$RUNNER_TEMP/track.json"
           fi
           echo "Track update:"
           cat "$RUNNER_TEMP/track.json"
