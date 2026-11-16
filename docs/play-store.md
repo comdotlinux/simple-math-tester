@@ -53,7 +53,7 @@ edit them there, not in Play Console. Every app language has its own listing in
 
 Play language codes (Play Console Help, "Add translations and localized
 assets"): `de-DE`, `pl-PL`, `hi-IN`, `mr-IN`, `te-IN`, `ta-IN`, `ml-IN`,
-`fr-FR` and `ro` (Romanian has no region). `playCodes` in
+`fr-FR`, `ro` and `uk` (Romanian and Ukrainian have no region). `playCodes` in
 `tool/translate_listing.mjs` maps the app's languages to them.
 
 One time (owner): in Play Console, Users and permissions, give the service

@@ -200,10 +200,11 @@ try {
     );
   }
 
-  // Each Indian script draws from the bundled fonts: with any glyph missing,
-  // the web engine would fetch a Noto font from fonts.gstatic.com.
+  // Each Indian script (and Cyrillic, from Roboto) draws from the bundled
+  // fonts: with any glyph missing, the web engine would fetch a Noto font
+  // from fonts.gstatic.com.
   stopServer = await serve(firstBuild);
-  for (const code of ['hi', 'te', 'ta', 'ml']) {
+  for (const code of ['hi', 'te', 'ta', 'ml', 'uk']) {
     const texts = JSON.parse(
       await readFile(new URL(`../app/lib/l10n/app_${code}.arb`, import.meta.url), 'utf8'),
     );
