@@ -10,7 +10,7 @@ import { pathToFileURL } from 'node:url';
 import { hash, languageName, languages, readJson } from './translate.mjs';
 
 // Play's store listing language codes (Play Console Help, "Add translations
-// and localized assets"): most carry a region, Romanian does not.
+// and localized assets"): most carry a region, Romanian and Ukrainian do not.
 export const playCodes = {
   de: 'de-DE',
   pl: 'pl-PL',
@@ -21,6 +21,7 @@ export const playCodes = {
   ml: 'ml-IN',
   fr: 'fr-FR',
   ro: 'ro',
+  uk: 'uk',
 };
 
 // Play's limits in characters.

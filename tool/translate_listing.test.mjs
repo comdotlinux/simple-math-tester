@@ -41,6 +41,7 @@ test('every app language has a Play listing code', () => {
   assert.deepEqual(Object.keys(playCodes).sort(), [...languages].sort());
   assert.equal(playCodes.de, 'de-DE');
   assert.equal(playCodes.ro, 'ro');
+  assert.equal(playCodes.uk, 'uk');
 });
 
 test('a listing text must fit Play and keep the app name and digits', () => {

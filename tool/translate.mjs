@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro'];
+export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro', 'uk'];
 
 const dir = new URL('../app/lib/l10n/', import.meta.url);
 // The English text each translation was made from, as a short hash per key,

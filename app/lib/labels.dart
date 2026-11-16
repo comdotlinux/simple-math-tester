@@ -61,4 +61,5 @@ const englishLanguageNames = {
   'ml': 'Malayalam',
   'fr': 'French',
   'ro': 'Romanian',
+  'uk': 'Ukrainian',
 };

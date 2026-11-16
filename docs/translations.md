@@ -1,7 +1,7 @@
 # Translations
 
 The app is in English (the source) and German, Polish, Hindi, Marathi,
-Telugu, Tamil, Malayalam, French and Romanian. It follows the device
+Telugu, Tamil, Malayalam, French, Romanian and Ukrainian. It follows the device
 language, English when that language has no translation; Settings >
 Language overrides it.
 
