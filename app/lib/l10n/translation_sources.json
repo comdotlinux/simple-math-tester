@@ -176,7 +176,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "pl": {
     "languageName": "ba118bf7fc9c",
@@ -355,7 +358,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "hi": {
     "languageName": "ba118bf7fc9c",
@@ -534,7 +540,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "mr": {
     "languageName": "ba118bf7fc9c",
@@ -713,7 +722,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "te": {
     "languageName": "ba118bf7fc9c",
@@ -892,7 +904,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "ta": {
     "languageName": "ba118bf7fc9c",
@@ -1071,7 +1086,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "ml": {
     "languageName": "ba118bf7fc9c",
@@ -1250,7 +1268,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "fr": {
     "languageName": "ba118bf7fc9c",
@@ -1429,7 +1450,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "ro": {
     "languageName": "ba118bf7fc9c",
@@ -1608,7 +1632,10 @@
     "updateReminderTitle": "f26f3275e735",
     "updateReminderSubtitle": "f2d6d4c8dae2",
     "updateReminderDismiss": "a0e63d7c7125",
-    "updateReminderLater": "77617f560df1"
+    "updateReminderLater": "77617f560df1",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   },
   "uk": {
     "languageName": "ba118bf7fc9c",
@@ -1787,6 +1814,9 @@
     "privacyChildrenHeading": "3583a358a585",
     "privacyChildren": "051f6331aed0",
     "privacyChangesHeading": "4364c34e3191",
-    "privacyChanges": "cce65dd89bb6"
+    "privacyChanges": "cce65dd89bb6",
+    "volumeOff": "b98ef0cd3ede",
+    "touchFeedbackOff": "6f103f77f674",
+    "openPhoneSettings": "ca381c1e76e6"
   }
 }
