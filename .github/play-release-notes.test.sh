@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Checks play-release-notes.jq and play-release-notes-languages.jq.
+# Checks play-release-notes.jq, play-release-notes-languages.jq and
+# play-release-notes.sh (without a DeepSeek key).
 # Run: bash .github/play-release-notes.test.sh
 set -euo pipefail
 filter="$(dirname "$0")/play-release-notes.jq"
@@ -59,6 +60,16 @@ notes 'empty, non-text, too long and non-Western digit translations are left out
 notes 'no answer gives English only' '' '["de-DE"]' '[{"language":"en-US","text":"- New"}]'
 notes 'an answer that is not an object gives English only' '"text"' '["de-DE"]' \
   '[{"language":"en-US","text":"- New"}]'
+
+# play-release-notes.sh without DEEPSEEK_API_KEY: the plain list of changes, no translations.
+out="$(mktemp -d)"
+printf '* feat: Add Ukrainian (#84)\n* Bigger confetti by @someone in https://github.com/o/r/pull/31\n' > "$out/changes.md"
+DEEPSEEK_API_KEY='' bash "$(dirname "$0")/play-release-notes.sh" "$out/changes.md" "$out" > /dev/null
+if [ "$(cat "$out/play-notes.txt")" != $'- feat: Add Ukrainian (#84)\n- Bigger confetti' ] \
+  || [ "$(cat "$out/ai-answer.json")" != '{}' ]; then
+  printf 'FAIL play-release-notes.sh without a key\n%s\n%s\n' "$(cat "$out/play-notes.txt")" "$(cat "$out/ai-answer.json")"
+  failures=$((failures + 1))
+fi
 
 if [ "$failures" -gt 0 ]; then
   echo "$failures release notes check(s) failed"

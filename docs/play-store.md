@@ -212,7 +212,8 @@ Release notes:
   on Play get notes (`.github/play-release-notes-languages.jq`); a translation
   that is missing, longer than 500 characters or has non-Western digits is left
   out, and those users see the English notes. A failed translation never fails
-  the release. Promotion copies the notes in every language.
+  the release. Both steps live in `.github/play-release-notes.sh`, which
+  promotion uses too ("Promoting a release" below).
 
 One-time setup (owner, about 15 minutes; the first `.aab` must already have been
 uploaded by hand, walkthrough row 8, done 2026-11-14):
@@ -287,8 +288,8 @@ Each release:
 internal testing track to closed testing (Play track `alpha`) or production. It
 does not rebuild: it reads the internal track, takes the release named
 `<version> (<build number>)` (the newest build if a tag was built twice), and
-puts the same build and the same Play release notes on the target track. It runs
-from `main` (the `release` environment allows `v*` tags and `main`):
+puts the same build on the target track. It runs from `main` (the `release`
+environment allows `v*` tags and `main`):
 
 ```
 gh workflow run play-promote.yml -f version=v1.1.0 -f track=closed-testing
@@ -299,6 +300,30 @@ gh workflow run play-promote.yml -f version=v1.1.0 -f track=production -f rollou
 rollout; to widen it, run the same command again with a larger percent, and 100
 completes it. The run's last notice says which version is on which track at what
 percent.
+
+Release notes on promotion: the internal notes cover only the changes since the
+previous tag, but users of the target track may come from an older version. So
+the run writes the notes again, in every listing language, for the changes from
+the version on the target track to the promoted one:
+
+- Before the update it reads the target track and takes the version its users
+  have (`.github/play-track-version.jq`: the newest completed release, else the
+  newest staged one). Version name `1.1.4` means tag `v1.1.4`.
+- `.github/play-promote-changes.sh` lists the pull requests merged on `main`
+  from that tag to the promoted one, and `.github/play-release-notes.sh` turns
+  them into a DeepSeek summary and its translations, as for a new release.
+- The optional `notes-since` input (a tag such as `v1.1.4`) sets the start
+  instead.
+- When there is no start (empty track, the same version is already there, the
+  tag is missing or not before the promoted one), the release keeps the notes
+  it has on the internal track. The run's log says which range it used.
+
+To rewrite the notes of a version that is already on a track, promote it again
+to the same track with `notes-since`:
+
+```
+gh workflow run play-promote.yml -f version=v1.2.1 -f track=closed-testing -f notes-since=v1.1.4
+```
 
 - Production, one time: in Play Console, Users and permissions, give the service
   account **Release to production, exclude devices, and use Play App Signing** as

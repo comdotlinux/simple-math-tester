@@ -295,11 +295,11 @@ jobs:
           fi
           echo "$AAB_SHA256  build/app/outputs/bundle/release/app-release.aab" | sha256sum -c -
       # GitHub's automatic notes (merged pull requests since the last tag) go on the
-      # GitHub release. Play gets a short summary of them written by DeepSeek, or the
-      # automatic notes themselves when there is no DEEPSEEK_API_KEY or the call
-      # fails; either way play-release-notes.jq makes them plain, whole lines, 500
-      # characters at most. A second call translates a DeepSeek summary into every
-      # language of play/listing/; the upload sends the valid ones
+      # GitHub release. .github/play-release-notes.sh (shared with play-promote.yml)
+      # turns them into the Play notes: a DeepSeek summary, or the automatic notes
+      # when there is no DEEPSEEK_API_KEY or the call fails, made plain, whole lines,
+      # 500 characters at most; and its translations into every language of
+      # play/listing/. The upload sends the valid ones
       # (play-release-notes-languages.jq). A missing translation never fails a release.
       - name: Write the release notes
         env:
@@ -310,57 +310,7 @@ jobs:
         run: |
           gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body \
             > "$RUNNER_TEMP/github-notes.md"
-          source="$RUNNER_TEMP/github-notes.md"
-          if [ -n "$DEEPSEEK_API_KEY" ]; then
-            jq -n --arg model "$DEEPSEEK_MODEL" --rawfile notes "$RUNNER_TEMP/github-notes.md" '{
-              model: $model, stream: false, temperature: 0.3, max_tokens: 300,
-              # Thinking is on by default and spends max_tokens before any answer.
-              thinking: {type: "disabled"},
-              messages: [
-                {role: "system", content: "You write Google Play release notes for Simple Math Tester, a math practice app for children. You get the merged pull requests of a release. Write 2 to 5 short lines in plain English for parents and children, each starting with \"- \", about changes they can see or feel. Leave out tests, CI, build, docs and refactoring. No Markdown, links, names or version numbers. At most 450 characters in total. If nothing is visible to users, write exactly: - Small fixes and improvements."},
-                {role: "user", content: $notes}
-              ]}' > "$RUNNER_TEMP/ai-request.json"
-            if curl -sS --fail-with-body --max-time 60 https://api.deepseek.com/chat/completions \
-                -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
-                --data @"$RUNNER_TEMP/ai-request.json" > "$RUNNER_TEMP/ai-response.json" \
-              && jq -er '.choices[0].message.content | select(length > 0)' "$RUNNER_TEMP/ai-response.json" \
-                > "$RUNNER_TEMP/ai-notes.txt"; then
-              source="$RUNNER_TEMP/ai-notes.txt"
-            else
-              reason="$(jq -r '.error.message // .choices[0].finish_reason // empty' "$RUNNER_TEMP/ai-response.json" 2>/dev/null || true)"
-              echo "::warning::DeepSeek summary failed (${reason:-no response}); Play gets the automatic notes"
-            fi
-          fi
-          jq -nr --rawfile notes "$source" -f ../.github/play-release-notes.jq > "$RUNNER_TEMP/play-notes.txt"
-          echo "Play release notes:"
-          cat "$RUNNER_TEMP/play-notes.txt"
-          # Translations of the summary by Play language code, from a second call so a
-          # failed translation never costs the English summary.
-          echo '{}' > "$RUNNER_TEMP/ai-answer.json"
-          # || true: no translations yet means nothing to translate.
-          languages="$(cd ../play/listing && ls -- *.json | sed 's/\.json$//' \
-            | { grep -vxE 'en-US|translation_sources' || true; } | paste -sd, -)"
-          if [ "$source" = "$RUNNER_TEMP/ai-notes.txt" ] && [ -n "$languages" ]; then
-            jq -n --arg model "$DEEPSEEK_MODEL" --arg languages "$languages" \
-              --rawfile notes "$RUNNER_TEMP/play-notes.txt" '{
-              model: $model, stream: false, temperature: 0.2, max_tokens: 4000,
-              thinking: {type: "disabled"},
-              response_format: {type: "json_object"},
-              messages: [
-                {role: "system", content: ("You translate Google Play release notes of Simple Math Tester, a math practice app for children, from English into each of these Google Play languages: " + $languages + ". Keep the same lines, each starting with \"- \", in simple words a child understands. Keep the name Simple Math Tester. Digits are always Western 0-9. At most 450 characters per language. Answer with one JSON object that maps each language code to its notes, nothing else.")},
-                {role: "user", content: $notes}
-              ]}' > "$RUNNER_TEMP/ai-translate-request.json"
-            if curl -sS --fail-with-body --max-time 120 https://api.deepseek.com/chat/completions \
-                -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H 'Content-Type: application/json' \
-                --data @"$RUNNER_TEMP/ai-translate-request.json" > "$RUNNER_TEMP/ai-translate-response.json" \
-              && jq -e '.choices[0].message.content | fromjson | objects' "$RUNNER_TEMP/ai-translate-response.json" \
-                > "$RUNNER_TEMP/ai-translations.json"; then
-              cp "$RUNNER_TEMP/ai-translations.json" "$RUNNER_TEMP/ai-answer.json"
-            else
-              reason="$(jq -r '.error.message // .choices[0].finish_reason // empty' "$RUNNER_TEMP/ai-translate-response.json" 2>/dev/null || true)"
-              echo "::warning::DeepSeek translation of the notes failed (${reason:-no response}); Play gets English notes only"
-            fi
-          fi
+          bash ../.github/play-release-notes.sh "$RUNNER_TEMP/github-notes.md" "$RUNNER_TEMP"
       # .github/play-token.sh: a short-lived JWT signed by the service account, traded
       # for an access token. play-promote.yml uses it too.
       - name: Get a Play Developer API token
