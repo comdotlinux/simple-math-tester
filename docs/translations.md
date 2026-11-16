@@ -28,7 +28,10 @@ Language overrides it.
    Run workflow). For each language it translates only the keys missing from
    that language's file or whose English changed, checks placeholders,
    plurals and digits, runs the translation tests, and opens a pull request
-   from the branch `translations/auto`, or updates the open one.
+   from the branch `translations/auto`, or updates the open one. Strings
+   go to DeepSeek in batches. A string that fails keeps its old text (English
+   in a new file) and is retried on the next run; the run fails only when
+   nothing at all could be translated.
 3. The workflow starts the Flutter checks on that branch itself. Review and
    merge the pull request.
 

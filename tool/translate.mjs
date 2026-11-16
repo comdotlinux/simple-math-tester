@@ -61,13 +61,67 @@ export async function readJson(url, fallback) {
   }
 }
 
+// One request translates at most this many keys or English characters, so the
+// answer stays far below max_tokens (a whole new language once came back empty).
+export const batchKeys = 20;
+export const batchChars = 1500;
+// Existing translations sent along for consistent wording, at most this many characters.
+const contextChars = 3000;
+export const maxTokens = 8192;
+
+/** [keys] split into batches of at most [maxKeys] keys and about [maxChars] English characters. */
+export function batches(template, keys, maxKeys = batchKeys, maxChars = batchChars) {
+  const out = [];
+  let chars = 0;
+  for (const k of keys) {
+    const last = out.at(-1);
+    if (!last || last.length >= maxKeys || chars + template[k].length > maxChars) {
+      out.push([k]);
+      chars = template[k].length;
+    } else {
+      last.push(k);
+      chars += template[k].length;
+    }
+  }
+  return out;
+}
+
+/** The translations object in a chat completion [body], or an Error saying why there is none. */
+export function parseAnswer(body, keys) {
+  const choice = body?.choices?.[0];
+  // split: a smaller request may get a whole answer.
+  if (choice?.finish_reason === 'length') {
+    return Object.assign(new Error('cut off (finish_reason length)'), { split: true });
+  }
+  let answer;
+  try {
+    answer = JSON.parse(choice?.message?.content ?? '');
+  } catch {
+    return Object.assign(new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`), { split: true });
+  }
+  if (typeof answer !== 'object' || answer === null) return new Error('answer is not a JSON object');
+  // The model sometimes wraps the answer, e.g. in {"translate": {...}}.
+  const values = Object.values(answer);
+  if (!keys.some((k) => k in answer) && values.length === 1 && typeof values[0] === 'object') {
+    answer = values[0] ?? {};
+  }
+  if (!keys.some((k) => k in answer)) {
+    return new Error(`none of the requested keys in the answer (got: ${Object.keys(answer).slice(0, 5).join(', ') || 'nothing'})`);
+  }
+  return answer;
+}
+
 async function ask(model, key, template, arb, language, keys) {
   const request = Object.fromEntries(
     keys.map((k) => [k, { text: template[k], description: template[`@${k}`]?.description ?? '' }]),
   );
-  const existing = Object.fromEntries(
-    Object.entries(arb).filter(([k]) => !k.startsWith('@') && !keys.includes(k)),
-  );
+  const existing = {};
+  let chars = 0;
+  for (const [k, v] of Object.entries(arb)) {
+    if (k.startsWith('@') || keys.includes(k) || chars + v.length > contextChars) continue;
+    existing[k] = v;
+    chars += v.length;
+  }
   const system = [
     `You translate the user interface of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Use friendly, simple, natural everyday words a school child understands, and the informal "you". Button labels must stay short: the app runs on 360 px wide phones.',
@@ -88,6 +142,7 @@ async function ask(model, key, template, arb, language, keys) {
       thinking: { type: 'disabled' },
       response_format: { type: 'json_object' },
       temperature: 0.2,
+      max_tokens: maxTokens,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -97,15 +152,62 @@ async function ask(model, key, template, arb, language, keys) {
   if (!response.ok) {
     throw new Error(`DeepSeek answered ${response.status}: ${(await response.text()).slice(0, 500)}`);
   }
-  const body = await response.json();
-  return JSON.parse(body.choices[0].message.content);
+  const answer = parseAnswer(await response.json(), keys);
+  if (answer instanceof Error) throw answer;
+  return answer;
 }
 
-/** The ARB in template order, locale first, without keys the template lost. */
-function ordered(template, arb, language) {
+/**
+ * Translates [keys] with [request] (keys => answer, or throws). An answer cut
+ * off or unparseable is split in half, down to single keys; other failures and
+ * rejected strings get one retry. Returns the accepted strings and failed keys.
+ */
+export async function translateBatch(name, template, keys, request, log = console.log) {
+  const accepted = {};
+  const failed = [];
+  const queue = [[keys, 1]];
+  while (queue.length > 0) {
+    const [ks, attempt] = queue.shift();
+    let answer;
+    try {
+      answer = await request(ks);
+    } catch (error) {
+      log(`${name} failed (attempt ${attempt}, ${ks.length} keys): ${error.message}`);
+      if (error.split && ks.length > 1) {
+        const half = Math.ceil(ks.length / 2);
+        queue.unshift([ks.slice(0, half), 1], [ks.slice(half), 1]);
+      } else if (attempt < 2) {
+        queue.unshift([ks, attempt + 1]);
+      } else {
+        failed.push(...ks);
+      }
+      continue;
+    }
+    const rejected = [];
+    for (const k of ks) {
+      const why = problem(template[k], answer[k]);
+      if (why) {
+        rejected.push(k);
+        log(`${name}: ${k} rejected (attempt ${attempt}): ${why}`);
+      } else {
+        accepted[k] = answer[k];
+      }
+    }
+    if (rejected.length > 0 && attempt < 2) queue.unshift([rejected, attempt + 1]);
+    else failed.push(...rejected);
+  }
+  return { accepted, failed };
+}
+
+/**
+ * The ARB in template order, locale first, without keys the template lost.
+ * A key never translated gets the English text: it has no hash, so it stays
+ * stale and is retried, and the app still finds every key.
+ */
+export function ordered(template, arb, language) {
   const out = { '@@locale': language };
   for (const key of Object.keys(template)) {
-    if (!key.startsWith('@') && key in arb) out[key] = arb[key];
+    if (!key.startsWith('@')) out[key] = key in arb ? arb[key] : template[key];
   }
   return out;
 }
@@ -118,32 +220,29 @@ async function main() {
 
   const template = JSON.parse(await readFile(new URL('app_en.arb', dir), 'utf8'));
   const sources = await readJson(sourcesFile, {});
-  let failures = 0;
+  const failed = [];
+  let translated = 0;
   for (const language of languages) {
     const file = new URL(`app_${language}.arb`, dir);
     const arb = await readJson(file, {});
     sources[language] ??= {};
-    let keys = stale(template, arb, sources[language]);
-    console.log(`${language}: ${keys.length} to translate${keys.length ? `: ${keys.join(', ')}` : ''}`);
-    if (dryRun || keys.length === 0) continue;
+    const all = stale(template, arb, sources[language]);
+    console.log(`${language}: ${all.length} to translate${all.length ? `: ${all.join(', ')}` : ''}`);
+    if (dryRun || all.length === 0) continue;
 
-    // One retry for answers that fail the checks.
-    for (let attempt = 1; attempt <= 2 && keys.length > 0; attempt++) {
-      const answer = await ask(model, key, template, arb, language, keys);
-      const rejected = [];
-      for (const k of keys) {
-        const why = problem(template[k], answer[k]);
-        if (why) {
-          rejected.push(k);
-          console.log(`${language}: ${k} rejected (attempt ${attempt}): ${why}`);
-        } else {
-          arb[k] = answer[k];
-          sources[language][k] = hash(template[k]);
-        }
+    const parts = batches(template, all);
+    for (const [i, batch] of parts.entries()) {
+      const name = `${language}: batch ${i + 1}/${parts.length}`;
+      const result = await translateBatch(name, template, batch, (keys) =>
+        ask(model, key, template, arb, language, keys),
+      );
+      for (const [k, text] of Object.entries(result.accepted)) {
+        arb[k] = text;
+        sources[language][k] = hash(template[k]);
+        translated++;
       }
-      keys = rejected;
+      failed.push(...result.failed.map((k) => `${language} ${k}`));
     }
-    failures += keys.length;
     // Hashes of keys the template no longer has are dropped.
     sources[language] = Object.fromEntries(
       Object.entries(sources[language]).filter(([k]) => k in template),
@@ -154,7 +253,11 @@ async function main() {
     const sorted = Object.fromEntries(languages.map((l) => [l, sources[l]]));
     await writeFile(sourcesFile, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  if (failures > 0) throw new Error(`${failures} strings could not be translated; see above`);
+  if (failed.length === 0) return;
+  // A failed key keeps its old (or hand-written, or English) text and old hash, so it stays stale.
+  console.log(`Not translated, retried on the next run:\n- ${failed.join('\n- ')}`);
+  // Nothing at all worked: most likely the key, model or endpoint is wrong.
+  if (translated === 0) throw new Error('No string could be translated; see above');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
