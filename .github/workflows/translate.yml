@@ -58,8 +58,11 @@ jobs:
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL }}
+          FAILED_KEYS_FILE: ${{ runner.temp }}/failed-keys.txt
         run: |
-          node tool/translate.mjs
+          # Exit code 2: some strings failed every retry. The others are still
+          # checked and go into the pull request; the last step fails the run.
+          node tool/translate.mjs || [ $? -eq 2 ]
           node tool/translate_listing.mjs
       # A pull request opened with GITHUB_TOKEN starts no other workflow, so
       # the translations are checked here before it is opened.
@@ -101,3 +104,12 @@ jobs:
           # A pull request pushed with GITHUB_TOKEN starts no workflow by itself;
           # a dispatch does.
           gh workflow run flutter-checks.yml --ref "$branch" -f environment-name=none
+      - name: Fail on strings that were not translated
+        env:
+          FAILED_KEYS_FILE: ${{ runner.temp }}/failed-keys.txt
+        run: |
+          if [ -s "$FAILED_KEYS_FILE" ]; then
+            echo "::error::Not translated after every retry (they keep their old text and are retried on the next run):"
+            cat "$FAILED_KEYS_FILE"
+            exit 1
+          fi

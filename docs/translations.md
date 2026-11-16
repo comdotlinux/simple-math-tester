@@ -29,9 +29,14 @@ Language overrides it.
    that language's file or whose English changed, checks placeholders,
    plurals and digits, runs the translation tests, and opens a pull request
    from the branch `translations/auto`, or updates the open one. Strings
-   go to DeepSeek in batches. A string that fails keeps its old text (English
-   in a new file) and is retried on the next run; the run fails only when
-   nothing at all could be translated.
+   go to DeepSeek in batches of up to 60 (about 4500 English characters,
+   `max_tokens` 32768). When a batch fails (HTTP error, an answer cut off or
+   not valid JSON), its keys are sent again in batches of 20, each with up
+   to two retries; a rejected or missing string is sent again the same way,
+   alone with the other failed keys. A string that fails every attempt keeps
+   its old text (English in a new file) and is retried on the next run. The
+   other translations still go into the pull request, but the run then
+   fails and its last step lists the failed keys per language.
 3. The workflow starts the Flutter checks on that branch itself. Review and
    merge the pull request.
 
