@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { batches, hash, ordered, parseAnswer, placeholders, problem, stale } from './translate.mjs';
+import {
+  batches,
+  hash,
+  ordered,
+  parseAnswer,
+  placeholders,
+  problem,
+  stale,
+  translateBatch,
+} from './translate.mjs';
 
 test('placeholders are argument names, not words in plural branches', () => {
   assert.deepEqual(
@@ -48,6 +57,29 @@ test('stale keys are sent in batches bounded by key count and characters', () =>
   // A single string longer than the budget still gets its own batch.
   assert.deepEqual(batches(template, ['d', 'a'], 40, 5), [['d'], ['a']]);
   assert.deepEqual(batches(template, []), []);
+});
+
+test('a cut-off answer is split in half down to single keys; failures get one retry', async () => {
+  const template = { a: 'A', b: 'B', c: 'C', d: 'D', e: 'E', f: 'F' };
+  const requests = [];
+  // A fake DeepSeek: more than two keys are cut off, "d" always comes back
+  // empty, and the first request for "f" alone fails with HTTP 500.
+  const request = async (keys) => {
+    requests.push(keys.join(''));
+    if (keys.join('') === 'f' && !requests.slice(0, -1).includes('f')) {
+      throw new Error('DeepSeek answered 500: busy');
+    }
+    const cut = keys.length > 2;
+    const content = cut ? '{"a":"x' : JSON.stringify(Object.fromEntries(keys.map((k) => [k, k === 'd' ? '' : `${k}!`])));
+    const answer = parseAnswer({ choices: [{ finish_reason: cut ? 'length' : 'stop', message: { content } }] }, keys);
+    if (answer instanceof Error) throw answer;
+    return answer;
+  };
+  const log = [];
+  const result = await translateBatch('uk: batch 1/1', template, Object.keys(template), request, (l) => log.push(l));
+  assert.deepEqual(result, { accepted: { a: 'a!', b: 'b!', c: 'c!', e: 'e!', f: 'f!' }, failed: ['d'] });
+  assert.deepEqual(requests, ['abcdef', 'abc', 'ab', 'c', 'def', 'de', 'd', 'f', 'f']);
+  assert.equal(log[0], 'uk: batch 1/1 failed (attempt 1, 6 keys): cut off (finish_reason length)');
 });
 
 test('a cut-off, unparseable or empty answer is a failed attempt', () => {

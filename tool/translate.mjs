@@ -63,8 +63,8 @@ export async function readJson(url, fallback) {
 
 // One request translates at most this many keys or English characters, so the
 // answer stays far below max_tokens (a whole new language once came back empty).
-export const batchKeys = 40;
-export const batchChars = 3000;
+export const batchKeys = 20;
+export const batchChars = 1500;
 // Existing translations sent along for consistent wording, at most this many characters.
 const contextChars = 3000;
 export const maxTokens = 8192;
@@ -89,12 +89,15 @@ export function batches(template, keys, maxKeys = batchKeys, maxChars = batchCha
 /** The translations object in a chat completion [body], or an Error saying why there is none. */
 export function parseAnswer(body, keys) {
   const choice = body?.choices?.[0];
-  if (choice?.finish_reason === 'length') return new Error('cut off (finish_reason length)');
+  // split: a smaller request may get a whole answer.
+  if (choice?.finish_reason === 'length') {
+    return Object.assign(new Error('cut off (finish_reason length)'), { split: true });
+  }
   let answer;
   try {
     answer = JSON.parse(choice?.message?.content ?? '');
   } catch {
-    return new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`);
+    return Object.assign(new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`), { split: true });
   }
   if (typeof answer !== 'object' || answer === null) return new Error('answer is not a JSON object');
   // The model sometimes wraps the answer, e.g. in {"translate": {...}}.
@@ -155,6 +158,48 @@ async function ask(model, key, template, arb, language, keys) {
 }
 
 /**
+ * Translates [keys] with [request] (keys => answer, or throws). An answer cut
+ * off or unparseable is split in half, down to single keys; other failures and
+ * rejected strings get one retry. Returns the accepted strings and failed keys.
+ */
+export async function translateBatch(name, template, keys, request, log = console.log) {
+  const accepted = {};
+  const failed = [];
+  const queue = [[keys, 1]];
+  while (queue.length > 0) {
+    const [ks, attempt] = queue.shift();
+    let answer;
+    try {
+      answer = await request(ks);
+    } catch (error) {
+      log(`${name} failed (attempt ${attempt}, ${ks.length} keys): ${error.message}`);
+      if (error.split && ks.length > 1) {
+        const half = Math.ceil(ks.length / 2);
+        queue.unshift([ks.slice(0, half), 1], [ks.slice(half), 1]);
+      } else if (attempt < 2) {
+        queue.unshift([ks, attempt + 1]);
+      } else {
+        failed.push(...ks);
+      }
+      continue;
+    }
+    const rejected = [];
+    for (const k of ks) {
+      const why = problem(template[k], answer[k]);
+      if (why) {
+        rejected.push(k);
+        log(`${name}: ${k} rejected (attempt ${attempt}): ${why}`);
+      } else {
+        accepted[k] = answer[k];
+      }
+    }
+    if (rejected.length > 0 && attempt < 2) queue.unshift([rejected, attempt + 1]);
+    else failed.push(...rejected);
+  }
+  return { accepted, failed };
+}
+
+/**
  * The ARB in template order, locale first, without keys the template lost.
  * A key never translated gets the English text: it has no hash, so it stays
  * stale and is retried, and the app still finds every key.
@@ -188,31 +233,15 @@ async function main() {
     const parts = batches(template, all);
     for (const [i, batch] of parts.entries()) {
       const name = `${language}: batch ${i + 1}/${parts.length}`;
-      let keys = batch;
-      // One retry for answers that fail the checks or do not arrive.
-      for (let attempt = 1; attempt <= 2 && keys.length > 0; attempt++) {
-        let answer;
-        try {
-          answer = await ask(model, key, template, arb, language, keys);
-        } catch (error) {
-          console.log(`${name} failed (attempt ${attempt}): ${error.message}`);
-          continue;
-        }
-        const rejected = [];
-        for (const k of keys) {
-          const why = problem(template[k], answer[k]);
-          if (why) {
-            rejected.push(k);
-            console.log(`${language}: ${k} rejected (attempt ${attempt}): ${why}`);
-          } else {
-            arb[k] = answer[k];
-            sources[language][k] = hash(template[k]);
-            translated++;
-          }
-        }
-        keys = rejected;
+      const result = await translateBatch(name, template, batch, (keys) =>
+        ask(model, key, template, arb, language, keys),
+      );
+      for (const [k, text] of Object.entries(result.accepted)) {
+        arb[k] = text;
+        sources[language][k] = hash(template[k]);
+        translated++;
       }
-      failed.push(...keys.map((k) => `${language} ${k}`));
+      failed.push(...result.failed.map((k) => `${language} ${k}`));
     }
     // Hashes of keys the template no longer has are dropped.
     sources[language] = Object.fromEntries(
