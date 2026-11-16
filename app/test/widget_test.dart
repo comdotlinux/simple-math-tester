@@ -2600,6 +2600,63 @@ void main() {
       });
     }
 
+    for (final (touchFeedback, haptics, hint) in [
+      (false, true, true),
+      (true, true, false),
+      (false, false, false),
+    ]) {
+      testWidgets('touch feedback ${touchFeedback ? 'on' : 'off'}, Vibration '
+          '${haptics ? 'on' : 'off'}: ${hint ? 'a' : 'no'} hint', (
+        tester,
+      ) async {
+        final calls = <String>[];
+        var enabled = touchFeedback;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          deviceSettingsChannel,
+          (call) async {
+            calls.add(call.method);
+            return call.method == 'touchFeedbackEnabled' ? enabled : true;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            deviceSettingsChannel,
+            null,
+          ),
+        );
+        final model = await launch(tester, haptics: haptics);
+        await tester.tap(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(touchFeedbackHintKey),
+          hint ? findsOneWidget : findsNothing,
+        );
+        expect(calls, ['touchFeedbackEnabled']);
+        if (!touchFeedback && !haptics) {
+          // Turning Vibration on reads the setting again.
+          await tester.tap(find.byKey(hapticsSwitchKey));
+          await tester.pumpAndSettle();
+          expect(find.byKey(touchFeedbackHintKey), findsOneWidget);
+        }
+        if (!hint) return;
+        expect(
+          find.text(
+            "Your phone's touch feedback is off, so there is no vibration.",
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(openVibrationSettingsKey));
+        await tester.pumpAndSettle();
+        expect(calls, ['touchFeedbackEnabled', 'openVibrationSettings']);
+
+        // Turned on in the phone's settings: gone after the app resumes.
+        enabled = true;
+        model.handleLifecycle(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
+        expect(find.byKey(touchFeedbackHintKey), findsNothing);
+      });
+    }
+
     testWidgets('the switches are saved and shown after a restart', (
       tester,
     ) async {

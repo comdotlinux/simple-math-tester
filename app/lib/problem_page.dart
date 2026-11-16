@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -977,7 +978,12 @@ class _TierPicker extends StatelessWidget {
 
 /// A simple list of settings: the starting tier, the feedback switches, the
 /// theme and the legal pages.
-Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
+Future<void> _showSettings(BuildContext context) {
+  unawaited(context.read<MathTesterModel>().checkTouchFeedback());
+  return _settingsSheet(context);
+}
+
+Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
@@ -1049,6 +1055,25 @@ Future<void> _showSettings(BuildContext context) => showModalBottomSheet<void>(
                 value: model.haptics,
                 onChanged: model.setHaptics,
               ),
+              if (model.vibrationBlocked)
+                Padding(
+                  key: touchFeedbackHintKey,
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.touchFeedbackOff,
+                        style: listTileTheme.subtitleTextStyle,
+                      ),
+                      TextButton(
+                        key: openVibrationSettingsKey,
+                        onPressed: model.openVibrationSettings,
+                        child: Text(l.openPhoneSettings),
+                      ),
+                    ],
+                  ),
+                ),
               // Laid out like the switch tiles above: same insets and text
               // styles, with the choice on its own full-width line.
               Padding(

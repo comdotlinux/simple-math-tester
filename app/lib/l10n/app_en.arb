@@ -560,6 +560,14 @@
   "@vibrationSubtitle": {
     "description": "Settings switch description. Vibration follows the phone's touch feedback (haptic feedback) setting: when that is off, the phone does not buzz."
   },
+  "touchFeedbackOff": "Your phone's touch feedback is off, so there is no vibration.",
+  "@touchFeedbackOff": {
+    "description": "Android only. Hint under the Vibration switch when Vibration is on but the phone's touch feedback (haptic feedback) setting is off, so the phone does not buzz."
+  },
+  "openPhoneSettings": "Open settings",
+  "@openPhoneSettings": {
+    "description": "Button under that hint: opens the phone's vibration settings. Short."
+  },
   "theme": "Theme",
   "@theme": {
     "description": "Settings row title: light or dark colours."
