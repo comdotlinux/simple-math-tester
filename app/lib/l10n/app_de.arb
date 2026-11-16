@@ -91,6 +91,7 @@
   "tierNotChosen": "nicht gewählt",
   "sound": "Ton",
   "soundSubtitle": "Ein kurzer Klang bei Antworten und Meilensteinen",
+  "volumeOff": "Die Medienlautstärke deines Handys ist aus, deshalb gibt es keinen Ton.",
   "vibration": "Vibration",
   "vibrationSubtitle": "Kurzes Brummen bei Tipps und Antworten (nutzt die Touch-Rückmeldung des Handys)",
   "touchFeedbackOff": "Die Touch-Rückmeldung deines Handys ist aus, deshalb gibt es keine Vibration.",

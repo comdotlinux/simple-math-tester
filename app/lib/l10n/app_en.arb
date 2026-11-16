@@ -552,6 +552,10 @@
   "@soundSubtitle": {
     "description": "Settings switch description."
   },
+  "volumeOff": "Your phone's media volume is off, so there is no sound.",
+  "@volumeOff": {
+    "description": "Android only. Hint under the Sound switch when Sound is on but the phone's media volume is 0, so nothing is heard."
+  },
   "vibration": "Vibration",
   "@vibration": {
     "description": "Settings switch title."
@@ -566,7 +570,7 @@
   },
   "openPhoneSettings": "Open settings",
   "@openPhoneSettings": {
-    "description": "Button under that hint: opens the phone's vibration settings. Short."
+    "description": "Button under the touch feedback and volume hints: opens the phone's vibration or volume settings. Short."
   },
   "theme": "Theme",
   "@theme": {
