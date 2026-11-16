@@ -18,28 +18,10 @@ import 'sound_player.dart';
 /// What a vibration marks.
 enum Haptic { key, correct, wrong, celebrate }
 
-/// The Android vibrator (see MainActivity.kt).
-const vibrateChannel = MethodChannel('simplemathtester/vibrate');
-
 /// Light on a key press; stronger for a checked answer and a milestone.
-/// Android uses the vibrator: HapticFeedback there is skipped whenever the
-/// system touch feedback setting is off.
-void playHaptic(Haptic haptic) {
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    final ms = switch (haptic) {
-      Haptic.key => 20,
-      Haptic.correct => 40,
-      Haptic.wrong => 80,
-      Haptic.celebrate => 160,
-    };
-    // Best effort: a phone without a vibrator just stays still.
-    vibrateChannel.invokeMethod<void>('vibrate', ms).ignore();
-    return;
-  }
-  _hapticFeedback(haptic);
-}
-
-void _hapticFeedback(Haptic haptic) => unawaited(switch (haptic) {
+/// Follows the phone's touch feedback setting: Android skips these when it
+/// is off.
+void playHaptic(Haptic haptic) => unawaited(switch (haptic) {
   Haptic.key => HapticFeedback.lightImpact(),
   Haptic.correct => HapticFeedback.mediumImpact(),
   Haptic.wrong => HapticFeedback.heavyImpact(),

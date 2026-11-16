@@ -5,8 +5,7 @@ menu names are written from memory; check them against the live console while
 following the walkthrough. Facts behind the answers: the app's own code collects
 no personal data, stores progress only on the device, has no accounts, no
 analytics and no ads, and the Android release build requests no internet access
-(`app/android/expected-permissions.txt` lists its permissions: VIBRATE for the
-Vibration setting, and the app-internal receiver permission AndroidX adds). Its one link
+(`app/android/expected-permissions.txt` lists its only permission). Its one link
 out is the Impressum entry in the settings, which opens
 `https://math.munich-tech.de/impressum` in the system browser.
 

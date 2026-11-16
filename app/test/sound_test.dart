@@ -188,16 +188,16 @@ void main() {
       expect(feedbackAudioContext.android.usageType, AndroidUsageType.game);
     });
 
-    test('Android haptics go to the vibrator with a length per kind', () async {
+    test('Android haptics use HapticFeedback, one kind each', () async {
       final calls = <MethodCall>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(vibrateChannel, (call) async {
+          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
             calls.add(call);
             return null;
           });
       addTearDown(
         () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(vibrateChannel, null),
+            .setMockMethodCallHandler(SystemChannels.platform, null),
       );
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
@@ -206,10 +206,10 @@ void main() {
       }
       await pumpEventQueue();
       expect(calls.map((c) => '${c.method} ${c.arguments}'), [
-        'vibrate 20',
-        'vibrate 40',
-        'vibrate 80',
-        'vibrate 160',
+        'HapticFeedback.vibrate HapticFeedbackType.lightImpact',
+        'HapticFeedback.vibrate HapticFeedbackType.mediumImpact',
+        'HapticFeedback.vibrate HapticFeedbackType.heavyImpact',
+        'HapticFeedback.vibrate null',
       ]);
     });
 

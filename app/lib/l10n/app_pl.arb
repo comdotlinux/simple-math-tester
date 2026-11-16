@@ -92,7 +92,7 @@
   "sound": "Dźwięk",
   "soundSubtitle": "Krótki dźwięk przy odpowiedziach i osiągnięciach",
   "vibration": "Wibracje",
-  "vibrationSubtitle": "Krótka wibracja przy naciśnięciu klawisza i odpowiedziach",
+  "vibrationSubtitle": "Krótka wibracja przy dotknięciach i odpowiedziach (zgodnie z ustawieniem wibracji przy dotyku w telefonie)",
   "theme": "Motyw",
   "themeSystem": "System",
   "themeLight": "Jasny",

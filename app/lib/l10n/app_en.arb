@@ -556,9 +556,9 @@
   "@vibration": {
     "description": "Settings switch title."
   },
-  "vibrationSubtitle": "A short buzz on key presses and answers",
+  "vibrationSubtitle": "Short buzz on taps and answers (uses the phone's touch feedback setting)",
   "@vibrationSubtitle": {
-    "description": "Settings switch description."
+    "description": "Settings switch description. Vibration follows the phone's touch feedback (haptic feedback) setting: when that is off, the phone does not buzz."
   },
   "theme": "Theme",
   "@theme": {

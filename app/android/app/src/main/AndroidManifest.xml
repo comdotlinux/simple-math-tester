@@ -1,6 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Vibration feedback that does not depend on the system touch feedback setting. -->
-    <uses-permission android:name="android.permission.VIBRATE"/>
    <application
         android:label="Simple Math Tester"
         android:name="${applicationName}"
