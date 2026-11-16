@@ -3,6 +3,8 @@
 // Usage: DEEPSEEK_API_KEY=... node tool/translate.mjs [--dry-run]
 // DEEPSEEK_MODEL picks the model (default deepseek-flash). --dry-run only
 // lists what would be translated and needs no key.
+// Exits 2 when some strings could not be translated (the others are written),
+// and lists them, per language, also in the file FAILED_KEYS_FILE if set.
 //
 // To add a language: add its code here and run the Translate workflow. A
 // new script also needs a bundled font (see docs/translations.md).
@@ -61,13 +63,18 @@ export async function readJson(url, fallback) {
   }
 }
 
-// One request translates at most this many keys or English characters, so the
-// answer stays far below max_tokens (a whole new language once came back empty).
-export const batchKeys = 20;
-export const batchChars = 1500;
+// A first request translates at most this many keys or English characters.
+// A batch that fails is sent again as fallback batches of the smaller size,
+// each with up to [fallbackAttempts] attempts.
+export const batchKeys = 60;
+export const batchChars = 4500;
+export const fallbackKeys = 20;
+export const fallbackChars = 1500;
+export const fallbackAttempts = 3;
 // Existing translations sent along for consistent wording, at most this many characters.
 const contextChars = 3000;
-export const maxTokens = 8192;
+// Far above a batch's answer, so an answer is not cut off (DeepSeek allows up to 393216).
+export const maxTokens = 32768;
 
 /** [keys] split into batches of at most [maxKeys] keys and about [maxChars] English characters. */
 export function batches(template, keys, maxKeys = batchKeys, maxChars = batchChars) {
@@ -89,15 +96,12 @@ export function batches(template, keys, maxKeys = batchKeys, maxChars = batchCha
 /** The translations object in a chat completion [body], or an Error saying why there is none. */
 export function parseAnswer(body, keys) {
   const choice = body?.choices?.[0];
-  // split: a smaller request may get a whole answer.
-  if (choice?.finish_reason === 'length') {
-    return Object.assign(new Error('cut off (finish_reason length)'), { split: true });
-  }
+  if (choice?.finish_reason === 'length') return new Error('cut off (finish_reason length)');
   let answer;
   try {
     answer = JSON.parse(choice?.message?.content ?? '');
   } catch {
-    return Object.assign(new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`), { split: true });
+    return new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`);
   }
   if (typeof answer !== 'object' || answer === null) return new Error('answer is not a JSON object');
   // The model sometimes wraps the answer, e.g. in {"translate": {...}}.
@@ -158,43 +162,51 @@ async function ask(model, key, template, arb, language, keys) {
 }
 
 /**
- * Translates [keys] with [request] (keys => answer, or throws). An answer cut
- * off or unparseable is split in half, down to single keys; other failures and
- * rejected strings get one retry. Returns the accepted strings and failed keys.
+ * Sends [keys] with [request] (keys => answer, or throws) up to [attempts]
+ * times; after a rejected or missing string only those keys are sent again.
+ * Returns the accepted strings and the keys that still failed.
  */
-export async function translateBatch(name, template, keys, request, log = console.log) {
+async function attempt(name, template, keys, request, attempts, log) {
   const accepted = {};
-  const failed = [];
-  const queue = [[keys, 1]];
-  while (queue.length > 0) {
-    const [ks, attempt] = queue.shift();
+  for (let n = 1; n <= attempts && keys.length > 0; n++) {
     let answer;
     try {
-      answer = await request(ks);
+      answer = await request(keys);
     } catch (error) {
-      log(`${name} failed (attempt ${attempt}, ${ks.length} keys): ${error.message}`);
-      if (error.split && ks.length > 1) {
-        const half = Math.ceil(ks.length / 2);
-        queue.unshift([ks.slice(0, half), 1], [ks.slice(half), 1]);
-      } else if (attempt < 2) {
-        queue.unshift([ks, attempt + 1]);
-      } else {
-        failed.push(...ks);
-      }
+      log(`${name} failed (attempt ${n}/${attempts}, ${keys.length} keys): ${error.message}`);
       continue;
     }
     const rejected = [];
-    for (const k of ks) {
-      const why = problem(template[k], answer[k]);
+    for (const k of keys) {
+      const why = k in answer ? problem(template[k], answer[k]) : 'missing';
       if (why) {
         rejected.push(k);
-        log(`${name}: ${k} rejected (attempt ${attempt}): ${why}`);
+        log(`${name}: ${k} rejected (attempt ${n}/${attempts}): ${why}`);
       } else {
         accepted[k] = answer[k];
       }
     }
-    if (rejected.length > 0 && attempt < 2) queue.unshift([rejected, attempt + 1]);
-    else failed.push(...rejected);
+    keys = rejected;
+  }
+  return { accepted, failed: keys };
+}
+
+/**
+ * Translates [keys] with [request] in one attempt. Keys that fail (any error,
+ * or rejected and missing strings) are sent again in batches of [fallbackKeys]
+ * with up to [fallbackAttempts] attempts each. Returns the accepted strings
+ * and the keys that failed every attempt.
+ */
+export async function translateBatch(name, template, keys, request, log = console.log) {
+  const first = await attempt(name, template, keys, request, 1, log);
+  const accepted = { ...first.accepted };
+  const failed = [];
+  const parts = batches(template, first.failed, fallbackKeys, fallbackChars);
+  for (const [i, part] of parts.entries()) {
+    const fallbackName = `${name} fallback ${i + 1}/${parts.length}`;
+    const result = await attempt(fallbackName, template, part, request, fallbackAttempts, log);
+    Object.assign(accepted, result.accepted);
+    failed.push(...result.failed);
   }
   return { accepted, failed };
 }
@@ -220,7 +232,7 @@ async function main() {
 
   const template = JSON.parse(await readFile(new URL('app_en.arb', dir), 'utf8'));
   const sources = await readJson(sourcesFile, {});
-  const failed = [];
+  const failed = {};
   let translated = 0;
   for (const language of languages) {
     const file = new URL(`app_${language}.arb`, dir);
@@ -241,7 +253,7 @@ async function main() {
         sources[language][k] = hash(template[k]);
         translated++;
       }
-      failed.push(...result.failed.map((k) => `${language} ${k}`));
+      if (result.failed.length) (failed[language] ??= []).push(...result.failed);
     }
     // Hashes of keys the template no longer has are dropped.
     sources[language] = Object.fromEntries(
@@ -253,11 +265,24 @@ async function main() {
     const sorted = Object.fromEntries(languages.map((l) => [l, sources[l]]));
     await writeFile(sourcesFile, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  if (failed.length === 0) return;
+  process.exitCode = await reportFailures(failed, translated, process.env.FAILED_KEYS_FILE);
+}
+
+/**
+ * Lists the keys that failed every attempt, per language ({language: keys}),
+ * also in [file] when given. Returns the exit code: 0 when none failed, 2 when
+ * some did; throws when nothing at all could be translated.
+ */
+export async function reportFailures(failed, translated, file, log = console.log) {
+  if (Object.keys(failed).length === 0) return 0;
   // A failed key keeps its old (or hand-written, or English) text and old hash, so it stays stale.
-  console.log(`Not translated, retried on the next run:\n- ${failed.join('\n- ')}`);
+  const list = Object.entries(failed).map(([l, keys]) => `- ${l}: ${keys.join(', ')}`).join('\n');
+  log(`Not translated after every retry, retried on the next run:\n${list}`);
   // Nothing at all worked: most likely the key, model or endpoint is wrong.
   if (translated === 0) throw new Error('No string could be translated; see above');
+  // The workflow still opens the pull request, then fails the run with this list.
+  if (file) await writeFile(file, `${list}\n`);
+  return 2;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
