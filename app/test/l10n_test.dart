@@ -109,7 +109,7 @@ void main() {
       await tester.ensureVisible(find.byKey(languageTileKey));
       await tester.tap(find.byKey(languageTileKey));
       await tester.pumpAndSettle();
-      // Each language is named in itself, with its English name below.
+      // Each language is named in itself, with its English name beside it.
       expect(find.text('Deutsch'), findsOneWidget);
       expect(find.text('German'), findsOneWidget);
       expect(find.text('தமிழ்'), findsOneWidget);
