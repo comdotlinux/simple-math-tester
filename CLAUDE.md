@@ -24,4 +24,6 @@ Work is planned on the GitHub Projects board **SimpleMatchTester**
 - Visual changes: show the owner screenshots before merging. Other PRs: merge when green.
 - New or changed English strings go in `app/lib/l10n/app_en.arb` (with `@descriptions`); other languages may be hand-written but are replaced by the Translate workflow on `main` (see `docs/translations.md`). Do not add source hashes for hand-written translations.
 - The Android release must not gain the INTERNET permission (`app/android/expected-permissions.txt`), and the app sends nothing anywhere (see the privacy policy in `app/lib/legal.dart` / `app/web/privacy.html`).
+- Commits and PR titles use Conventional Commits: `feat:`, `fix:`, `docs:`, `ci:`, `test:`, `refactor:`, `chore:` (optional scope, e.g. `feat(android): ...`). PRs are squash-merged, so the PR title becomes the commit on `main`.
+- Version bumps follow the commits since the last tag: any `feat` -> minor (`v1.1.4` -> `v1.2.0`), a breaking change (`feat!:` or `BREAKING CHANGE:`) -> major, otherwise patch.
 - Releases: a `v*` tag on `main` builds and uploads to the Play internal track (`play-bundle.yml`); `play-promote.yml` promotes; `play-listing.yml` pushes store texts and screenshots.
