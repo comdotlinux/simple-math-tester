@@ -89,13 +89,13 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -C "$branch"
           git add app/lib/l10n play/listing
-          git commit -m 'Translate new and changed strings'
+          git commit -m 'fix(l10n): translate new and changed strings'
           # The token goes in the URL of this one push; GitHub masks it in the log.
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           if [ -z "$(gh pr list --head "$branch" --state open --json number --jq '.[].number')" ]; then
             gh pr create --base main --head "$branch" \
-              --title 'Translate new and changed strings' \
+              --title 'fix(l10n): translate new and changed strings' \
               --body "Machine translations from DeepSeek of the strings and Play listing texts that were missing or whose English changed (latest run: $run_url). Placeholders, plurals, digits and Play's length limits were checked, and test/l10n_test.dart passed. After merging, push listing changes with the Play store listing workflow. The Flutter checks are started on this branch by the workflow."
           fi
           # A pull request pushed with GITHUB_TOKEN starts no workflow by itself;
