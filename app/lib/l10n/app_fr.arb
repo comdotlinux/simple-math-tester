@@ -93,6 +93,8 @@
   "soundSubtitle": "Un petit carillon pour les réponses et les étapes importantes",
   "vibration": "Vibration",
   "vibrationSubtitle": "Petite vibration quand tu appuies et quand tu réponds (suit le réglage de retour tactile du téléphone)",
+  "touchFeedbackOff": "Le retour tactile de ton téléphone est désactivé, donc il n’y a pas de vibration.",
+  "openPhoneSettings": "Ouvrir les réglages",
   "theme": "Thème",
   "themeSystem": "Système",
   "themeLight": "Clair",

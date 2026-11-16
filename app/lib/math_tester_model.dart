@@ -28,6 +28,14 @@ void playHaptic(Haptic haptic) => unawaited(switch (haptic) {
   Haptic.celebrate => HapticFeedback.vibrate(),
 });
 
+/// Reads and opens the phone's settings (MainActivity.kt). Android only.
+const deviceSettingsChannel = MethodChannel(
+  'simple_math_tester/device_settings',
+);
+
+bool get _deviceSettingsSupported =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
 /// Why a check did not count: the answer field is empty or not a number.
 enum InputProblem { empty, notANumber }
 
@@ -150,6 +158,40 @@ class MathTesterModel extends ChangeNotifier {
 
   bool get sound => _progress.sound;
   bool get haptics => _progress.haptics;
+
+  /// Vibration is on, but the phone's touch feedback is off, so Android
+  /// drops every buzz.
+  bool get vibrationBlocked => haptics && _touchFeedbackOff;
+  bool _touchFeedbackOff = false;
+
+  /// Reads the phone's touch feedback setting again (Android only). A missing
+  /// channel counts as on, so tests and other platforms show no hint.
+  Future<void> checkTouchFeedback() async {
+    if (!_deviceSettingsSupported) return;
+    bool off;
+    try {
+      off =
+          await deviceSettingsChannel.invokeMethod<bool>(
+            'touchFeedbackEnabled',
+          ) ==
+          false;
+    } catch (_) {
+      off = false;
+    }
+    if (off == _touchFeedbackOff) return;
+    _touchFeedbackOff = off;
+    notifyListeners();
+  }
+
+  /// Opens the phone's vibration (or sound) settings.
+  Future<void> openVibrationSettings() async {
+    try {
+      await deviceSettingsChannel.invokeMethod<bool>('openVibrationSettings');
+    } catch (_) {
+      // Nothing to open on this device.
+    }
+  }
+
   ThemeMode get themeMode => _progress.themeMode;
   bool get compact => _progress.layoutMode == LayoutMode.compact;
   LayoutMode get layoutMode => _progress.layoutMode;
@@ -204,6 +246,7 @@ class MathTesterModel extends ChangeNotifier {
     _progress = _progress.withSwitches(haptics: on);
     _save();
     notifyListeners();
+    if (on) unawaited(checkTouchFeedback());
   }
 
   void setThemeMode(ThemeMode mode) {
@@ -457,6 +500,8 @@ class MathTesterModel extends ChangeNotifier {
         _progress = _withDayChange(_progress);
         notifyListeners();
         _tick();
+        // The phone's touch feedback may have changed in its settings.
+        unawaited(checkTouchFeedback());
         if (!_canSave && !_retried) {
           _retried = true;
           _retryLoad();

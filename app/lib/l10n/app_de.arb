@@ -93,6 +93,8 @@
   "soundSubtitle": "Ein kurzer Klang bei Antworten und Meilensteinen",
   "vibration": "Vibration",
   "vibrationSubtitle": "Kurzes Brummen bei Tipps und Antworten (nutzt die Touch-Rückmeldung des Handys)",
+  "touchFeedbackOff": "Die Touch-Rückmeldung deines Handys ist aus, deshalb gibt es keine Vibration.",
+  "openPhoneSettings": "Einstellungen öffnen",
   "theme": "Design",
   "themeSystem": "System",
   "themeLight": "Hell",

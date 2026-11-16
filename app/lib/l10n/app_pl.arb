@@ -93,6 +93,8 @@
   "soundSubtitle": "Krótki dźwięk przy odpowiedziach i osiągnięciach",
   "vibration": "Wibracje",
   "vibrationSubtitle": "Krótka wibracja przy dotknięciach i odpowiedziach (zależy od ustawienia dotykowego sprzężenia zwrotnego w telefonie)",
+  "touchFeedbackOff": "Dotykowe sprzężenie zwrotne w telefonie jest wyłączone, więc nie ma wibracji.",
+  "openPhoneSettings": "Otwórz ustawienia",
   "theme": "Motyw",
   "themeSystem": "System",
   "themeLight": "Jasny",

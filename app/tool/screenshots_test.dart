@@ -299,6 +299,25 @@ void main() {
           await tester.tap(find.byKey(languageTileKey));
           await shoot(tester, '$tag-9d-language-list');
 
+          // The hint when the phone's touch feedback is off (Android).
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            deviceSettingsChannel,
+            (call) async => call.method != 'touchFeedbackEnabled',
+          );
+          await launch(tester, size, brightness);
+          await tester.ensureVisible(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(touchFeedbackHintKey));
+          // Scrolled back so the Sound and Vibration switches show above it.
+          await tester.ensureVisible(find.byKey(soundSwitchKey));
+          await shoot(tester, '$tag-9e-settings-touch-feedback-off');
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            deviceSettingsChannel,
+            null,
+          );
+
           // Every colour theme: the practice page and the chosen swatch.
           for (final palette in AppPalette.values) {
             final themed = await launch(
