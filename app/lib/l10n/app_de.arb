@@ -92,7 +92,7 @@
   "sound": "Ton",
   "soundSubtitle": "Ein kurzer Klang bei Antworten und Meilensteinen",
   "vibration": "Vibration",
-  "vibrationSubtitle": "Ein kurzes Brummen bei Tastendruck und Antworten",
+  "vibrationSubtitle": "Kurzes Brummen bei Tasten und Antworten (folgt der Einstellung „Haptisches Feedback“ des Handys)",
   "theme": "Design",
   "themeSystem": "System",
   "themeLight": "Hell",

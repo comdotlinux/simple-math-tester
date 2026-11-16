@@ -92,7 +92,7 @@
   "sound": "Son",
   "soundSubtitle": "Un petit carillon pour les réponses et les étapes importantes",
   "vibration": "Vibration",
-  "vibrationSubtitle": "Une petite vibration quand tu appuies sur une touche et pour les réponses",
+  "vibrationSubtitle": "Une petite vibration aux touches et aux réponses (selon le réglage « retour tactile » du téléphone)",
   "theme": "Thème",
   "themeSystem": "Système",
   "themeLight": "Clair",
