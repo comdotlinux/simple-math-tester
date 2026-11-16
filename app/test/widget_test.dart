@@ -2615,7 +2615,11 @@ void main() {
           deviceSettingsChannel,
           (call) async {
             calls.add(call.method);
-            return call.method == 'touchFeedbackEnabled' ? enabled : true;
+            return switch (call.method) {
+              'touchFeedbackEnabled' => enabled,
+              'mediaVolume' => 5,
+              _ => true,
+            };
           },
         );
         addTearDown(
@@ -2631,7 +2635,7 @@ void main() {
           find.byKey(touchFeedbackHintKey),
           hint ? findsOneWidget : findsNothing,
         );
-        expect(calls, ['touchFeedbackEnabled']);
+        expect(calls, ['touchFeedbackEnabled', 'mediaVolume']);
         if (!touchFeedback && !haptics) {
           // Turning Vibration on reads the setting again.
           await tester.tap(find.byKey(hapticsSwitchKey));
@@ -2647,13 +2651,65 @@ void main() {
         );
         await tester.tap(find.byKey(openVibrationSettingsKey));
         await tester.pumpAndSettle();
-        expect(calls, ['touchFeedbackEnabled', 'openVibrationSettings']);
+        expect(calls.last, 'openVibrationSettings');
 
         // Turned on in the phone's settings: gone after the app resumes.
         enabled = true;
         model.handleLifecycle(AppLifecycleState.resumed);
         await tester.pumpAndSettle();
         expect(find.byKey(touchFeedbackHintKey), findsNothing);
+      });
+    }
+
+    for (final volume in [0, 5]) {
+      testWidgets('switching Sound on at media volume $volume', (tester) async {
+        final calls = <String>[];
+        var level = volume;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          deviceSettingsChannel,
+          (call) async {
+            calls.add(call.method);
+            return switch (call.method) {
+              'touchFeedbackEnabled' => true,
+              'mediaVolume' => level,
+              _ => true,
+            };
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            deviceSettingsChannel,
+            null,
+          ),
+        );
+        final model = await launch(tester);
+        model.setSound(false);
+        await tester.tap(find.byKey(settingsButtonKey));
+        await tester.pumpAndSettle();
+        expect(find.byKey(soundVolumeHintKey), findsNothing);
+        await tester.tap(find.byKey(soundSwitchKey));
+        await tester.pumpAndSettle();
+        final muted = volume == 0;
+        expect(calls.contains('openVolumeSettings'), muted);
+        expect(
+          find.byKey(soundVolumeHintKey),
+          muted ? findsOneWidget : findsNothing,
+        );
+        if (!muted) return;
+        expect(
+          find.text("Your phone's media volume is off, so there is no sound."),
+          findsOneWidget,
+        );
+        calls.clear();
+        await tester.tap(find.byKey(openVolumeSettingsKey));
+        await tester.pumpAndSettle();
+        expect(calls, ['openVolumeSettings']);
+
+        // Turned up in the phone's settings: gone after the app resumes.
+        level = 3;
+        model.handleLifecycle(AppLifecycleState.resumed);
+        await tester.pumpAndSettle();
+        expect(find.byKey(soundVolumeHintKey), findsNothing);
       });
     }
 

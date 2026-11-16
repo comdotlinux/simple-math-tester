@@ -979,7 +979,7 @@ class _TierPicker extends StatelessWidget {
 /// A simple list of settings: the starting tier, the feedback switches, the
 /// theme and the legal pages.
 Future<void> _showSettings(BuildContext context) {
-  unawaited(context.read<MathTesterModel>().checkTouchFeedback());
+  unawaited(context.read<MathTesterModel>().checkDeviceSettings());
   return _settingsSheet(context);
 }
 
@@ -1048,6 +1048,22 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
                 value: model.sound,
                 onChanged: model.setSound,
               ),
+              if (model.soundMuted)
+                Padding(
+                  key: soundVolumeHintKey,
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.volumeOff, style: listTileTheme.subtitleTextStyle),
+                      TextButton(
+                        key: openVolumeSettingsKey,
+                        onPressed: model.openVolumeSettings,
+                        child: Text(l.openPhoneSettings),
+                      ),
+                    ],
+                  ),
+                ),
               SwitchListTile(
                 key: hapticsSwitchKey,
                 title: Text(l.vibration),

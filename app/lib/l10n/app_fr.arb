@@ -91,6 +91,7 @@
   "tierNotChosen": "pas choisie",
   "sound": "Son",
   "soundSubtitle": "Un petit carillon pour les réponses et les étapes importantes",
+  "volumeOff": "Le volume multimédia de ton téléphone est coupé, donc il n’y a pas de son.",
   "vibration": "Vibration",
   "vibrationSubtitle": "Petite vibration quand tu appuies et quand tu réponds (suit le réglage de retour tactile du téléphone)",
   "touchFeedbackOff": "Le retour tactile de ton téléphone est désactivé, donc il n’y a pas de vibration.",

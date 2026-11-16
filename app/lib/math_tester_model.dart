@@ -164,32 +164,43 @@ class MathTesterModel extends ChangeNotifier {
   bool get vibrationBlocked => haptics && _touchFeedbackOff;
   bool _touchFeedbackOff = false;
 
-  /// Reads the phone's touch feedback setting again (Android only). A missing
-  /// channel counts as on, so tests and other platforms show no hint.
-  Future<void> checkTouchFeedback() async {
+  /// Sound is on, but the phone's media volume is 0, so nothing is heard.
+  bool get soundMuted => sound && _volumeOff;
+  bool _volumeOff = false;
+
+  /// Reads the phone's touch feedback setting and media volume again
+  /// (Android only). A missing channel counts as on and audible, so tests
+  /// and other platforms show no hint.
+  Future<void> checkDeviceSettings() async {
     if (!_deviceSettingsSupported) return;
-    bool off;
-    try {
-      off =
-          await deviceSettingsChannel.invokeMethod<bool>(
-            'touchFeedbackEnabled',
-          ) ==
-          false;
-    } catch (_) {
-      off = false;
-    }
-    if (off == _touchFeedbackOff) return;
-    _touchFeedbackOff = off;
+    final touchOff = await _deviceSettings('touchFeedbackEnabled') == false;
+    final volumeOff = await _deviceSettings('mediaVolume') == 0;
+    if (touchOff == _touchFeedbackOff && volumeOff == _volumeOff) return;
+    _touchFeedbackOff = touchOff;
+    _volumeOff = volumeOff;
     notifyListeners();
   }
 
   /// Opens the phone's vibration (or sound) settings.
-  Future<void> openVibrationSettings() async {
+  Future<void> openVibrationSettings() =>
+      _deviceSettings('openVibrationSettings');
+
+  /// Opens the phone's volume panel (or sound settings).
+  Future<void> openVolumeSettings() => _deviceSettings('openVolumeSettings');
+
+  /// The channel's answer, or null when there is none on this device.
+  static Future<Object?> _deviceSettings(String method) async {
     try {
-      await deviceSettingsChannel.invokeMethod<bool>('openVibrationSettings');
+      return await deviceSettingsChannel.invokeMethod<Object?>(method);
     } catch (_) {
-      // Nothing to open on this device.
+      return null;
     }
+  }
+
+  /// Switching Sound on at volume 0 opens the volume panel at once.
+  Future<void> _soundTurnedOn() async {
+    await checkDeviceSettings();
+    if (soundMuted) await openVolumeSettings();
   }
 
   ThemeMode get themeMode => _progress.themeMode;
@@ -240,13 +251,14 @@ class MathTesterModel extends ChangeNotifier {
     _progress = _progress.withSwitches(sound: on);
     _save();
     notifyListeners();
+    if (on) unawaited(_soundTurnedOn());
   }
 
   void setHaptics(bool on) {
     _progress = _progress.withSwitches(haptics: on);
     _save();
     notifyListeners();
-    if (on) unawaited(checkTouchFeedback());
+    if (on) unawaited(checkDeviceSettings());
   }
 
   void setThemeMode(ThemeMode mode) {
@@ -500,8 +512,8 @@ class MathTesterModel extends ChangeNotifier {
         _progress = _withDayChange(_progress);
         notifyListeners();
         _tick();
-        // The phone's touch feedback may have changed in its settings.
-        unawaited(checkTouchFeedback());
+        // The phone's touch feedback or volume may have changed.
+        unawaited(checkDeviceSettings());
         if (!_canSave && !_retried) {
           _retried = true;
           _retryLoad();

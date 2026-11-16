@@ -91,6 +91,7 @@
   "tierNotChosen": "nie wybrano",
   "sound": "Dźwięk",
   "soundSubtitle": "Krótki dźwięk przy odpowiedziach i osiągnięciach",
+  "volumeOff": "Głośność multimediów w telefonie jest wyłączona, więc nie ma dźwięku.",
   "vibration": "Wibracje",
   "vibrationSubtitle": "Krótka wibracja przy dotknięciach i odpowiedziach (zależy od ustawienia dotykowego sprzężenia zwrotnego w telefonie)",
   "touchFeedbackOff": "Dotykowe sprzężenie zwrotne w telefonie jest wyłączone, więc nie ma wibracji.",

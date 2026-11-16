@@ -299,10 +299,15 @@ void main() {
           await tester.tap(find.byKey(languageTileKey));
           await shoot(tester, '$tag-9d-language-list');
 
-          // The hint when the phone's touch feedback is off (Android).
+          // The hints when the phone's touch feedback and volume are off
+          // (Android).
           tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
             deviceSettingsChannel,
-            (call) async => call.method != 'touchFeedbackEnabled',
+            (call) async => switch (call.method) {
+              'touchFeedbackEnabled' => false,
+              'mediaVolume' => 0,
+              _ => true,
+            },
           );
           await launch(tester, size, brightness);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
@@ -312,7 +317,7 @@ void main() {
           await tester.ensureVisible(find.byKey(touchFeedbackHintKey));
           // Scrolled back so the Sound and Vibration switches show above it.
           await tester.ensureVisible(find.byKey(soundSwitchKey));
-          await shoot(tester, '$tag-9e-settings-touch-feedback-off');
+          await shoot(tester, '$tag-9e-settings-phone-settings-off');
           tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
             deviceSettingsChannel,
             null,
