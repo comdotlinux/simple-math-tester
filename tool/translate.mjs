@@ -61,13 +61,64 @@ export async function readJson(url, fallback) {
   }
 }
 
+// One request translates at most this many keys or English characters, so the
+// answer stays far below max_tokens (a whole new language once came back empty).
+export const batchKeys = 40;
+export const batchChars = 3000;
+// Existing translations sent along for consistent wording, at most this many characters.
+const contextChars = 3000;
+export const maxTokens = 8192;
+
+/** [keys] split into batches of at most [maxKeys] keys and about [maxChars] English characters. */
+export function batches(template, keys, maxKeys = batchKeys, maxChars = batchChars) {
+  const out = [];
+  let chars = 0;
+  for (const k of keys) {
+    const last = out.at(-1);
+    if (!last || last.length >= maxKeys || chars + template[k].length > maxChars) {
+      out.push([k]);
+      chars = template[k].length;
+    } else {
+      last.push(k);
+      chars += template[k].length;
+    }
+  }
+  return out;
+}
+
+/** The translations object in a chat completion [body], or an Error saying why there is none. */
+export function parseAnswer(body, keys) {
+  const choice = body?.choices?.[0];
+  if (choice?.finish_reason === 'length') return new Error('cut off (finish_reason length)');
+  let answer;
+  try {
+    answer = JSON.parse(choice?.message?.content ?? '');
+  } catch {
+    return new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`);
+  }
+  if (typeof answer !== 'object' || answer === null) return new Error('answer is not a JSON object');
+  // The model sometimes wraps the answer, e.g. in {"translate": {...}}.
+  const values = Object.values(answer);
+  if (!keys.some((k) => k in answer) && values.length === 1 && typeof values[0] === 'object') {
+    answer = values[0] ?? {};
+  }
+  if (!keys.some((k) => k in answer)) {
+    return new Error(`none of the requested keys in the answer (got: ${Object.keys(answer).slice(0, 5).join(', ') || 'nothing'})`);
+  }
+  return answer;
+}
+
 async function ask(model, key, template, arb, language, keys) {
   const request = Object.fromEntries(
     keys.map((k) => [k, { text: template[k], description: template[`@${k}`]?.description ?? '' }]),
   );
-  const existing = Object.fromEntries(
-    Object.entries(arb).filter(([k]) => !k.startsWith('@') && !keys.includes(k)),
-  );
+  const existing = {};
+  let chars = 0;
+  for (const [k, v] of Object.entries(arb)) {
+    if (k.startsWith('@') || keys.includes(k) || chars + v.length > contextChars) continue;
+    existing[k] = v;
+    chars += v.length;
+  }
   const system = [
     `You translate the user interface of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Use friendly, simple, natural everyday words a school child understands, and the informal "you". Button labels must stay short: the app runs on 360 px wide phones.',
@@ -88,6 +139,7 @@ async function ask(model, key, template, arb, language, keys) {
       thinking: { type: 'disabled' },
       response_format: { type: 'json_object' },
       temperature: 0.2,
+      max_tokens: maxTokens,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -97,8 +149,9 @@ async function ask(model, key, template, arb, language, keys) {
   if (!response.ok) {
     throw new Error(`DeepSeek answered ${response.status}: ${(await response.text()).slice(0, 500)}`);
   }
-  const body = await response.json();
-  return JSON.parse(body.choices[0].message.content);
+  const answer = parseAnswer(await response.json(), keys);
+  if (answer instanceof Error) throw answer;
+  return answer;
 }
 
 /** The ARB in template order, locale first, without keys the template lost. */
@@ -123,27 +176,38 @@ async function main() {
     const file = new URL(`app_${language}.arb`, dir);
     const arb = await readJson(file, {});
     sources[language] ??= {};
-    let keys = stale(template, arb, sources[language]);
-    console.log(`${language}: ${keys.length} to translate${keys.length ? `: ${keys.join(', ')}` : ''}`);
-    if (dryRun || keys.length === 0) continue;
+    const all = stale(template, arb, sources[language]);
+    console.log(`${language}: ${all.length} to translate${all.length ? `: ${all.join(', ')}` : ''}`);
+    if (dryRun || all.length === 0) continue;
 
-    // One retry for answers that fail the checks.
-    for (let attempt = 1; attempt <= 2 && keys.length > 0; attempt++) {
-      const answer = await ask(model, key, template, arb, language, keys);
-      const rejected = [];
-      for (const k of keys) {
-        const why = problem(template[k], answer[k]);
-        if (why) {
-          rejected.push(k);
-          console.log(`${language}: ${k} rejected (attempt ${attempt}): ${why}`);
-        } else {
-          arb[k] = answer[k];
-          sources[language][k] = hash(template[k]);
+    const parts = batches(template, all);
+    for (const [i, batch] of parts.entries()) {
+      const name = `${language}: batch ${i + 1}/${parts.length}`;
+      let keys = batch;
+      // One retry for answers that fail the checks or do not arrive.
+      for (let attempt = 1; attempt <= 2 && keys.length > 0; attempt++) {
+        let answer;
+        try {
+          answer = await ask(model, key, template, arb, language, keys);
+        } catch (error) {
+          console.log(`${name} failed (attempt ${attempt}): ${error.message}`);
+          continue;
         }
+        const rejected = [];
+        for (const k of keys) {
+          const why = problem(template[k], answer[k]);
+          if (why) {
+            rejected.push(k);
+            console.log(`${language}: ${k} rejected (attempt ${attempt}): ${why}`);
+          } else {
+            arb[k] = answer[k];
+            sources[language][k] = hash(template[k]);
+          }
+        }
+        keys = rejected;
       }
-      keys = rejected;
+      failures += keys.length;
     }
-    failures += keys.length;
     // Hashes of keys the template no longer has are dropped.
     sources[language] = Object.fromEntries(
       Object.entries(sources[language]).filter(([k]) => k in template),

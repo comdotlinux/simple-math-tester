@@ -7,7 +7,7 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-import { hash, languageName, languages, readJson } from './translate.mjs';
+import { hash, languageName, languages, maxTokens, parseAnswer, readJson } from './translate.mjs';
 
 // Play's store listing language codes (Play Console Help, "Add translations
 // and localized assets"): most carry a region, Romanian and Ukrainian do not.
@@ -105,6 +105,7 @@ async function ask(model, key, english, language, keys, rejected) {
       thinking: { type: 'disabled' },
       response_format: { type: 'json_object' },
       temperature: 0.2,
+      max_tokens: maxTokens,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
@@ -114,8 +115,9 @@ async function ask(model, key, english, language, keys, rejected) {
   if (!response.ok) {
     throw new Error(`DeepSeek answered ${response.status}: ${(await response.text()).slice(0, 500)}`);
   }
-  const body = await response.json();
-  return JSON.parse(body.choices[0].message.content);
+  const answer = parseAnswer(await response.json(), keys);
+  if (answer instanceof Error) throw answer;
+  return answer;
 }
 
 async function main() {
