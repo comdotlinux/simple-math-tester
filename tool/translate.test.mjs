@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { batches, hash, parseAnswer, placeholders, problem, stale } from './translate.mjs';
+import { batches, hash, ordered, parseAnswer, placeholders, problem, stale } from './translate.mjs';
 
 test('placeholders are argument names, not words in plural branches', () => {
   assert.deepEqual(
@@ -32,6 +32,14 @@ test('missing keys and keys whose English changed are stale', () => {
   const arb = { a: 'Eins', b: 'Zwei' };
   const sources = { a: hash('One'), b: hash('Old two') };
   assert.deepEqual(stale(template, arb, sources), ['b', 'c']);
+});
+
+test('a written ARB has every key, with English for keys never translated, which stay stale', () => {
+  const template = { '@@locale': 'en', a: 'One', '@a': {}, b: 'Two' };
+  const arb = { a: 'Eins', gone: 'Weg' };
+  const written = ordered(template, arb, 'de');
+  assert.deepEqual(written, { '@@locale': 'de', a: 'Eins', b: 'Two' });
+  assert.deepEqual(stale(template, written, { a: hash('One') }), ['b']);
 });
 
 test('stale keys are sent in batches bounded by key count and characters', () => {

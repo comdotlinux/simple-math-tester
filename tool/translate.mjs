@@ -154,11 +154,15 @@ async function ask(model, key, template, arb, language, keys) {
   return answer;
 }
 
-/** The ARB in template order, locale first, without keys the template lost. */
-function ordered(template, arb, language) {
+/**
+ * The ARB in template order, locale first, without keys the template lost.
+ * A key never translated gets the English text: it has no hash, so it stays
+ * stale and is retried, and the app still finds every key.
+ */
+export function ordered(template, arb, language) {
   const out = { '@@locale': language };
   for (const key of Object.keys(template)) {
-    if (!key.startsWith('@') && key in arb) out[key] = arb[key];
+    if (!key.startsWith('@')) out[key] = key in arb ? arb[key] : template[key];
   }
   return out;
 }
@@ -171,7 +175,8 @@ async function main() {
 
   const template = JSON.parse(await readFile(new URL('app_en.arb', dir), 'utf8'));
   const sources = await readJson(sourcesFile, {});
-  let failures = 0;
+  const failed = [];
+  let translated = 0;
   for (const language of languages) {
     const file = new URL(`app_${language}.arb`, dir);
     const arb = await readJson(file, {});
@@ -202,11 +207,12 @@ async function main() {
           } else {
             arb[k] = answer[k];
             sources[language][k] = hash(template[k]);
+            translated++;
           }
         }
         keys = rejected;
       }
-      failures += keys.length;
+      failed.push(...keys.map((k) => `${language} ${k}`));
     }
     // Hashes of keys the template no longer has are dropped.
     sources[language] = Object.fromEntries(
@@ -218,7 +224,11 @@ async function main() {
     const sorted = Object.fromEntries(languages.map((l) => [l, sources[l]]));
     await writeFile(sourcesFile, `${JSON.stringify(sorted, null, 2)}\n`);
   }
-  if (failures > 0) throw new Error(`${failures} strings could not be translated; see above`);
+  if (failed.length === 0) return;
+  // A failed key keeps its old (or hand-written, or English) text and old hash, so it stays stale.
+  console.log(`Not translated, retried on the next run:\n- ${failed.join('\n- ')}`);
+  // Nothing at all worked: most likely the key, model or endpoint is wrong.
+  if (translated === 0) throw new Error('No string could be translated; see above');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
