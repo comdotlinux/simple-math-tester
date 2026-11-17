@@ -1,16 +1,19 @@
 # Translations
 
 The app is in English (the source) and German, Polish, Hindi, Marathi,
-Telugu, Tamil, Malayalam, French, Romanian and Ukrainian. It follows the device
-language, English when that language has no translation; Settings >
-Language overrides it.
+Telugu, Tamil, Malayalam, French, Romanian, Ukrainian, Portuguese (Brazil and
+Portugal) and Punjabi (Gurmukhi). It follows the device language, English
+when that language has no translation; Settings > Language overrides it.
 
 ## Where the texts are
 
 - `app/lib/l10n/app_en.arb` is the template: every text the app shows, each
   with a description for translators. Placeholders such as `{count}` and ICU
   plurals stay as they are in every language, and digits stay Western (0-9).
-- `app/lib/l10n/app_<code>.arb` holds one language. `flutter pub get` (and
+- `app/lib/l10n/app_<code>.arb` holds one language. A regional variant has
+  its own full file named `<language>_<COUNTRY>`: `app_pt.arb` is Brazilian
+  Portuguese (for `pt`, `pt_BR` and every other Portuguese), `app_pt_PT.arb`
+  European. The saved language is that code, such as `pt_PT`. `flutter pub get` (and
   every build) generates the Dart classes from these files; they are not
   committed.
 - `app/lib/l10n/translation_sources.json` records which English text each
@@ -69,11 +72,14 @@ limits. Pushing the listings to Play is a separate, manual workflow; see
 ## A new language
 
 1. Add its code to `languages` in `tool/translate.mjs`, and its Play store
-   listing code to `playCodes` in `tool/translate_listing.mjs`.
+   listing code to `playCodes` in `tool/translate_listing.mjs`. Where the
+   English name leaves the variant or script open, name it in `promptNames`
+   there (such as "European Portuguese (Portugal)"). Add its English name to
+   `englishLanguageNames` in `app/lib/labels.dart`.
 2. Merge it; the workflow runs and creates `app_<code>.arb`, including `languageName`,
    the language's name in itself, which the language list shows.
 3. If the language uses a script that Roboto and the bundled Noto Sans
-   fonts (Devanagari, Telugu, Tamil, Malayalam) do not cover, bundle a Noto
+   fonts (Devanagari, Telugu, Tamil, Malayalam, Gurmukhi) do not cover, bundle a Noto
    Sans font for it: add the regular and bold files with their licence under
    `app/assets/fonts/`, list the family in `app/pubspec.yaml`, add it to
    `fontFallback` in `app/lib/app_theme.dart`, and add the language to the

@@ -204,7 +204,7 @@ try {
   // fonts: with any glyph missing, the web engine would fetch a Noto font
   // from fonts.gstatic.com.
   stopServer = await serve(firstBuild);
-  for (const code of ['hi', 'te', 'ta', 'ml', 'uk']) {
+  for (const code of ['hi', 'te', 'ta', 'ml', 'pa', 'uk']) {
     const texts = JSON.parse(
       await readFile(new URL(`../app/lib/l10n/app_${code}.arb`, import.meta.url), 'utf8'),
     );

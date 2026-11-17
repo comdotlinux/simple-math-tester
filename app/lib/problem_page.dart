@@ -1260,7 +1260,7 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
 
 /// A language's name in that language, such as "Deutsch"; null for none.
 String? _languageName(String? code) =>
-    code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
+    code == null ? null : lookupAppLocalizations(appLocale(code)).languageName;
 
 /// "System" and every translated language, each named in its own language
 /// with its English name in small type on the same line (none for English).
@@ -1275,26 +1275,34 @@ Future<void> _showLanguages(BuildContext context) => showDialog<void>(
         for (final code in [
           null,
           for (final locale in AppLocalizations.supportedLocales)
-            locale.languageCode,
+            locale.toString(),
         ])
           ListTile(
             key: languageOptionKey(code),
-            title: Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
-              children: [
-                Text(_languageName(code) ?? l.languageSystem),
-                if (code != null && code != 'en') ...[
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      englishLanguageNames[code]!,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
+            // A long press (or hover) shows the English name the row may cut
+            // off; screen readers already read the whole row.
+            title: Tooltip(
+              message: code == null || code == 'en'
+                  ? ''
+                  : '${_languageName(code)} · ${englishLanguageNames[code]}',
+              excludeFromSemantics: true,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text(_languageName(code) ?? l.languageSystem),
+                  if (code != null && code != 'en') ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        englishLanguageNames[code]!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
             selected: code == model.language,
             trailing: code == model.language

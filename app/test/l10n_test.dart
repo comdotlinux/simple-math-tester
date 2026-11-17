@@ -41,14 +41,14 @@ void main() {
       expect(
         englishLanguageNames.keys,
         unorderedEquals(
-          AppLocalizations.supportedLocales.map((l) => l.languageCode),
+          AppLocalizations.supportedLocales.map((l) => l.toString()),
         ),
       );
     });
 
     test('every supported language has an ARB file', () {
       expect(
-        AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet(),
+        AppLocalizations.supportedLocales.map((l) => l.toString()).toSet(),
         {'en', for (final path in arbs) readArb(path)['@@locale']},
       );
     });
@@ -67,10 +67,11 @@ void main() {
             placeholders(template[key]! as String),
             reason: key,
           );
-          // Digits stay Western: no Devanagari, Telugu, Tamil or Malayalam.
+          // Digits stay Western: no Devanagari, Telugu, Tamil, Malayalam or
+          // Gurmukhi.
           expect(
             arb[key],
-            isNot(matches(RegExp('[०-९౦-౯௦-௯൦-൯]'))),
+            isNot(matches(RegExp('[०-९౦-౯௦-௯൦-൯੦-੯]'))),
             reason: key,
           );
         }
@@ -152,7 +153,66 @@ void main() {
       expect(decoded(null), isNull);
       expect(decoded('xx'), isNull);
       expect(decoded('pl'), 'pl');
+      expect(decoded('pt_PT'), 'pt_PT');
+      expect(decoded('pt_BR'), isNull, reason: 'Brazilian Portuguese is pt');
       expect(Progress(language: 'mr').withLanguage(null).language, isNull);
+    });
+
+    testWidgets('a long press on a language shows its full name and does not '
+        'pick it', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final store = FakeStore({
+        progressKey: Progress(tier: Tier.easy).encode(),
+      });
+      await bootstrap(store);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(languageTileKey));
+      await tester.tap(find.byKey(languageTileKey));
+      await tester.pumpAndSettle();
+      final row = find.byKey(languageOptionKey('pt_PT'));
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      // A screen reader hears each name once, not again from the tooltip.
+      expect(
+        tester.getSemantics(row).label,
+        'Português (Portugal)\nPortuguese (Portugal)',
+      );
+
+      await tester.longPress(row);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Português (Portugal) · Portuguese (Portugal)'),
+        findsOneWidget,
+      );
+      expect(row, findsOneWidget, reason: 'the list stays open');
+      expect(Progress.decode(store.values[progressKey]!).language, isNull);
+      semantics.dispose();
+    });
+
+    testWidgets('Portuguese: a phone in pt_PT gets European, pt_BR and pt '
+        'Brazilian; a saved pt_PT wins over the system', (tester) async {
+      String shown() =>
+          AppLocalizations.of(tester.element(find.byKey(homePageKey)))
+              .languageName;
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await bootstrap(FakeStore());
+      for (final (system, name) in [
+        (const Locale('pt', 'PT'), 'Português (Portugal)'),
+        (const Locale('pt', 'BR'), 'Português (Brasil)'),
+        (const Locale('pt'), 'Português (Brasil)'),
+      ]) {
+        tester.platformDispatcher.localesTestValue = [system];
+        await tester.pumpAndSettle();
+        expect(shown(), name, reason: '$system');
+      }
+
+      await bootstrap(
+        FakeStore({progressKey: Progress(language: 'pt_PT').encode()}),
+      );
+      await tester.pumpAndSettle();
+      expect(shown(), 'Português (Portugal)');
     });
   });
 
@@ -206,7 +266,7 @@ void main() {
     }
 
     for (final locale in AppLocalizations.supportedLocales) {
-      final code = locale.languageCode;
+      final code = locale.toString();
       // Overflow is reported as an error, which fails the test.
       testWidgets('$code: practice, a wrong answer with every hint, settings '
           'and the language list', (tester) async {

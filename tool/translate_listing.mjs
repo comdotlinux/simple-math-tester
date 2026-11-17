@@ -7,10 +7,19 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-import { hash, languageName, languages, maxTokens, parseAnswer, readJson } from './translate.mjs';
+import {
+  hash,
+  languageName,
+  languages,
+  maxTokens,
+  parseAnswer,
+  readJson,
+  westernDigits,
+} from './translate.mjs';
 
 // Play's store listing language codes (Play Console Help, "Add translations
-// and localized assets"): most carry a region, Romanian and Ukrainian do not.
+// and localized assets"): most carry a region, Romanian, Ukrainian and
+// Punjabi do not.
 export const playCodes = {
   de: 'de-DE',
   pl: 'pl-PL',
@@ -22,6 +31,9 @@ export const playCodes = {
   fr: 'fr-FR',
   ro: 'ro',
   uk: 'uk',
+  pt: 'pt-BR',
+  pt_PT: 'pt-PT',
+  pa: 'pa',
 };
 
 // Play's limits in characters.
@@ -44,18 +56,6 @@ export function problem(field, source, text) {
   const lost = brands.find((brand) => source.includes(brand) && !text.includes(brand));
   if (lost) return `"${lost}" missing`;
   return null;
-}
-
-/** [text] with every decimal digit of any script turned into Western 0-9. */
-export function westernDigits(text) {
-  if (typeof text !== 'string') return text;
-  return text.replace(/(?![0-9])\p{Nd}/gu, (digit) => {
-    // Digits come in runs of ten from zero (some runs follow each other, such
-    // as the mathematical digits), so the value is the distance from the run's start, mod 10.
-    let start = digit.codePointAt(0);
-    while (/\p{Nd}/u.test(String.fromCodePoint(start - 1))) start--;
-    return String((digit.codePointAt(0) - start) % 10);
-  });
 }
 
 /** What DeepSeek is told about a rejected [field] before it tries again. */

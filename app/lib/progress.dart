@@ -360,7 +360,7 @@ class Progress {
           LayoutMode.comfortable,
       // A language this build has no translation for follows the system.
       AppLocalizations.supportedLocales
-          .map((locale) => locale.languageCode)
+          .map((locale) => locale.toString())
           .where((code) => code == _field<String>(json, 'language'))
           .firstOrNull,
       AppPalette.values.asNameMap()[_field<String>(json, 'palette')] ??
