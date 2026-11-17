@@ -302,6 +302,7 @@ const fontFallback = [
   'NotoSansTelugu',
   'NotoSansTamil',
   'NotoSansMalayalam',
+  'NotoSansGurmukhi',
 ];
 
 ThemeData buildAppTheme(

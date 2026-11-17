@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
-import { hash, languages } from './translate.mjs';
+import { hash, languageName, languages, westernDigits } from './translate.mjs';
 import {
   check,
   limits,
@@ -10,7 +10,6 @@ import {
   problem,
   retryNote,
   stale,
-  westernDigits,
 } from './translate_listing.mjs';
 
 test('digits of any script become Western digits', () => {
@@ -18,6 +17,7 @@ test('digits of any script become Western digits', () => {
   assert.equal(westernDigits('௧௨ ٣٤ ൯'), '12 34 9'); // Tamil, Arabic-Indic, Malayalam
   assert.equal(westernDigits('𝟎𝟗 𝟘𝟡'), '09 09'); // two runs of mathematical digits in a row
   assert.equal(westernDigits('60 seconds'), '60 seconds');
+  assert.equal(westernDigits('੬੦'), '60'); // Gurmukhi
   assert.equal(westernDigits(undefined), undefined);
 });
 
@@ -42,6 +42,16 @@ test('every app language has a Play listing code', () => {
   assert.equal(playCodes.de, 'de-DE');
   assert.equal(playCodes.ro, 'ro');
   assert.equal(playCodes.uk, 'uk');
+  assert.equal(playCodes.pt, 'pt-BR');
+  assert.equal(playCodes.pt_PT, 'pt-PT');
+  assert.equal(playCodes.pa, 'pa');
+});
+
+test('DeepSeek is told the Portuguese variant and the Punjabi script', () => {
+  assert.equal(languageName('de'), 'German');
+  assert.equal(languageName('pt'), 'Brazilian Portuguese (Brazil)');
+  assert.equal(languageName('pt_PT'), 'European Portuguese (Portugal)');
+  assert.equal(languageName('pa'), 'Punjabi in Gurmukhi script');
 });
 
 test('a listing text must fit Play and keep the app name and digits', () => {

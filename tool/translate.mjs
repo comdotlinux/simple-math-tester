@@ -12,7 +12,9 @@ import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro', 'uk'];
+// An ARB locale: a language code, with _COUNTRY for a regional variant (pt is
+// Brazilian Portuguese, pt_PT European).
+export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro', 'uk', 'pt', 'pt_PT', 'pa'];
 
 const dir = new URL('../app/lib/l10n/', import.meta.url);
 // The English text each translation was made from, as a short hash per key,
@@ -52,7 +54,28 @@ export function stale(template, arb, sources) {
   );
 }
 
-export const languageName = (code) => new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
+// Spelled out where the plain language name leaves the variant or script open.
+const promptNames = {
+  pt: 'Brazilian Portuguese (Brazil)',
+  pt_PT: 'European Portuguese (Portugal)',
+  pa: 'Punjabi in Gurmukhi script',
+};
+
+/** The English name of [code] that DeepSeek is told to translate into. */
+export const languageName = (code) =>
+  promptNames[code] ?? new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
+
+/** [text] with every decimal digit of any script turned into Western 0-9. */
+export function westernDigits(text) {
+  if (typeof text !== 'string') return text;
+  return text.replace(/(?![0-9])\p{Nd}/gu, (digit) => {
+    // Digits come in runs of ten from zero (some runs follow each other, such
+    // as the mathematical digits), so the value is the distance from the run's start, mod 10.
+    let start = digit.codePointAt(0);
+    while (/\p{Nd}/u.test(String.fromCodePoint(start - 1))) start--;
+    return String((digit.codePointAt(0) - start) % 10);
+  });
+}
 
 export async function readJson(url, fallback) {
   try {
@@ -178,12 +201,13 @@ async function attempt(name, template, keys, request, attempts, log) {
     }
     const rejected = [];
     for (const k of keys) {
-      const why = k in answer ? problem(template[k], answer[k]) : 'missing';
+      const text = westernDigits(answer[k]);
+      const why = k in answer ? problem(template[k], text) : 'missing';
       if (why) {
         rejected.push(k);
         log(`${name}: ${k} rejected (attempt ${n}/${attempts}): ${why}`);
       } else {
-        accepted[k] = answer[k];
+        accepted[k] = text;
       }
     }
     keys = rejected;

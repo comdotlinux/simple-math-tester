@@ -41,14 +41,14 @@ void main() {
       expect(
         englishLanguageNames.keys,
         unorderedEquals(
-          AppLocalizations.supportedLocales.map((l) => l.languageCode),
+          AppLocalizations.supportedLocales.map((l) => l.toString()),
         ),
       );
     });
 
     test('every supported language has an ARB file', () {
       expect(
-        AppLocalizations.supportedLocales.map((l) => l.languageCode).toSet(),
+        AppLocalizations.supportedLocales.map((l) => l.toString()).toSet(),
         {'en', for (final path in arbs) readArb(path)['@@locale']},
       );
     });
@@ -67,10 +67,11 @@ void main() {
             placeholders(template[key]! as String),
             reason: key,
           );
-          // Digits stay Western: no Devanagari, Telugu, Tamil or Malayalam.
+          // Digits stay Western: no Devanagari, Telugu, Tamil, Malayalam or
+          // Gurmukhi.
           expect(
             arb[key],
-            isNot(matches(RegExp('[०-९౦-౯௦-௯൦-൯]'))),
+            isNot(matches(RegExp('[०-९౦-౯௦-௯൦-൯੦-੯]'))),
             reason: key,
           );
         }
@@ -152,7 +153,33 @@ void main() {
       expect(decoded(null), isNull);
       expect(decoded('xx'), isNull);
       expect(decoded('pl'), 'pl');
+      expect(decoded('pt_PT'), 'pt_PT');
+      expect(decoded('pt_BR'), isNull, reason: 'Brazilian Portuguese is pt');
       expect(Progress(language: 'mr').withLanguage(null).language, isNull);
+    });
+
+    testWidgets('Portuguese: a phone in pt_PT gets European, pt_BR and pt '
+        'Brazilian; a saved pt_PT wins over the system', (tester) async {
+      String shown() =>
+          AppLocalizations.of(tester.element(find.byKey(homePageKey)))
+              .languageName;
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await bootstrap(FakeStore());
+      for (final (system, name) in [
+        (const Locale('pt', 'PT'), 'Português (Portugal)'),
+        (const Locale('pt', 'BR'), 'Português (Brasil)'),
+        (const Locale('pt'), 'Português (Brasil)'),
+      ]) {
+        tester.platformDispatcher.localesTestValue = [system];
+        await tester.pumpAndSettle();
+        expect(shown(), name, reason: '$system');
+      }
+
+      await bootstrap(
+        FakeStore({progressKey: Progress(language: 'pt_PT').encode()}),
+      );
+      await tester.pumpAndSettle();
+      expect(shown(), 'Português (Portugal)');
     });
   });
 
@@ -206,7 +233,7 @@ void main() {
     }
 
     for (final locale in AppLocalizations.supportedLocales) {
-      final code = locale.languageCode;
+      final code = locale.toString();
       // Overflow is reported as an error, which fails the test.
       testWidgets('$code: practice, a wrong answer with every hint, settings '
           'and the language list', (tester) async {

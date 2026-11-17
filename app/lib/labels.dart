@@ -1,3 +1,5 @@
+import 'dart:ui' show Locale;
+
 import 'app_theme.dart' show AppPalette;
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
@@ -48,8 +50,15 @@ String formatElapsed(AppLocalizations l, int ms, {bool abbreviated = false}) {
   ].join(abbreviated ? ', ' : ' ');
 }
 
+/// The supported locale saved as [code], its [Locale.toString] such as "de"
+/// or "pt_PT".
+Locale appLocale(String code) => AppLocalizations.supportedLocales.firstWhere(
+  (locale) => locale.toString() == code,
+);
+
 /// Each app language's name in English, shown under its own name in the
-/// language picker. A test keeps it in step with the supported locales.
+/// language picker, keyed like [appLocale]. A test keeps it in step with the
+/// supported locales.
 const englishLanguageNames = {
   'en': 'English',
   'de': 'German',
@@ -62,4 +71,7 @@ const englishLanguageNames = {
   'fr': 'French',
   'ro': 'Romanian',
   'uk': 'Ukrainian',
+  'pt': 'Portuguese (Brazil)',
+  'pt_PT': 'Portuguese (Portugal)',
+  'pa': 'Punjabi',
 };

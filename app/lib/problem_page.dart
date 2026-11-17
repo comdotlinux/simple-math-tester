@@ -1260,7 +1260,7 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
 
 /// A language's name in that language, such as "Deutsch"; null for none.
 String? _languageName(String? code) =>
-    code == null ? null : lookupAppLocalizations(Locale(code)).languageName;
+    code == null ? null : lookupAppLocalizations(appLocale(code)).languageName;
 
 /// "System" and every translated language, each named in its own language
 /// with its English name in small type on the same line (none for English).
@@ -1275,7 +1275,7 @@ Future<void> _showLanguages(BuildContext context) => showDialog<void>(
         for (final code in [
           null,
           for (final locale in AppLocalizations.supportedLocales)
-            locale.languageCode,
+            locale.toString(),
         ])
           ListTile(
             key: languageOptionKey(code),

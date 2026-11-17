@@ -7,6 +7,7 @@ import 'app_theme.dart';
 import 'home_page.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
+import 'labels.dart';
 import 'legal.dart';
 import 'math_tester_model.dart';
 import 'progress_store.dart';
@@ -88,7 +89,7 @@ class _MathTesterAppState extends State<MathTesterApp> {
       // English first, so an unsupported system language falls back to it.
       supportedLocales: AppLocalizations.supportedLocales,
       locale: switch (context.select((MathTesterModel m) => m.language)) {
-        final code? => Locale(code),
+        final code? => appLocale(code),
         null => null,
       },
       theme: buildAppTheme(Brightness.light, palette),
