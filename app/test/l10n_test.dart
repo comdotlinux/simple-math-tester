@@ -158,6 +158,39 @@ void main() {
       expect(Progress(language: 'mr').withLanguage(null).language, isNull);
     });
 
+    testWidgets('a long press on a language shows its full name and does not '
+        'pick it', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final store = FakeStore({
+        progressKey: Progress(tier: Tier.easy).encode(),
+      });
+      await bootstrap(store);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(settingsButtonKey));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(languageTileKey));
+      await tester.tap(find.byKey(languageTileKey));
+      await tester.pumpAndSettle();
+      final row = find.byKey(languageOptionKey('pt_PT'));
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      // A screen reader hears each name once, not again from the tooltip.
+      expect(
+        tester.getSemantics(row).label,
+        'Português (Portugal)\nPortuguese (Portugal)',
+      );
+
+      await tester.longPress(row);
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Português (Portugal) · Portuguese (Portugal)'),
+        findsOneWidget,
+      );
+      expect(row, findsOneWidget, reason: 'the list stays open');
+      expect(Progress.decode(store.values[progressKey]!).language, isNull);
+      semantics.dispose();
+    });
+
     testWidgets('Portuguese: a phone in pt_PT gets European, pt_BR and pt '
         'Brazilian; a saved pt_PT wins over the system', (tester) async {
       String shown() =>
