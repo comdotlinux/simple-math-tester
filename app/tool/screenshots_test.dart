@@ -79,7 +79,13 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
-      initialProblem: const Problem(48, 27, OperationType.plus, 75, level: 3),
+      initialProblem: const ArithmeticProblem(
+        48,
+        27,
+        OperationType.plus,
+        75,
+        level: 3,
+      ),
       progress: Progress(
         tier: tier,
         game: game,
@@ -351,7 +357,7 @@ void main() {
             int result,
             int? a,
           ) => Attempt(
-            Problem(lhs, rhs, kind, result, level: 5),
+            ArithmeticProblem(lhs, rhs, kind, result, level: 5),
             firstAnswer: a,
             elapsedMs: 12000,
             answeredAt: now,

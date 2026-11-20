@@ -2,12 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
+import 'package:simple_math_tester/app_theme.dart' show AppPalette;
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
 
 Attempt attempt(int index, {num? answer = 5, bool sprint = false}) => Attempt(
-  Problem(index, 3, OperationType.divide, index / 3, level: 2),
+  ArithmeticProblem(index, 3, OperationType.divide, index / 3, level: 2),
   firstAnswer: answer,
   elapsedMs: 1200 + index,
   hintsUsed: 2,
@@ -81,8 +82,14 @@ void main() {
     expect(decoded.history, hasLength(original.history.length));
     for (var i = 0; i < original.history.length; i++) {
       final (a, b) = (decoded.history[i], original.history[i]);
-      expect(a.problem.lhs, b.problem.lhs);
-      expect(a.problem.rhs, b.problem.rhs);
+      expect(
+        (a.problem as ArithmeticProblem).lhs,
+        (b.problem as ArithmeticProblem).lhs,
+      );
+      expect(
+        (a.problem as ArithmeticProblem).rhs,
+        (b.problem as ArithmeticProblem).rhs,
+      );
       expect(a.problem.kind, b.problem.kind);
       expect(a.problem.result, b.problem.result);
       expect(a.problem.level, b.problem.level);
@@ -93,6 +100,203 @@ void main() {
       expect(a.sprint, b.sprint);
     }
     expect(decoded.encode(), original.encode());
+  });
+
+  test('a document saved by the release before the sealed Problem decodes to '
+      'the same progress and encodes to the same bytes', () {
+    // Written by Progress.encode on main at 4bc825a, with every operation in
+    // the history, a skipped answer, sprint answers and decimal results.
+    const saved =
+        '{"schemaVersion":2,"selectedOperations":["plus","minus","divide"],"history":['
+        '{"lhs":7,"rhs":5,"kind":"plus","result":12,"level":1,"firstAnswer":12,"elapsedMs":2300,"hintsUsed":0,"answeredAt":"2026-11-19T16:05:20.300Z","sprint":false},'
+        '{"lhs":48,"rhs":27,"kind":"minus","result":21,"level":3,"firstAnswer":20,"elapsedMs":6100,"hintsUsed":2,"answeredAt":"2026-11-19T16:05:40.100Z","sprint":false},'
+        '{"lhs":6,"rhs":7,"kind":"multiply","result":42,"level":2,"firstAnswer":null,"elapsedMs":9050,"hintsUsed":0,"answeredAt":"2026-11-19T16:05:50.050Z","sprint":false},'
+        '{"lhs":84,"rhs":7,"kind":"divide","result":12.0,"level":3,"firstAnswer":12,"elapsedMs":4420,"hintsUsed":0,"answeredAt":"2026-11-19T16:05:40.420Z","sprint":true},'
+        '{"lhs":2047,"rhs":23,"kind":"divide","result":89.0,"level":5,"firstAnswer":89.5,"elapsedMs":15999,"hintsUsed":1,"answeredAt":"2026-11-19T16:05:39.999Z","sprint":false},'
+        '{"lhs":9876,"rhs":8765,"kind":"plus","result":18641,"level":5,"firstAnswer":18641,"elapsedMs":31007,"hintsUsed":0,"answeredAt":"2026-11-19T16:05:47.007Z","sprint":true}'
+        '],"operations":{"plus":{"level":5,"upCount":1,"downCount":0,"answered":40,"correct":33},"minus":{"level":3,"upCount":0,"downCount":1,"answered":12,"correct":8},"multiply":{"level":2,"upCount":0,"downCount":0,"answered":5,"correct":2},"divide":{"level":4,"upCount":2,"downCount":0,"answered":21,"correct":17}},"tier":"hard","xp":1234,"combo":2,"dailyCount":9,"lastActiveDate":"2026-11-19","lastGoalDate":"2026-11-19","streak":4,"bestStreak":11,"bestSprint":87,"sound":false,"haptics":true,"themeMode":"dark","layoutMode":"compact","language":"de","palette":"ocean","updateReminderDate":"2026-11-18"}';
+    Attempt entry(
+      ArithmeticProblem problem,
+      num? answer,
+      int ms, {
+      int hints = 0,
+      bool sprint = false,
+    }) => Attempt(
+      problem,
+      firstAnswer: answer,
+      elapsedMs: ms,
+      hintsUsed: hints,
+      answeredAt: DateTime.utc(
+        2026,
+        11,
+        19,
+        16,
+        5,
+        ms % 60,
+        ms % 1000,
+      ).toLocal(),
+      sprint: sprint,
+    );
+    final expected = Progress(
+      selectedOperations: {
+        OperationType.plus,
+        OperationType.minus,
+        OperationType.divide,
+      },
+      history: [
+        entry(const ArithmeticProblem(7, 5, OperationType.plus, 12), 12, 2300),
+        entry(
+          const ArithmeticProblem(48, 27, OperationType.minus, 21, level: 3),
+          20,
+          6100,
+          hints: 2,
+        ),
+        entry(
+          const ArithmeticProblem(6, 7, OperationType.multiply, 42, level: 2),
+          null,
+          9050,
+        ),
+        entry(
+          const ArithmeticProblem(84, 7, OperationType.divide, 12.0, level: 3),
+          12,
+          4420,
+          sprint: true,
+        ),
+        entry(
+          const ArithmeticProblem(
+            2047,
+            23,
+            OperationType.divide,
+            89.0,
+            level: 5,
+          ),
+          89.5,
+          15999,
+          hints: 1,
+        ),
+        entry(
+          const ArithmeticProblem(
+            9876,
+            8765,
+            OperationType.plus,
+            18641,
+            level: 5,
+          ),
+          18641,
+          31007,
+          sprint: true,
+        ),
+      ],
+      tier: Tier.hard,
+      difficulty: {
+        OperationType.plus: const Difficulty(
+          level: 5,
+          upCount: 1,
+          answered: 40,
+          correct: 33,
+        ),
+        OperationType.minus: const Difficulty(
+          level: 3,
+          downCount: 1,
+          answered: 12,
+          correct: 8,
+        ),
+        OperationType.multiply: const Difficulty(
+          level: 2,
+          answered: 5,
+          correct: 2,
+        ),
+        OperationType.divide: const Difficulty(
+          level: 4,
+          upCount: 2,
+          answered: 21,
+          correct: 17,
+        ),
+      },
+      game: const GameState(
+        xp: 1234,
+        combo: 2,
+        dailyCount: 9,
+        lastActiveDate: '2026-11-19',
+        lastGoalDate: '2026-11-19',
+        streak: 4,
+        bestStreak: 11,
+        bestSprint: 87,
+      ),
+      sound: false,
+      themeMode: ThemeMode.dark,
+      layoutMode: LayoutMode.compact,
+      language: 'de',
+      palette: AppPalette.ocean,
+      updateReminderDate: '2026-11-18',
+    );
+
+    final decoded = Progress.decode(saved);
+
+    expect(decoded.selectedOperations, expected.selectedOperations);
+    expect(decoded.tier, expected.tier);
+    expect(decoded.extra, isEmpty);
+    for (final type in OperationType.values) {
+      final (a, b) = (decoded.difficulty[type]!, expected.difficulty[type]!);
+      expect(
+        [a.level, a.upCount, a.downCount, a.answered, a.correct],
+        [b.level, b.upCount, b.downCount, b.answered, b.correct],
+      );
+    }
+    List<Object?> gameFields(GameState g) => [
+      g.xp,
+      g.combo,
+      g.dailyCount,
+      g.lastActiveDate,
+      g.lastGoalDate,
+      g.streak,
+      g.bestStreak,
+      g.bestSprint,
+    ];
+    expect(gameFields(decoded.game), gameFields(expected.game));
+    expect(
+      [
+        decoded.sound,
+        decoded.haptics,
+        decoded.themeMode,
+        decoded.layoutMode,
+        decoded.language,
+        decoded.palette,
+        decoded.updateReminderDate,
+      ],
+      [
+        expected.sound,
+        expected.haptics,
+        expected.themeMode,
+        expected.layoutMode,
+        expected.language,
+        expected.palette,
+        expected.updateReminderDate,
+      ],
+    );
+    List<Object?> attemptFields(Attempt a) => [
+      ...switch (a.problem) {
+        ArithmeticProblem(:final lhs, :final rhs) => [lhs, rhs],
+      },
+      a.problem.kind,
+      a.problem.result,
+      a.problem.level,
+      a.firstAnswer,
+      a.elapsedMs,
+      a.hintsUsed,
+      a.answeredAt,
+      a.sprint,
+    ];
+    expect(
+      decoded.history.map(attemptFields).toList(),
+      expected.history.map(attemptFields).toList(),
+    );
+    expect(
+      decoded.history.map((a) => a.problem.kind).toSet(),
+      OperationType.values.toSet(),
+    );
+    expect(decoded.encode(), saved);
+    expect(expected.encode(), saved);
   });
 
   test(
@@ -385,7 +589,7 @@ void main() {
         progress = progress.withAttempt(attempt(i + 1));
       }
       expect(progress.history, hasLength(Progress.historyCap));
-      expect(progress.history.first.problem.lhs, 6);
+      expect((progress.history.first.problem as ArithmeticProblem).lhs, 6);
 
       final stored = Progress.decode(progress.encode());
       expect(stored.history, hasLength(Progress.historyCap));
@@ -399,7 +603,12 @@ void main() {
   test('decoding more than 200 attempts keeps the last 200', () {
     final long = Progress(history: [for (var i = 1; i <= 250; i++) attempt(i)]);
     expect(long.history, hasLength(200));
-    expect(Progress.decode(long.encode()).history.first.problem.lhs, 51);
+    expect(
+      (Progress.decode(long.encode()).history.first.problem
+              as ArithmeticProblem)
+          .lhs,
+      51,
+    );
   });
 
   test('negative and absurd game values decode to their clamps', () {

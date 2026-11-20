@@ -5,10 +5,22 @@ import 'package:simple_math_tester/operations.dart';
 
 void main() {
   test('all operations calculate correct results', () {
-    expect(OperationType.plus.calculate(12, 3), 15);
-    expect(OperationType.minus.calculate(12, 3), 9);
-    expect(OperationType.multiply.calculate(12, 3), 36);
-    expect(OperationType.divide.calculate(12, 3), 4);
+    expect(
+      (OperationType.plus.source as ArithmeticSource).calculate(12, 3),
+      15,
+    );
+    expect(
+      (OperationType.minus.source as ArithmeticSource).calculate(12, 3),
+      9,
+    );
+    expect(
+      (OperationType.multiply.source as ArithmeticSource).calculate(12, 3),
+      36,
+    );
+    expect(
+      (OperationType.divide.source as ArithmeticSource).calculate(12, 3),
+      4,
+    );
   });
 
   test('the level table is the one in the plan', () {
@@ -21,10 +33,12 @@ void main() {
       ((11, 30), (11, 99)),
     ];
     for (final type in [OperationType.plus, OperationType.minus]) {
-      expect(type.levels, [for (final range in sums) (range, range)]);
+      expect((type.source as ArithmeticSource).levels, [
+        for (final range in sums) (range, range),
+      ]);
     }
     for (final type in [OperationType.multiply, OperationType.divide]) {
-      expect(type.levels, factors);
+      expect((type.source as ArithmeticSource).levels, factors);
     }
   });
 
@@ -34,14 +48,18 @@ void main() {
     for (final type in OperationType.values) {
       test('criterion 17: 500 $type problems at level $level stay in the '
           'table', () {
-        final (first, second) = type.levels[level - 1];
+        final (first, second) =
+            (type.source as ArithmeticSource).levels[level - 1];
         final random = Random(level * 10 + type.index);
         for (var i = 0; i < 500; i++) {
-          final problem = type.generate(random, level);
+          final problem = type.generate(random, level) as ArithmeticProblem;
           final (lhs, rhs) = (problem.lhs, problem.rhs);
           expect(problem.kind, type);
           expect(problem.level, level);
-          expect(problem.result, type.calculate(lhs, rhs));
+          expect(
+            problem.result,
+            (type.source as ArithmeticSource).calculate(lhs, rhs),
+          );
           expect(problem.result, problem.result.truncate());
           expect(problem.result, greaterThanOrEqualTo(0));
           switch (type) {
@@ -67,15 +85,16 @@ void main() {
   test('multiplication shows the smaller factor on either side', () {
     final random = Random(5);
     final problems = [
-      for (var i = 0; i < 100; i++) OperationType.multiply.generate(random, 4),
+      for (var i = 0; i < 100; i++)
+        OperationType.multiply.generate(random, 4) as ArithmeticProblem,
     ];
     expect(problems.where((p) => p.lhs < p.rhs), isNotEmpty);
     expect(problems.where((p) => p.lhs > p.rhs), isNotEmpty);
   });
 
   test('a whole-number answer of either type matches the result', () {
-    const sum = Problem(2, 3, OperationType.plus, 5);
-    const quotient = Problem(12, 3, OperationType.divide, 4.0);
+    const sum = ArithmeticProblem(2, 3, OperationType.plus, 5);
+    const quotient = ArithmeticProblem(12, 3, OperationType.divide, 4.0);
     Attempt answer(Problem problem, num? value) => Attempt(
       problem,
       firstAnswer: value,
@@ -98,6 +117,9 @@ void main() {
   });
 
   test('question text uses the operation symbol', () {
-    expect(const Problem(12, 3, OperationType.divide, 4.0).question, '12 ÷ 3');
+    expect(
+      const ArithmeticProblem(12, 3, OperationType.divide, 4.0).question,
+      '12 ÷ 3',
+    );
   });
 }

@@ -32,7 +32,7 @@ class FailingPlayer implements SoundPlayer {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final start = DateTime(2026, 11, 14, 9);
-  const level2 = Problem(2, 3, OperationType.plus, 5, level: 2);
+  const level2 = ArithmeticProblem(2, 3, OperationType.plus, 5, level: 2);
 
   MathTesterModel modelWith(
     SoundPlayer player, {

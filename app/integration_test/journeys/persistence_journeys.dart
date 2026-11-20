@@ -23,7 +23,7 @@ void persistenceJourneys() {
           history: [
             for (final lhs in [3, 4, 5])
               attempt(
-                Problem(lhs, 6, OperationType.multiply, lhs * 6),
+                ArithmeticProblem(lhs, 6, OperationType.multiply, lhs * 6),
                 lhs * 6,
               ),
           ],

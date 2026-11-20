@@ -12,7 +12,7 @@ typedef SolutionStep = String Function(AppLocalizations l);
 List<SolutionStep> solutionSteps(Problem problem) =>
     problem.kind.steps(problem);
 
-List<SolutionStep> additionSteps(Problem problem) {
+List<SolutionStep> additionSteps(ArithmeticProblem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
@@ -65,7 +65,7 @@ List<SolutionStep> additionSteps(Problem problem) {
   ];
 }
 
-List<SolutionStep> subtractionSteps(Problem problem) {
+List<SolutionStep> subtractionSteps(ArithmeticProblem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;
@@ -136,7 +136,7 @@ List<SolutionStep> subtractionSteps(Problem problem) {
   ];
 }
 
-List<SolutionStep> multiplicationSteps(Problem problem) {
+List<SolutionStep> multiplicationSteps(ArithmeticProblem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = formatNumber(problem.result);
@@ -184,7 +184,7 @@ List<SolutionStep> multiplicationSteps(Problem problem) {
   ];
 }
 
-List<SolutionStep> divisionSteps(Problem problem) {
+List<SolutionStep> divisionSteps(ArithmeticProblem problem) {
   final left = problem.lhs;
   final right = problem.rhs;
   final result = problem.result;

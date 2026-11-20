@@ -35,31 +35,31 @@ void main() {
   // numbers long enough to fill a phone's line.
   final history = [
     Attempt(
-      const Problem(80, 36, OperationType.plus, 116),
+      const ArithmeticProblem(80, 36, OperationType.plus, 116),
       firstAnswer: 116,
       elapsedMs: 7000,
       answeredAt: at,
     ),
     Attempt(
-      const Problem(75, 46, OperationType.plus, 121),
+      const ArithmeticProblem(75, 46, OperationType.plus, 121),
       firstAnswer: 125,
       elapsedMs: 8000,
       answeredAt: at,
     ),
     Attempt(
-      const Problem(9, 3, OperationType.minus, 6),
+      const ArithmeticProblem(9, 3, OperationType.minus, 6),
       firstAnswer: null,
       elapsedMs: 2000,
       answeredAt: at,
     ),
     Attempt(
-      const Problem(4, 5, OperationType.multiply, 20),
+      const ArithmeticProblem(4, 5, OperationType.multiply, 20),
       firstAnswer: 20,
       elapsedMs: 3000,
       answeredAt: at,
     ),
     Attempt(
-      const Problem(9876, 8765, OperationType.plus, 18641, level: 5),
+      const ArithmeticProblem(9876, 8765, OperationType.plus, 18641, level: 5),
       firstAnswer: 18651,
       elapsedMs: 12000,
       answeredAt: at,
@@ -80,7 +80,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(
-      initialProblem: const Problem(48, 27, OperationType.plus, 75),
+      initialProblem: const ArithmeticProblem(48, 27, OperationType.plus, 75),
       progress:
           progress ??
           Progress(tier: Tier.easy, history: history, layoutMode: layout),
@@ -337,7 +337,7 @@ void main() {
     final long = [
       for (var i = 0; i < 30; i++)
         Attempt(
-          Problem(i, 2, OperationType.plus, i + 2),
+          ArithmeticProblem(i, 2, OperationType.plus, i + 2),
           firstAnswer: i + 2,
           elapsedMs: 1000,
           answeredAt: at,

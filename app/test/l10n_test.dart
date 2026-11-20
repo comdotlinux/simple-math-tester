@@ -233,7 +233,7 @@ void main() {
 
     const size = Size(360, 640);
     final wrong = Attempt(
-      const Problem(48, 27, OperationType.plus, 75),
+      const ArithmeticProblem(48, 27, OperationType.plus, 75),
       firstAnswer: 74,
       elapsedMs: 65000,
       answeredAt: DateTime(2026, 11, 14, 9),
@@ -245,7 +245,12 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final model = MathTesterModel(
-        initialProblem: const Problem(4800, 2700, OperationType.minus, 2100),
+        initialProblem: const ArithmeticProblem(
+          4800,
+          2700,
+          OperationType.minus,
+          2100,
+        ),
         progress: progress,
       );
       addTearDown(model.dispose);
