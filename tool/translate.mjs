@@ -29,6 +29,25 @@ export function placeholders(message) {
   return [...new Set([...message.matchAll(/\{(\w+)\s*[,}]/g)].map((m) => m[1]))].sort();
 }
 
+/**
+ * The Western digits of [message] outside {placeholders}, sorted: those of the
+ * text outside a plural/select, then, in braces, those of each distinct
+ * branch. In an "=1{1 second}" branch the 1 stands for the argument, so it
+ * counts as {count}: a language may write "one{{count} ...}" instead.
+ */
+export function digits(message) {
+  const sorted = (text) => (text.match(/[0-9]/g) ?? []).sort().join('');
+  // shortcut: one plural/select level, as in every message so far; a nested plural needs a real ICU parser.
+  let rest = message.replace(/\{\w+\}/g, '');
+  const branches = new Set();
+  rest = rest.replace(/(=(\d+)|\w+)\s*\{([^{}]*)\}/g, (_, selector, value, text) => {
+    branches.add(sorted(value ? text.replace(new RegExp(`(?<![0-9])${value}(?![0-9])`, 'g'), '') : text));
+    return '';
+  });
+  const outside = sorted(rest.replace(/\{\w+\s*,\s*\w+\s*,/g, ''));
+  return branches.size ? `${outside}{${[...branches].sort().join('|')}}` : outside;
+}
+
 /** Why [translation] cannot replace [source], or null when it can. */
 export function problem(source, translation) {
   if (typeof translation !== 'string' || translation.trim() === '') return 'empty';
@@ -44,6 +63,10 @@ export function problem(source, translation) {
   if (/plural,/.test(source) && !/\bother\s*\{/.test(translation)) return 'plural without other';
   // Digits stay Western (0-9) in every language.
   if (/(?![0-9])\p{Nd}/u.test(translation)) return 'non-Western digits';
+  // No number may be changed, added or dropped.
+  if (digits(translation) !== digits(source)) {
+    return `digits ${digits(translation) || 'none'} instead of ${digits(source) || 'none'}`;
+  }
   return null;
 }
 
@@ -153,7 +176,9 @@ async function ask(model, key, template, arb, language, keys) {
     `You translate the user interface of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Use friendly, simple, natural everyday words a school child understands, and the informal "you". Button labels must stay short: the app runs on 360 px wide phones.',
     'Messages use ICU syntax. Keep every {placeholder} name exactly; never translate, add or drop one. Keep plural/select structure; inside a plural, add the CLDR categories the language needs (e.g. few, many) and keep "other".',
-    'Numbers and math symbols (+ − × ÷ = ?) stay as given; digits are always Western 0-9.',
+    'Numbers and math symbols (+ − × ÷ = ?) stay as given; digits are always Western 0-9. Never change, add or drop a number.',
+    // A glossary of terms, not of translations: the standard school word is the model's to pick.
+    'These are school mathematics terms: perimeter, area, angle, side, triangle, rectangle, square, circle, equation, blank (the empty box in an equation). Translate each with the standard term schools in the target language use, and always the same way.',
     'Keep these words unchanged: Impressum, XP, GitHub, Cloudflare, Cloudflare Pages, Cloudflare Turnstile, Google Play, Android, iOS.',
     'Answer with one JSON object that maps each requested key to its translated message string, nothing else.',
   ].join('\n');

@@ -6,6 +6,7 @@ import { test } from 'node:test';
 
 import {
   batches,
+  digits,
   hash,
   ordered,
   parseAnswer,
@@ -38,6 +39,38 @@ test('a translation must keep placeholders, braces, plurals and digits', () => {
   assert.equal(problem('Level 1', 'स्तर १'), 'non-Western digits');
   assert.equal(problem('Level 1', 'स्तर 1'), null);
   assert.equal(problem('Hint', ''), 'empty');
+});
+
+test('a translation must keep every number, in any order', () => {
+  const source = 'The perimeter is 3 + 4 + 12 = 19.';
+  assert.equal(problem(source, 'Der Umfang ist 3 + 4 + 12 = 19.'), null);
+  assert.equal(problem(source, 'Der Umfang ist 19 = 12 + 4 + 3.'), null); // reordered
+  assert.equal(problem(source, 'Der Umfang ist 3 + 5 + 12 = 19.'), 'digits 112359 instead of 112349'); // changed
+  assert.equal(problem(source, 'Der Umfang ist 3 + 4 + 12 = 190.'), 'digits 0112349 instead of 112349'); // added
+  assert.equal(problem(source, 'Der Umfang ist 3 + 4 + 1 = 19.'), 'digits 11349 instead of 112349'); // dropped
+  assert.equal(problem('Level 1', 'Stufe eins'), 'digits none instead of 1');
+  // Digits in placeholder names are not numbers.
+  assert.equal(problem('{a1} + {b2} = 5', '{b2} + {a1} = 5'), null);
+  assert.equal(problem('{a1} + {b2}', '{a1} + {b2} 2'), 'digits 2 instead of none');
+});
+
+test('in a plural, the number of an =N branch may become the argument', () => {
+  const source = '{count, plural, =1{1 second} other{{count} seconds}}';
+  assert.equal(digits(source), '{}');
+  const uk = '{count, plural, one{{count} секунда} few{{count} секунди} many{{count} секунд} other{{count} секунди}}';
+  assert.equal(problem(source, uk), null);
+  assert.equal(problem(source, '{count, plural, =1{eine Sekunde} other{{count} Sekunden}}'), null);
+  assert.equal(problem(source, '{count, plural, =1{1 Sekunde} other{{count} Sekunden, 2}}'), 'digits {|2} instead of {}');
+  // Added plural categories must carry the same numbers as the English branches.
+  const tens = '{n, plural, =1{1 ten is 10} other{{n} tens are 10 each}}';
+  assert.equal(digits(tens), '{01}');
+  assert.equal(problem(tens, '{n, plural, one{{n} десяток - 10} few{{n} десятки по 10} other{{n} десятків по 10}}'), null);
+  assert.equal(
+    problem(tens, '{n, plural, one{{n} десяток - 10} few{{n} десятки по 100} other{{n} десятків по 10}}'),
+    'digits {001|01} instead of {01}',
+  );
+  // Text around the plural counts on its own.
+  assert.equal(digits('Step 2: {n, plural, =1{1 zero} other{{n} zeros}}'), '2{}');
 });
 
 test('missing keys and keys whose English changed are stale', () => {

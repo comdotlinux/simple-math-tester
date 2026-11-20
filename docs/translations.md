@@ -43,6 +43,28 @@ when that language has no translation; Settings > Language overrides it.
 3. The workflow starts the Flutter checks on that branch itself. Review and
    merge the pull request.
 
+### What a translation must keep
+
+`problem()` in `tool/translate.mjs` rejects a translation that loses or adds
+a placeholder, has unbalanced braces, a plural without `other`, or digits
+other than Western 0-9 (other scripts' digits are first turned into 0-9).
+It also rejects a changed, added or dropped number: the digits outside
+`{placeholders}` must be the same in English and in the translation, in any
+order. Digits in placeholder names do not count. In a plural, each branch
+is compared on its own, and the number of an `=1{1 second}` branch counts
+as the argument, so `one{{count} секунда}` matches it. Added plural
+categories (`few`, `many`) must carry the same numbers as the English
+branches. The store listing (`tool/translate_listing.mjs`) applies the same
+digit rule.
+
+The prompt names the school mathematics terms perimeter, area, angle, side,
+triangle, rectangle, square, circle, equation and blank (the empty box in an
+equation), and asks for the standard school term of the target language,
+always the same one. It lists no translations: those are the model's, and a
+native speaker should check them. Changing the prompt does not translate
+existing strings again; only a changed English text does, since the hashes
+in `translation_sources.json` are made from the English text alone.
+
 Locally the same script runs with your own key:
 
 ```sh
