@@ -40,9 +40,10 @@ journey. On a headless Linux host, prefix it with `xvfb-run -a`.
 CI runs web checks and the Impressum function tests first, then Linux
 integration. The Chrome and offline checks, Cloudflare deployment, and the
 Android and iOS jobs then run in parallel.
-Pull requests skip the Android and iOS jobs (builds, emulators, simulator) to keep
-rounds short; they run on every push to `main` and on manual runs ("Run
-workflow", environment `none` runs all checks without deploying). Deployment
+Pull requests and pushes to `main` skip the Android and iOS jobs (builds,
+emulators, simulator); they run only on manual runs ("Run workflow", environment
+`none` runs all checks without deploying). A change that breaks only the Android
+or iOS build is therefore found by a manual run or at release time. Deployment
 downloads the tested web artifact instead of repeating tests or compilation.
 Branch pushes skip deployment; `main` pushes and manual runs with an environment
 deploy after the prerequisite checks pass.
@@ -50,8 +51,8 @@ deploy after the prerequisite checks pass.
 CI uploads the Linux release bundle, Android APK, and unsigned iOS app as build
 artifacts with 3-day retention.
 
-A separate workflow, `play-bundle.yml`, builds the Google Play app bundle on every
-push to `main` and on manual runs (no inputs). It signs with the upload key from
+A separate workflow, `play-bundle.yml`, builds the Google Play app bundle on `v*`
+tags and on manual runs (no inputs), not on pushes to `main`. It signs with the upload key from
 repository secrets, or with a throwaway key when the secrets are not set, fails if
 the bundle carries the Android debug certificate, and checks 16 KB page support of
 the APKs built from it (`zipalign -c -P 16`, `.so` LOAD alignment of at least
