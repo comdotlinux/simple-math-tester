@@ -61,7 +61,7 @@ void main() {
     double scale = 1,
     double keyboardInset = 0,
     bool disableAnimations = false,
-    Problem problem = const Problem(12, 3, OperationType.plus, 15),
+    Problem problem = const ArithmeticProblem(12, 3, OperationType.plus, 15),
     Tier? tier = Tier.easy,
     GameState game = const GameState(),
     DateTime Function()? clock,
@@ -261,7 +261,7 @@ void main() {
   List<Attempt> answers(int count) => [
     for (var i = 1; i <= count; i++)
       Attempt(
-        Problem(i, 1, OperationType.plus, i + 1),
+        ArithmeticProblem(i, 1, OperationType.plus, i + 1),
         firstAnswer: i + 1,
         elapsedMs: 1500,
         answeredAt: DateTime(2026, 11, 13, 18),
@@ -510,7 +510,7 @@ void main() {
       final model = await launch(
         tester,
         size: Size(width, 900),
-        problem: const Problem(12, 3, OperationType.divide, 4.0),
+        problem: const ArithmeticProblem(12, 3, OperationType.divide, 4.0),
       );
       model.setDraftInput('4.5');
       model.submitAnswer();

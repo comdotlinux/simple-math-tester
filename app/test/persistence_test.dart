@@ -18,7 +18,7 @@ import 'en.dart';
 import 'fake_store.dart';
 
 Attempt attempt(int lhs) => Attempt(
-  Problem(lhs, 2, OperationType.multiply, lhs * 2),
+  ArithmeticProblem(lhs, 2, OperationType.multiply, lhs * 2),
   firstAnswer: lhs * 2,
   elapsedMs: 900,
   answeredAt: DateTime(2026, 11, 13, 18),
@@ -40,8 +40,9 @@ void main() {
         store: store,
         progress: loaded.progress,
         canSave: loaded.canSave,
-        initialProblem: const Problem(2, 3, OperationType.plus, 5),
-        nextProblem: () => const Problem(6, 3, OperationType.minus, 3),
+        initialProblem: const ArithmeticProblem(2, 3, OperationType.plus, 5),
+        nextProblem: () =>
+            const ArithmeticProblem(6, 3, OperationType.minus, 3),
       );
       addTearDown(model.dispose);
       return model;
@@ -240,7 +241,7 @@ void main() {
         await pumpEventQueue();
         expect(model.canSave, isTrue);
         expect(model.selectedOperations, {OperationType.divide});
-        expect(model.history.single.problem.lhs, 4);
+        expect((model.history.single.problem as ArithmeticProblem).lhs, 4);
         expect(store.values[progressKey], saved);
       },
     );
@@ -335,7 +336,10 @@ void main() {
       final model = tester
           .element(find.byKey(homePageKey))
           .read<MathTesterModel>();
-      expect(model.history.map((a) => a.problem.lhs), [8, 9]);
+      expect(model.history.map((a) => (a.problem as ArithmeticProblem).lhs), [
+        8,
+        9,
+      ]);
       await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pump();
       expect(
@@ -393,7 +397,7 @@ void main() {
         }
         await tester.pump();
         expect(find.byKey(cantSaveNoticeKey), findsNothing);
-        expect(model.history.single.problem.lhs, 7);
+        expect((model.history.single.problem as ArithmeticProblem).lhs, 7);
 
         model.generateNextProblem();
         await tester.pump();

@@ -12,7 +12,7 @@ import 'package:simple_math_tester/rules.dart';
 import 'en.dart';
 
 void main() {
-  const addition = Problem(2, 3, OperationType.plus, 5);
+  const addition = ArithmeticProblem(2, 3, OperationType.plus, 5);
   final start = DateTime(2026, 11, 14, 9);
 
   MathTesterModel modelFor(
@@ -23,7 +23,8 @@ void main() {
   }) {
     final model = MathTesterModel(
       initialProblem: problem,
-      nextProblem: next ?? () => const Problem(6, 3, OperationType.minus, 3),
+      nextProblem:
+          next ?? () => const ArithmeticProblem(6, 3, OperationType.minus, 3),
       random: random,
       clock: clock,
     );
@@ -33,7 +34,12 @@ void main() {
 
   for (final type in OperationType.values) {
     test('accepts numeric input for $type', () {
-      final problem = Problem(12, 3, type, type.calculate(12, 3));
+      final problem = ArithmeticProblem(
+        12,
+        3,
+        type,
+        (type.source as ArithmeticSource).calculate(12, 3),
+      );
       final model = modelFor(problem);
 
       model.setDraftInput('${problem.result}');
@@ -121,7 +127,7 @@ void main() {
 
   test('criterion 2: checking 5 then the correct value records Incorrect', () {
     var now = start;
-    const problem = Problem(2, 4, OperationType.plus, 6);
+    const problem = ArithmeticProblem(2, 4, OperationType.plus, 6);
     final model = modelFor(problem, clock: () => now);
     now = start.add(const Duration(milliseconds: 3250));
     model.setDraftInput('5');
@@ -147,7 +153,7 @@ void main() {
     final model = modelFor(
       addition,
       clock: () => now,
-      next: () => const Problem(2, 3, OperationType.plus, 5),
+      next: () => const ArithmeticProblem(2, 3, OperationType.plus, 5),
     );
     now = start.add(const Duration(seconds: 4));
     model.generateNextProblem();
@@ -311,7 +317,7 @@ void main() {
   });
 
   group('hints', () {
-    const sum = Problem(12, 3, OperationType.plus, 15);
+    const sum = ArithmeticProblem(12, 3, OperationType.plus, 15);
 
     test('steps reveal one at a time and the last needs a check', () {
       final model = modelFor(sum);
@@ -506,8 +512,15 @@ void main() {
       ProgressStore? store,
     }) {
       final model = MathTesterModel(
-        initialProblem: const Problem(2, 3, OperationType.plus, 5, level: 2),
-        nextProblem: () => const Problem(6, 3, OperationType.minus, 3),
+        initialProblem: const ArithmeticProblem(
+          2,
+          3,
+          OperationType.plus,
+          5,
+          level: 2,
+        ),
+        nextProblem: () =>
+            const ArithmeticProblem(6, 3, OperationType.minus, 3),
         clock: clock,
         store: store,
         progress: Progress(tier: Tier.easy, game: game),
@@ -634,10 +647,22 @@ void main() {
     }) {
       var drawn = 0;
       final model = MathTesterModel(
-        initialProblem: const Problem(2, 3, OperationType.plus, 5, level: 3),
+        initialProblem: const ArithmeticProblem(
+          2,
+          3,
+          OperationType.plus,
+          5,
+          level: 3,
+        ),
         nextProblem: () {
           drawn++;
-          return Problem(drawn, 1, OperationType.plus, drawn + 1, level: 3);
+          return ArithmeticProblem(
+            drawn,
+            1,
+            OperationType.plus,
+            drawn + 1,
+            level: 3,
+          );
         },
         clock: clock,
         store: store,
@@ -794,7 +819,7 @@ void main() {
       final old = [
         for (var i = 0; i < Progress.historyCap; i++)
           Attempt(
-            Problem(i, 1, OperationType.plus, i + 1),
+            ArithmeticProblem(i, 1, OperationType.plus, i + 1),
             firstAnswer: i + 1,
             elapsedMs: 0,
             answeredAt: start,
@@ -804,7 +829,7 @@ void main() {
       model.startSprint();
       check(model, '2');
       expect(model.history, hasLength(Progress.historyCap));
-      expect(model.history.first.problem.lhs, 1);
+      expect((model.history.first.problem as ArithmeticProblem).lhs, 1);
       expect(model.history.last.sprint, isTrue);
       expect(model.history.last.problem.question, '1 + 1');
     });

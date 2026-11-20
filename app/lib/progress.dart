@@ -402,8 +402,9 @@ class Progress {
   static final _kinds = OperationType.values.asNameMap();
 
   static Map<String, Object?> _encodeAttempt(Attempt attempt) => {
-    'lhs': attempt.problem.lhs,
-    'rhs': attempt.problem.rhs,
+    ...switch (attempt.problem) {
+      ArithmeticProblem(:final lhs, :final rhs) => {'lhs': lhs, 'rhs': rhs},
+    },
     'kind': attempt.problem.kind.name,
     'result': attempt.problem.result,
     'level': attempt.problem.level,
@@ -417,7 +418,7 @@ class Progress {
   static Attempt _decodeAttempt(Map<String, Object?> json, OperationType kind) {
     final answeredAt = DateTime.parse(_required<String>(json, 'answeredAt'));
     return Attempt(
-      Problem(
+      ArithmeticProblem(
         _required<int>(json, 'lhs'),
         _required<int>(json, 'rhs'),
         kind,

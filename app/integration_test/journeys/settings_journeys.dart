@@ -224,7 +224,7 @@ void settingsJourneys() {
     // behaviour.
     testWidgets('choosing Compact shows dense answer rows and survives a '
         'restart; Comfortable brings the cards back', (tester) async {
-      const problem = Problem(75, 46, OperationType.plus, 121);
+      const problem = ArithmeticProblem(75, 46, OperationType.plus, 121);
       await startWith(
         tester,
         Progress(tier: Tier.easy, history: [attempt(problem, 125)]),

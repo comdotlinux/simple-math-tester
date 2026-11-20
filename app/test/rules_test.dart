@@ -40,7 +40,7 @@ void main() {
   });
 
   group('difficulty', () {
-    const problem = Problem(2, 3, OperationType.plus, 5);
+    const problem = ArithmeticProblem(2, 3, OperationType.plus, 5);
     Attempt answer({required bool right, int hints = 0, bool skip = false}) =>
         Attempt(
           problem,
@@ -197,7 +197,7 @@ void main() {
       int hints = 0,
       int level = 1,
     }) => Attempt(
-      Problem(2, 3, OperationType.plus, 5, level: level),
+      ArithmeticProblem(2, 3, OperationType.plus, 5, level: level),
       firstAnswer: skip ? null : (right ? 5 : 4),
       hintsUsed: hints,
       elapsedMs: 0,

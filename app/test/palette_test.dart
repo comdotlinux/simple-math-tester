@@ -26,7 +26,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(
-      initialProblem: const Problem(48, 27, OperationType.plus, 75),
+      initialProblem: const ArithmeticProblem(48, 27, OperationType.plus, 75),
       progress: progress ?? Progress(tier: Tier.easy),
       store: store,
     );
