@@ -212,8 +212,10 @@ jobs:
             echo "::error::No native libraries found in the APKs"
             exit 1
           fi
-      # The APK Play installs carries the Play package id and is not debug-signed.
-      - name: Check package id and signer of the universal APK
+      # The APK Play installs carries the Play package id, is not debug-signed and
+      # requests only the permissions in android/expected-permissions.txt (the same
+      # comparison as the APK check in flutter-checks.yml, which tags do not run).
+      - name: Check package id, signer and permissions of the universal APK
         run: |
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           tools="$( (find "$sdk/build-tools" -name apksigner -type f || true) | sort -V | tail -n 1)"
@@ -240,6 +242,10 @@ jobs:
             echo "::error::The APK is signed with the Android debug certificate"
             exit 1
           fi
+          "$tools/aapt2" dump permissions "$apk" | tee "$RUNNER_TEMP/aapt2-permissions.txt"
+          sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
+            | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
+          diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
       # Tag only from here on. A manual run stops above and the bundle is discarded
       # with the runner. The digest goes to the upload job as a job output.
       - name: Hash the app bundle

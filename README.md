@@ -54,7 +54,8 @@ artifacts with 3-day retention.
 A separate workflow, `play-bundle.yml`, builds the Google Play app bundle on `v*`
 tags and on manual runs (no inputs), not on pushes to `main`. It signs with the upload key from
 repository secrets, or with a throwaway key when the secrets are not set, fails if
-the bundle carries the Android debug certificate, and checks 16 KB page support of
+the bundle carries the Android debug certificate or requests a permission not in
+`app/android/expected-permissions.txt`, and checks 16 KB page support of
 the APKs built from it (`zipalign -c -P 16`, `.so` LOAD alignment of at least
 0x4000). Only the secret-signed bundle is uploaded (3-day retention). Release builds
 use `app/android/key.properties` when it exists and debug signing otherwise; the

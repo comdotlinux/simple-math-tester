@@ -174,8 +174,9 @@ command line or printed. Rows 1 to 3 start only after the push run of
 ("Run workflow", no inputs), not on pushes to `main`. With the four
 `ANDROID_*` secrets it signs the bundle with the upload key; without them it signs
 with a throwaway key made in the job. Every run fails if the bundle carries the
-Android debug certificate and checks 16 KB page support of the APKs built from
-the bundle. Pull requests and pushes to `main` build no Android or iOS app. A
+Android debug certificate or requests a permission not in
+`app/android/expected-permissions.txt`, and checks 16 KB page support of the APKs
+built from the bundle. Pull requests and pushes to `main` build no Android or iOS app. A
 manual run builds, checks and discards the bundle (and the APK and iOS app in
 `flutter-checks.yml`), so a change that breaks only the Android or iOS build is
 found by a manual run or at release time.
