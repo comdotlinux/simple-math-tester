@@ -67,7 +67,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(
-      initialProblem: const Problem(48, 27, OperationType.plus, 75),
+      initialProblem: const ArithmeticProblem(48, 27, OperationType.plus, 75),
       progress: Progress(tier: Tier.easy, layoutMode: layout),
       // Any link opened would be a network request.
       openLink: (uri) => fail('opened $uri'),
