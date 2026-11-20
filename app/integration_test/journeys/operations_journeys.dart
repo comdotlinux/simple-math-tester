@@ -115,7 +115,11 @@ void operationsJourneys() {
       await nextQuestion(tester);
 
       expect(model.current.kind, OperationType.algebra);
-      expect(questionOnScreen(tester), model.current.question);
+      // The blank is a drawn box, a placeholder in the text, not a glyph.
+      expect(
+        questionOnScreen(tester),
+        model.current.question.replaceAll(EquationProblem.blank, '\ufffc'),
+      );
       await submit(tester, model.current.result);
       expect(model.history.last.correct, isTrue);
       expect(model.history.last.problem.kind, OperationType.algebra);
