@@ -288,7 +288,7 @@ void numberPadJourneys() {
       final screen = Offset.zero & tester.view.physicalSize / 3;
       final question = find.byKey(questionOnProblemsPageKey);
       expect(
-        tester.widget<Text>(question).data,
+        questionOnScreen(tester),
         model.current.question,
         reason: 'the question shown is the current one',
       );

@@ -9,6 +9,8 @@ num _divide(int lhs, int rhs) => lhs / rhs;
 
 typedef Range = (int, int);
 
+/// The highest level of any kind; [OperationType.highestLevel] is each
+/// kind's own.
 const maxLevel = 5;
 
 /// The level table, levels 1 to 5: the two operand ranges of addition and
@@ -50,14 +52,21 @@ enum OperationType {
   divide(
     '÷',
     ArithmeticSource(_productLevels, _productFirst, _divide, divisionSteps),
-  );
+  ),
+
+  /// Its sign is the letter n, not a drawn box, which would look like an
+  /// empty check box on a toggle.
+  algebra('n', AlgebraSource(_algebraLevels, _equations, equationSteps));
 
   final String displayString;
   final ProblemSource<Problem> source;
 
   const OperationType(this.displayString, this.source);
 
-  /// One problem of this kind at [level], 1 to [maxLevel].
+  /// The highest level this kind has; its difficulty never goes above it.
+  int get highestLevel => source.highestLevel;
+
+  /// One problem of this kind at [level], 1 to [highestLevel].
   Problem generate(Random random, int level) =>
       source.generate(this, random, level);
 
@@ -65,10 +74,22 @@ enum OperationType {
   List<SolutionStep> steps(Problem problem) => source.steps(problem);
 }
 
+/// The four arithmetic kinds. Only they are on by default (also for a saved
+/// selection that is missing or names no known kind), a tier sets only
+/// their levels, and a sprint draws only from them.
+const arithmeticKinds = {
+  OperationType.plus,
+  OperationType.minus,
+  OperationType.multiply,
+  OperationType.divide,
+};
+
 /// How one kind makes its problems and explains them. A kind with its own
 /// [Problem] subtype brings its own source for that subtype.
-abstract class ProblemSource<P extends Problem> {
+sealed class ProblemSource<P extends Problem> {
   const ProblemSource();
+
+  int get highestLevel;
 
   P generate(OperationType kind, Random random, int level);
 
@@ -86,6 +107,9 @@ class ArithmeticSource extends ProblemSource<ArithmeticProblem> {
   final (int, int) Function(int a, int b, Random random) _order;
   final num Function(int lhs, int rhs) calculate;
   final List<SolutionStep> Function(ArithmeticProblem problem) _steps;
+
+  @override
+  int get highestLevel => levels.length;
 
   /// Subtraction puts the larger operand first and division is built as
   /// divisor times quotient, so every answer is a whole number of 0 or more.
@@ -107,6 +131,148 @@ class ArithmeticSource extends ProblemSource<ArithmeticProblem> {
 (int, int) _eitherOrder(int a, int b, Random random) =>
     random.nextBool() ? (a, b) : (b, a);
 (int, int) _productFirst(int a, int b, Random random) => (a * b, a);
+
+/// What one family's pure build makes of its params: the question's tokens,
+/// with [EquationProblem.blank] for the unknown, and the answer; null when
+/// the params do not make a valid question of the family.
+typedef EquationBuild = (List<String>, int)? Function(List<int> params);
+
+/// Each family by its variant name, which is saved with every attempt and
+/// so must never change.
+const Map<String, EquationBuild> _equations = {
+  'missingSecondAddend': _missingSecondAddend,
+  'missingFirstAddend': _missingFirstAddend,
+  'missingSubtrahend': _missingSubtrahend,
+  'missingMinuend': _missingMinuend,
+};
+
+/// The families of each level, index 0 is level 1, with the range of each
+/// param. Adding a level here raises [OperationType.algebra]'s highest level.
+const List<List<(String, List<Range>)>> _algebraLevels = [
+  [
+    ('missingSecondAddend', [(0, 10), (0, 10)]),
+    ('missingFirstAddend', [(0, 10), (0, 10)]),
+    ('missingSubtrahend', [(0, 10), (0, 10)]),
+    ('missingMinuend', [(0, 10), (0, 10)]),
+  ],
+];
+
+const _blank = EquationProblem.blank;
+
+// Level 1: params are the two smaller numbers a and b, each 0 or more; the
+// third number is their sum.
+
+/// a + □ = a + b, answer b.
+(List<String>, int)? _missingSecondAddend(List<int> params) => switch (params) {
+  [final a, final b] when a >= 0 && b >= 0 => (
+    ['$a', '+', _blank, '=', '${a + b}'],
+    b,
+  ),
+  _ => null,
+};
+
+/// □ + a = a + b, answer b.
+(List<String>, int)? _missingFirstAddend(List<int> params) => switch (params) {
+  [final a, final b] when a >= 0 && b >= 0 => (
+    [_blank, '+', '$a', '=', '${a + b}'],
+    b,
+  ),
+  _ => null,
+};
+
+/// a + b − □ = a, answer b.
+(List<String>, int)? _missingSubtrahend(List<int> params) => switch (params) {
+  [final a, final b] when a >= 0 && b >= 0 => (
+    ['${a + b}', '−', _blank, '=', '$a'],
+    b,
+  ),
+  _ => null,
+};
+
+/// □ − a = b, answer a + b.
+(List<String>, int)? _missingMinuend(List<int> params) => switch (params) {
+  [final a, final b] when a >= 0 && b >= 0 => (
+    [_blank, '−', '$a', '=', '$b'],
+    a + b,
+  ),
+  _ => null,
+};
+
+/// Equations with one unknown, built answer first by pure family builds.
+class AlgebraSource extends ProblemSource<EquationProblem> {
+  const AlgebraSource(this.levels, this.families, this._steps);
+
+  /// The families of each level with the range of each param; index 0 is
+  /// level 1.
+  final List<List<(String, List<Range>)>> levels;
+  final Map<String, EquationBuild> families;
+  final List<SolutionStep> Function(EquationProblem problem) _steps;
+
+  @override
+  int get highestLevel => levels.length;
+
+  /// The problem [variant] builds from [params], or null for a variant this
+  /// build does not know or params that do not fit it.
+  EquationProblem? build(
+    OperationType kind,
+    String variant,
+    List<int> params, {
+    int level = 1,
+  }) {
+    final built = families[variant]?.call(params);
+    if (built == null) return null;
+    final (tokens, answer) = built;
+    return EquationProblem(
+      variant,
+      List.unmodifiable(params),
+      List.unmodifiable(tokens),
+      kind,
+      answer,
+      level: level,
+    );
+  }
+
+  /// Every problem of [level]: each family over the whole range of its
+  /// params, so tests can check them all.
+  Iterable<EquationProblem> problems(OperationType kind, int level) sync* {
+    for (final (variant, ranges) in levels[level - 1]) {
+      // build copies the params, so one list counts through them all.
+      final params = [for (final (low, _) in ranges) low];
+      while (true) {
+        if (build(kind, variant, params, level: level) case final problem?) {
+          yield problem;
+        }
+        // The next params, counting up like an odometer.
+        var i = ranges.length - 1;
+        while (i >= 0 && params[i] == ranges[i].$2) {
+          params[i] = ranges[i].$1;
+          i--;
+        }
+        if (i < 0) break;
+        params[i]++;
+      }
+    }
+  }
+
+  /// A family drawn uniformly, then each param uniformly from its range;
+  /// params a family rejects are drawn again.
+  @override
+  EquationProblem generate(OperationType kind, Random random, int level) {
+    final families = levels[level - 1];
+    while (true) {
+      final (variant, ranges) = families[random.nextInt(families.length)];
+      final params = [
+        for (final (low, high) in ranges) low + random.nextInt(high - low + 1),
+      ];
+      if (build(kind, variant, params, level: level) case final problem?) {
+        return problem;
+      }
+    }
+  }
+
+  @override
+  List<SolutionStep> steps(EquationProblem problem) => _steps(problem);
+}
 
 /// A whole number without a decimal part ("4", not "4.0"); others as is.
 String formatNumber(num value) =>
@@ -140,6 +306,34 @@ class ArithmeticProblem extends Problem {
 
   @override
   String get question => '$lhs ${kind.displayString} $rhs';
+}
+
+/// An equation with one unknown, made by the family [variant] from
+/// [params]. The pair is what is saved; [tokens] and the result follow from
+/// them.
+class EquationProblem extends Problem {
+  const EquationProblem(
+    this.variant,
+    this.params,
+    this.tokens,
+    super.kind,
+    super.result, {
+    super.level,
+  });
+
+  /// The unknown in [tokens] and [question]. No bundled font has this
+  /// glyph, so the screen draws a box in its place and screen readers say
+  /// "blank".
+  static const blank = '□';
+
+  final String variant;
+  final List<int> params;
+
+  /// Numbers, signs and [blank], in reading order.
+  final List<String> tokens;
+
+  @override
+  String get question => tokens.join(' ');
 }
 
 class Attempt {

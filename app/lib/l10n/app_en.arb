@@ -327,6 +327,14 @@
   "@operationDivision": {
     "description": "Name of the operation ÷."
   },
+  "operationAlgebra": "Algebra",
+  "@operationAlgebra": {
+    "description": "Name of the kind of question with equations that have a missing number, such as 3 + □ = 7. Toggle tooltip and screen reader label, very short."
+  },
+  "blank": "blank",
+  "@blank": {
+    "description": "What a screen reader says for the empty box that stands for the missing number in an equation, as in '3 plus blank equals 7'. One short word, lower case."
+  },
   "tierEasy": "Easy",
   "@tierEasy": {
     "description": "Starting difficulty, easiest. Button label, very short."
@@ -1141,6 +1149,57 @@
         "type": "String"
       },
       "left": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationUndoAdd": "Adding {part} and the blank makes {whole}. To undo the adding, take {part} away from {whole}.",
+  "@stepEquationUndoAdd": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "part": {
+        "type": "String"
+      },
+      "whole": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationTakenAway": "Taking the blank away from {whole} leaves {part}. To find the blank, take {part} away from {whole}.",
+  "@stepEquationTakenAway": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "whole": {
+        "type": "String"
+      },
+      "part": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationUndoSubtract": "Taking {part} away from the blank leaves {rest}. To undo the taking away, add {part} back to {rest}.",
+  "@stepEquationUndoSubtract": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "part": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationBlankIs": "{calculation}, so the blank is {answer}. Check: {check}",
+  "@stepEquationBlankIs": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. {calculation} is math like '7 − 3 = 4'; {check} is the equation with the answer in place of the blank, like '3 + 4 = 7'.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "answer": {
+        "type": "String"
+      },
+      "check": {
         "type": "String"
       }
     }

@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'operations.dart';
 
-/// The starting tier sets every operation to [level].
+/// The starting tier sets every arithmetic kind to [level]
+/// ([arithmeticKinds]); other kinds start at level 1 and keep their level
+/// when a tier is chosen.
 enum Tier {
   easy(1),
   medium(3),
@@ -63,7 +65,7 @@ Difficulty difficultyAfter(Difficulty before, Attempt attempt) {
   var level = before.level;
   // Both counters restart at a threshold, also when the level is at a limit.
   if (up >= levelUpAfter) {
-    level = min(level + 1, maxLevel);
+    level = min(level + 1, attempt.problem.kind.highestLevel);
     up = down = 0;
   } else if (down >= levelDownAfter) {
     level = max(level - 1, 1);

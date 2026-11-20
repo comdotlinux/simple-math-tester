@@ -144,10 +144,12 @@ void main() {
       for (final tier in Tier.values) {
         progress = progress.withTier(tier);
         expect(progress.tier, tier);
-        for (final type in OperationType.values) {
+        for (final type in arithmeticKinds) {
           final d = progress.difficulty[type]!;
           expect([d.level, d.upCount, d.downCount], [tier.level, 0, 0]);
         }
+        // A kind that is off by default keeps its level.
+        expect(progress.difficulty[OperationType.algebra]!.level, 1);
         // The lifetime totals stay.
         expect(state(progress.difficulty[OperationType.plus]!).sublist(3), [
           9,

@@ -441,8 +441,8 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sets every operation to the tier's level and shows a new problem at
-  /// that level; the replaced problem is not recorded.
+  /// Sets every arithmetic kind to the tier's level and shows a new problem;
+  /// the replaced problem is not recorded.
   void chooseTier(Tier tier) {
     endSprint();
     _progress = _progress.withTier(tier);
@@ -542,15 +542,27 @@ class MathTesterModel extends ChangeNotifier {
   }
 
   /// A problem of one of the selected operations, at that operation's level.
-  Problem _draw() {
+  /// A sprint draws only the selected arithmetic kinds, or all four when
+  /// none is selected, so its scores stay comparable.
+  Problem _draw([Problem? previous]) {
     if (nextProblem case final next?) return next();
-    final kinds = OperationType.values.where(selectedOperations.contains);
+    var kinds = OperationType.values.where(selectedOperations.contains);
+    if (inSprint) {
+      kinds = kinds.where(arithmeticKinds.contains);
+      if (kinds.isEmpty) kinds = arithmeticKinds;
+    }
     final kind = kinds.elementAt(_random.nextInt(kinds.length));
-    return kind.generate(_random, difficulty[kind]!.level);
+    Problem problem;
+    // An equation never comes twice in a row; arithmetic keeps its draws.
+    do {
+      problem = kind.generate(_random, difficulty[kind]!.level);
+    } while (problem is EquationProblem &&
+        problem.question == previous?.question);
+    return problem;
   }
 
   void _showNext() {
-    _show(_draw());
+    _show(_draw(_current));
     _draftInput = '';
     _inputProblem = null;
     _answerCorrect = null;

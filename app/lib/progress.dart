@@ -27,12 +27,13 @@ class NewerProgressException implements Exception {
 ///
 /// Decoding never drops data written by another build: unknown top-level
 /// fields, unknown operation names in the selection, per-operation entries
-/// and history entries of an unknown kind are kept and encoded again
-/// unchanged.
+/// and history entries of an unknown kind, and history entries of a known
+/// kind with a variant this build does not know or params that do not fit
+/// it, are kept and encoded again unchanged.
 class Progress {
-  /// An operation missing from [difficulty] starts at [tier]'s level, or at
-  /// level 1 without a tier, so a tier never comes with other levels unless
-  /// they are given.
+  /// An arithmetic kind missing from [difficulty] starts at [tier]'s level,
+  /// or at level 1 without a tier, so a tier never comes with other levels
+  /// unless they are given. Other kinds start at level 1 whatever the tier.
   Progress({
     Set<OperationType>? selectedOperations,
     List<Attempt> history = const [],
@@ -47,7 +48,7 @@ class Progress {
     AppPalette palette = AppPalette.sunny,
     String? updateReminderDate,
   }) : this._(
-         selectedOperations ?? OperationType.values.toSet(),
+         selectedOperations ?? arithmeticKinds,
          const [],
          history,
          tier,
@@ -81,13 +82,17 @@ class Progress {
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
-        selected.isEmpty ? OperationType.values : selected,
+        selected.isEmpty ? arithmeticKinds : selected,
       ),
       _unknownSelected = List.unmodifiable(unknownSelected),
       _entries = List.unmodifiable(_capped(entries)),
       difficulty = Map.unmodifiable({
         for (final type in OperationType.values)
-          type: difficulty[type] ?? Difficulty(level: tier?.level ?? 1),
+          type:
+              difficulty[type] ??
+              Difficulty(
+                level: arithmeticKinds.contains(type) ? tier?.level ?? 1 : 1,
+              ),
       }),
       _unknownOperations = Map.unmodifiable(unknownOperations),
       extra = Map.unmodifiable(extra) {
@@ -97,7 +102,8 @@ class Progress {
   static const schemaVersion = 2;
   static const historyCap = 200;
 
-  /// Never empty: a selection with no known operation falls back to all.
+  /// Never empty: a selection with no known operation falls back to the
+  /// arithmetic kinds.
   final Set<OperationType> selectedOperations;
 
   /// The last [historyCap] attempts this build knows, oldest first.
@@ -166,11 +172,15 @@ class Progress {
   Progress withUpdateReminderDate(String date) =>
       _copy(updateReminderDate: date);
 
-  /// Sets [tier] and resets every known operation to its level.
+  /// Sets [tier] and resets every arithmetic kind to its level; other kinds
+  /// keep their levels.
   Progress withTier(Tier tier) => _copy(
     tier: tier,
     difficulty: difficulty.map(
-      (type, value) => MapEntry(type, value.atTier(tier)),
+      (type, value) => MapEntry(
+        type,
+        arithmeticKinds.contains(type) ? value.atTier(tier) : value,
+      ),
     ),
   );
 
@@ -230,7 +240,10 @@ class Progress {
     ],
     'operations': {
       for (final MapEntry(:key, :value) in difficulty.entries)
-        key.name: _encodeDifficulty(value),
+        // Another kind before its first answer decodes the same without an
+        // entry, and leaving it out keeps older documents' bytes.
+        if (arithmeticKinds.contains(key) || value.answered > 0)
+          key.name: _encodeDifficulty(value),
       ..._unknownOperations,
     },
     'tier': ?tier?.name,
@@ -265,7 +278,7 @@ class Progress {
     final unknownSelected = <String>[];
     for (final name
         in _field<List<Object?>>(json, 'selectedOperations') ??
-            OperationType.values.map((type) => type.name)) {
+            arithmeticKinds.map((type) => type.name)) {
       if (name is! String) {
         throw FormatException('selectedOperations holds a non-string', name);
       }
@@ -279,7 +292,7 @@ class Progress {
         throw FormatException('history holds a non-object', entry);
       }
       final kind = _kinds[_required<String>(entry, 'kind')];
-      entries.add(kind == null ? entry : _decodeAttempt(entry, kind));
+      entries.add((kind == null ? null : _decodeAttempt(entry, kind)) ?? entry);
     }
 
     final difficulty = <OperationType, Difficulty>{};
@@ -291,7 +304,7 @@ class Progress {
       if (kind == null) {
         unknownOperations[key] = value;
       } else if (value is Map<String, Object?>) {
-        difficulty[kind] = _decodeDifficulty(value);
+        difficulty[kind] = _decodeDifficulty(value, kind);
       } else {
         throw FormatException('operations.$key is not an object', value);
       }
@@ -382,13 +395,16 @@ class Progress {
     'correct': value.correct,
   };
 
-  /// Values the rule cannot produce are clamped: a level outside the table
-  /// has no ranges to draw from, and a counter at its threshold has already
-  /// been reset.
-  static Difficulty _decodeDifficulty(Map<String, Object?> json) {
+  /// Values the rule cannot produce are clamped: a level outside [kind]'s
+  /// table has no ranges to draw from, and a counter at its threshold has
+  /// already been reset.
+  static Difficulty _decodeDifficulty(
+    Map<String, Object?> json,
+    OperationType kind,
+  ) {
     final answered = max(_field<int>(json, 'answered') ?? 0, 0);
     return Difficulty(
-      level: (_field<int>(json, 'level') ?? 1).clamp(1, maxLevel),
+      level: (_field<int>(json, 'level') ?? 1).clamp(1, kind.highestLevel),
       upCount: (_field<int>(json, 'upCount') ?? 0).clamp(0, levelUpAfter - 1),
       downCount: (_field<int>(json, 'downCount') ?? 0).clamp(
         0,
@@ -404,6 +420,10 @@ class Progress {
   static Map<String, Object?> _encodeAttempt(Attempt attempt) => {
     ...switch (attempt.problem) {
       ArithmeticProblem(:final lhs, :final rhs) => {'lhs': lhs, 'rhs': rhs},
+      EquationProblem(:final variant, :final params) => {
+        'variant': variant,
+        'params': params,
+      },
     },
     'kind': attempt.problem.kind.name,
     'result': attempt.problem.result,
@@ -415,16 +435,35 @@ class Progress {
     'sprint': attempt.sprint,
   };
 
-  static Attempt _decodeAttempt(Map<String, Object?> json, OperationType kind) {
+  /// Null for an entry of a kind with variants whose variant this build
+  /// does not know, whose params do not fit it or whose result differs from
+  /// what they build: such an entry is kept as it is, as one of an unknown
+  /// kind.
+  static Attempt? _decodeAttempt(
+    Map<String, Object?> json,
+    OperationType kind,
+  ) {
     final answeredAt = DateTime.parse(_required<String>(json, 'answeredAt'));
-    return Attempt(
-      ArithmeticProblem(
+    final result = _required<num>(json, 'result');
+    final level = _field<int>(json, 'level') ?? 1;
+    final Problem? problem = switch (kind.source) {
+      ArithmeticSource() => ArithmeticProblem(
         _required<int>(json, 'lhs'),
         _required<int>(json, 'rhs'),
         kind,
-        _required<num>(json, 'result'),
-        level: _field<int>(json, 'level') ?? 1,
+        result,
+        level: level,
       ),
+      final AlgebraSource source => switch ((json['variant'], json['params'])) {
+        (final String variant, final List<Object?> params)
+            when params.every((param) => param is int) =>
+          source.build(kind, variant, params.cast<int>(), level: level),
+        _ => null,
+      },
+    };
+    if (problem == null || problem.result != result) return null;
+    return Attempt(
+      problem,
       firstAnswer: _field<num>(json, 'firstAnswer'),
       elapsedMs: _field<int>(json, 'elapsedMs') ?? 0,
       hintsUsed: _field<int>(json, 'hintsUsed') ?? 0,

@@ -277,6 +277,7 @@ void main() {
     List<Object?> attemptFields(Attempt a) => [
       ...switch (a.problem) {
         ArithmeticProblem(:final lhs, :final rhs) => [lhs, rhs],
+        EquationProblem(:final variant, :final params) => [variant, params],
       },
       a.problem.kind,
       a.problem.result,
@@ -291,10 +292,7 @@ void main() {
       decoded.history.map(attemptFields).toList(),
       expected.history.map(attemptFields).toList(),
     );
-    expect(
-      decoded.history.map((a) => a.problem.kind).toSet(),
-      OperationType.values.toSet(),
-    );
+    expect(decoded.history.map((a) => a.problem.kind).toSet(), arithmeticKinds);
     expect(decoded.encode(), saved);
     expect(expected.encode(), saved);
   });
@@ -354,7 +352,7 @@ void main() {
 
   test('criterion 10: missing fields decode with their defaults', () {
     final decoded = Progress.decode('{}');
-    expect(decoded.selectedOperations, OperationType.values.toSet());
+    expect(decoded.selectedOperations, arithmeticKinds);
     expect(decoded.history, isEmpty);
     expect(decoded.tier, isNull);
     expect(decoded.difficulty.keys, OperationType.values);
@@ -461,9 +459,9 @@ void main() {
     );
   });
 
-  test('a selection of only unknown kinds offers every known kind', () {
+  test('a selection of only unknown kinds offers the arithmetic kinds', () {
     final decoded = Progress.decode('{"selectedOperations":["power"]}');
-    expect(decoded.selectedOperations, OperationType.values.toSet());
+    expect(decoded.selectedOperations, arithmeticKinds);
     expect(
       (jsonDecode(decoded.encode()) as Map)['selectedOperations'],
       contains('power'),
@@ -531,12 +529,19 @@ void main() {
     expect(state(decoded[OperationType.multiply]!), [1, 2, 1, 6, 6]);
   });
 
-  test('a tier without levels starts every operation at its level', () {
+  test('a tier without levels starts every arithmetic kind at its level', () {
     for (final tier in Tier.values) {
       final progress = Progress(tier: tier);
-      for (final type in OperationType.values) {
+      for (final type in arithmeticKinds) {
         expect(state(progress.difficulty[type]!), [tier.level, 0, 0, 0, 0]);
       }
+      expect(state(progress.difficulty[OperationType.algebra]!), [
+        1,
+        0,
+        0,
+        0,
+        0,
+      ]);
       expect(
         state(
           Progress.decode(progress.encode()).difficulty[OperationType.plus]!,
@@ -655,11 +660,220 @@ void main() {
     expect(best('{"bestSprint":420}'), 420);
   });
 
+  group('a kind that is off by default (algebra)', () {
+    final equation = (OperationType.algebra.source as AlgebraSource).build(
+      OperationType.algebra,
+      'missingSecondAddend',
+      [3, 4],
+    )!;
+    final solved = Attempt(
+      equation,
+      firstAnswer: 4,
+      elapsedMs: 3100,
+      answeredAt: DateTime.utc(2026, 11, 21, 10).toLocal(),
+    );
+
+    test('default, empty and missing selections give the arithmetic kinds', () {
+      expect(Progress().selectedOperations, arithmeticKinds);
+      expect(
+        Progress(selectedOperations: {}).selectedOperations,
+        arithmeticKinds,
+      );
+      expect(
+        Progress().withSelectedOperations({}).selectedOperations,
+        arithmeticKinds,
+      );
+      expect(Progress.decode('{}').selectedOperations, arithmeticKinds);
+      expect(
+        Progress.decode('{"selectedOperations":[]}').selectedOperations,
+        arithmeticKinds,
+      );
+      expect(
+        Progress.decode('{"selectedOperations":["algebra"]}')
+            .selectedOperations,
+        {OperationType.algebra},
+      );
+    });
+
+    test('starts at level 1 with tier harder and keeps its level when a tier '
+        'is chosen', () {
+      final harder = Progress(tier: Tier.harder);
+      expect(harder.difficulty[OperationType.algebra]!.level, 1);
+      expect(harder.difficulty[OperationType.plus]!.level, 5);
+      final answered = Progress().withDifficulty(
+        OperationType.algebra,
+        const Difficulty(upCount: 2, answered: 6, correct: 5),
+      );
+      final chosen = answered.withTier(Tier.harder);
+      expect(state(chosen.difficulty[OperationType.algebra]!), [1, 2, 0, 6, 5]);
+      expect(chosen.difficulty[OperationType.minus]!.level, 5);
+      expect(
+        Progress.decode(chosen.encode())
+            .difficulty[OperationType.algebra]!
+            .level,
+        1,
+      );
+    });
+
+    test('its level is clamped to the highest level it has', () {
+      expect(OperationType.algebra.highestLevel, 1);
+      expect(
+        Progress.decode('{"operations":{"algebra":{"level":4,"answered":3}}}')
+            .difficulty[OperationType.algebra]!
+            .level,
+        1,
+      );
+    });
+
+    test('has no operations entry before its first answer', () {
+      final fresh = jsonDecode(Progress(tier: Tier.hard).encode()) as Map;
+      expect(fresh['operations'] as Map, isNot(contains('algebra')));
+      final answered = jsonDecode(
+        Progress()
+            .withDifficulty(
+              OperationType.algebra,
+              const Difficulty(answered: 1),
+            )
+            .encode(),
+      ) as Map;
+      expect((answered['operations'] as Map)['algebra'], {
+        'level': 1,
+        'upCount': 0,
+        'downCount': 0,
+        'answered': 1,
+        'correct': 0,
+      });
+    });
+
+    test('an attempt saves its variant and params and decodes to the same '
+        'equation', () {
+      final progress = Progress(history: [solved, attempt(9)]);
+      final entries = progress.toJsonHistory();
+      expect(entries.first, {
+        'variant': 'missingSecondAddend',
+        'params': [3, 4],
+        'kind': 'algebra',
+        'result': 4,
+        'level': 1,
+        'firstAnswer': 4,
+        'elapsedMs': 3100,
+        'hintsUsed': 0,
+        'answeredAt': '2026-11-21T10:00:00.000Z',
+        'sprint': false,
+      });
+      // Arithmetic entries keep their shape.
+      expect((entries.last as Map).keys, [
+        'lhs',
+        'rhs',
+        'kind',
+        'result',
+        'level',
+        'firstAnswer',
+        'elapsedMs',
+        'hintsUsed',
+        'answeredAt',
+        'sprint',
+      ]);
+      final decoded = Progress.decode(progress.encode());
+      final problem = decoded.history.first.problem as EquationProblem;
+      expect(
+        [problem.variant, problem.params, problem.question, problem.result],
+        [
+          'missingSecondAddend',
+          [3, 4],
+          '3 + □ = 7',
+          4,
+        ],
+      );
+      expect(decoded.history.first.correct, isTrue);
+      expect(decoded.encode(), progress.encode());
+    });
+
+    test('a document with algebra survives an older build that does not '
+        'know the kind', () {
+      final written =
+          Progress(
+                selectedOperations: {OperationType.plus, OperationType.algebra},
+                history: [attempt(6), solved],
+              )
+              .withDifficulty(
+                OperationType.algebra,
+                const Difficulty(answered: 1, correct: 1),
+              )
+              .encode();
+      expect(written, contains('"algebra"'));
+      // To a build without the kind, "algebra" is a name it does not know.
+      final older = written.replaceAll('"algebra"', '"fromANewerBuild"');
+
+      final decoded = Progress.decode(older);
+      expect(decoded.selectedOperations, {OperationType.plus});
+      expect(decoded.history, hasLength(1));
+      expect(decoded.history.single.problem.kind, OperationType.divide);
+      expect(decoded.encode(), older);
+      // Back in this build, nothing was lost.
+      final again = Progress.decode(
+        decoded.encode().replaceAll('"fromANewerBuild"', '"algebra"'),
+      );
+      expect(again.encode(), written);
+      expect(again.history.last.problem.question, '3 + □ = 7');
+    });
+
+    for (final (name, fields) in [
+      ('an unknown variant', '"variant":"missingFactor","params":[3,4]'),
+      ('no variant', '"params":[3,4]'),
+      ('params that are not a list', '"variant":"missingMinuend","params":7'),
+      (
+        'a param that is not a whole number',
+        '"variant":"missingMinuend","params":[3,"4"]',
+      ),
+      ('a decimal param', '"variant":"missingMinuend","params":[3,4.5]'),
+      ('too few params', '"variant":"missingMinuend","params":[3]'),
+      ('too many params', '"variant":"missingMinuend","params":[3,4,5]'),
+      ('a negative param', '"variant":"missingMinuend","params":[-3,4]'),
+    ]) {
+      test('an algebra entry with $name is kept as it is', () {
+        expectKept(
+          '{$fields,"kind":"algebra","result":7,"level":1,'
+          '"firstAnswer":7,"elapsedMs":10,"hintsUsed":0,'
+          '"answeredAt":"2026-11-21T10:00:00.000Z","sprint":false}',
+          solved,
+        );
+      });
+    }
+
+    test('an algebra entry whose result its params do not build is kept as '
+        'it is', () {
+      expectKept(
+        '{"variant":"missingMinuend","params":[3,4],"kind":"algebra",'
+        '"result":8,"level":1,"firstAnswer":8,"elapsedMs":10,"hintsUsed":0,'
+        '"answeredAt":"2026-11-21T10:00:00.000Z","sprint":false}',
+        solved,
+      );
+    });
+  });
+
   test('history and selection are unmodifiable', () {
     final progress = Progress(history: [attempt(1)]);
     expect(() => progress.history.add(attempt(2)), throwsUnsupportedError);
     expect(() => progress.selectedOperations.clear(), throwsUnsupportedError);
   });
+}
+
+/// [entry] next to a decodable [known] attempt: the entry stays out of the
+/// history, nothing throws, and the entry is written back unchanged.
+void expectKept(String entry, Attempt known) {
+  final source = jsonEncode({
+    'history': [
+      jsonDecode(entry),
+      Progress(history: [known]).toJsonHistory().single,
+    ],
+  });
+  final decoded = Progress.decode(source);
+  expect(decoded.history, hasLength(1));
+  expect(decoded.history.single.problem, isA<EquationProblem>());
+  final history = decoded.toJsonHistory();
+  expect(history.first, jsonDecode(entry));
+  expect(Progress.decode(decoded.encode()).toJsonHistory(), history);
 }
 
 extension on Progress {

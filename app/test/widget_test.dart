@@ -708,12 +708,16 @@ void main() {
         size: const Size(390, 844),
         usePad: true,
       );
-      for (final type in OperationType.values) {
+      for (final type in arithmeticKinds) {
         expect(
           tester.getSemantics(chip(type)),
           isSemantics(isSelected: true, hasSelectedState: true),
         );
       }
+      expect(
+        tester.getSemantics(chip(OperationType.algebra)),
+        isSemantics(isSelected: false, hasSelectedState: true),
+      );
       for (final type in [
         OperationType.plus,
         OperationType.minus,
@@ -762,6 +766,17 @@ void main() {
           isSemantics(label: name, isSelected: true, hasSelectedState: true),
         );
       }
+      // Off by default; its sign is a letter that cannot be read as ×.
+      expect(find.text('n'), findsOneWidget);
+      expect(tooltip('Algebra'), findsOneWidget);
+      expect(
+        tester.getSemantics(chip(OperationType.algebra)),
+        isSemantics(
+          label: 'Algebra',
+          isSelected: false,
+          hasSelectedState: true,
+        ),
+      );
     });
 
     for (final width in [320.0, 390.0, 800.0, 1440.0]) {
@@ -2144,8 +2159,10 @@ void main() {
   group('answer-first flow', () {
     bool fieldFocused(WidgetTester tester) =>
         tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus;
-    String question(WidgetTester tester) =>
-        tester.widget<Text>(find.byKey(questionOnProblemsPageKey)).data!;
+    String question(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(questionOnProblemsPageKey))
+        .textSpan!
+        .toPlainText();
     Finder nextLabel(String label) => find.descendant(
       of: find.byKey(nextQuestionButtonKey),
       matching: find.text(label),

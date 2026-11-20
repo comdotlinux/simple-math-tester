@@ -20,7 +20,9 @@ beside it. Distinctive motif: oversized arithmetic marks and heavy numerals.
 Make answering and reviewing math feel clear and rewarding, and bring a child back
 because they are getting better. Four operations, chosen by the player. Five
 difficulty levels per operation, starting at Easy, Medium, Hard or Harder and
-adapting to accuracy. Combo, XP, player levels, a daily goal and a daily streak reward progress.
+adapting to accuracy. Algebra (missing-number equations, the blank drawn as a
+box) is off until the player switches it on, starts at level 1 whatever the
+tier, and sprints draw only the arithmetic operations. Combo, XP, player levels, a daily goal and a daily streak reward progress.
 Retry and skip behavior stay. Progress and the last 200 answers are saved on the
 device. No accounts, cloud features or leaderboards. Success means a child can
 enter, check, retry and move on without losing input or context, and sees progress
@@ -89,7 +91,7 @@ A new problem is drawn after a reload.
 `AppTokens` roles exist once per theme and no widget names a colour. `Slab`
 (`app/lib/slab.dart`) is the one shared widget: the hard slab under a card or
 button. Adaptive navigation shell, game-style header (flame, goal ring, combo, XP
-bar), question card with an operation band, one row of four operation toggles,
+bar), question card with an operation band, a row of operation toggles (two rows when they do not fit),
 answer field, feedback strip, hint steps, sprint card, stats chips and result rows
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
 The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,

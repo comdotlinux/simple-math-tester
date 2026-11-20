@@ -255,8 +255,10 @@ Matcher showsXp(int xp) => showsNumbers([playerLevel(xp), xp]);
 String answerFieldText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField)).controller!.text;
 
-String questionOnScreen(WidgetTester tester) =>
-    tester.widget<Text>(find.byKey(questionOnProblemsPageKey)).data!;
+String questionOnScreen(WidgetTester tester) => tester
+    .widget<Text>(find.byKey(questionOnProblemsPageKey))
+    .textSpan!
+    .toPlainText();
 
 bool revealEnabled(WidgetTester tester) =>
     tester.widget<ButtonStyleButton>(find.byKey(revealStepButtonKey)).enabled;

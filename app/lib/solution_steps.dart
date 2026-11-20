@@ -2,7 +2,8 @@ import 'l10n/app_localizations.dart';
 import 'operations.dart';
 
 // Every writer returns at least 2 steps, and only the last one states the
-// result: no earlier step contains it as a number unless it equals an operand.
+// result: no earlier step contains it as a number unless that number is shown
+// in the question.
 
 /// One step, written in the language of [AppLocalizations]. The number of
 /// steps never depends on the language; a step may still pick its wording by
@@ -219,6 +220,45 @@ List<SolutionStep> divisionSteps(ArithmeticProblem problem) {
     (l) => l.stepDivHowMany('$right', '$left'),
     middle,
     (l) => l.stepDivResult('$right', shown, '$left'),
+  ];
+}
+
+/// An equation: the first step names the operation to undo, the last does
+/// it, states the answer and puts it back in place of the blank.
+List<SolutionStep> equationSteps(EquationProblem problem) {
+  final answer = formatNumber(problem.result);
+  final checked = problem.tokens
+      .map((token) => token == EquationProblem.blank ? answer : token)
+      .join(' ');
+  // Undoing the one operation around the blank: [whole] sign [part].
+  final (SolutionStep undo, int whole, String sign, int part) = switch ((
+    problem.variant,
+    problem.params,
+  )) {
+    ('missingSecondAddend' || 'missingFirstAddend', [final a, final b]) => (
+      (l) => l.stepEquationUndoAdd('$a', '${a + b}'),
+      a + b,
+      '−',
+      a,
+    ),
+    ('missingSubtrahend', [final a, final b]) => (
+      (l) => l.stepEquationTakenAway('${a + b}', '$a'),
+      a + b,
+      '−',
+      a,
+    ),
+    ('missingMinuend', [final a, final b]) => (
+      (l) => l.stepEquationUndoSubtract('$a', '$b'),
+      b,
+      '+',
+      a,
+    ),
+    _ => throw ArgumentError.value(problem.variant, 'variant'),
+  };
+  return [
+    undo,
+    (l) =>
+        l.stepEquationBlankIs('$whole $sign $part = $answer', answer, checked),
   ];
 }
 
