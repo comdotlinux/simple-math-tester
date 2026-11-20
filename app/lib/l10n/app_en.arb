@@ -640,6 +640,26 @@
   "@privacySubtitle": {
     "description": "Settings row description."
   },
+  "licences": "Licences",
+  "@licences": {
+    "description": "Settings row title that opens the list of software libraries and other works the app uses, with their licences."
+  },
+  "licencesSubtitle": "Libraries and fonts the app uses",
+  "@licencesSubtitle": {
+    "description": "Settings row description under Licences."
+  },
+  "licencesTitle": "Licences and attributions",
+  "@licencesTitle": {
+    "description": "Title of the page that lists the libraries, fonts and other works the app uses, with their licence texts."
+  },
+  "licencesLibraries": "Libraries",
+  "@licencesLibraries": {
+    "description": "Heading on the licences page above the software libraries (packages) built into the app; each opens to show its licence text."
+  },
+  "licencesOtherAttributions": "Other attributions",
+  "@licencesOtherAttributions": {
+    "description": "Heading on the licences page above works that are not software libraries, such as the bundled fonts; each names its source and licence."
+  },
   "impressum": "Impressum",
   "@impressum": {
     "description": "German legal term for the provider identification page. Keep 'Impressum' in every language, optionally followed by a short explanation in brackets."

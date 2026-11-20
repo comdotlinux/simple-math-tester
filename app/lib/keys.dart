@@ -32,12 +32,14 @@ const hapticsSwitchKey = Key('haptics-switch');
 const touchFeedbackHintKey = Key('touch-feedback-hint');
 const openVibrationSettingsKey = Key('open-vibration-settings');
 const privacyTileKey = Key('privacy-tile');
+const licencesTileKey = Key('licences-tile');
 const impressumTileKey = Key('impressum-tile');
 const reportProblemTileKey = Key('report-problem-tile');
 const appVersionTileKey = Key('app-version-tile');
 const updateReminderKey = Key('update-reminder');
 const updateReminderDismissKey = Key('update-reminder-dismiss');
 const privacyPageKey = Key('privacy-page');
+const licencesPageKey = Key('licences-page');
 
 /// One per segment of the settings sheet's theme choice.
 Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');

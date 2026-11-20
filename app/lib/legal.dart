@@ -70,3 +70,42 @@ List<(String, List<String>)> privacyPolicy(AppLocalizations l) => [
   (l.privacyChildrenHeading, [l.privacyChildren]),
   (l.privacyChangesHeading, [l.privacyChanges]),
 ];
+
+/// The works under Settings > Licences > Other attributions: what is not a
+/// package (packages come from Flutter's licence registry). Each has a name, a
+/// credit line (which may name a URL) and, when bundled, its licence file
+/// (declared under `assets:` in pubspec.yaml), shown in full. A new credit is
+/// one more entry here.
+const List<({String name, String credit, String? licenseAsset})> attributions =
+    [
+      (
+        name: 'Roboto',
+        credit: 'Font by Google, Apache License 2.0',
+        licenseAsset: 'assets/fonts/Roboto_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Devanagari',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansDevanagari_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Telugu',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansTelugu_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Tamil',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansTamil_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Malayalam',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansMalayalam_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Gurmukhi',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansGurmukhi_LICENSE.txt',
+      ),
+    ];
