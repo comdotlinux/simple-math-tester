@@ -71,6 +71,8 @@
   "sprintButton": "Спринт на {seconds} с",
   "mathQuestion": "Завдання з математики: {question}",
   "padDelete": "Видалити",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "Залишилось {seconds} с",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{Залишилась 1 секунда} few{Залишилось {seconds} секунди} many{Залишилось {seconds} секунд} other{Залишилось {seconds} секунди}}",
   "score": "Рахунок: {score}",

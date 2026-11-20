@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'labels.dart';
@@ -196,6 +197,7 @@ class _ProblemPageState extends State<ProblemPage> {
     final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final sprinting = model.inSprint;
+    final signedDecimal = model.signedDecimalInput;
     final pad = NumberPad(
       controller: _controller,
       onEdited: (text) {
@@ -204,6 +206,7 @@ class _ProblemPageState extends State<ProblemPage> {
       },
       onCheck: model.checkOrNext,
       next: model.answerCorrect != null,
+      signedDecimal: signedDecimal,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -265,10 +268,25 @@ class _ProblemPageState extends State<ProblemPage> {
             // Hardware keys reach the field only while it
             // has focus.
             autofocus: true,
-            keyboardType: _padShown ? TextInputType.none : TextInputType.number,
-            // Every answer is a whole number of 0 or more:
-            // pasted or typed text keeps only its digits.
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            keyboardType: _padShown
+                ? TextInputType.none
+                : signedDecimal
+                ? const TextInputType.numberWithOptions(
+                    signed: true,
+                    decimal: true,
+                  )
+                : TextInputType.number,
+            // Arithmetic answers are whole numbers of 0 or more: pasted or
+            // typed text keeps only its digits. With the minus and decimal
+            // keys, an edit that could no longer become a number is refused.
+            inputFormatters: [
+              signedDecimal
+                  ? TextInputFormatter.withFunction(
+                      (old, edited) =>
+                          canCompleteHundredths(edited.text) ? edited : old,
+                    )
+                  : FilteringTextInputFormatter.digitsOnly,
+            ],
             textInputAction: TextInputAction.done,
             style: theme.textTheme.headlineMedium,
             decoration: InputDecoration(
@@ -569,6 +587,7 @@ class _ProblemPageState extends State<ProblemPage> {
                               onCheck: pad.onCheck,
                               dense: true,
                               next: pad.next,
+                              signedDecimal: signedDecimal,
                             ),
                         ],
                       )

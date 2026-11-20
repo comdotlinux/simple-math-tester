@@ -71,6 +71,8 @@
   "sprintButton": "{seconds} సెకన్ల స్ప్రింట్",
   "mathQuestion": "గణిత ప్రశ్న: {question}",
   "padDelete": "తొలగించు",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} సె మిగిలింది",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{1 సెకను మిగిలింది} other{{seconds} సెకన్లు మిగిలాయి}}",
   "score": "స్కోర్: {score}",

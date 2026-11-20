@@ -123,6 +123,15 @@ class MathTesterModel extends ChangeNotifier {
   List<Attempt> get history => _progress.history;
   Set<OperationType> get selectedOperations => _progress.selectedOperations;
 
+  /// Whether the pad shows its minus and decimal keys and the answer field
+  /// admits them: a selected kind can have a negative or decimal answer.
+  /// It follows the selection, not the question, so the pad keeps its
+  /// shape for a session; the kind on screen counts too, so an answer can
+  /// still be typed after its kind was deselected.
+  bool get signedDecimalInput =>
+      _current.kind.signedDecimalAnswers ||
+      selectedOperations.any((kind) => kind.signedDecimalAnswers);
+
   /// Null until the player picks a starting tier.
   Tier? get tier => _progress.tier;
   Map<OperationType, Difficulty> get difficulty => _progress.difficulty;

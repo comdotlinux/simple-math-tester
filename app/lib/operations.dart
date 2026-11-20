@@ -72,6 +72,9 @@ enum OperationType {
 
   /// The hint steps of [problem], a problem of this kind.
   List<SolutionStep> steps(Problem problem) => source.steps(problem);
+
+  /// Whether an answer of this kind can be negative or decimal.
+  bool get signedDecimalAnswers => source.signedDecimalAnswers;
 }
 
 /// The four arithmetic kinds. Only they are on by default (also for a saved
@@ -94,6 +97,12 @@ sealed class ProblemSource<P extends Problem> {
   P generate(OperationType kind, Random random, int level);
 
   List<SolutionStep> steps(P problem);
+
+  /// Whether an answer can be negative or decimal, at any level. Such a
+  /// kind gets the pad's minus and decimal keys whenever it is selected, so
+  /// the pad keeps its shape between questions. The four arithmetic kinds
+  /// answer with whole numbers of 0 or more.
+  bool get signedDecimalAnswers => false;
 }
 
 /// Two operands drawn from a level table and combined by one calculation.

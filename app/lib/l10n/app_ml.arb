@@ -71,6 +71,8 @@
   "sprintButton": "{seconds} സെക്കൻഡ് റൗണ്ട്",
   "mathQuestion": "കണക്ക് ചോദ്യം: {question}",
   "padDelete": "മായ്ക്കുക",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} സെ ബാക്കി",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{1 സെക്കൻഡ് ബാക്കി} other{{seconds} സെക്കൻഡ് ബാക്കി}}",
   "score": "സ്കോർ: {score}",

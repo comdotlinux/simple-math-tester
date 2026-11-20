@@ -71,6 +71,8 @@
   "sprintButton": "{seconds} விநாடிச் சுற்று",
   "mathQuestion": "கணக்குக் கேள்வி: {question}",
   "padDelete": "அழி",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} வி மீதம்",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{1 விநாடி மீதம்} other{{seconds} விநாடிகள் மீதம்}}",
   "score": "மதிப்பெண்: {score}",
