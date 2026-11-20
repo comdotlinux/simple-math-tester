@@ -182,12 +182,13 @@ void main() {
       expect(find.text(credit), findsWidgets);
       if (licenseAsset == null) continue;
       await openAttribution(tester, name);
-      // The whole file, as bundled.
-      expect(
-        find.text(File(licenseAsset).readAsStringSync()),
-        findsOneWidget,
-        reason: name,
-      );
+      // The whole file, in paragraphs as for the packages.
+      for (final paragraph in LicenseEntryWithLineBreaks(
+        const [],
+        File(licenseAsset).readAsStringSync(),
+      ).paragraphs) {
+        expect(find.text(paragraph.text), findsWidgets, reason: name);
+      }
       await tester.tap(find.text(name));
       await tester.pumpAndSettle();
     }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +11,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -55,6 +57,23 @@ void main() {
         loader.addFont(rootBundle.load(font['asset'] as String));
       }
       await loader.load();
+    }
+    // The test binding registers no licences: give the Licences page the
+    // NOTICES that `flutter test` generates, and cache the attribution files.
+    final notices = utf8.decode(
+      gzip.decode((await rootBundle.load('NOTICES.Z')).buffer.asUint8List()),
+    );
+    final entries = [
+      for (final license in notices.split('\n${'-' * 80}\n'))
+        if (license.indexOf('\n\n') case final split when split >= 0)
+          LicenseEntryWithLineBreaks(
+            license.substring(0, split).split('\n'),
+            license.substring(split + 2),
+          ),
+    ];
+    LicenseRegistry.addLicense(() => Stream.fromIterable(entries));
+    for (final (:licenseAsset, name: _, credit: _) in attributions) {
+      if (licenseAsset != null) await rootBundle.loadString(licenseAsset);
     }
   });
 
@@ -328,6 +347,42 @@ void main() {
             deviceSettingsChannel,
             null,
           );
+
+          // Settings > Licences: the packages, then the other attributions.
+          await launch(tester, size, brightness);
+          await tester.ensureVisible(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(settingsButtonKey));
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(licencesTileKey));
+          await shoot(tester, '$tag-9f-settings-licences');
+          await tester.tap(find.byKey(licencesTileKey));
+          await shoot(tester, '$tag-9g-licences');
+          final licences = find.descendant(
+            of: find.byKey(licencesPageKey),
+            matching: find.byType(Scrollable),
+          );
+          await tester.scrollUntilVisible(
+            find.text('provider'),
+            200,
+            scrollable: licences,
+          );
+          await tester.tap(find.text('provider'));
+          await shoot(tester, '$tag-9h-licences-package');
+          final roboto = find.text(attributions.first.name);
+          await tester.scrollUntilVisible(roboto, 200, scrollable: licences);
+          // The heading and the fonts near the top, the opened text below.
+          await tester.drag(
+            licences,
+            Offset(0, 160 - tester.getTopLeft(roboto).dy),
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(roboto);
+          await tester.pumpAndSettle();
+          // The cached file completes on the real event loop.
+          await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+          await tester.pumpAndSettle();
+          await shoot(tester, '$tag-9i-licences-attributions');
 
           // Every colour theme: the practice page and the chosen swatch.
           for (final palette in AppPalette.values) {

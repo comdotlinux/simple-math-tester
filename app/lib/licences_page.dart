@@ -90,8 +90,18 @@ class _LicencesPageState extends State<LicencesPage> {
                               DefaultAssetBundle.of(context)
                                   .loadString(licenseAsset),
                         ),
-                        builder: (context, text) =>
-                            _paragraph(text.data ?? '', 0),
+                        // Split like the packages' texts, so hard-wrapped
+                        // lines reflow.
+                        builder: (context, text) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final paragraph in LicenseEntryWithLineBreaks(
+                              const [],
+                              text.data ?? '',
+                            ).paragraphs)
+                              _paragraph(paragraph.text, paragraph.indent),
+                          ],
+                        ),
                       ),
                     ],
                   ),
