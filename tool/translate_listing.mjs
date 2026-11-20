@@ -8,6 +8,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 import {
+  digits,
   hash,
   languageName,
   languages,
@@ -53,6 +54,7 @@ export function problem(field, source, text) {
   const length = [...text].length;
   if (length > limits[field]) return `${length} characters, Play allows ${limits[field]}`;
   if (/(?![0-9])\p{Nd}/u.test(text)) return 'non-Western digits';
+  if (digits(text) !== digits(source)) return `digits ${digits(text) || 'none'} instead of ${digits(source) || 'none'}`;
   const lost = brands.find((brand) => source.includes(brand) && !text.includes(brand));
   if (lost) return `"${lost}" missing`;
   return null;
@@ -66,6 +68,7 @@ export function retryNote(field, why) {
   }
   if (why.endsWith('missing')) return `Your ${field} lost ${why.replace(/ missing$/, '')}: keep it exactly, in Latin letters.`;
   if (why === 'non-Western digits') return `Your ${field} had non-Western digits: use only Western digits 0-9.`;
+  if (why.startsWith('digits ')) return `Your ${field} changed a number: keep exactly the numbers of the English text.`;
   return `Your ${field} was ${why}: write the whole translation.`;
 }
 
@@ -87,7 +90,7 @@ async function ask(model, key, english, language, keys, rejected) {
     `You translate the Google Play store listing of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Parents read it. Use natural, friendly, simple words a native speaker would use in an app store, not a word-by-word translation.',
     `Keep these names unchanged, in Latin letters: ${brands.join(', ')}, Google Play, Android.`,
-    'Digits are always Western 0-9. Keep the line breaks and the "- " list items of the English text.',
+    'Digits are always Western 0-9; never change, add or drop a number. Keep the line breaks and the "- " list items of the English text.',
     `Hard limits in characters: title ${limits.title}, shortDescription ${limits.shortDescription}, fullDescription ${limits.fullDescription}.`,
     'The fields to translate are under "translate". If "yourRejectedAnswers" is there, your last answer for those fields was rejected: fix exactly the problem it names.',
     'Answer with one JSON object that maps each requested field to its translated text, nothing else.',

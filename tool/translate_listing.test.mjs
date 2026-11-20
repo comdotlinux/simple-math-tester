@@ -34,6 +34,10 @@ test('a retry is told why the last answer was rejected', () => {
     retryNote('fullDescription', 'non-Western digits'),
     'Your fullDescription had non-Western digits: use only Western digits 0-9.',
   );
+  assert.equal(
+    retryNote('shortDescription', 'digits 09 instead of 06'),
+    'Your shortDescription changed a number: keep exactly the numbers of the English text.',
+  );
   assert.equal(retryNote('title', 'empty'), 'Your title was empty: write the whole translation.');
 });
 
@@ -62,6 +66,8 @@ test('a listing text must fit Play and keep the app name and digits', () => {
   // Characters, not bytes: 80 Devanagari letters fit.
   assert.equal(problem('shortDescription', 'x', 'क'.repeat(80)), null);
   assert.equal(problem('shortDescription', '60 seconds', '६० सेकंद'), 'non-Western digits');
+  assert.equal(problem('shortDescription', '60 seconds', '60 सेकंद'), null);
+  assert.equal(problem('shortDescription', '60 seconds', '90 सेकंद'), 'digits 09 instead of 06');
   assert.equal(problem('fullDescription', 'x', ' '), 'empty');
   assert.equal(problem('fullDescription', 'x', undefined), 'empty');
 });
