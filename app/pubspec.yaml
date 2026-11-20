@@ -35,6 +35,14 @@ flutter:
     - assets/sounds/wrong.wav
     - assets/sounds/level_up.wav
     - assets/sounds/goal.wav
+    # Shown under Settings > Licences > Other attributions (see attributions
+    # in lib/legal.dart).
+    - assets/fonts/Roboto_LICENSE.txt
+    - assets/fonts/NotoSansDevanagari_LICENSE.txt
+    - assets/fonts/NotoSansTelugu_LICENSE.txt
+    - assets/fonts/NotoSansTamil_LICENSE.txt
+    - assets/fonts/NotoSansMalayalam_LICENSE.txt
+    - assets/fonts/NotoSansGurmukhi_LICENSE.txt
   # Bundled so the web build never fetches Roboto from fonts.gstatic.com; the
   # web engine downloads it whenever no family is named exactly "Roboto".
   fonts:

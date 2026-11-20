@@ -12,6 +12,7 @@ import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'labels.dart';
 import 'legal.dart';
+import 'licences_page.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
@@ -1202,6 +1203,16 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+                ),
+              ),
+              ListTile(
+                key: licencesTileKey,
+                leading: const Icon(Icons.description_outlined),
+                title: Text(l.licences),
+                subtitle: Text(l.licencesSubtitle),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const LicencesPage()),
                 ),
               ),
               ListTile(
