@@ -170,13 +170,16 @@ command line or printed. Rows 1 to 3 start only after the push run of
 
 ## How the bundle is built
 
-`.github/workflows/play-bundle.yml` runs on every push to `main`, by hand ("Run
-workflow", no inputs) and when a GitHub release is published. With the four
+`.github/workflows/play-bundle.yml` runs when a `v*` tag is pushed and by hand
+("Run workflow", no inputs), not on pushes to `main`. With the four
 `ANDROID_*` secrets it signs the bundle with the upload key; without them it signs
 with a throwaway key made in the job. Every run fails if the bundle carries the
-Android debug certificate and checks 16 KB page support of the APKs built from
-the bundle. Pull requests build no Android or iOS app. On `main` the bundle (and
-the APK and iOS app in `flutter-checks.yml`) is built, checked and discarded.
+Android debug certificate or requests a permission not in
+`app/android/expected-permissions.txt`, and checks 16 KB page support of the APKs
+built from the bundle. Pull requests and pushes to `main` build no Android or iOS app. A
+manual run builds, checks and discards the bundle (and the APK and iOS app in
+`flutter-checks.yml`), so a change that breaks only the Android or iOS build is
+found by a manual run or at release time.
 
 Locally, `app/android/key.properties` (git-ignored) selects the upload key:
 
@@ -191,6 +194,20 @@ Without that file, release builds are debug-signed and Gradle prints
 `Release signing: debug signing (no key.properties)`.
 
 ## Releasing to Play
+
+Check the phone builds before creating the tag, as pull requests and pushes to
+`main` build no Android or iOS app. Start both manual runs on `main`:
+
+```sh
+gh workflow run play-bundle.yml --ref main
+gh workflow run flutter-checks.yml --ref main -f environment-name=none
+```
+
+The first builds and signs the bundle (throwaway key) and runs every check a tag
+runs (16 KB pages, package id and signer, permissions), without uploading. The
+second builds the Android APK and the iOS app and runs the emulator and
+simulator tests, without deploying. Wait until both are green, and only then
+create the tag. If either is red, fix it on `main` first.
 
 Pushing a version tag releases: `git tag v1.0.1 && git push origin v1.0.1`.
 `play-bundle.yml` then checks the tag (`v1.2.3`, on a commit that is on `main`),

@@ -2,7 +2,8 @@ name: Play app bundle
 
 # Separate from flutter-checks.yml: a manual run of that workflow needs an
 # environment input and deploys the web build.
-# A push to main (or a manual run) builds and checks the bundle, then discards it.
+# A manual run builds and checks the bundle, then discards it. Pushes to main and
+# pull requests build no bundle (owner's choice, 2026-11-20, #126).
 # Pushing a version tag (git tag v1.2.3 && git push origin v1.2.3) builds it with
 # that version, uploads it to the Play internal testing track and then creates
 # the GitHub release. One workflow does it all: a release created with
@@ -13,7 +14,6 @@ name: Play app bundle
 # jobs use the `release` environment.
 on:
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 30
     # Tag runs use the `release` environment (only v* tags and main may deploy to
     # it), so its secrets never reach other branches. This job reads only the
-    # signing key from it. Builds on main don't use it and sign with a throwaway key.
+    # signing key from it. Manual runs don't use it and sign with a throwaway key.
     environment: ${{ github.ref_type == 'tag' && 'release' || '' }}
     outputs:
       version_name: ${{ steps.tag.outputs.version_name }}
@@ -212,8 +212,10 @@ jobs:
             echo "::error::No native libraries found in the APKs"
             exit 1
           fi
-      # The APK Play installs carries the Play package id and is not debug-signed.
-      - name: Check package id and signer of the universal APK
+      # The APK Play installs carries the Play package id, is not debug-signed and
+      # requests only the permissions in android/expected-permissions.txt (the same
+      # comparison as the APK check in flutter-checks.yml, which tags do not run).
+      - name: Check package id, signer and permissions of the universal APK
         run: |
           sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           tools="$( (find "$sdk/build-tools" -name apksigner -type f || true) | sort -V | tail -n 1)"
@@ -240,7 +242,11 @@ jobs:
             echo "::error::The APK is signed with the Android debug certificate"
             exit 1
           fi
-      # Tag only from here on. A push to main stops above and the bundle is discarded
+          "$tools/aapt2" dump permissions "$apk" | tee "$RUNNER_TEMP/aapt2-permissions.txt"
+          sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
+            | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
+          diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
+      # Tag only from here on. A manual run stops above and the bundle is discarded
       # with the runner. The digest goes to the upload job as a job output.
       - name: Hash the app bundle
         id: aab

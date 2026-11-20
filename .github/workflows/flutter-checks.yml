@@ -137,9 +137,10 @@ jobs:
   android:
     name: Build Android release APK
     needs: linux-integration
-    # Phone jobs run after a merge to main and on manual runs, not on pull
-    # requests (owner's choice, 2026-11-14: faster PR rounds).
-    if: github.event_name != 'pull_request'
+    # Phone jobs run only on manual runs, not on pull requests or pushes to main
+    # (owner's choice, 2026-11-20, #126). A call from flutter-web-cloudflare-pages.yml
+    # gets the caller's github context, so its event_name is workflow_dispatch too.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     defaults:
@@ -179,7 +180,7 @@ jobs:
   ios:
     name: Build unsigned iOS release
     needs: linux-integration
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 30
     defaults:
@@ -214,7 +215,7 @@ jobs:
   ios-simulator:
     name: Test user journeys on iOS simulator
     needs: linux-integration
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
@@ -274,7 +275,7 @@ jobs:
   android-emulator:
     name: Test user journeys on Android emulator API ${{ matrix.api-level }}
     needs: linux-integration
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-26.04
     timeout-minutes: 45
     strategy:
