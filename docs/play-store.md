@@ -195,6 +195,20 @@ Without that file, release builds are debug-signed and Gradle prints
 
 ## Releasing to Play
 
+Check the phone builds before creating the tag, as pull requests and pushes to
+`main` build no Android or iOS app. Start both manual runs on `main`:
+
+```sh
+gh workflow run play-bundle.yml --ref main
+gh workflow run flutter-checks.yml --ref main -f environment-name=none
+```
+
+The first builds and signs the bundle (throwaway key) and runs every check a tag
+runs (16 KB pages, package id and signer, permissions), without uploading. The
+second builds the Android APK and the iOS app and runs the emulator and
+simulator tests, without deploying. Wait until both are green, and only then
+create the tag. If either is red, fix it on `main` first.
+
 Pushing a version tag releases: `git tag v1.0.1 && git push origin v1.0.1`.
 `play-bundle.yml` then checks the tag (`v1.2.3`, on a commit that is on `main`),
 builds the bundle with that version, uploads it to the **internal testing** track
