@@ -106,6 +106,57 @@ void main() {
     }
   });
 
+  group('algebra through the oracle', () {
+    const kind = OperationType.algebra;
+    final source = kind.source as AlgebraSource;
+    // The plan's count of each level's problems.
+    const counts = {1: 484};
+
+    for (var level = 1; level <= kind.highestLevel; level++) {
+      test('level $level: every problem has its answer as the one solution, '
+          'whole and at least 0', () {
+        final clock = Stopwatch()..start();
+        final problems = source.problems(kind, level).toList();
+        expect(problems, hasLength(counts[level]));
+        final failures = [
+          for (final problem in problems)
+            if (check(problem.question, problem.result) != Verdict.ok ||
+                problem.result < 0 ||
+                problem.result != problem.result.round() ||
+                RegExp(r'-|\.').hasMatch(problem.question))
+              '${problem.question} → ${problem.result}',
+        ];
+        expect(failures, isEmpty);
+        // ignore: avoid_print
+        print(
+          'algebra level $level: ${problems.length} problems enumerated in '
+          '${clock.elapsedMilliseconds} ms',
+        );
+      });
+
+      test('level $level: an answer + 1 and a displayed right-hand side + 1 '
+          'fail', () {
+        for (final p in source.problems(kind, level)) {
+          expect(
+            check(p.question, p.result + 1),
+            Verdict.wrongRoot,
+            reason: p.question,
+          );
+          final right = int.parse(p.tokens.last);
+          final mutant = [
+            ...p.tokens.take(p.tokens.length - 1),
+            '${right + 1}',
+          ];
+          expect(
+            check(mutant.join(' '), p.result),
+            Verdict.wrongRoot,
+            reason: mutant.join(' '),
+          );
+        }
+      });
+    }
+  });
+
   group('mutations fail the oracle', () {
     late final problems = [
       for (final type in _arithmetic)
