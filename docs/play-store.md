@@ -86,7 +86,7 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 | App access | All functionality is available without special access (no login, no account). |
 | Content rating | See the questionnaire answers below. |
 | Target audience and content | Age groups 6 to 8 and 9 to 12. Includes children, so the Families Policy applies (answers below). |
-| Data safety | No user data collected or shared (answers below). |
+| Data safety | Optional report data collected, not shared (answers below). |
 | Advertising ID | No, the app does not use the advertising ID. |
 | Government apps | No, the app is not developed by or for a government. |
 | Financial features | None; the app provides no financial features. |
@@ -125,7 +125,7 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
   system browser. `http` sends only that report.
 - No accounts, no social features, no purchases.
 - Links out of the app: one, the "Impressum" entry in the settings sheet (behind
-  the gear icon, not on the practice screen). It opens the developer's
+  the menu button at the top of the practice page, not on the question itself). It opens the developer's
   provider identification on the app's own website in the system browser. That
   page loads Cloudflare Turnstile (a bot check that receives the visitor's IP
   address and browser signals); the privacy policy says so. The privacy policy
@@ -134,8 +134,8 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 
 ### Data safety
 
-Since issue #150 the app can send a report, so the form changes. Proposed answers
-(the owner decides and enters them in Play Console):
+Since issue #150 the app can send a report, so the form changes. The owner entered
+these answers in Play Console:
 
 - Does the app collect or share any of the required user data types? Yes.
 - Collected types: "App info and performance: Other app performance data" (app
@@ -143,13 +143,14 @@ Since issue #150 the app can send a report, so the form changes. Proposed answer
   content" (the question code and the reason or category picked from a list).
   No personal info, no identifiers, no location, no device or other IDs.
 - Collection is optional: only a user-initiated report after the grown-up check.
-  Purpose: app functionality (fixing wrong questions and problems).
+  Purposes, for both data types: App functionality, Analytics.
 - Shared: No. Cloudflare (hosting) and GitHub (where the report becomes a public
   issue) process it for the developer; the report holds no personal data.
 - Processed ephemerally: No (it becomes a GitHub issue).
 - Encrypted in transit: Yes (HTTPS).
-- Deletion requests: a report holds nothing that links it to a person; the
-  developer can delete an issue on request.
+- Do you provide a way for users to request that their data is deleted? No. A
+  report holds nothing that links it to a person, so no one can ask for "their"
+  report.
 - The IP address reaches Cloudflare as for any web request; the function does not
   store or log it.
 - The Impressum link opens a web page in the browser; the app sends nothing
@@ -166,7 +167,7 @@ From plan section 4.6 (research, not legal advice):
   If not, or if Turnstile or the function is unavailable for long, the fallback is
   to return the text without the check (a one-line change in
   `functions/api/impressum.js`) or to publish the text as a static page.
-- Whether the one link out of the app (the Impressum, behind the settings gear)
+- Whether the one link out of the app (the Impressum, behind the settings menu button)
   needs a parental gate for the Families Policy.
 - Whether the report a grown-up sends (issue #150: question code or problem
   category, a reason from a list, app version, platform, app language, behind a
