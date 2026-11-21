@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
@@ -198,6 +199,91 @@ void main() {
       semantics.dispose();
     });
   }
+
+  // A short phone opens scrolled to the answer; a card shown once must
+  // still be on screen, whole, when the page first shows it. Measured with
+  // the bundled Roboto, as on a device: the test font draws every glyph a
+  // full em wide.
+  group('on a short phone', () {
+    setUpAll(() async {
+      final manifest =
+          jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
+      for (final family in manifest.cast<Map<String, dynamic>>()) {
+        final loader = FontLoader(family['family'] as String);
+        for (final font in (family['fonts'] as List).cast<Map>()) {
+          loader.addFont(rootBundle.load(font['asset'] as String));
+        }
+        await loader.load();
+      }
+    });
+
+    /// The part of [finder]'s rect that the screen and its page scroll show.
+    Rect shown(WidgetTester tester, Finder finder, Size size) {
+      final view =
+          Scrollable.of(tester.element(finder)).context.findRenderObject()!
+              as RenderBox;
+      return tester
+          .getRect(finder)
+          .intersect(Offset.zero & size)
+          .intersect(view.localToGlobal(Offset.zero) & view.size);
+    }
+
+    // A short phone opens scrolled to the answer; a card shown once must
+    // still be on screen, whole, when the page first shows it.
+    for (final size in const [Size(320, 568), Size(360, 640)]) {
+      for (final scale in const [1.0, 2.0]) {
+        for (final layout in LayoutMode.values) {
+          final tag =
+              '${size.width.toInt()}x${size.height.toInt()}, text $scale, '
+              '${layout.name}';
+
+          testWidgets('at $tag the page opens with the whole card in view, '
+              'for Algebra and then Geometry', (tester) async {
+            for (final (seen, title) in [
+              (<String>[], 'New: Algebra'),
+              (['algebra'], 'New: Geometry'),
+            ]) {
+              await launch(
+                tester,
+                progress: Progress(
+                  tier: Tier.easy,
+                  layoutMode: layout,
+                  seenKinds: seen,
+                ),
+                size: size,
+                scale: scale,
+              );
+              expect(tester.takeException(), isNull);
+              expect(find.text(title), findsOneWidget);
+              expect(
+                shown(tester, card, size),
+                tester.getRect(card),
+                reason: title,
+              );
+            }
+          });
+
+          testWidgets('at $tag without a card the page still opens with the '
+              'question in view', (tester) async {
+            await launch(
+              tester,
+              progress: Progress(
+                tier: Tier.easy,
+                layoutMode: layout,
+                seenKinds: [for (final kind in newKinds) kind.name],
+              ),
+              size: size,
+              scale: scale,
+            );
+            expect(tester.takeException(), isNull);
+            expect(card, findsNothing);
+            final question = find.byKey(questionOnProblemsPageKey);
+            expect(shown(tester, question, size), tester.getRect(question));
+          });
+        }
+      }
+    }
+  });
 
   group('saved progress', () {
     test('seenKinds survives a round trip with names this build does not '
