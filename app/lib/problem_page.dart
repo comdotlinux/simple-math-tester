@@ -319,7 +319,10 @@ class _ProblemPageState extends State<ProblemPage> {
             phone &&
             MediaQuery.sizeOf(context).shortestSide < 600 &&
             // Room above the dock for at least the pinned question.
-            constraints.maxHeight - (scaler.scale(28) * 1.2 + 128) >=
+            constraints.maxHeight -
+                    (scaler.scale(28) * 1.2 +
+                        128 +
+                        _longFeedback(context, constraints.maxWidth)) >=
                 scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48;
         final docked =
             side ||
@@ -850,6 +853,38 @@ class _ProblemPageState extends State<ProblemPage> {
         );
       },
     );
+  }
+
+  /// How much taller than its two lines beside Next, which the dock's
+  /// estimate holds, the docked feedback strip grows for the longest
+  /// message, a wrong answer, once Next moves under it (large text, a long
+  /// translation), on a page [width] wide.
+  double _longFeedback(BuildContext context, double width) {
+    final l = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    TextPainter measure(String text, TextStyle? style) => TextPainter(
+      text: TextSpan(text: text, style: style),
+      textScaler: MediaQuery.textScalerOf(context),
+      textDirection: Directionality.of(context),
+    );
+    final label = measure(l.next, textTheme.labelLarge)..layout();
+    // The strip's text room as `_AnswerFeedback` works it out: the dock's
+    // gutters, the strip's border and padding, the icon and the gaps.
+    final strip = min(width - 32, 440) - 2 * AppTokens.outlineWidth - 18;
+    final message = measure(
+      l.feedbackWrong,
+      textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+    )..layout(maxWidth: max(0, strip - 24 - 2 * 8 - label.width - 54));
+    final lines = message.computeLineMetrics();
+    var extra = 0.0;
+    if (lines.length > 2) {
+      final twoLines = lines[0].height + lines[1].height;
+      message.layout(maxWidth: max(0, strip - 24 - 8));
+      extra = max(0, message.height - twoLines) + 6 + 48;
+    }
+    label.dispose();
+    message.dispose();
+    return extra;
   }
 
   /// The Android back gesture while practising is End.
