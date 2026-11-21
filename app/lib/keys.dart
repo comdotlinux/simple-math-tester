@@ -35,6 +35,29 @@ const privacyTileKey = Key('privacy-tile');
 const licencesTileKey = Key('licences-tile');
 const impressumTileKey = Key('impressum-tile');
 const reportProblemTileKey = Key('report-problem-tile');
+const sendProblemReportTileKey = Key('send-problem-report-tile');
+
+// Marking a question and the report dialog.
+const reportFlagKey = Key('report-flag');
+
+/// The flag on a history entry, by its index in the history.
+Key historyFlagKey(int index) => Key('history-flag-$index');
+const reportDialogKey = Key('report-dialog');
+const reportContinueKey = Key('report-continue');
+const reportRemoveMarkKey = Key('report-remove-mark');
+const reportNotNowKey = Key('report-not-now');
+const reportCancelKey = Key('report-cancel');
+const reportCloseKey = Key('report-close');
+const reportBackKey = Key('report-back');
+
+/// One per reason or category, by its contract name.
+Key reportOptionKey(String name) => Key('report-option-$name');
+const reportCheckWordKey = Key('report-check-word');
+const reportCheckFieldKey = Key('report-check-field');
+const reportCheckWrongKey = Key('report-check-wrong');
+const reportSendKey = Key('report-send');
+const reportResultKey = Key('report-result');
+const reportTryAgainKey = Key('report-try-again');
 const appVersionTileKey = Key('app-version-tile');
 const updateReminderKey = Key('update-reminder');
 const updateReminderDismissKey = Key('update-reminder-dismiss');

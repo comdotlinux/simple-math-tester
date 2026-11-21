@@ -66,7 +66,7 @@ List<(String, List<String>)> privacyPolicy(AppLocalizations l) => [
   (l.privacyStoresHeading, [l.privacyStores, l.privacyOffline]),
   (l.privacyWebHeading, [l.privacyWebHost, l.privacyWebFiles]),
   (l.privacyImpressumHeading, [l.privacyImpressum]),
-  (l.privacyReportHeading, [l.privacyReport]),
+  (l.privacyReportHeading, [l.privacyReportSend, l.privacyReport]),
   (l.privacyChildrenHeading, [l.privacyChildren]),
   (l.privacyChangesHeading, [l.privacyChanges]),
 ];

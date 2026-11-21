@@ -4,10 +4,16 @@ Everything the owner enters in Play Console, and the steps to publish. Play Cons
 menu names are written from memory; check them against the live console while
 following the walkthrough. Facts behind the answers: the app's own code collects
 no personal data, stores progress only on the device, has no accounts, no
-analytics and no ads, and the Android release build requests no internet access
-(`app/android/expected-permissions.txt` lists its only permission). Its one link
-out is the Impressum entry in the settings, which opens
-`https://math.munich-tech.de/impressum` in the system browser.
+analytics and no ads. The Android release build requests internet access
+(`app/android/expected-permissions.txt`) only for one thing: a report a grown-up
+sends after the grown-up check (issue #150). Such a report is one HTTPS request to
+`https://math.munich-tech.de/api/report` with a question code (or a problem
+category), a reason picked from a list, the app version, the platform and the app
+language; no free text, no identifier, no progress. The function on the site turns
+it into a public GitHub issue and stores no IP address. The app makes no other
+request. Its one link out is the Impressum entry in the settings, which opens
+`https://math.munich-tech.de/impressum` in the system browser (the GitHub link for a
+longer problem description also opens the browser).
 
 ## Store listing
 
@@ -108,10 +114,15 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 
 - Target age groups: 6 to 8 and 9 to 12; the app is designed for children.
 - Ads: none, so no Families Self-Certified Ads SDK is needed.
-- Data from children: none collected or transmitted. The included packages
-  (`shared_preferences`, `audioplayers`, `provider`, `duration`, `material_ui`,
-  `url_launcher`) work on the device only and send nothing; `url_launcher` only
-  hands the Impressum address to the system browser.
+- Data from children: no personal data collected. The only transmission is a
+  report that an adult sends after the grown-up check (a number in words that
+  must be typed as digits; a speed bump, not a lock): question code or problem
+  category, a reason from a list, app version, platform and app language, sent
+  over HTTPS to the app's own site. No identifier, no free text, no progress.
+  The included packages (`shared_preferences`, `audioplayers`, `provider`,
+  `duration`, `material_ui`, `url_launcher`) work on the device only and send
+  nothing; `url_launcher` only hands the Impressum and GitHub addresses to the
+  system browser. `http` sends only that report.
 - No accounts, no social features, no purchases.
 - Links out of the app: one, the "Impressum" entry in the settings sheet (behind
   the gear icon, not on the practice screen). It opens the developer's
@@ -123,13 +134,28 @@ Stored in [`docs/play-store/`](play-store/) (see its README for how they are mad
 
 ### Data safety
 
-- Does the app collect or share any of the required user data types? No.
-- With "No", the form asks no further data questions. Encryption in transit and
-  deletion requests do not apply because nothing is collected.
-- The Impressum link opens a web page in the browser; the app itself sends
-  nothing. Cloudflare Turnstile on that page is part of the website, not of the
-  app, and is described in the privacy policy, so the answer stays "No". If
-  Play Console asks about links to websites, describe this one link.
+Since issue #150 the app can send a report, so the form changes. Proposed answers
+(the owner decides and enters them in Play Console):
+
+- Does the app collect or share any of the required user data types? Yes.
+- Collected types: "App info and performance: Other app performance data" (app
+  version, platform, app language) and "App activity: Other user-generated
+  content" (the question code and the reason or category picked from a list).
+  No personal info, no identifiers, no location, no device or other IDs.
+- Collection is optional: only a user-initiated report after the grown-up check.
+  Purpose: app functionality (fixing wrong questions and problems).
+- Shared: No. Cloudflare (hosting) and GitHub (where the report becomes a public
+  issue) process it for the developer; the report holds no personal data.
+- Processed ephemerally: No (it becomes a GitHub issue).
+- Encrypted in transit: Yes (HTTPS).
+- Deletion requests: a report holds nothing that links it to a person; the
+  developer can delete an issue on request.
+- The IP address reaches Cloudflare as for any web request; the function does not
+  store or log it.
+- The Impressum link opens a web page in the browser; the app sends nothing
+  there. Cloudflare Turnstile on that page is part of the website, not of the
+  app, and is described in the privacy policy, so it adds nothing to the form.
+  If Play Console asks about links to websites, describe this one link.
 - Independent security review: No.
 
 ## Points for a lawyer or the data-protection authority
@@ -142,6 +168,10 @@ From plan section 4.6 (research, not legal advice):
   `functions/api/impressum.js`) or to publish the text as a static page.
 - Whether the one link out of the app (the Impressum, behind the settings gear)
   needs a parental gate for the Families Policy.
+- Whether the report a grown-up sends (issue #150: question code or problem
+  category, a reason from a list, app version, platform, app language, behind a
+  number-in-words check) fits the Families Policy and the Data safety answers
+  above, and whether the check counts as a sufficient parental gate.
 - Whether an Impressum is required for an ad-free hobby app, and with which address.
 - Whether non-trader status is right for an ad-free free app.
 

@@ -11,11 +11,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/report.dart';
+import 'package:simple_math_tester/report_dialog.dart';
 import 'package:simple_math_tester/rules.dart';
 import 'package:simple_math_tester/solution_steps.dart';
 
@@ -101,6 +104,7 @@ void main() {
       level: 3,
     ),
     double scale = 1,
+    ReportOutcome reportOutcome = ReportOutcome.sent,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -124,6 +128,8 @@ void main() {
       ),
       clock: () => now,
       ticker: ticks == null ? null : () => ticks.stream,
+      // Nothing is sent from a screenshot.
+      reportClient: _ShotReports(reportOutcome),
     );
     addTearDown(model.dispose);
     await tester.pumpWidget(
@@ -472,6 +478,89 @@ void main() {
           }
         });
 
+        testWidgets('report screenshots $tag', (tester) async {
+          language = code;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          final rectangle = geometry.build(
+            OperationType.geometry,
+            'rectanglePerimeter',
+            [5, 3],
+          )!;
+          Future<void> tap(Key key) async {
+            await tester.ensureVisible(find.byKey(key));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(key));
+            await tester.pumpAndSettle();
+          }
+
+          Future<void> typeShown({int offset = 0}) async {
+            final l = AppLocalizations.of(
+              tester.element(find.byKey(reportDialogKey)),
+            );
+            final word = tester
+                .widget<Text>(find.byKey(reportCheckWordKey))
+                .data;
+            final number = checkNumbers(l).firstWhere((n) => n.$2 == word).$1;
+            await tester.enterText(
+              find.byKey(reportCheckFieldKey),
+              '${number + offset}',
+            );
+          }
+
+          for (final outcome in ReportOutcome.values) {
+            final practice = await launch(
+              tester,
+              size,
+              brightness,
+              problem: rectangle,
+              reportOutcome: outcome,
+            );
+            practice.toggleOperation(OperationType.geometry);
+            await tester.pumpAndSettle();
+            if (outcome == ReportOutcome.sent) {
+              await shoot(tester, '$tag-16a-report-flag');
+            }
+            await tap(reportFlagKey);
+            if (outcome == ReportOutcome.sent) {
+              await shoot(tester, '$tag-16b-report-ask-a-grown-up');
+            }
+            await tap(reportContinueKey);
+            await tap(reportOptionKey('wrongDrawing'));
+            if (outcome == ReportOutcome.sent) {
+              await shoot(tester, '$tag-16c-report-pick-list');
+            }
+            await tap(reportContinueKey);
+            if (outcome == ReportOutcome.sent) {
+              await shoot(tester, '$tag-16d-report-grown-up-check');
+              await typeShown(offset: 1);
+              await tap(reportSendKey);
+              await shoot(tester, '$tag-16e-report-check-wrong');
+            }
+            await typeShown();
+            await tap(reportSendKey);
+            await shoot(
+              tester,
+              outcome == ReportOutcome.sent
+                  ? '$tag-16f-report-sent'
+                  : '$tag-16g-report-could-not-send',
+            );
+            await tap(reportCloseKey);
+            await shoot(
+              tester,
+              outcome == ReportOutcome.sent
+                  ? '$tag-16h-report-flag-sent'
+                  : '$tag-16i-report-flag-marked',
+            );
+          }
+          await launch(tester, size, brightness);
+          await tap(settingsButtonKey);
+          await tap(sendProblemReportTileKey);
+          await shoot(tester, '$tag-16j-problem-report-ask');
+          await tap(reportContinueKey);
+          await tap(reportOptionKey('display'));
+          await shoot(tester, '$tag-16k-problem-report-pick-list');
+        });
+
         testWidgets('new kind card screenshots $tag', (tester) async {
           language = code;
           await launch(tester, size, brightness, newKindCard: true);
@@ -804,4 +893,14 @@ void main() {
       }
     }
   }
+}
+
+/// Answers every report with one outcome and sends nothing.
+class _ShotReports implements ReportClient {
+  const _ShotReports(this.outcome);
+
+  final ReportOutcome outcome;
+
+  @override
+  Future<ReportOutcome> send(String body) async => outcome;
 }

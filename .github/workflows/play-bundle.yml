@@ -245,7 +245,8 @@ jobs:
           "$tools/aapt2" dump permissions "$apk" | tee "$RUNNER_TEMP/aapt2-permissions.txt"
           sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
             | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
-          diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
+          # Lines starting with # in the expected list are comments.
+          grep -v '^#' android/expected-permissions.txt | diff -u - "$RUNNER_TEMP/actual-permissions.txt"
       # Tag only from here on. A manual run stops above and the bundle is discarded
       # with the runner. The digest goes to the upload job as a job output.
       - name: Hash the app bundle

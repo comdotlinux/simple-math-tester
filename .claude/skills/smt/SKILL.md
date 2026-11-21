@@ -90,6 +90,7 @@ Docs to read for an area:
 | `solution_steps.dart` | Hints for every kind, as structured steps |
 | `hundredths.dart` | Parsing and formatting answers as whole hundredths |
 | `math_tester_model.dart`, `rules.dart` | Game state, draws, levels, tiers, sprint |
+| `report.dart`, `report_dialog.dart` | The one request: `ReportClient` (HTTP to `/api/report`), the flag, the report dialog and the grown-up check |
 | `progress.dart`, `progress_store.dart` | Saved progress (schema 2) and its storage |
 | `problem_page.dart`, `number_pad.dart`, `question_text.dart`, `hud.dart` | The practice screen |
 | `results_page.dart`, `home_page.dart`, `licences_page.dart`, `legal.dart` | History, shell, licences, privacy |
@@ -155,7 +156,7 @@ Tagging, promoting and pushing the listing reach real users. Do them only when t
 - **Textbook rows** (`*_known_answers_test.dart`) take the expected value from the printed answer only. Never compute or recall one. Sources allowed: Illustrative Mathematics and Open Up Resources 6-8 (CC BY 4.0), with attribution.
 - **Strings:** English only, in `app/lib/l10n/app_en.arb` with an `@` description; copy the English text into the other ARB files without source hashes. Numbers are placeholders, not literals. The Translate workflow replaces the copies on `main`.
 - **Store listing:** a digit added to `play/listing/en-US.json` fails `translate_listing.mjs --check` until the translations land, which happens only after the merge.
-- **No INTERNET permission** in the Android release (`app/android/expected-permissions.txt`). The app sends nothing anywhere.
+- **INTERNET only for a report sent after the grown-up check** (`app/android/expected-permissions.txt`, issue #150). The app makes no other request: marking a question is local, a report needs the grown-up check, holds no free text, and is never queued or retried on its own. Tests and journeys inject a fake `ReportClient`; none may call the real endpoint.
 - **New kinds** are off by default, start at level 1 whatever the tier, and are not drawn in sprints. `arithmeticKinds` is the one set that decides this.
 - **No file is deleted.** Move a file that must go to a temporary location for the owner. Write logs and screenshots to new, uniquely named files.
 - **No secrets, keystore or Impressum text** in output, logs or commits. Secrets are set only with `gh secret set`.
