@@ -106,6 +106,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(progress: Progress(tier: Tier.easy));
     addTearDown(model.dispose);
+    model.startPractice();
     await tester.pumpWidget(
       ChangeNotifierProvider.value(value: model, child: const MathTesterApp()),
     );
@@ -149,6 +150,7 @@ void main() {
       ),
     );
     addTearDown(model.dispose);
+    model.startPractice();
     await tester.pumpWidget(
       ChangeNotifierProvider.value(value: model, child: const MathTesterApp()),
     );
@@ -335,6 +337,7 @@ void main() {
             : (kind) => kind.signedDecimalAnswers,
       );
       addTearDown(model.dispose);
+      model.startPractice();
       await tester.pumpWidget(
         ChangeNotifierProvider.value(
           value: model,

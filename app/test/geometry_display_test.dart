@@ -38,6 +38,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Size size = const Size(412, 900),
     LayoutMode layout = LayoutMode.comfortable,
     double scale = 1,
@@ -74,6 +76,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -202,7 +208,8 @@ void main() {
   });
 
   testWidgets('the pinned band shows the sentence', (tester) async {
-    final model = await launch(tester, size: const Size(320, 568));
+    // Large text, so the page is long enough to scroll the card away.
+    final model = await launch(tester, size: const Size(320, 568), scale: 1.5);
     model.setDraftInput('9');
     model.submitAnswer();
     await tester.pumpAndSettle();

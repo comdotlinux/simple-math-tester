@@ -30,17 +30,17 @@ void historyJourneys() {
       expect(find.byKey(statsCardKey), findsNothing);
     });
 
-    testWidgets('the empty state’s Practice button returns to the question', (
+    testWidgets('the empty state’s Practice button returns to Start', (
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
-      final question = modelOf(tester).current.question;
       await openHistory(tester);
 
       await tapKey(tester, emptyStatePracticeButtonKey);
 
       expect(find.byKey(problemsPageKey), findsOneWidget);
-      expect(modelOf(tester).current.question, question);
+      expect(find.byKey(startPracticeButtonKey), findsOneWidget);
+      expect(find.byKey(questionOnProblemsPageKey), findsNothing);
     });
 
     testWidgets('the stats card shows saved totals once there are answers', (
@@ -174,6 +174,7 @@ void historyJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final question = model.current.question;
       final answer = model.current.result;
@@ -197,6 +198,7 @@ void historyJourneys() {
 
     testWidgets('a correct row shows your answer', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       await submit(tester, model.current.result + 1);
       await nextQuestion(tester);
@@ -230,6 +232,7 @@ void historyJourneys() {
           ],
         ),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       final question = model.current.question;
       await nextQuestion(tester);
@@ -308,18 +311,23 @@ void historyJourneys() {
     });
 
     testWidgets(
-      'going back to Practice keeps the current question, the answer focused',
+      'End then My answers shows the round; back on Practice, Start shows a '
+      'new question with the answer focused',
       (tester) async {
         await startWith(tester, Progress(tier: Tier.easy));
+        await pressStart(tester);
         final model = modelOf(tester);
         final question = model.current.question;
         await submit(tester, model.current.result + 1);
         await openHistory(tester);
+        expect(textOf(tester, historyCountKey), showsNumber(1));
 
         await returnToPractice(tester);
+        expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+        await pressStart(tester);
 
-        expect(model.current.question, question);
-        expect(questionOnScreen(tester), question);
+        expect(questionOnScreen(tester), model.current.question);
+        expect(model.current.question, isNot(question));
         expect(await answerFocused(tester), isTrue);
       },
     );

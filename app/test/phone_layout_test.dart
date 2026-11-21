@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -75,6 +76,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -178,6 +180,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -318,9 +321,13 @@ void main() {
             params,
             level: level,
           ),
-          progress: Progress(tier: Tier.easy),
+          progress: Progress(
+            tier: Tier.easy,
+            selectedOperations: {OperationType.geometry},
+          ),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -385,6 +392,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -448,4 +456,103 @@ void main() {
       });
     }
   }
+
+  // Practice shows nothing above the question but End (issue #175).
+  group('at 360x640, text 1.0', () {
+    const size = Size(360, 640);
+    final card = find
+        .ancestor(
+          of: find.byKey(questionOnProblemsPageKey),
+          matching: find.byType(Card),
+        )
+        .first;
+
+    Future<MathTesterModel> launch(
+      WidgetTester tester, {
+      Problem problem = const ArithmeticProblem(48, 27, OperationType.plus, 75),
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final model = MathTesterModel(
+        initialProblem: problem,
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: {...arithmeticKinds, problem.kind},
+          seenKinds: [for (final kind in OperationType.values) kind.name],
+        ),
+      );
+      addTearDown(model.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          key: ObjectKey(model),
+          value: model,
+          child: const MediaQuery(
+            data: MediaQueryData(size: size),
+            child: MathTesterApp(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return model;
+    }
+
+    testWidgets('the question card starts higher than the kinds did, and '
+        'higher than before Start existed', (tester) async {
+      final model = await launch(tester);
+      final kinds = tester.getRect(
+        find.byKey(operationToggleKey(OperationType.plus)),
+      );
+      model.startPractice();
+      await tester.pumpAndSettle();
+      final top = tester.getRect(card).top;
+      expect(top, lessThan(kinds.top));
+      // Before #175 the toggles' two rows sat above the card, whose top was
+      // at 279 px here; End alone now frees over 100 px for the question.
+      expect(top, lessThan(279 - 100));
+      expectOnScreen(tester, card, size);
+    });
+
+    testWidgets('every geometry figure, the tallest included, shows whole '
+        'with the answer strip, without scrolling', (tester) async {
+      final random = Random(175);
+      var tallest = 0.0;
+      for (
+        var level = 1;
+        level <= OperationType.geometry.highestLevel;
+        level++
+      ) {
+        for (var i = 0; i < 12; i++) {
+          final problem = OperationType.geometry.generate(random, level);
+          await launch(tester, problem: problem);
+          final model = tester
+              .element(find.byKey(problemsPageKey))
+              .read<MathTesterModel>();
+          model.startPractice();
+          await tester.pumpAndSettle();
+          expect(model.current, same(problem));
+          final page = find.ancestor(
+            of: card,
+            matching: find.byType(Scrollable),
+          );
+          expect(
+            tester.state<ScrollableState>(page).position.pixels,
+            0,
+            reason: problem.question,
+          );
+          for (final finder in [
+            card,
+            find.byType(TextField),
+            find.byKey(checkAnswerButtonKey),
+          ]) {
+            expectOnScreen(tester, finder, size);
+          }
+          tallest = max(tallest, tester.getRect(card).height);
+          expect(tester.takeException(), isNull);
+        }
+      }
+      expect(tallest, greaterThan(0));
+    });
+  });
 }

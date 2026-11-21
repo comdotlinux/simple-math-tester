@@ -27,6 +27,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // The card shows before Start; true starts practice as Start does.
+    bool start = false,
     Progress? progress,
     FakeStore? store,
     Size size = const Size(1000, 900),
@@ -57,6 +59,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -228,8 +234,8 @@ void main() {
           .intersect(view.localToGlobal(Offset.zero) & view.size);
     }
 
-    // A short phone opens scrolled to the answer; a card shown once must
-    // still be on screen, whole, when the page first shows it.
+    // The card waits before Start; a card shown once must be on screen,
+    // whole, when the page first shows it, also with large text.
     for (final size in const [Size(320, 568), Size(360, 640)]) {
       for (final scale in const [1.0, 2.0]) {
         for (final layout in LayoutMode.values) {
@@ -267,6 +273,7 @@ void main() {
               'question in view', (tester) async {
             await launch(
               tester,
+              start: true,
               progress: Progress(
                 tier: Tier.easy,
                 layoutMode: layout,

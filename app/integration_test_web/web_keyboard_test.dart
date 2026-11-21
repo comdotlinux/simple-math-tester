@@ -53,6 +53,9 @@ void main() {
       );
       await app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
       await tester.pumpAndSettle();
+      // The app opens before Start; Start shows the answer and the pad.
+      await tester.tap(find.byKey(startPracticeButtonKey));
+      await tester.pumpAndSettle();
 
       expect(find.byKey(numberPadKey), findsOneWidget);
       expect(await inputmodeOnceIt(tester, (mode) => mode == 'none'), 'none');

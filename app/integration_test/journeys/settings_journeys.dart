@@ -14,7 +14,7 @@ void settingsJourneys() {
   group('settings', () {
     testWidgets(
       'the gear opens the settings sheet and a tap outside closes it, '
-      'focusing the answer again',
+      'focusing Start; Start focuses the answer',
       (tester) async {
         await startWith(tester, Progress(tier: Tier.easy));
 
@@ -44,6 +44,12 @@ void settingsJourneys() {
 
         await closeSettings(tester);
         expect(find.byKey(settingsSheetKey), findsNothing);
+        expect(
+          startFocused(tester),
+          isTrue,
+          reason: 'settings wait before Start',
+        );
+        await pressStart(tester);
         expect(
           await answerFocused(tester),
           isTrue,
@@ -131,6 +137,7 @@ void settingsJourneys() {
         clock: DateTime.now,
         haptic: buzzes.add,
       );
+      await pressStart(tester);
       await openPad(tester);
       await tapVisible(tester, padKey('5'));
       expect(buzzes, [Haptic.key]);
@@ -138,6 +145,7 @@ void settingsJourneys() {
       await openSettings(tester);
       await tapVisible(tester, find.byKey(hapticsSwitchKey));
       await closeSettings(tester);
+      await pressStart(tester);
       await tapVisible(tester, padKey('5'));
 
       expect(buzzes, [Haptic.key]);

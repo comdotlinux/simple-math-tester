@@ -37,6 +37,7 @@ void persistenceJourneys() {
           ),
         ),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(model.canSave, isTrue);
       expect(model.selectedOperations, {OperationType.multiply});
@@ -78,10 +79,13 @@ void persistenceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       var model = modelOf(tester);
       final question = model.current.question;
       await submit(tester, model.current.result);
       final xp = model.game.xp;
+      // Kinds change only before Start.
+      await pressEnd(tester);
       await tapVisible(tester, operationToggle(OperationType.minus));
       await openSettings(tester);
       await tapVisible(tester, find.byKey(hapticsSwitchKey));
@@ -121,6 +125,7 @@ void persistenceJourneys() {
           ),
         ),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
 
       // The day's tenth right answer earns XP and fills the goal.
@@ -203,6 +208,7 @@ void persistenceJourneys() {
 
       // Play goes on, but nothing replaces the newer document.
       await tapKey(tester, tierOptionKey(Tier.easy));
+      await pressStart(tester);
       await nextQuestion(tester);
       await Future<void>.delayed(const Duration(milliseconds: 200));
 

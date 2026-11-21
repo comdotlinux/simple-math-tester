@@ -68,6 +68,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Size size = const Size(412, 720),
     double scale = 1,
     Brightness brightness = Brightness.light,
@@ -103,6 +105,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -153,7 +159,7 @@ void main() {
     tester,
   ) async {
     final store = FakeStore();
-    final model = await launch(tester, store: store);
+    final model = await launch(tester, start: false, store: store);
     await openSettings(tester);
     SegmentedButton<LayoutMode> choice() =>
         tester.widget(find.byType(SegmentedButton<LayoutMode>));
@@ -266,29 +272,42 @@ void main() {
         });
 
         testWidgets('compact pages keep 48 px targets, $tag', (tester) async {
-          await launch(
+          final model = await launch(
             tester,
+            start: false,
             size: size,
             scale: scale,
             brightness: brightness,
             layout: LayoutMode.compact,
           );
-          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
-          for (final key in [
+          Future<void> expectTargets(List<Key> keys) async {
+            await expectLater(
+              tester,
+              meetsGuideline(androidTapTargetGuideline),
+            );
+            for (final key in keys) {
+              await tester.ensureVisible(find.byKey(key));
+              await tester.pumpAndSettle();
+              expect(
+                tester.getSize(find.byKey(key)).height,
+                greaterThanOrEqualTo(48),
+                reason: '$key',
+              );
+            }
+            expect(tester.takeException(), isNull);
+          }
+
+          await expectTargets([
             settingsButtonKey,
-            nextQuestionButtonKey,
+            startPracticeButtonKey,
             sprintButtonKey,
             for (final type in OperationType.values) operationToggleKey(type),
-          ]) {
-            await tester.ensureVisible(find.byKey(key));
-            await tester.pumpAndSettle();
-            expect(
-              tester.getSize(find.byKey(key)).height,
-              greaterThanOrEqualTo(48),
-              reason: '$key',
-            );
-          }
-          expect(tester.takeException(), isNull);
+          ]);
+          model.startPractice();
+          await tester.pumpAndSettle();
+          await expectTargets([endPracticeButtonKey, nextQuestionButtonKey]);
+          model.endPractice();
+          await tester.pumpAndSettle();
 
           await openSettings(tester);
           await expectLater(tester, meetsGuideline(androidTapTargetGuideline));

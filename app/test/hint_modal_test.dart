@@ -47,6 +47,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Problem problem = sum,
     Size size = const Size(360, 640),
     double scale = 1,
@@ -61,6 +63,8 @@ void main() {
       initialProblem: problem,
       progress: Progress(
         tier: Tier.easy,
+        // With the problem's kind on, Start keeps the problem.
+        selectedOperations: {...arithmeticKinds, problem.kind},
         seenKinds: [for (final kind in OperationType.values) kind.name],
       ),
     );
@@ -81,6 +85,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     if (usePad) {
       await tester.tap(find.byKey(keyboardSwitchKey));
       await tester.pumpAndSettle();
@@ -311,7 +319,7 @@ void main() {
   });
 
   testWidgets('a sprint has no hint', (tester) async {
-    final model = await launch(tester);
+    final model = await launch(tester, start: false);
     await tapKey(tester, sprintButtonKey);
     expect(find.byKey(hintButtonKey), findsNothing);
     model.openHint();

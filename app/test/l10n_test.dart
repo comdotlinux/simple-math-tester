@@ -276,9 +276,10 @@ void main() {
     for (final locale in AppLocalizations.supportedLocales) {
       final code = locale.toString();
       // Overflow is reported as an error, which fails the test.
-      testWidgets('$code: practice, a wrong answer with every hint, settings '
-          'and the language list', (tester) async {
+      testWidgets('$code: practice, a wrong answer with every hint, the '
+          'summary, settings and the language list', (tester) async {
         await launch(tester, Progress(tier: Tier.easy, language: code));
+        await tap(tester, startPracticeButtonKey);
         await tester.enterText(find.byType(TextField), '1');
         await tap(tester, checkAnswerButtonKey);
         expect(find.byKey(tryAgainButtonKey), findsOneWidget);
@@ -289,6 +290,9 @@ void main() {
         expect(find.byKey(solutionStepsKey), findsOneWidget);
         await tap(tester, hintCloseKey);
 
+        // End shows the summary of the round above Start.
+        await tap(tester, endPracticeButtonKey);
+        expect(find.byKey(roundSummaryKey), findsOneWidget);
         await tap(tester, settingsButtonKey);
         await tap(tester, languageTileKey);
         await tester.ensureVisible(find.byKey(languageOptionKey(code)));

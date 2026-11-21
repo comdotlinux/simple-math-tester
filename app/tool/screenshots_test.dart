@@ -106,6 +106,8 @@ void main() {
     ),
     double scale = 1,
     ReportOutcome reportOutcome = ReportOutcome.sent,
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -122,6 +124,8 @@ void main() {
         history: history,
         palette: palette,
         language: language,
+        // With the problem's kind on, Start keeps the problem.
+        selectedOperations: {...arithmeticKinds, problem.kind},
         seenKinds: [
           if (!newKindCard)
             for (final kind in OperationType.values) kind.name,
@@ -167,6 +171,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -267,9 +275,11 @@ void main() {
             '${size.width.toInt()}x${size.height.toInt()}';
         testWidgets('screenshots $tag', (tester) async {
           language = code;
-          final practice = await launch(tester, size, brightness);
+          final practice = await launch(tester, size, brightness, start: false);
           // Shows a switched-off operation next to the switched-on ones.
           practice.toggleOperation(OperationType.divide);
+          await shoot(tester, '$tag-0-before-start');
+          await tester.tap(find.byKey(startPracticeButtonKey));
           await shoot(tester, '$tag-1-practice');
 
           // Phones start with the system keyboard, so there this shows the pad.
@@ -281,6 +291,9 @@ void main() {
           // The page itself keeps the feedback in view.
           await check(tester, '75');
           await shoot(tester, '$tag-2-correct');
+          await tester.ensureVisible(find.byKey(endPracticeButtonKey));
+          await tester.tap(find.byKey(endPracticeButtonKey));
+          await shoot(tester, '$tag-2d-after-end-summary');
 
           await launch(tester, size, brightness);
           await check(tester, '65');
@@ -314,7 +327,13 @@ void main() {
 
           final ticks = StreamController<void>.broadcast(sync: true);
           addTearDown(ticks.close);
-          final sprint = await launch(tester, size, brightness, ticks: ticks);
+          final sprint = await launch(
+            tester,
+            size,
+            brightness,
+            ticks: ticks,
+            start: false,
+          );
           sprint.startSprint();
           await tester.pumpAndSettle();
           for (var i = 0; i < 2; i++) {
@@ -341,7 +360,7 @@ void main() {
           empty.setCurrentPage(1);
           await shoot(tester, '$tag-8-answers-empty');
 
-          await launch(tester, size, brightness);
+          await launch(tester, size, brightness, start: false);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -364,7 +383,7 @@ void main() {
               _ => true,
             },
           );
-          await launch(tester, size, brightness);
+          await launch(tester, size, brightness, start: false);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -379,7 +398,7 @@ void main() {
           );
 
           // Settings > Licences: the packages, then the other attributions.
-          await launch(tester, size, brightness);
+          await launch(tester, size, brightness, start: false);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -424,6 +443,9 @@ void main() {
             );
             themed.toggleOperation(OperationType.divide);
             await shoot(tester, '$tag-12-${palette.name}-practice');
+            themed.endPractice();
+            themed.dismissRoundSummary();
+            await tester.pumpAndSettle();
             await tester.ensureVisible(find.byKey(settingsButtonKey));
             await tester.pumpAndSettle();
             await tester.tap(find.byKey(settingsButtonKey));
@@ -472,7 +494,7 @@ void main() {
           await tester.pumpAndSettle();
           scrollAnswers(tester, 600);
           await shoot(tester, '$tag-11c-compact-answers-scrolled');
-          await launch(tester, size, brightness, layout: compact);
+          await launch(tester, size, brightness, layout: compact, start: false);
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -566,7 +588,7 @@ void main() {
                   : '$tag-16i-report-flag-marked',
             );
           }
-          await launch(tester, size, brightness);
+          await launch(tester, size, brightness, start: false);
           await tap(settingsButtonKey);
           await tap(sendProblemReportTileKey);
           await shoot(tester, '$tag-16j-problem-report-ask');
@@ -577,7 +599,13 @@ void main() {
 
         testWidgets('new kind card screenshots $tag', (tester) async {
           language = code;
-          await launch(tester, size, brightness, newKindCard: true);
+          await launch(
+            tester,
+            size,
+            brightness,
+            newKindCard: true,
+            start: false,
+          );
           await tester.ensureVisible(find.byKey(newKindCardKey));
           await shoot(tester, '$tag-14-new-kind-card');
         });

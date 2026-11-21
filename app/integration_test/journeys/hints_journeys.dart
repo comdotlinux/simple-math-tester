@@ -30,6 +30,7 @@ void hintsJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(_label(hintButtonKey, 'Hint'), findsOneWidget);
 
@@ -46,6 +47,7 @@ void hintsJourneys() {
     // injected here races the desktop engine's echo of the selection.
     testWidgets('Try again puts the focus back on the answer', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       await submit(tester, model.current.result + 1);
       final checked = model.current;
@@ -60,6 +62,7 @@ void hintsJourneys() {
     testWidgets('the hint steps through to the answer in its modal, closes '
         'back to the answer and reopens where it was', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       await submit(tester, model.current.result + 1);
 
@@ -107,6 +110,7 @@ void hintsJourneys() {
         tester,
         Progress(tier: Tier.easy, selectedOperations: {OperationType.multiply}),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(model.current.kind, OperationType.multiply);
 
@@ -124,6 +128,7 @@ void hintsJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy, history: _answers(6)));
+      await pressStart(tester);
       final model = modelOf(tester);
       final question = model.current;
 
@@ -169,6 +174,7 @@ void hintsJourneys() {
     testWidgets('after hints on 5 of the last 10 answers the hint opens at '
         'once', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy, history: _answers(5)));
+      await pressStart(tester);
       await tapKey(tester, hintButtonKey);
       expect(find.byKey(hintNudgeKey), findsNothing);
       expect(find.byKey(solutionStepsKey), findsOneWidget);
@@ -181,6 +187,7 @@ void hintsJourneys() {
         tester,
         Progress(tier: Tier.easy, selectedOperations: {OperationType.multiply}),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       await tapKey(tester, hintButtonKey);
       await tapKey(tester, revealStepButtonKey);

@@ -18,6 +18,8 @@ import 'fake_store.dart';
 void main() {
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Progress? progress,
     ProgressStore? store,
   }) async {
@@ -39,6 +41,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -70,7 +76,7 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     final store = FakeStore();
-    final model = await launch(tester, store: store);
+    final model = await launch(tester, start: false, store: store);
     expect(pageColour(tester), AppTokens.light.surface);
 
     await tester.tap(find.byKey(settingsButtonKey));

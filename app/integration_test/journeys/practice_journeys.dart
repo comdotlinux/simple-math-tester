@@ -12,6 +12,7 @@ void practiceJourneys() {
   group('practice', () {
     testWidgets('a wrong first answer is saved before Next', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final answer = model.current.result;
 
@@ -29,6 +30,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final answer = model.current.result;
       await submit(tester, answer + 1);
@@ -45,6 +47,7 @@ void practiceJourneys() {
 
     testWidgets('a correct first answer is saved as correct', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final answer = model.current.result;
 
@@ -60,6 +63,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       await submit(tester, model.current.result + 1);
       final checked = model.current;
@@ -82,6 +86,7 @@ void practiceJourneys() {
 
     testWidgets('Next without an answer is saved as skipped', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final skipped = model.current;
 
@@ -98,6 +103,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
 
       await submit(tester, model.current.result + 1);
@@ -123,6 +129,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
 
       await tapKey(tester, checkAnswerButtonKey);
@@ -134,6 +141,7 @@ void practiceJourneys() {
     testWidgets('Enter checks the answer and a second Enter shows the next '
         'question', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final first = model.current;
       await typeAnswer(tester, formatNumber(first.result));
@@ -158,6 +166,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final first = model.current;
       await typeAnswer(tester, formatNumber(first.result + 1));
@@ -176,6 +185,7 @@ void practiceJourneys() {
     testWidgets('the answer field keeps the focus after a check and after '
         'Skip or Next', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(await answerFocused(tester), isTrue, reason: 'on start');
 
@@ -193,6 +203,7 @@ void practiceJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(nextButtonText('Skip'), findsOneWidget);
       expect(semanticsNodesLabelled(tester, 'Skip'), 1);
@@ -219,6 +230,7 @@ void practiceJourneys() {
 
     testWidgets('typing after feedback clears it', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final wrong = formatNumber(model.current.result + 1);
       await submit(tester, model.current.result + 1);

@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/keys.dart';
-import 'package:simple_math_tester/operations.dart' show formatNumber;
+import 'package:simple_math_tester/operations.dart'
+    show OperationType, formatNumber;
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -27,6 +28,8 @@ void sprintJourneys() {
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
       expect(find.byKey(settingsButtonKey), findsNothing);
       expect(find.byKey(hintButtonKey), findsNothing);
+      expect(operationToggle(OperationType.plus), findsNothing);
+      expect(find.byKey(startPracticeButtonKey), findsNothing);
     });
 
     testWidgets('a sprint answer moves straight on and adds to the score', (
@@ -105,9 +108,8 @@ void sprintJourneys() {
       expect(find.text('No answers this round.'), findsOneWidget);
     });
 
-    testWidgets('when the time runs out the round ends with its result', (
-      tester,
-    ) async {
+    testWidgets('when the time runs out the round ends with its result, '
+        'back before Start', (tester) async {
       // The real app widget on a test clock, so a minute passes at once.
       var now = DateTime(2026, 11, 14, 9);
       final ticks = StreamController<void>.broadcast();
@@ -138,7 +140,8 @@ void sprintJourneys() {
       expect(find.byKey(sprintCountdownKey), findsNothing);
       expect(find.byKey(sprintResultKey), findsOneWidget);
       expect(textOf(tester, sprintResultBestKey), showsNumber(score));
-      expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
+      expect(find.byKey(startPracticeButtonKey), findsOneWidget);
+      expect(find.byKey(questionOnProblemsPageKey), findsNothing);
       expect(
         Progress.decode(store.values[progressKey]!).game.bestSprint,
         score,

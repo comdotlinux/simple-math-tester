@@ -2921,5 +2921,86 @@
         "type": "String"
       }
     }
+  },
+  "startPractice": "Start",
+  "@startPractice": {
+    "description": "Prominent button before practice: starts the questions with the chosen kinds. One short word."
+  },
+  "startPracticeLabel": "Start practice",
+  "@startPracticeLabel": {
+    "description": "Screen reader label of the Start button."
+  },
+  "endPractice": "End",
+  "@endPractice": {
+    "description": "Button in the page header while practising: ends practice and shows a summary. One short word."
+  },
+  "endPracticeLabel": "End practice and see what you did",
+  "@endPracticeLabel": {
+    "description": "Screen reader label and tooltip of the End button."
+  },
+  "summaryTitle": "Your practice",
+  "@summaryTitle": {
+    "description": "Title of the summary card shown after the child ends practice."
+  },
+  "summaryNone": "No questions answered this time.",
+  "@summaryNone": {
+    "description": "Summary after practice when the child answered nothing. Calm, no blame."
+  },
+  "summaryAnswered": "Questions answered",
+  "@summaryAnswered": {
+    "description": "Summary row label; a number follows it."
+  },
+  "summaryCorrect": "Right at the first try",
+  "@summaryCorrect": {
+    "description": "Summary row label: how many answers were right at the first check; a number follows it."
+  },
+  "summaryXp": "XP earned",
+  "@summaryXp": {
+    "description": "Summary row label: experience points earned in this practice; a number follows it. Keep 'XP' as in the header."
+  },
+  "summaryBestCombo": "Best combo",
+  "@summaryBestCombo": {
+    "description": "Summary row label: the longest run of right answers in a row; a number follows it."
+  },
+  "summaryHints": "Hints opened",
+  "@summaryHints": {
+    "description": "Summary row label; a number follows it."
+  },
+  "summarySkipped": "Questions skipped",
+  "@summarySkipped": {
+    "description": "Summary row label; a number follows it."
+  },
+  "summaryTime": "Time spent",
+  "@summaryTime": {
+    "description": "Summary row label; a time span such as '4 minutes 12 seconds' follows it."
+  },
+  "summaryKind": "{correct} of {answered} right",
+  "@summaryKind": {
+    "description": "Summary row value for one kind of question, after its name: how many of the answered questions were right at the first try.",
+    "placeholders": {
+      "correct": {
+        "type": "String"
+      },
+      "answered": {
+        "type": "String"
+      }
+    }
+  },
+  "summaryLevelUp": "You reached level {level}!",
+  "@summaryLevelUp": {
+    "description": "Summary line when the child's level rose during this practice.",
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "summaryDone": "Done",
+  "@summaryDone": {
+    "description": "Main button of the practice summary: closes it and goes back to choosing kinds."
+  },
+  "summarySeeAnswers": "See my answers",
+  "@summarySeeAnswers": {
+    "description": "Second button of the practice summary: opens the list of the child's answers."
   }
 }

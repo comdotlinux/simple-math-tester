@@ -45,6 +45,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Size size = const Size(412, 900),
     LayoutMode layout = LayoutMode.comfortable,
     double scale = 1,
@@ -81,6 +83,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     return model;
   }
 
@@ -208,7 +214,7 @@ void main() {
 
   testWidgets('the pinned question band draws the blank', (tester) async {
     // Large text, so the page is long enough to scroll the card away.
-    final model = await launch(tester, size: const Size(320, 568), scale: 1.5);
+    final model = await launch(tester, size: const Size(320, 568), scale: 2);
     model.setDraftInput('9');
     model.submitAnswer();
     await tester.pumpAndSettle();
@@ -435,11 +441,12 @@ void main() {
     ], level: 5)!;
 
     testWidgets('the condition line is in the pinned band', (tester) async {
-      // Text scale 1, as for the band above: at 2 the docked answer strip
-      // itself overflows after a wrong answer, whatever the question.
+      // Text scale 1.5, so the page is long enough to scroll the card
+      // away now that practice shows nothing above the question.
       final model = await launch(
         tester,
         size: const Size(320, 568),
+        scale: 1.5,
         problem: positive,
       );
       model.setDraftInput('6');
@@ -512,7 +519,7 @@ void main() {
     testWidgets('six wrap to two rows of three at 320 wide, text scale 2', (
       tester,
     ) async {
-      await launch(tester, size: const Size(320, 900), scale: 2);
+      await launch(tester, start: false, size: const Size(320, 900), scale: 2);
       // The tooltip holds the whole toggle, raised or sunk.
       Rect toggle(OperationType type) => tester.getRect(
         find.ancestor(

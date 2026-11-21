@@ -42,6 +42,58 @@ bool get _deviceSettingsSupported =>
 /// Why a check did not count: the answer field is empty or not a number.
 enum InputProblem { empty, notANumber }
 
+/// What one round of practice did, from Start to End, read from the
+/// attempts it recorded; the question left open at End is not one of them.
+class RoundSummary {
+  const RoundSummary({
+    required this.attempts,
+    required this.xp,
+    required this.time,
+    this.level,
+  });
+
+  /// As recorded, with the hint use each question reached.
+  final List<Attempt> attempts;
+
+  /// XP earned in the round.
+  final int xp;
+  final Duration time;
+
+  /// The player level the round reached; null when it did not rise.
+  final int? level;
+
+  Iterable<Attempt> get _answered => attempts.where((a) => !a.skipped);
+  int get answered => _answered.length;
+
+  /// Right at the first check.
+  int get correct => _answered.where((a) => a.correct).length;
+  int get skipped => attempts.length - answered;
+  int get hintsOpened => attempts.where((a) => a.hintOpened).length;
+
+  /// The longest run of right answers in the round; a skip or a wrong
+  /// answer ends a run, as it ends the combo.
+  int get bestCombo {
+    var best = 0, run = 0;
+    for (final attempt in attempts) {
+      run = !attempt.skipped && attempt.correct ? run + 1 : 0;
+      best = max(best, run);
+    }
+    return best;
+  }
+
+  /// Answered and right per kind with an answer, in the toggles' order.
+  List<({OperationType kind, int answered, int correct})> get kinds => [
+    for (final kind in OperationType.values)
+      if (_answered.where((a) => a.problem.kind == kind).toList()
+          case final done when done.isNotEmpty)
+        (
+          kind: kind,
+          answered: done.length,
+          correct: done.where((a) => a.correct).length,
+        ),
+  ];
+}
+
 class MathTesterModel extends ChangeNotifier {
   MathTesterModel({
     Problem? initialProblem,
@@ -182,6 +234,22 @@ class MathTesterModel extends ChangeNotifier {
   int get currentPage => _currentPage;
 
   bool get inSprint => _sprintStart != null;
+
+  /// Whether practice runs: Start shows the questions, End goes back to
+  /// choosing kinds. For this session only, never saved, so the app always
+  /// opens before Start; a sprint is its own round.
+  bool get practising => _practising;
+  bool _practising = false;
+
+  /// What the last round of practice did, shown before the next Start until
+  /// closed; a sprint's own result replaces it.
+  RoundSummary? get lastRound => _lastRound;
+  RoundSummary? _lastRound;
+
+  /// The round since Start: its attempts, and the XP and time at Start.
+  final List<Attempt> _round = [];
+  int _roundStartXp = 0;
+  DateTime _roundStart = DateTime(0);
 
   /// The XP earned in the round so far.
   int get sprintScore => inSprint ? game.xp - _sprintStartXp : 0;
@@ -594,7 +662,52 @@ class MathTesterModel extends ChangeNotifier {
     if (_attempt case final old?) {
       _attempt = old.withHints(hintOpened: true, answerShown: _answerShown);
       _progress = _progress.withAttemptReplaced(old, _attempt!);
+      final index = _round.indexOf(old);
+      if (index >= 0) _round[index] = _attempt!;
     }
+  }
+
+  /// Starts practice with the selected kinds. A question drawn before a
+  /// change of kinds is drawn again; its time counts from Start.
+  void startPractice() {
+    if (_practising || inSprint || tier == null) return;
+    _practising = true;
+    _lastRound = null;
+    _round.clear();
+    _roundStartXp = game.xp;
+    _roundStart = _clock();
+    if (selectedOperations.contains(_current.kind)) {
+      _shownAt = _roundStart;
+    } else {
+      _showNext();
+    }
+    notifyListeners();
+  }
+
+  /// Ends practice and keeps what the round did in [lastRound]. The open
+  /// question is dropped, not recorded, and a new one waits for the next
+  /// Start.
+  void endPractice() {
+    if (!_practising) return;
+    _practising = false;
+    _lastSprint = null;
+    _lastRound = RoundSummary(
+      attempts: List.unmodifiable(_round),
+      xp: game.xp - _roundStartXp,
+      time: _clock().difference(_roundStart),
+      level: playerLevel(game.xp) > playerLevel(_roundStartXp)
+          ? playerLevel(game.xp)
+          : null,
+    );
+    _round.clear();
+    _showNext();
+    notifyListeners();
+  }
+
+  /// Done on the summary.
+  void dismissRoundSummary() {
+    _lastRound = null;
+    notifyListeners();
   }
 
   /// Refuses to deselect the last selected operation. The problem on screen
@@ -632,13 +745,14 @@ class MathTesterModel extends ChangeNotifier {
   }
 
   /// Starts a sprint round on a new problem; the replaced problem is not
-  /// recorded. Needs a chosen tier.
+  /// recorded. Needs a chosen tier, and starts only before Start.
   void startSprint() {
-    if (inSprint || tier == null) return;
+    if (inSprint || _practising || tier == null) return;
     _sprintStart = _clock();
     _sprintStartXp = game.xp;
     _sprintLevels = List.filled(maxLevel, 0);
     _lastSprint = null;
+    _lastRound = null;
     _progress = _progress.withGame(sprintStarted(game));
     _save();
     _showNext();
@@ -784,6 +898,7 @@ class MathTesterModel extends ChangeNotifier {
     if (attempt == null) return null;
     _attempt = attempt;
     if (!inSprint) _lastSprint = null;
+    if (_practising) _round.add(attempt);
     final kind = attempt.problem.kind;
     final before = game;
     _progress = _progress

@@ -401,5 +401,22 @@
   "hintCoInteriorPair": "The angle marked ? and the angle {angle}° are co-interior.",
   "hintSemicircleRest": "The three angles of a triangle make {total}°. The other two angles make {calculation} = {value}.",
   "hintScaleFactor": "Matching bottom sides: {calculation} = {value}. The big triangle is {value} times as big.",
-  "hintLengthIs": "{calculation} = {length}. So the length marked ? is {length}."
+  "hintLengthIs": "{calculation} = {length}. So the length marked ? is {length}.",
+  "startPractice": "Start",
+  "startPracticeLabel": "Start practice",
+  "endPractice": "End",
+  "endPracticeLabel": "End practice and see what you did",
+  "summaryTitle": "Your practice",
+  "summaryNone": "No questions answered this time.",
+  "summaryAnswered": "Questions answered",
+  "summaryCorrect": "Right at the first try",
+  "summaryXp": "XP earned",
+  "summaryBestCombo": "Best combo",
+  "summaryHints": "Hints opened",
+  "summarySkipped": "Questions skipped",
+  "summaryTime": "Time spent",
+  "summaryKind": "{correct} of {answered} right",
+  "summaryLevelUp": "You reached level {level}!",
+  "summaryDone": "Done",
+  "summarySeeAnswers": "See my answers"
 }

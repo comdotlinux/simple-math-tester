@@ -46,6 +46,9 @@ void tierPickerJourneys() {
 
       final model = modelOf(tester);
       expect(find.byKey(tierPickerKey), findsNothing);
+      // The kinds and Start come next; the question waits for Start.
+      expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+      await pressStart(tester);
       expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
       expect(model.tier, Tier.medium);
       for (final type in arithmeticKinds) {

@@ -57,6 +57,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Size size = const Size(1000, 900),
     double scale = 1,
     double keyboardInset = 0,
@@ -121,6 +123,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     addTearDown(model.dispose);
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     if (usePad && pad.evaluate().isEmpty) {
       await tester.ensureVisible(find.byKey(keyboardSwitchKey));
       await tester.tap(find.byKey(keyboardSwitchKey));
@@ -130,14 +136,14 @@ void main() {
   }
 
   testWidgets('Practice and results remain navigable', (tester) async {
-    await launch(tester);
-    expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
+    await launch(tester, start: false);
+    expect(find.byKey(startPracticeButtonKey), findsOneWidget);
     await tester.tap(find.byKey(myAnswersNavKey));
     await tester.pumpAndSettle();
     expect(find.byKey(noResultsOnResultsPageKey), findsOneWidget);
     await tester.tap(find.byKey(practiceNavKey));
     await tester.pumpAndSettle();
-    expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
+    expect(find.byKey(startPracticeButtonKey), findsOneWidget);
   });
 
   // Android ignores a config update on an open connection, so only a new
@@ -197,21 +203,16 @@ void main() {
   }
 
   testWidgets(
-    'Draft survives navigation and results distinguish skipped answers',
+    'An unchecked draft is skipped, and results distinguish skipped answers',
     (tester) async {
       final model = await launch(tester);
       await tester.enterText(find.byType(TextField), '42');
-      await tester.tap(find.byKey(myAnswersNavKey));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(practiceNavKey));
-      await tester.pumpAndSettle();
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        '42',
-      );
       await tester.tap(find.byKey(nextQuestionButtonKey));
       await tester.pumpAndSettle();
       expect(model.history.length, 1);
+      // My answers waits before Start: End, then the item.
+      await tester.tap(find.byKey(endPracticeButtonKey));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(myAnswersNavKey));
       await tester.pumpAndSettle();
       // The verdict word is what the row tells the player.
@@ -711,8 +712,8 @@ void main() {
     ) async {
       final model = await launch(
         tester,
+        start: false,
         size: const Size(390, 844),
-        usePad: true,
       );
       for (final type in arithmeticKinds) {
         expect(
@@ -750,15 +751,17 @@ void main() {
           hasTapAction: true,
         ),
       );
-      // Deselecting kinds kept the problem on screen and recorded nothing.
-      expect(find.text('12 + 3'), findsOneWidget);
+      // Deselecting kinds recorded nothing; Start asks from the new kinds.
       expect(model.history, isEmpty);
+      model.startPractice();
+      await tester.pumpAndSettle();
+      expect(model.current.kind, OperationType.multiply);
     });
 
     testWidgets('chips show only the sign and name the operation', (
       tester,
     ) async {
-      await launch(tester);
+      await launch(tester, start: false);
       for (final (type, sign, name) in [
         (OperationType.plus, '+', 'Addition'),
         (OperationType.minus, '\u2212', 'Subtraction'),
@@ -790,16 +793,24 @@ void main() {
         testWidgets('chips fill whole rows at $width, text scale $scale', (
           tester,
         ) async {
-          await launch(tester, size: Size(width, 900), scale: scale);
+          await launch(
+            tester,
+            start: false,
+            size: Size(width, 900),
+            scale: scale,
+          );
           final rects = [
             for (final type in OperationType.values)
               tester.getRect(tooltip(type.label(en))),
           ];
-          final card = tester.getRect(
-            find.ancestor(
-              of: find.byKey(questionOnProblemsPageKey),
-              matching: find.byType(Card),
-            ),
+          // Start and the sprint button, under them, span the column.
+          final start = tester.getRect(find.byKey(startPracticeButtonKey));
+          final sprint = tester.getRect(find.byKey(sprintButtonKey));
+          final card = Rect.fromLTRB(
+            min(start.left, sprint.left),
+            0,
+            max(start.right, sprint.right),
+            0,
           );
           // Six toggles share one row where they fit, else two rows of three.
           final perRow = width < 390 ? 3 : rects.length;
@@ -872,30 +883,42 @@ void main() {
 
     testWidgets('Practice controls meet 48px touch targets, '
         '${brightness.name} theme', (tester) async {
-      await launch(
+      void expectTargets(List<Finder> finders) {
+        for (final finder in finders) {
+          final size = tester.getSize(finder);
+          expect(size.width, greaterThanOrEqualTo(48), reason: '$finder');
+          expect(size.height, greaterThanOrEqualTo(48), reason: '$finder');
+        }
+      }
+
+      final model = await launch(
         tester,
+        start: false,
         size: const Size(390, 844),
         brightness: brightness,
-        usePad: true,
       );
-      for (final finder in [
-        find.byKey(checkAnswerButtonKey),
-        find.byKey(nextQuestionButtonKey),
-        find.byKey(hintButtonKey),
-        find.byType(TextField),
+      expectTargets([
         find.byKey(settingsButtonKey),
+        find.byKey(startPracticeButtonKey),
         find.byKey(sprintButtonKey),
-        find.byKey(keyboardSwitchKey),
         for (final type in OperationType.values)
           find.byWidgetPredicate(
             (widget) => widget is Tooltip && widget.message == type.label(en),
           ),
+      ]);
+      model.startPractice();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(keyboardSwitchKey));
+      await tester.pumpAndSettle();
+      expectTargets([
+        find.byKey(checkAnswerButtonKey),
+        find.byKey(nextQuestionButtonKey),
+        find.byKey(hintButtonKey),
+        find.byKey(endPracticeButtonKey),
+        find.byType(TextField),
+        find.byKey(keyboardSwitchKey),
         ...padKeys(),
-      ]) {
-        final size = tester.getSize(finder);
-        expect(size.width, greaterThanOrEqualTo(48));
-        expect(size.height, greaterThanOrEqualTo(48));
-      }
+      ]);
     });
 
     // The compact docked phone page, with the pad and with the system
@@ -915,20 +938,27 @@ void main() {
 
           final shared = [
             find.byKey(nextQuestionButtonKey),
-            find.byKey(sprintButtonKey),
+            find.byKey(endPracticeButtonKey),
             find.byKey(keyboardSwitchKey),
+          ];
+          final model = await launch(
+            tester,
+            start: false,
+            size: size,
+            scale: scale,
+            brightness: brightness,
+          );
+          expectTargets([
+            find.byKey(startPracticeButtonKey),
+            find.byKey(sprintButtonKey),
             for (final type in OperationType.values)
               find.byWidgetPredicate(
                 (widget) =>
                     widget is Tooltip && widget.message == type.label(en),
               ),
-          ];
-          await launch(
-            tester,
-            size: size,
-            scale: scale,
-            brightness: brightness,
-          );
+          ]);
+          model.startPractice();
+          await tester.pumpAndSettle();
           expect(pad, findsNothing);
           expectTargets([...shared, find.byKey(checkAnswerButtonKey)]);
           await tester.tap(find.byKey(keyboardSwitchKey));
@@ -1013,7 +1043,9 @@ void main() {
         expect(model.current.level, 3);
         expect(model.history, isEmpty);
         expect(find.byKey(tierPickerKey), findsNothing);
-        expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
+        // The kinds and Start come next; the question waits for Start.
+        expect(find.byKey(startPracticeButtonKey), findsOneWidget);
+        expect(find.byKey(questionOnProblemsPageKey), findsNothing);
         expect(tester.takeException(), isNull);
       });
     }
@@ -1044,6 +1076,7 @@ void main() {
           'text scale $scale', (tester) async {
         final model = await launch(
           tester,
+          start: false,
           size: Size(width, 640),
           scale: scale,
           tier: Tier.easy,
@@ -1112,7 +1145,7 @@ void main() {
     }
 
     testWidgets('choosing the current tier keeps the problem', (tester) async {
-      final model = await launch(tester);
+      final model = await launch(tester, start: false);
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.tap(tierTile(Tier.easy));
@@ -1125,7 +1158,7 @@ void main() {
       tester,
     ) async {
       final store = FakeStore();
-      final model = await launch(tester, store: store);
+      final model = await launch(tester, start: false, store: store);
       Brightness shown() =>
           Theme.of(tester.element(find.byKey(problemsPageKey))).brightness;
       SegmentedButton<ThemeMode> choice() =>
@@ -1158,7 +1191,12 @@ void main() {
     testWidgets('the theme choice fits on one line at 360, text scale 1.3', (
       tester,
     ) async {
-      await launch(tester, size: const Size(360, 640), scale: 1.3);
+      await launch(
+        tester,
+        start: false,
+        size: const Size(360, 640),
+        scale: 1.3,
+      );
       await tester.ensureVisible(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(settingsButtonKey));
@@ -1201,6 +1239,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         size: const Size(320, 640),
         scale: 2,
         openLink: (uri) async => (opened..add(uri)).isNotEmpty,
@@ -1229,6 +1268,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         openLink: (uri) async => (opened..add(uri)).isNotEmpty,
       );
       await tapInSheet(tester, impressumTileKey);
@@ -1245,6 +1285,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         openLink: (uri) async => (opened..add(uri)).isNotEmpty,
       );
       await tapInSheet(tester, reportProblemTileKey);
@@ -1273,6 +1314,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         openLink: (uri) async => (opened..add(uri)).isNotEmpty,
       );
       await tester.ensureVisible(find.byKey(settingsButtonKey));
@@ -1305,7 +1347,7 @@ void main() {
         testWidgets('when the opener $name for $tile, a notice says so', (
           tester,
         ) async {
-          await launch(tester, openLink: opener);
+          await launch(tester, start: false, openLink: opener);
           await tapInSheet(tester, tile);
 
           expect(find.text('The browser did not open.'), findsOneWidget);
@@ -1335,6 +1377,7 @@ void main() {
       var now = DateTime(2026, 11, 15, 9);
       final model = await launch(
         tester,
+        start: false,
         clock: () => now,
         updateReminders: true,
       );
@@ -1358,6 +1401,7 @@ void main() {
       final opened = <Uri>[];
       final model = await launch(
         tester,
+        start: false,
         clock: () => now,
         updateReminders: true,
         updateReminderDate: '2026-10-01',
@@ -1391,6 +1435,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         updateReminders: true,
         updateReminderDate: '2000-01-01',
         openLink: (uri) async => (opened..add(uri)).isNotEmpty,
@@ -1412,6 +1457,7 @@ void main() {
       final opened = <Uri>[];
       await launch(
         tester,
+        start: false,
         updateReminders: true,
         updateReminderDate: '2000-01-01',
         openLink: (uri) async {
@@ -1438,6 +1484,7 @@ void main() {
       testWidgets('when the opener $name, a notice says so', (tester) async {
         await launch(
           tester,
+          start: false,
           updateReminders: true,
           updateReminderDate: '2000-01-01',
           openLink: opener,
@@ -1454,7 +1501,12 @@ void main() {
       tester,
     ) async {
       final store = FakeStore();
-      await launch(tester, store: store, updateReminderDate: '2000-01-01');
+      await launch(
+        tester,
+        start: false,
+        store: store,
+        updateReminderDate: '2000-01-01',
+      );
       expect(reminder, findsNothing);
       expect(store.writes, isEmpty);
     });
@@ -1719,6 +1771,7 @@ void main() {
     }) async {
       final model = await launch(
         tester,
+        start: false,
         size: size,
         scale: scale,
         disableAnimations: disableAnimations,
@@ -1748,7 +1801,7 @@ void main() {
     final countdown = find.byKey(sprintCountdownKey);
 
     testWidgets('criterion 25: Next and Hint are absent; time out shows the '
-        'score and the best, announced, and a new problem', (tester) async {
+        'score and the best, announced, before Start', (tester) async {
       final model = await launchSprint(tester);
       expect(model.inSprint, isTrue);
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
@@ -1793,12 +1846,10 @@ void main() {
         tester.getSemantics(find.text('Sprint over')),
         isSemantics(isLiveRegion: true),
       );
-      expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
-      expect(find.byKey(hintButtonKey), findsOneWidget);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        '',
-      );
+      // Back before Start: the kinds and Start, no question.
+      expect(find.byKey(startPracticeButtonKey), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(model.draftInput, '');
       expect(tester.takeException(), isNull);
     });
 
@@ -2050,7 +2101,9 @@ void main() {
           model.setCurrentPage(0);
           model.chooseTier(Tier.easy);
           model.toggleOperation(OperationType.divide);
-          await collect('practice with an unselected toggle');
+          await collect('before Start with an unselected toggle');
+          model.startPractice();
+          await collect('practice');
           Future<void> openHint() async {
             await tester.ensureVisible(find.byKey(hintButtonKey));
             await tester.pumpAndSettle();
@@ -2086,6 +2139,8 @@ void main() {
           await collect('keyboard button pressed once');
           await tester.tap(find.byKey(keyboardSwitchKey));
           await tester.pumpAndSettle();
+          model.endPractice();
+          await collect('the summary after End');
           await tester.ensureVisible(find.byKey(settingsButtonKey));
           await tester.pumpAndSettle();
           await tester.tap(find.byKey(settingsButtonKey));
@@ -2170,6 +2225,8 @@ void main() {
       model.setDraftInput('14');
       model.submitAnswer();
       await expectInside('wrong answer with a hint');
+      model.endPractice();
+      await expectInside('the summary after End');
       await tester.ensureVisible(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(settingsButtonKey));
@@ -2293,8 +2350,8 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.linux),
     );
 
-    testWidgets('focus comes back after Skip from the keyboard and after '
-        'closing settings', (tester) async {
+    testWidgets('focus comes back after Skip from the keyboard; End and '
+        'closing settings focus Start, and Start the answer', (tester) async {
       final model = await launch(tester);
       final first = model.current;
       Focus.of(tester.element(nextLabel('Skip'))).requestFocus();
@@ -2305,17 +2362,27 @@ void main() {
       expect(model.current, isNot(same(first)));
       expect(fieldFocused(tester), isTrue);
 
+      bool startFocused() => tester
+          .widget<ButtonStyleButton>(find.byKey(startPracticeButtonKey))
+          .focusNode!
+          .hasFocus;
+      await tester.tap(find.byKey(endPracticeButtonKey));
+      await tester.pumpAndSettle();
+      expect(startFocused(), isTrue);
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
-      expect(fieldFocused(tester), isFalse);
+      expect(startFocused(), isFalse);
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
       expect(find.byKey(settingsSheetKey), findsNothing);
+      expect(startFocused(), isTrue);
+      await tester.tap(find.byKey(startPracticeButtonKey));
+      await tester.pumpAndSettle();
       expect(fieldFocused(tester), isTrue);
     });
 
     testWidgets(
-      'closing the hint or pressing an operation keeps the field focused',
+      'closing the hint or pressing Skip keeps the field focused',
       (tester) async {
         await launch(tester);
         await tester.ensureVisible(find.byKey(hintButtonKey));
@@ -2325,7 +2392,7 @@ void main() {
         await tester.tap(find.byKey(hintCloseKey));
         await tester.pumpAndSettle();
         expect(fieldFocused(tester), isTrue);
-        await tester.tap(find.byKey(operationToggleKey(OperationType.minus)));
+        await tester.tap(find.byKey(nextQuestionButtonKey));
         await tester.pumpAndSettle();
         expect(fieldFocused(tester), isTrue);
       },
@@ -2677,7 +2744,7 @@ void main() {
             null,
           ),
         );
-        final model = await launch(tester, haptics: haptics);
+        final model = await launch(tester, start: false, haptics: haptics);
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
         expect(
@@ -2731,7 +2798,7 @@ void main() {
             null,
           ),
         );
-        final model = await launch(tester);
+        final model = await launch(tester, start: false);
         model.setSound(false);
         await tester.tap(find.byKey(settingsButtonKey));
         await tester.pumpAndSettle();
@@ -2766,7 +2833,7 @@ void main() {
       tester,
     ) async {
       final store = FakeStore();
-      final model = await launch(tester, store: store);
+      final model = await launch(tester, start: false, store: store);
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(hapticsSwitchKey));

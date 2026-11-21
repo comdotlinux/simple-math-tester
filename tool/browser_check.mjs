@@ -111,6 +111,8 @@ try {
     });
     await openApp(page, start);
     await page.getByRole('tab', { name: 'Practice' }).click();
+    // The app opens before Start; Start shows the first question.
+    await page.getByRole('button', { name: 'Start practice' }).click();
     // The first question follows the seeded multiplication-only selection.
     await page.getByText(/^Math question: \d+ × \d+$/).waitFor();
     check(true, `start ${start}: the first question is a multiplication`);
@@ -121,6 +123,8 @@ try {
       (key) => JSON.parse(JSON.parse(localStorage.getItem(key))).history.length === 4,
       progressKey,
     );
+    // My answers waits before Start: End, then the tab.
+    await page.getByRole('button', { name: 'End practice and see what you did' }).click();
     await expectHistory(page, 4);
     for (let i = 0; i < 100 && sounds.size < 4; i++) await page.waitForTimeout(100);
     check(
