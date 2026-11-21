@@ -96,6 +96,10 @@ class _ReportDialogState extends State<_ReportDialog> {
   bool _wrong = false;
   ReportOutcome? _outcome;
 
+  /// Time left of the pause after a sent report, when the dialog opened:
+  /// then nothing can be sent, so no grown-up check is asked.
+  late final Duration _wait = context.read<MathTesterModel>().reportWait;
+
   @override
   void dispose() {
     _typed.dispose();
@@ -186,6 +190,17 @@ class _ReportDialogState extends State<_ReportDialog> {
           }),
           closeButton,
         ],
+      ),
+      _Step.ask when _wait > Duration.zero => (
+        null,
+        [
+          if (mark != null) Text(l.reportMarkedNote),
+          Text(
+            l.reportWait((_wait.inMilliseconds / 1000).ceil()),
+            key: reportWaitKey,
+          ),
+        ],
+        [closeButton],
       ),
       _Step.ask => (
         l.reportAskTitle,

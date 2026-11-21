@@ -85,6 +85,7 @@ const reportCheckWrongKey = Key('report-check-wrong');
 const reportSendKey = Key('report-send');
 const reportResultKey = Key('report-result');
 const reportTryAgainKey = Key('report-try-again');
+const reportWaitKey = Key('report-wait');
 const appVersionTileKey = Key('app-version-tile');
 const updateReminderKey = Key('update-reminder');
 const updateReminderDismissKey = Key('update-reminder-dismiss');

@@ -146,6 +146,9 @@ class MathTesterModel extends ChangeNotifier {
   SoundPlayer _sounds;
   final Future<bool> Function(Uri) _openLink;
   final ReportClient _reports;
+
+  /// When the last report arrived; in memory only, never saved.
+  DateTime? _lastReportSent;
   final bool _updateReminders;
   final Random _random;
   final DateTime Function() _clock;
@@ -461,7 +464,7 @@ class MathTesterModel extends ChangeNotifier {
     String locale,
   ) async {
     final code = suspectOf(problem) ?? SuspectQuestion.of(problem)!;
-    final outcome = await _reports.send(
+    final outcome = await _sendReport(
       jsonEncode({
         'type': 'question',
         'kind': code.kind,
@@ -482,13 +485,34 @@ class MathTesterModel extends ChangeNotifier {
 
   /// Sends one problem report with [category], after the grown-up check.
   Future<ReportOutcome> sendProblemReport(String category, String locale) =>
-      _reports.send(
+      _sendReport(
         jsonEncode({
           'type': 'problem',
           'category': category,
           ..._reportApp(locale),
         }),
       );
+
+  /// How long until the next report can be sent: zero unless one arrived
+  /// less than [reportPause] ago. Read from the clock on every call; a
+  /// clock set back never makes it longer than [reportPause].
+  Duration get reportWait {
+    final last = _lastReportSent;
+    if (last == null) return Duration.zero;
+    final left = reportPause - _clock().difference(last);
+    return left.isNegative
+        ? Duration.zero
+        : (left > reportPause ? reportPause : left);
+  }
+
+  /// Sends [body] unless a report arrived less than [reportPause] ago (then
+  /// nothing is sent and it fails); only an arrived report starts the pause.
+  Future<ReportOutcome> _sendReport(String body) async {
+    if (reportWait > Duration.zero) return ReportOutcome.failed;
+    final outcome = await _reports.send(body);
+    if (outcome == ReportOutcome.sent) _lastReportSent = _clock();
+    return outcome;
+  }
 
   /// What every report says about the app; nothing about the player.
   static Map<String, String> _reportApp(String locale) => {

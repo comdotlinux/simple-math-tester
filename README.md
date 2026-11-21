@@ -105,6 +105,13 @@ issue on `comdotlinux/simple-math-tester`. The app never holds a token. The
 function's tests are in `tool/functions_test/report.test.mjs`, with GitHub
 replaced by a fake; they run with the command above.
 
+The app sends at most one report per minute: after a report was sent (question
+or problem), the report dialog says so for 60 seconds (`reportPause` in
+`app/lib/rules.dart`) and sends nothing; a failed send does not start the
+minute. This limits honest use only. A script that calls the function directly
+is not stopped by it; that is the job of the Cloudflare rate-limiting rule
+(#151) and the cap of 100 open issues.
+
 ### The endpoint
 
 `POST /api/report` (`https://math.munich-tech.de/api/report` from the phone and

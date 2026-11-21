@@ -81,11 +81,13 @@ void main() {
   Progress saved() => Progress.decode(store.values[progressKey]!);
 
   group('the model', () {
+    var now = DateTime(2026, 11, 22, 9);
     MathTesterModel model([Progress? progress]) => MathTesterModel(
       initialProblem: equation,
       progress: progress,
       store: store,
       reportClient: reports,
+      clock: () => now,
     );
 
     test('marking and unmarking save on the device and send nothing', () {
@@ -154,6 +156,56 @@ void main() {
         'locale': 'de',
       });
       expect(decoded(reports.bodies.single).keys.toSet(), problemKeys);
+    });
+
+    test('after a sent report, no report of either type for '
+        '${reportPause.inSeconds} s; then one is sent', () async {
+      final m = model();
+      expect(m.reportWait, Duration.zero);
+      await m.sendProblemReport('display', 'en');
+      expect(reports.bodies, hasLength(1));
+      expect(m.reportWait, reportPause);
+
+      now = now.add(reportPause - const Duration(seconds: 1));
+      expect(m.reportWait, const Duration(seconds: 1));
+      expect(
+        await m.sendQuestionReport(equation, 'wrongAnswer', 'en'),
+        ReportOutcome.failed,
+      );
+      expect(await m.sendProblemReport('sound', 'en'), ReportOutcome.failed);
+      expect(reports.bodies, hasLength(1), reason: 'nothing sent');
+      expect(m.suspectOf(equation), isNull);
+      // Marking on the device still works.
+      m.markSuspect(equation);
+      expect(m.suspectOf(equation)?.sent, isFalse);
+
+      now = now.add(const Duration(seconds: 1));
+      expect(m.reportWait, Duration.zero);
+      expect(
+        await m.sendQuestionReport(equation, 'wrongAnswer', 'en'),
+        ReportOutcome.sent,
+      );
+      expect(reports.bodies, hasLength(2));
+      expect(m.suspectOf(equation)!.sent, isTrue);
+      expect(await m.sendProblemReport('sound', 'en'), ReportOutcome.failed);
+      expect(reports.bodies, hasLength(2));
+    });
+
+    test('a failed send does not start the pause', () async {
+      final m = model();
+      reports.outcome = ReportOutcome.failed;
+      await m.sendProblemReport('display', 'en');
+      expect(m.reportWait, Duration.zero);
+      reports.outcome = ReportOutcome.sent;
+      await m.sendProblemReport('display', 'en');
+      expect(reports.bodies, hasLength(2));
+    });
+
+    test('a clock set back never makes the pause longer', () async {
+      final m = model();
+      await m.sendProblemReport('display', 'en');
+      now = now.subtract(const Duration(hours: 1));
+      expect(m.reportWait, reportPause);
     });
 
     test('every algebra and geometry question, at every level, has a code '
@@ -315,6 +367,7 @@ void main() {
       double scale = 1,
       // Practice starts as after a tap on Start; false stays before it.
       bool start = true,
+      DateTime Function()? clock,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -332,6 +385,7 @@ void main() {
         store: store,
         reportClient: reports,
         ticker: () => const Stream.empty(),
+        clock: clock,
       );
       addTearDown(model.dispose);
       if (start) model.startPractice();
@@ -565,6 +619,36 @@ void main() {
       expect(find.text(en.reportThanks), findsOneWidget);
     });
 
+    testWidgets('in the minute after a sent report, the dialog says so, '
+        'asks no check and sends nothing', (tester) async {
+      var now = DateTime(2026, 11, 22, 9);
+      await launch(tester, start: false, clock: () => now);
+      await tap(tester, settingsButtonKey);
+      await tap(tester, sendProblemReportTileKey);
+      await tap(tester, reportContinueKey);
+      await tap(tester, reportOptionKey('sound'));
+      await tap(tester, reportContinueKey);
+      await typeNumber(tester, shownNumber(tester));
+      await tap(tester, reportCloseKey);
+      expect(reports.bodies, hasLength(1));
+
+      now = now.add(const Duration(seconds: 15));
+      await tap(tester, settingsButtonKey);
+      await tap(tester, sendProblemReportTileKey);
+      expect(find.text(en.reportWait(45)), findsOneWidget);
+      expect(find.byKey(reportContinueKey), findsNothing);
+      expect(find.byKey(reportCheckFieldKey), findsNothing);
+      await tap(tester, reportCloseKey);
+      expect(find.byKey(reportDialogKey), findsNothing);
+
+      now = now.add(const Duration(seconds: 45));
+      await tap(tester, settingsButtonKey);
+      await tap(tester, sendProblemReportTileKey);
+      expect(find.byKey(reportWaitKey), findsNothing);
+      expect(find.byKey(reportContinueKey), findsOneWidget);
+      expect(reports.bodies, hasLength(1));
+    });
+
     testWidgets('geometry offers the drawing reason, algebra does not', (
       tester,
     ) async {
@@ -748,11 +832,13 @@ void main() {
                 'text x$scale: flag, every step and both results', (
               tester,
             ) async {
+              var now = DateTime(2026, 11, 22, 9);
               await launch(
                 tester,
                 problem: rectangle,
                 size: size,
                 scale: scale,
+                clock: () => now,
                 progress: Progress(
                   tier: Tier.easy,
                   language: code,
@@ -777,6 +863,12 @@ void main() {
               await tap(tester, reportCloseKey);
               // The problem report's first steps, from settings after End.
               await tap(tester, endPracticeButtonKey);
+              await tap(tester, settingsButtonKey);
+              await tap(tester, sendProblemReportTileKey);
+              // The minute after the sent report.
+              expect(find.byKey(reportWaitKey), findsOneWidget);
+              await tap(tester, reportCloseKey);
+              now = now.add(reportPause);
               await tap(tester, settingsButtonKey);
               await tap(tester, sendProblemReportTileKey);
               await tap(tester, reportContinueKey);

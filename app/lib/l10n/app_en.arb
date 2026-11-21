@@ -2580,6 +2580,15 @@
   "@reportTryAgain": {
     "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button after a failed send; it asks for the grown-up check again."
   },
+  "reportWait": "A report was just sent. The next one can be sent in {seconds, plural, =1{1 second} other{{seconds} seconds}}.",
+  "@reportWait": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown instead of the report steps for a short time after a report was sent; nothing is sent. {seconds} is how many seconds are left. ICU plural; keep the structure.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
   "reportSendProblem": "Send a problem report",
   "@reportSendProblem": {
     "description": "Settings row title: a grown-up sends a short report without a browser."
