@@ -109,7 +109,13 @@ Verdict check(String question, num answer) {
       difference(2520),
       difference(5040),
     );
-    if (at2520 - at0 != at5040 - at2520) return Verdict.notLinear;
+    // Constants with decimals (13.68) are not exact in floating point; at
+    // these sizes the noise is about 1e-11, while a real curve such as
+    // 1 ÷ (n + 1000) bends by more than 1e-4 across 0, 2520 and 5040. The
+    // root is then checked in exact hundredths below.
+    if (((at5040 - at2520) - (at2520 - at0)).abs() > 1e-6) {
+      return Verdict.notLinear;
+    }
     final slope = (at2520 - at0) / 2520;
     if (slope == 0) return Verdict.zeroSlope;
     if (_hundredths(-at0 / slope) != claimed) return Verdict.wrongRoot;

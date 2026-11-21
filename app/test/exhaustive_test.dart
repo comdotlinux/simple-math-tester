@@ -388,6 +388,7 @@ void main() {
       'n ÷ 4 + 3 = 7': 16,
       '3n + 9 = 3': -2,
       '4n = 10': 2.5,
+      '13.68 + n = 16.05': 2.37,
     };
 
     samples.forEach((question, answer) {
@@ -417,6 +418,9 @@ void main() {
       expect(check('0 ÷ $box = 0', 4), Verdict.zeroDivisor);
       expect(check('6 ÷ $box = 0', 0), Verdict.zeroDivisor);
       expect(check('12 ÷ (n + 1) = 3', 3), Verdict.notLinear);
+      // A gentle curve with its true root claimed, and with decimals.
+      expect(check('1 ÷ (n + 1000) = 0.01', -900), Verdict.notLinear);
+      expect(check('13.68 ÷ (n + 1) = 0.01', 1367), Verdict.notLinear);
       expect(check('n + 5 = 12', 8), Verdict.wrongRoot);
       expect(check('n + 5 = 12 = 12', 7), Verdict.unparsable);
       expect(check('n + 5', 7), Verdict.unparsable);

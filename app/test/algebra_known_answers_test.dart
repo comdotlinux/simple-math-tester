@@ -213,6 +213,15 @@ const _rows =
         question: '2n = 11',
         answer: 5.5,
       ),
+      (
+        id: 'A32',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 6, Unit 6, Lesson 4',
+        url: 'https://im.kendallhunt.com/MS/students/1/6/4/index.html',
+        printed: '13.68 + x = 16.05',
+        question: '13.68 + n = 16.05',
+        answer: 2.37,
+      ),
     ];
 
 /// The rows an app family builds exactly, within the level's ranges: the
