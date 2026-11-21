@@ -511,6 +511,46 @@ void main() {
           await tester.ensureVisible(find.byKey(revealStepButtonKey));
           await shoot(tester, '$tag-13e-algebra-level-2-hints');
 
+          // Levels 3 to 5 with the letter n, every hint step shown; level 5
+          // with an answer below zero and one in tenths. The pad has the
+          // minus and decimal keys whenever algebra is on.
+          for (final (name, variant, params, level, wrong) in [
+            ('13f-algebra-level-3', 'aTimesN', [3, 5], 3, '6'),
+            ('13g-algebra-level-4', 'anPlusB', [2, 3, 4], 4, '5'),
+            (
+              '13h-algebra-level-5-negative',
+              'anPlusBNegativeN',
+              [3, 9, -2],
+              5,
+              '2',
+            ),
+            ('13i-algebra-level-5-tenths', 'anTenths', [4, 25], 5, '2'),
+          ]) {
+            final model = await launch(
+              tester,
+              size,
+              brightness,
+              problem: algebra.build(
+                OperationType.algebra,
+                variant,
+                params,
+                level: level,
+              )!,
+            );
+            model.toggleOperation(OperationType.algebra);
+            await shoot(tester, '$tag-$name-practice');
+            await check(tester, wrong);
+            while (model.canRevealStep) {
+              model.revealStep();
+            }
+            await tester.pumpAndSettle();
+            final reveal = find.byKey(revealStepButtonKey);
+            if (reveal.evaluate().isNotEmpty) {
+              await tester.ensureVisible(reveal);
+            }
+            await shoot(tester, '$tag-$name-hints');
+          }
+
           Attempt solved(EquationProblem problem, int? answer) => Attempt(
             problem,
             firstAnswer: answer,

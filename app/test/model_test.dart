@@ -506,18 +506,26 @@ void main() {
       },
     );
 
-    test('an equation never comes twice in a row', () {
-      final model = seeded(
-        progress: Progress(
-          tier: Tier.easy,
-          selectedOperations: {OperationType.algebra},
-        ),
-      );
-      var previous = model.current.question;
-      for (var i = 0; i < 2000; i++) {
-        model.generateNextProblem();
-        expect(model.current.question, isNot(previous), reason: 'draw $i');
-        previous = model.current.question;
+    test('an equation never comes twice in a row, at every level', () {
+      for (
+        var level = 1;
+        level <= OperationType.algebra.highestLevel;
+        level++
+      ) {
+        final model = seeded(
+          progress: Progress(
+            tier: Tier.easy,
+            selectedOperations: {OperationType.algebra},
+            difficulty: {OperationType.algebra: Difficulty(level: level)},
+          ),
+        );
+        var previous = model.current.question;
+        for (var i = 0; i < 2000; i++) {
+          model.generateNextProblem();
+          expect(model.current.level, level);
+          expect(model.current.question, isNot(previous), reason: 'draw $i');
+          previous = model.current.question;
+        }
       }
     });
 
@@ -565,13 +573,13 @@ void main() {
         ),
       );
       expect(model.current.level, 1);
-      // Up a level after every 3 right answers, never above level 2.
-      for (var i = 1; i <= 9; i++) {
+      // Up a level after every 3 right answers, never above level 5.
+      for (var i = 1; i <= 18; i++) {
         answer(model, right: true);
-        expect(model.current.level, min(1 + i ~/ 3, 2), reason: 'answer $i');
+        expect(model.current.level, min(1 + i ~/ 3, 5), reason: 'answer $i');
       }
-      expect(model.difficulty[OperationType.algebra]!.level, 2);
-      expect(model.difficulty[OperationType.algebra]!.correct, 9);
+      expect(model.difficulty[OperationType.algebra]!.level, 5);
+      expect(model.difficulty[OperationType.algebra]!.correct, 18);
     });
   });
 

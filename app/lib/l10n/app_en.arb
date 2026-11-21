@@ -1266,6 +1266,85 @@
       }
     }
   },
+  "stepEquationMeans": "{shorthand} means {meaning}.",
+  "@stepEquationMeans": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. {shorthand} is like '2n' or '3(n − 2)', {meaning} like '2 × n' or '3 × (n − 2)'.",
+    "placeholders": {
+      "shorthand": {
+        "type": "String"
+      },
+      "meaning": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationBelowZero": "The answer is less than zero this time, so it is written with a minus sign (−) in front.",
+  "@stepEquationBelowZero": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Shown first when the answer is a negative number; explains the minus sign."
+  },
+  "stepEquationSubtractBoth": "To undo + {number}, take {number} away from both sides.",
+  "@stepEquationSubtractBoth": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Both sides of the equation (left and right of =).",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationAddBoth": "To undo − {number}, add {number} to both sides.",
+  "@stepEquationAddBoth": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Both sides of the equation (left and right of =).",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationDivideBoth": "To undo × {number}, divide both sides by {number}.",
+  "@stepEquationDivideBoth": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Both sides of the equation (left and right of =).",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationMultiplyBoth": "To undo ÷ {number}, multiply both sides by {number}.",
+  "@stepEquationMultiplyBoth": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Both sides of the equation (left and right of =).",
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationSoNow": "{calculation}, so {equation}.",
+  "@stepEquationSoNow": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. {calculation} is math like '11 − 3 = 8'; {equation} is the equation that is left, like '2n = 8'.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "equation": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationLetterIs": "{calculation}, so n = {answer}. Check: {check}",
+  "@stepEquationLetterIs": {
+    "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. {calculation} is math like '8 ÷ 2 = 4'; {check} is the equation with the answer in place of n, like '2 × 4 + 3 = 11'.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "answer": {
+        "type": "String"
+      },
+      "check": {
+        "type": "String"
+      }
+    }
+  },
   "countTens": "{count, plural, =1{1 ten} other{{count} tens}}",
   "@countTens": {
     "description": "Place value: a number of tens, e.g. '5 tens' (= 50). ICU plural; keep the structure.",

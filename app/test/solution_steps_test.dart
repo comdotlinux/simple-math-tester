@@ -1,6 +1,8 @@
 import 'dart:math';
+import 'dart:ui' show Locale;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_math_tester/hundredths.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/solution_steps.dart';
@@ -17,10 +19,11 @@ final _languages = [
     lookupAppLocalizations(locale),
 ];
 
-/// The whole numbers [problem] shows: for arithmetic, its two operands.
+/// The whole numbers [problem] shows: for arithmetic, its two operands; a
+/// minus sign straight before a number makes it negative (`3(n + 5) = −6`).
 Set<int> shownNumbers(Problem problem) => {
-  for (final match in RegExp(r'\d+').allMatches(problem.question))
-    int.parse(match[0]!),
+  for (final match in RegExp(r'−?\d+').allMatches(problem.question))
+    int.parse(match[0]!.replaceFirst('−', '-')),
 };
 
 /// Criterion 6: at least 2 steps, and no step before the last contains the
@@ -50,10 +53,19 @@ void expectStepsHideResult(
 
   // In every language: a translation must not add or drop a number.
   void check(Problem problem) {
-    final token = RegExp('(?<!\\d)${problem.result.toInt()}(?!\\d)');
     // A result the question shows is already on screen (10000 − 5000).
     final shown = shownNumbers(problem).contains(problem.result);
     for (final l in _languages) {
+      // An equation's answer as the language writes it, not part of a
+      // longer number: 2 is not in −2 or 2,5.
+      final token = switch (problem) {
+        EquationProblem(:final resultHundredths) => RegExp(
+          '(?<![\\d.,−])'
+          '${RegExp.escape(formatHundredths(resultHundredths, l.localeName))}'
+          '(?![\\d]|[.,]\\d)',
+        ),
+        _ => RegExp('(?<!\\d)${problem.result.toInt()}(?!\\d)'),
+      };
       final steps = solutionSteps(problem).map((step) => step(l)).toList();
       expect(steps.length, greaterThanOrEqualTo(2), reason: problem.question);
       for (final step in steps.take(shown ? 0 : steps.length - 1)) {
@@ -342,16 +354,114 @@ void main() {
       ) {
         for (final problem in source.problems(OperationType.algebra, level)) {
           final last = steps(problem).last;
-          final answer = formatNumber(problem.result);
-          expect(
-            last,
-            endsWith(
-              problem.question.replaceAll(EquationProblem.blank, answer),
-            ),
-          );
-          expect(last, contains('the blank is $answer.'));
+          final answer = formatHundredths(problem.resultHundredths, 'en');
+          if (level <= 2) {
+            expect(
+              last,
+              endsWith(
+                problem.question.replaceAll(EquationProblem.blank, answer),
+              ),
+            );
+            expect(last, contains('the blank is $answer.'));
+          } else {
+            expect(
+              last,
+              endsWith('Check: ${equationHint(problem).last.check}'),
+            );
+            expect(last, contains('so n = $answer.'));
+          }
         }
       }
+    });
+
+    EquationProblem letter(String variant, List<int> params) =>
+        source.build(OperationType.algebra, variant, params)!;
+    const belowZero =
+        'The answer is less than zero this time, so it is written with a '
+        'minus sign (−) in front.';
+
+    test('level 3 names the undo for both sides, then does it', () {
+      expect(steps(letter('nPlusA', [5, 7])), [
+        'To undo + 5, take 5 away from both sides.',
+        '12 − 5 = 7, so n = 7. Check: 7 + 5 = 12',
+      ]);
+      expect(steps(letter('nMinusA', [5, 7])), [
+        'To undo − 5, add 5 to both sides.',
+        '7 + 5 = 12, so n = 12. Check: 12 − 5 = 7',
+      ]);
+      expect(steps(letter('aTimesN', [3, 5])), [
+        'To undo × 3, divide both sides by 3.',
+        '15 ÷ 3 = 5, so n = 5. Check: 3 × 5 = 15',
+      ]);
+      expect(steps(letter('nDividedByA', [4, 3])), [
+        'To undo ÷ 4, multiply both sides by 4.',
+        '3 × 4 = 12, so n = 12. Check: 12 ÷ 4 = 3',
+      ]);
+    });
+
+    test('level 4 says what 2n means, then undoes one step at a time', () {
+      expect(steps(letter('anPlusB', [2, 3, 4])), [
+        '2n means 2 × n.',
+        'To undo + 3, take 3 away from both sides. 11 − 3 = 8, so 2n = 8.',
+        'To undo × 2, divide both sides by 2.',
+        '8 ÷ 2 = 4, so n = 4. Check: 2 × 4 + 3 = 11',
+      ]);
+      expect(steps(letter('anMinusB', [4, 5, 5])), [
+        '4n means 4 × n.',
+        'To undo − 5, add 5 to both sides. 15 + 5 = 20, so 4n = 20.',
+        'To undo × 4, divide both sides by 4.',
+        '20 ÷ 4 = 5, so n = 5. Check: 4 × 5 − 5 = 15',
+      ]);
+    });
+
+    test('level 5 explains the minus sign of an answer below zero first', () {
+      expect(steps(letter('aBracketNMinusB', [3, 2, -4])), [
+        belowZero,
+        '3(n − 2) means 3 × (n − 2).',
+        'To undo × 3, divide both sides by 3. −18 ÷ 3 = −6, so n − 2 = −6.',
+        'To undo − 2, add 2 to both sides.',
+        '−6 + 2 = −4, so n = −4. Check: 3(−4 − 2) = −18',
+      ]);
+      expect(steps(letter('aBracketNPlusB', [3, 2, 2])), [
+        '3(n + 2) means 3 × (n + 2).',
+        'To undo × 3, divide both sides by 3. 12 ÷ 3 = 4, so n + 2 = 4.',
+        'To undo + 2, take 2 away from both sides.',
+        '4 − 2 = 2, so n = 2. Check: 3(2 + 2) = 12',
+      ]);
+      expect(steps(letter('nDividedByAPlusB', [4, 3, -2])), [
+        belowZero,
+        'To undo + 3, take 3 away from both sides. 1 − 3 = −2, so n ÷ 4 = −2.',
+        'To undo ÷ 4, multiply both sides by 4.',
+        '−2 × 4 = −8, so n = −8. Check: −8 ÷ 4 + 3 = 1',
+      ]);
+      expect(steps(letter('anPlusBNegativeN', [3, 9, -2])), [
+        belowZero,
+        '3n means 3 × n.',
+        'To undo + 9, take 9 away from both sides. 3 − 9 = −6, so 3n = −6.',
+        'To undo × 3, divide both sides by 3.',
+        '−6 ÷ 3 = −2, so n = −2. Check: 3 × (−2) + 9 = 3',
+      ]);
+    });
+
+    test('level 5 tenths use the language decimal separator', () {
+      expect(steps(letter('anTenths', [4, 25])), [
+        '4n means 4 × n.',
+        'To undo × 4, divide both sides by 4.',
+        '10 ÷ 4 = 2.5, so n = 2.5. Check: 4 × 2.5 = 10',
+      ]);
+      expect(
+        steps(letter('anTenths', [4, -25])).last,
+        '−10 ÷ 4 = −2.5, so n = −2.5. Check: 4 × (−2.5) = −10',
+      );
+      final german = lookupAppLocalizations(const Locale('de'));
+      expect(
+        steps(letter('anTenths', [4, 25]), german).last,
+        contains('10 ÷ 4 = 2,5'),
+      );
+      expect(
+        steps(letter('anTenths', [4, 25]), german).last,
+        endsWith('4 × 2,5 = 10'),
+      );
     });
   });
 }
