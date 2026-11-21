@@ -264,8 +264,9 @@ String questionOnScreen(WidgetTester tester) => tester
     .textSpan!
     .toPlainText();
 
+/// Whether the hint modal offers one more step.
 bool revealEnabled(WidgetTester tester) =>
-    tester.widget<ButtonStyleButton>(find.byKey(revealStepButtonKey)).enabled;
+    find.byKey(revealStepButtonKey).evaluate().isNotEmpty;
 
 /// How many of the current problem's solution steps are on screen.
 int visibleSteps(WidgetTester tester) =>

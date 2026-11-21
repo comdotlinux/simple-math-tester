@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'figure_view.dart';
-import 'hint_steps.dart';
+import 'hint_modal.dart';
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -44,11 +44,16 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// The one-time new-kind card, which the page opens with in view.
   final _newKindKey = GlobalKey();
+
+  /// Try again and Show a hint after a wrong answer, which a docked phone
+  /// page keeps in view, Try again first.
+  final _choicesKey = GlobalKey();
+  final _tryAgainKey = GlobalKey();
   final _scroll = ScrollController();
 
   /// Whether a phone page with the docked field repeats the question over
   /// its top, because the question card is scrolled out of view (for
-  /// example while reading hints).
+  /// example on a short screen with large text).
   bool _questionPinned = false;
 
   /// Keeps the field's state and input connection when it moves between
@@ -125,6 +130,25 @@ class _ProblemPageState extends State<ProblemPage> {
     super.dispose();
   }
 
+  /// "Try again": the wrong answer stays in the field, selected, so the
+  /// next key replaces it.
+  void _tryAgain() {
+    _focus.requestFocus();
+    _controller.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _controller.text.length,
+    );
+  }
+
+  /// "Hint" and "Show a hint": the hint modal; closing it puts the focus
+  /// back on the answer.
+  void _showHint() {
+    _model.openHint();
+    showHintModal(context).whenComplete(() {
+      if (mounted) _focus.requestFocus();
+    });
+  }
+
   /// The keyboard button on the field: hides the pad and opens the system
   /// keyboard, or brings the pad back.
   void _toggleKeyboard() {
@@ -190,7 +214,14 @@ class _ProblemPageState extends State<ProblemPage> {
     // took it. A new problem brings the card's top back into view, also
     // scrolling back, so it wins over Skip.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (compact) await reveal(_skipKey);
+      if (compact) {
+        await reveal(_skipKey);
+        await reveal(_choicesKey);
+        await reveal(
+          _tryAgainKey,
+          ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+        );
+      }
       await reveal(_answerKey);
       if (compact && newProblem) {
         await reveal(
@@ -268,6 +299,7 @@ class _ProblemPageState extends State<ProblemPage> {
         // Next sits in the feedback strip while a result shows there.
         final nextInStrip =
             compact && !sprinting && model.answerCorrect != null;
+        final wrong = !sprinting && model.answerCorrect == false;
         // The docked phone page packs its column tighter, so the question
         // and Skip fit above the dock on a short screen; the compact layout
         // setting packs it the same way everywhere.
@@ -491,6 +523,50 @@ class _ProblemPageState extends State<ProblemPage> {
                       check,
                     ],
                     if (!sprinting) ...[
+                      // After a wrong answer the player chooses: try again,
+                      // or open the hint.
+                      if (wrong) ...[
+                        SizedBox(height: tight ? 12 : 16),
+                        Flex(
+                          key: _choicesKey,
+                          direction: wide ? Axis.horizontal : Axis.vertical,
+                          crossAxisAlignment: wide
+                              ? CrossAxisAlignment.center
+                              : CrossAxisAlignment.stretch,
+                          spacing: tight ? 12 : 16,
+                          children: [
+                            _flexed(
+                              wide,
+                              Slab(
+                                key: _tryAgainKey,
+                                pressable: true,
+                                radius: AppTokens.radiusControl,
+                                child: FilledButton.icon(
+                                  key: tryAgainButtonKey,
+                                  onPressed: _tryAgain,
+                                  style: ButtonStyle(minimumSize: button),
+                                  icon: const Icon(Icons.replay),
+                                  label: Text(l.tryAgain),
+                                ),
+                              ),
+                            ),
+                            _flexed(
+                              wide,
+                              Slab(
+                                pressable: true,
+                                radius: AppTokens.radiusControl,
+                                child: OutlinedButton.icon(
+                                  key: hintButtonKey,
+                                  onPressed: _showHint,
+                                  style: ButtonStyle(minimumSize: button),
+                                  icon: const Icon(Icons.lightbulb_outline),
+                                  label: Text(l.showHint),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       SizedBox(height: tight ? 12 : 16),
                       // Side by side when both fit, else full-width rows.
                       Flex(
@@ -546,8 +622,18 @@ class _ProblemPageState extends State<ProblemPage> {
                           ),
                         ],
                       ),
-                      SizedBox(height: tight ? 12 : 16),
-                      _Hints(model: model),
+                      if (!wrong) ...[
+                        SizedBox(height: tight ? 12 : 16),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                            key: hintButtonKey,
+                            onPressed: _showHint,
+                            icon: const Icon(Icons.lightbulb_outline),
+                            label: Text(l.hint),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 ],
@@ -1702,25 +1788,10 @@ class _AnswerFeedback extends StatelessWidget {
                   ),
                   borderRadius: BorderRadius.circular(AppTokens.radiusControl),
                 ),
-                child: Row(
-                  spacing: dense ? 8 : 12,
-                  children: [
-                    Icon(icon, size: dense ? 24 : 28, color: foreground),
-                    Expanded(
-                      child: Text(
-                        message,
-                        style:
-                            (dense
-                                    ? Theme.of(context).textTheme.bodyMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          )
-                                    : Theme.of(context).textTheme.titleMedium)
-                                ?.copyWith(color: foreground),
-                      ),
-                    ),
-                    if (onNext case final next?)
-                      Slab(
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    final next = switch (onNext) {
+                      final next? => Slab(
                         pressable: true,
                         radius: AppTokens.radiusControl,
                         child: OutlinedButton.icon(
@@ -1734,75 +1805,62 @@ class _AnswerFeedback extends StatelessWidget {
                           label: Text(l.next, semanticsLabel: l.nextQuestion),
                         ),
                       ),
-                  ],
+                      null => null,
+                    };
+                    final style =
+                        (dense
+                                ? Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w700)
+                                : Theme.of(context).textTheme.titleMedium)
+                            ?.copyWith(color: foreground);
+                    // Beside Next, large text on a narrow phone left the
+                    // message a few words a line, and the docked strip grew
+                    // taller than the page; a message that would take more
+                    // than two lines there gets Next under it instead.
+                    TextPainter measure(String text, TextStyle? style) =>
+                        TextPainter(
+                          text: TextSpan(text: text, style: style),
+                          textScaler: MediaQuery.textScalerOf(context),
+                          textDirection: Directionality.of(context),
+                          maxLines: 2,
+                        );
+                    var below = false;
+                    if (next != null) {
+                      // Its label, icon, gap, padding and border.
+                      final label = measure(
+                        l.next,
+                        Theme.of(context).textTheme.labelLarge,
+                      )..layout();
+                      final text = measure(message, style)
+                        ..layout(
+                          maxWidth: max(
+                            0,
+                            box.maxWidth - 24 - 2 * 8 - label.width - 54,
+                          ),
+                        );
+                      below = text.didExceedMaxLines;
+                      label.dispose();
+                      text.dispose();
+                    }
+                    final row = Row(
+                      spacing: dense ? 8 : 12,
+                      children: [
+                        Icon(icon, size: dense ? 24 : 28, color: foreground),
+                        Expanded(child: Text(message, style: style)),
+                        if (next != null && !below) next,
+                      ],
+                    );
+                    return below
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            spacing: 6,
+                            children: [row, ?next],
+                          )
+                        : row;
+                  },
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _Hints extends StatelessWidget {
-  const _Hints({required this.model});
-
-  final MathTesterModel model;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final textTheme = Theme.of(context).textTheme;
-    final revealed = model.revealedSteps;
-
-    // The reveal control stays last and keeps one key, so it keeps its
-    // element and keyboard focus while its label changes and steps appear.
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (revealed > 0)
-          Slab(
-            child: Card(
-              key: solutionStepsKey,
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(l.workItOut, style: textTheme.titleLarge),
-                    const SizedBox(height: 14),
-                    HintSteps(
-                      steps: model.steps,
-                      shown: revealed,
-                      figure: switch (model.current) {
-                        FigureProblem(:final figure) => figure,
-                        _ => null,
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          )
-        else
-          const SizedBox.shrink(),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          // Directional mode keeps a disabled button focusable, so reaching
-          // the last allowed step does not drop keyboard focus.
-          child: MediaQuery(
-            data: MediaQuery.of(context)
-                .copyWith(navigationMode: NavigationMode.directional),
-            child: TextButton.icon(
-              key: revealStepButtonKey,
-              onPressed: model.canRevealStep ? model.revealStep : null,
-              icon: Icon(
-                revealed == 0 ? Icons.lightbulb_outline : Icons.navigate_next,
-              ),
-              label: Text(revealed == 0 ? l.hint : l.nextStep),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

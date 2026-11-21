@@ -26,7 +26,7 @@ void sprintJourneys() {
       expect(textOf(tester, sprintScoreKey), showsNumber(0));
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
       expect(find.byKey(settingsButtonKey), findsNothing);
-      expect(find.byKey(revealStepButtonKey), findsNothing);
+      expect(find.byKey(hintButtonKey), findsNothing);
     });
 
     testWidgets('a sprint answer moves straight on and adds to the score', (

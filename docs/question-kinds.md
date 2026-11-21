@@ -113,7 +113,7 @@ the sum or the difference, then which number times itself makes it.
 Each step is data (`FigureStep` in `solution_steps.dart`): its numbers,
 its calculation as terms and signs with the value, its check, and the
 parts of the figure it uses (`FigureParts`: edges, angles, grid rows, the
-right-angle mark, the outline, the inside, the diagonal). The hint card
+right-angle mark, the outline, the inside, the diagonal). The hint modal
 shows the figure right above the newest step with those parts drawn as an
 accent band edged in the colour drawn on the accent, and their labels on
 accent patches (`HintSteps` in `hint_steps.dart`).
@@ -203,7 +203,9 @@ breaks a layout rule there (labels overlap or a side is shorter than
   characters a step in every language, at most one calculation a step,
   the shape (what is asked, the idea, the working, the answer with its
   check), and that the longest hint of each family fits 320x568 at text
-  scale 2.
+  scale 2; `app/test/hint_modal_test.dart` steps through the longest hint
+  of each family, and of arithmetic, in the hint modal at 320x568 and
+  360x640, text scale 1 and 2, light and dark.
 - **Textbook rows.** `app/test/algebra_known_answers_test.dart` holds
   equations with the answers printed for them in Illustrative Mathematics
   (see [attributions.md](attributions.md)). The oracle must accept each

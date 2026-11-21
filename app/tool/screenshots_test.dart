@@ -193,6 +193,20 @@ void main() {
     });
   }
 
+  /// Opens the hint modal from the page's hint button.
+  Future<void> openHint(WidgetTester tester) async {
+    await tester.ensureVisible(find.byKey(hintButtonKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(hintButtonKey));
+    await tester.pumpAndSettle();
+  }
+
+  /// One more step of the open hint modal, from its own button.
+  Future<void> nextStep(WidgetTester tester) async {
+    await tester.tap(find.byKey(revealStepButtonKey));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> check(WidgetTester tester, String answer) async {
     await tester.enterText(find.byType(TextField), answer);
     await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
@@ -268,13 +282,12 @@ void main() {
           await check(tester, '75');
           await shoot(tester, '$tag-2-correct');
 
-          final wrong = await launch(tester, size, brightness);
+          await launch(tester, size, brightness);
           await check(tester, '65');
-          // As the player sees it: one hint open, the page where it stopped.
+          // As the player sees it: Try again or Show a hint.
           await shoot(tester, '$tag-3-wrong');
-          wrong.revealStep();
-          await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await openHint(tester);
+          await nextStep(tester);
           await shoot(tester, '$tag-3b-wrong-hints');
 
           // One answer short of the daily goal: the next correct one bursts.
@@ -583,9 +596,8 @@ void main() {
           practice.toggleOperation(OperationType.algebra);
           await shoot(tester, '$tag-13-algebra-practice');
           await check(tester, '5');
-          practice.revealStep();
-          await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await openHint(tester);
+          await nextStep(tester);
           await shoot(tester, '$tag-13b-algebra-wrong-hints');
 
           final level2 = await launch(
@@ -597,9 +609,8 @@ void main() {
           level2.toggleOperation(OperationType.algebra);
           await shoot(tester, '$tag-13d-algebra-level-2-practice');
           await check(tester, '4');
-          level2.revealStep();
-          await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await openHint(tester);
+          await nextStep(tester);
           await shoot(tester, '$tag-13e-algebra-level-2-hints');
 
           // The blank next to a minus sign: a longer line, on the baseline.
@@ -646,13 +657,9 @@ void main() {
             model.toggleOperation(OperationType.algebra);
             await shoot(tester, '$tag-$name-practice');
             await check(tester, wrong);
+            await openHint(tester);
             while (model.canRevealStep) {
-              model.revealStep();
-            }
-            await tester.pumpAndSettle();
-            final reveal = find.byKey(revealStepButtonKey);
-            if (reveal.evaluate().isNotEmpty) {
-              await tester.ensureVisible(reveal);
+              await nextStep(tester);
             }
             await shoot(tester, '$tag-$name-hints');
           }
@@ -715,13 +722,9 @@ void main() {
               model.toggleOperation(OperationType.algebra);
               await shoot(tester, '$name-practice');
               await check(tester, wrong);
+              await openHint(tester);
               while (model.canRevealStep) {
-                model.revealStep();
-              }
-              await tester.pumpAndSettle();
-              final reveal = find.byKey(revealStepButtonKey);
-              if (reveal.evaluate().isNotEmpty) {
-                await tester.ensureVisible(reveal);
+                await nextStep(tester);
               }
               await shoot(tester, '$name-hints');
             }
@@ -759,16 +762,10 @@ void main() {
               }
             }
           }
-          final wrong = await launch(
-            tester,
-            size,
-            brightness,
-            problem: families[1],
-          );
+          await launch(tester, size, brightness, problem: families[1]);
           await check(tester, '29');
-          wrong.revealStep();
-          await tester.pumpAndSettle();
-          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await openHint(tester);
+          await nextStep(tester);
           await shoot(tester, '$tag-14b-geometry-wrong-hints');
 
           final history = [
@@ -859,15 +856,13 @@ void main() {
             );
             model.toggleOperation(problem.kind);
             await check(tester, problem.result == 1 ? '2' : '1');
-            Future<void> shootStep() async {
-              await tester.pumpAndSettle();
-              await tester.ensureVisible(find.byKey(revealStepButtonKey));
-              await shoot(tester, '$name-step-${model.revealedSteps}');
-            }
+            Future<void> shootStep() =>
+                shoot(tester, '$name-step-${model.revealedSteps}');
 
+            await openHint(tester);
             if (problem is FigureProblem) await shootStep();
             while (model.canRevealStep) {
-              model.revealStep();
+              await nextStep(tester);
               if (problem is FigureProblem) await shootStep();
             }
             if (problem is! FigureProblem) await shootStep();
@@ -916,11 +911,10 @@ void main() {
               );
               practice.toggleOperation(OperationType.geometry);
               await shoot(tester, name);
-              // A wrong answer opens the first hint; the second follows.
+              // After a wrong answer the hint opens; the second step follows.
               await check(tester, '1');
-              practice.revealStep();
-              await tester.pumpAndSettle();
-              await tester.ensureVisible(find.byKey(revealStepButtonKey));
+              await openHint(tester);
+              await nextStep(tester);
               await shoot(tester, '$name-hints');
             }
           }
@@ -964,13 +958,12 @@ void main() {
               );
               practice.toggleOperation(OperationType.geometry);
               await shoot(tester, name);
-              // A wrong answer opens the first hint; the rest follow.
+              // After a wrong answer the hint opens; the rest follow.
               await check(tester, '1');
+              await openHint(tester);
               for (var i = 1; i < solutionSteps(problem).length; i++) {
-                practice.revealStep();
+                await nextStep(tester);
               }
-              await tester.pumpAndSettle();
-              await tester.ensureVisible(find.byKey(revealStepButtonKey));
               await shoot(tester, '$name-hints');
             }
           }

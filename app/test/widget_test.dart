@@ -580,8 +580,8 @@ void main() {
 
     final revealControl = find.byKey(revealStepButtonKey);
 
-    bool canReveal(WidgetTester tester) =>
-        tester.widget<ButtonStyleButton>(revealControl).enabled;
+    // The reveal button stays only while it can show one more step.
+    bool canReveal(WidgetTester tester) => revealControl.evaluate().isNotEmpty;
 
     Finder revealLabel(String label) =>
         find.descendant(of: revealControl, matching: find.text(label));
@@ -591,29 +591,33 @@ void main() {
       expect([for (final step in model.steps) step(en)], steps);
       expect(visibleSteps(), 0);
       expect(find.byKey(solutionStepsKey), findsNothing);
-      expect(revealLabel('Hint'), findsOneWidget);
-      expect(canReveal(tester), isTrue);
+      expect(
+        find.descendant(
+          of: find.byKey(hintButtonKey),
+          matching: find.text('Hint'),
+        ),
+        findsOneWidget,
+      );
 
-      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, hintButtonKey);
       expect(visibleSteps(), 1);
       expect(find.text(steps[0]), findsOneWidget);
       expect(find.byKey(solutionStepsKey), findsOneWidget);
-      expect(revealLabel('Hint'), findsNothing);
       expect(revealLabel('Next step'), findsOneWidget);
 
       await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 2);
       // The final step states the answer and needs a valid check first.
       expect(canReveal(tester), isFalse);
-      expect(revealLabel('Next step'), findsOneWidget);
-      await tapKey(tester, revealStepButtonKey);
-      expect(visibleSteps(), 2);
       expect(find.text(steps.last), findsNothing);
+      await tapKey(tester, hintCloseKey);
 
       await check(tester, '15');
       expect(find.text('You got it!'), findsOneWidget);
+      expect(visibleSteps(), 0);
+      await tapKey(tester, hintButtonKey);
       expect(visibleSteps(), 2);
-      expect(canReveal(tester), isTrue);
+      expect(revealLabel('Show the answer'), findsOneWidget);
       await tapKey(tester, revealStepButtonKey);
       expect(visibleSteps(), 3);
       expect(find.text(steps.last), findsOneWidget);
@@ -621,12 +625,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('criterion 8: a wrong first check without hints shows 1 step', (
+    testWidgets('criterion 8: a wrong first check shows no step until asked', (
       tester,
     ) async {
       await launchNarrow(tester);
       await check(tester, '14');
       expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      expect(visibleSteps(), 0);
+      await tapKey(tester, hintButtonKey);
       expect(visibleSteps(), 1);
       expect(find.text(steps[0]), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -636,37 +642,37 @@ void main() {
       tester,
     ) async {
       await launchNarrow(tester);
+      await tapKey(tester, hintButtonKey);
       await tapKey(tester, revealStepButtonKey);
-      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, hintCloseKey);
       await check(tester, '14');
       expect(find.text('Not quite. Try another answer.'), findsOneWidget);
+      await tapKey(tester, hintButtonKey);
       expect(visibleSteps(), 2);
       expect(find.text(steps.last), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('keyboard focus stays on the reveal control', (tester) async {
+    testWidgets('the keyboard steps through the hint and closes it', (
+      tester,
+    ) async {
       await launch(tester);
-      Focus.of(
-        tester.element(
-          find.descendant(of: revealControl, matching: find.text('Hint')),
-        ),
-      ).requestFocus();
-      await tester.pumpAndSettle();
-      final focused = FocusManager.instance.primaryFocus;
-      expect(focused, isNotNull);
-
+      await check(tester, '14');
+      await tapKey(tester, hintButtonKey);
+      // The reveal button has the focus: Enter shows one more step.
       for (var i = 0; i < 2; i++) {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pumpAndSettle();
-        expect(FocusManager.instance.primaryFocus, same(focused));
       }
-      expect(visibleSteps(), 2);
+      expect(visibleSteps(), 3);
       expect(canReveal(tester), isFalse);
-      expect(revealLabel('Next step'), findsOneWidget);
+      // Then Close has it, and Enter closes the hint.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(find.byKey(solutionStepsKey), findsNothing);
       expect(
-        find.ancestor(of: revealControl, matching: find.byType(Card)),
-        findsNothing,
+        tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus,
+        isTrue,
       );
     });
 
@@ -674,7 +680,7 @@ void main() {
       tester,
     ) async {
       await launch(tester);
-      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, hintButtonKey);
       expect(
         tester.getSemantics(find.text(steps[0])),
         isSemantics(isLiveRegion: true),
@@ -875,7 +881,7 @@ void main() {
       for (final finder in [
         find.byKey(checkAnswerButtonKey),
         find.byKey(nextQuestionButtonKey),
-        find.byKey(revealStepButtonKey),
+        find.byKey(hintButtonKey),
         find.byType(TextField),
         find.byKey(settingsButtonKey),
         find.byKey(sprintButtonKey),
@@ -1746,7 +1752,7 @@ void main() {
       final model = await launchSprint(tester);
       expect(model.inSprint, isTrue);
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
-      expect(find.byKey(revealStepButtonKey), findsNothing);
+      expect(find.byKey(hintButtonKey), findsNothing);
       expect(find.byKey(sprintButtonKey), findsNothing);
       expect(textOf(tester, sprintCountdownKey), showsNumber(60));
       expect(
@@ -1760,7 +1766,7 @@ void main() {
       await answer(tester, model.current.result);
       expect(textOf(tester, sprintScoreKey), showsNumber(10));
       expect(find.byKey(nextQuestionButtonKey), findsNothing);
-      expect(find.byKey(revealStepButtonKey), findsNothing);
+      expect(find.byKey(hintButtonKey), findsNothing);
 
       await tickTo(tester, 30);
       expect(textOf(tester, sprintCountdownKey), showsNumber(30));
@@ -1788,7 +1794,7 @@ void main() {
         isSemantics(isLiveRegion: true),
       );
       expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
-      expect(find.byKey(revealStepButtonKey), findsOneWidget);
+      expect(find.byKey(hintButtonKey), findsOneWidget);
       expect(
         tester.widget<TextField>(find.byType(TextField)).controller!.text,
         '',
@@ -2045,10 +2051,24 @@ void main() {
           model.chooseTier(Tier.easy);
           model.toggleOperation(OperationType.divide);
           await collect('practice with an unselected toggle');
-          while (model.canRevealStep) {
-            model.revealStep();
+          Future<void> openHint() async {
+            await tester.ensureVisible(find.byKey(hintButtonKey));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(hintButtonKey));
+            await tester.pumpAndSettle();
+            while (model.canRevealStep) {
+              model.revealStep();
+            }
           }
-          await collect('hints up to a disabled reveal button');
+
+          Future<void> closeHint() async {
+            await tester.tap(find.byKey(hintCloseKey));
+            await tester.pumpAndSettle();
+          }
+
+          await openHint();
+          await collect('hint modal up to the hidden answer');
+          await closeHint();
           model.submitAnswer();
           await collect('empty check message');
           model.setDraftInput('14');
@@ -2057,6 +2077,9 @@ void main() {
           model.setDraftInput('15');
           model.submitAnswer();
           await collect('correct answer');
+          await openHint();
+          await collect('hint modal with the answer');
+          await closeHint();
           await tester.tap(find.byKey(keyboardSwitchKey));
           // A phone starts with the system keyboard, so there the switch
           // opens the pad; elsewhere it shows the Check button.
@@ -2292,10 +2315,14 @@ void main() {
     });
 
     testWidgets(
-      'pressing a hint or an operation keeps the field focused',
+      'closing the hint or pressing an operation keeps the field focused',
       (tester) async {
         await launch(tester);
-        await tester.tap(find.byKey(revealStepButtonKey));
+        await tester.ensureVisible(find.byKey(hintButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(hintButtonKey));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(hintCloseKey));
         await tester.pumpAndSettle();
         expect(fieldFocused(tester), isTrue);
         await tester.tap(find.byKey(operationToggleKey(OperationType.minus)));

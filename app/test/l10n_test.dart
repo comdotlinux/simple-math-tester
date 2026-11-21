@@ -281,12 +281,13 @@ void main() {
         await launch(tester, Progress(tier: Tier.easy, language: code));
         await tester.enterText(find.byType(TextField), '1');
         await tap(tester, checkAnswerButtonKey);
-        while (tester
-            .widget<ButtonStyleButton>(find.byKey(revealStepButtonKey))
-            .enabled) {
+        expect(find.byKey(tryAgainButtonKey), findsOneWidget);
+        await tap(tester, hintButtonKey);
+        while (find.byKey(revealStepButtonKey).evaluate().isNotEmpty) {
           await tap(tester, revealStepButtonKey);
         }
         expect(find.byKey(solutionStepsKey), findsOneWidget);
+        await tap(tester, hintCloseKey);
 
         await tap(tester, settingsButtonKey);
         await tap(tester, languageTileKey);

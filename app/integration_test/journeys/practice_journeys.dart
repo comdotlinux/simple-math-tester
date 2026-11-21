@@ -69,10 +69,10 @@ void practiceJourneys() {
       expect(model.current, isNot(same(checked)));
       expect(model.draftInput, isEmpty);
       expect(find.text('Not quite. Try another answer.'), findsNothing);
-      expect(find.byKey(solutionStepsKey), findsNothing);
+      expect(find.byKey(tryAgainButtonKey), findsNothing);
       expect(
         find.descendant(
-          of: find.byKey(revealStepButtonKey),
+          of: find.byKey(hintButtonKey),
           matching: find.text('Hint'),
         ),
         findsOneWidget,
