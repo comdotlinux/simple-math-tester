@@ -21,6 +21,23 @@ const hintCloseKey = Key('hint-close');
 const hintNudgeKey = Key('hint-nudge');
 const hintNudgeTryKey = Key('hint-nudge-try');
 const hintNudgeAnywayKey = Key('hint-nudge-anyway');
+// Start and End of practice, and the summary End shows.
+const startPracticeButtonKey = Key('start-practice-button');
+const endPracticeButtonKey = Key('end-practice-button');
+const roundSummaryKey = Key('round-summary');
+const roundSummaryDoneKey = Key('round-summary-done');
+const roundSummaryAnswersKey = Key('round-summary-answers');
+const summaryAnsweredKey = Key('summary-answered');
+const summaryCorrectKey = Key('summary-correct');
+const summaryXpKey = Key('summary-xp');
+const summaryComboKey = Key('summary-combo');
+const summaryHintsKey = Key('summary-hints');
+const summarySkippedKey = Key('summary-skipped');
+const summaryTimeKey = Key('summary-time');
+const summaryLevelKey = Key('summary-level');
+
+/// One per kind in the summary: its answered and right.
+Key summaryKindKey(Enum kind) => Key('summary-kind-${kind.name}');
 const settingsButtonKey = Key('settings-button');
 const settingsSheetKey = Key('settings-sheet');
 const currentTierNoteKey = Key('current-tier-note');

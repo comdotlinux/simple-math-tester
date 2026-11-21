@@ -36,10 +36,13 @@ class MyHomePage extends StatelessWidget {
         final compact =
             constraints.maxWidth < 800 ||
             MediaQuery.textScalerOf(context).scale(1) > 1;
+        // While practising the page keeps only the question and the header;
+        // My answers is one tap away after End.
+        final navigation = !model.practising;
         return Scaffold(
           resizeToAvoidBottomInset: true,
           body: SafeArea(
-            child: compact
+            child: compact || !navigation
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -87,7 +90,7 @@ class MyHomePage extends StatelessWidget {
                     ],
                   ),
           ),
-          bottomNavigationBar: compact
+          bottomNavigationBar: compact && navigation
               ? DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border(
@@ -132,7 +135,8 @@ class _UpdateReminder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final show = context.select(
-      (MathTesterModel m) => m.showUpdateReminder && !m.inSprint,
+      (MathTesterModel m) =>
+          m.showUpdateReminder && !m.inSprint && !m.practising,
     );
     if (!show) return const SizedBox.shrink();
     final model = context.read<MathTesterModel>();

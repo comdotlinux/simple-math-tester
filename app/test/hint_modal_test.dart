@@ -47,6 +47,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Problem problem = sum,
     Size size = const Size(360, 640),
     double scale = 1,
@@ -81,6 +83,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     if (usePad) {
       await tester.tap(find.byKey(keyboardSwitchKey));
       await tester.pumpAndSettle();

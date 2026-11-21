@@ -75,6 +75,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -178,6 +179,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,
@@ -385,6 +387,7 @@ void main() {
           progress: Progress(tier: Tier.easy),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,

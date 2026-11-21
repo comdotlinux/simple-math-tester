@@ -57,6 +57,8 @@ void main() {
 
   Future<MathTesterModel> launch(
     WidgetTester tester, {
+    // Practice starts as after a tap on Start; false stays before it.
+    bool start = true,
     Size size = const Size(1000, 900),
     double scale = 1,
     double keyboardInset = 0,
@@ -121,6 +123,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     addTearDown(model.dispose);
+    if (start) {
+      model.startPractice();
+      await tester.pumpAndSettle();
+    }
     if (usePad && pad.evaluate().isEmpty) {
       await tester.ensureVisible(find.byKey(keyboardSwitchKey));
       await tester.tap(find.byKey(keyboardSwitchKey));

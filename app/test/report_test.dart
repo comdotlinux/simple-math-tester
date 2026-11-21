@@ -313,6 +313,8 @@ void main() {
       Progress? progress,
       Size size = const Size(1000, 900),
       double scale = 1,
+      // Practice starts as after a tap on Start; false stays before it.
+      bool start = true,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -332,6 +334,7 @@ void main() {
         ticker: () => const Stream.empty(),
       );
       addTearDown(model.dispose);
+      if (start) model.startPractice();
       await tester.pumpWidget(
         ChangeNotifierProvider.value(
           key: ObjectKey(model),
