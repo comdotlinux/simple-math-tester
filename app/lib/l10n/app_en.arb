@@ -3002,5 +3002,9 @@
   "summarySeeAnswers": "See my answers",
   "@summarySeeAnswers": {
     "description": "Second button of the practice summary: opens the list of the child's answers."
+  },
+  "menuKinds": "Question kinds",
+  "@menuKinds": {
+    "description": "Menu sheet: heading above the toggles that choose the kinds of questions (+, −, ×, ÷, algebra, geometry)."
   }
 }

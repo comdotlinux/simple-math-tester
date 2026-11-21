@@ -430,6 +430,18 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
+        final menu = Slab(
+          pressable: true,
+          radius: AppTokens.radiusControl,
+          child: IconButton(
+            key: settingsButtonKey,
+            tooltip: l.settings,
+            onPressed: () => _showSettings(context).whenComplete(() {
+              if (mounted) (setup ? _startFocus : _focus).requestFocus();
+            }),
+            icon: Icon(Icons.menu, semanticLabel: l.settings),
+          ),
+        );
         final page = SingleChildScrollView(
           controller: _scroll,
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -444,27 +456,32 @@ class _ProblemPageState extends State<ProblemPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // End sits at the top, away from Check.
+                  // The menu stays, so the kinds can change during practice.
                   if (model.practising)
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: Tooltip(
-                        message: l.endPracticeLabel,
-                        excludeFromSemantics: true,
-                        child: Slab(
-                          pressable: true,
-                          radius: AppTokens.radiusControl,
-                          child: OutlinedButton.icon(
-                            key: endPracticeButtonKey,
-                            onPressed: _end,
-                            style: ButtonStyle(minimumSize: button),
-                            icon: const Icon(Icons.stop_circle_outlined),
-                            label: Text(
-                              l.endPractice,
-                              semanticsLabel: l.endPracticeLabel,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      spacing: 8,
+                      children: [
+                        Tooltip(
+                          message: l.endPracticeLabel,
+                          excludeFromSemantics: true,
+                          child: Slab(
+                            pressable: true,
+                            radius: AppTokens.radiusControl,
+                            child: OutlinedButton.icon(
+                              key: endPracticeButtonKey,
+                              onPressed: _end,
+                              style: ButtonStyle(minimumSize: button),
+                              icon: const Icon(Icons.stop_circle_outlined),
+                              label: Text(
+                                l.endPractice,
+                                semanticsLabel: l.endPracticeLabel,
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                        menu,
+                      ],
                     )
                   else
                     Row(
@@ -481,26 +498,7 @@ class _ProblemPageState extends State<ProblemPage> {
                           ),
                         ),
                         // A tier change would move levels during a round.
-                        if (!sprinting)
-                          Slab(
-                            pressable: true,
-                            radius: AppTokens.radiusControl,
-                            child: IconButton(
-                              key: settingsButtonKey,
-                              tooltip: l.settings,
-                              onPressed: () => _showSettings(context)
-                                  .whenComplete(() {
-                                    if (mounted) {
-                                      (setup ? _startFocus : _focus)
-                                          .requestFocus();
-                                    }
-                                  }),
-                              icon: Icon(
-                                Icons.settings_outlined,
-                                semanticLabel: l.settings,
-                              ),
-                            ),
-                          ),
+                        if (!sprinting) menu,
                       ],
                     ),
                   // The encouragement gives way to the question on a short
@@ -532,37 +530,7 @@ class _ProblemPageState extends State<ProblemPage> {
                       _NewKindCard(key: _newKindKey, kind: kind),
                       SizedBox(height: gap),
                     ],
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        const types = OperationType.values;
-                        final perRow = togglesPerRow(
-                          constraints.maxWidth,
-                          types.length,
-                        );
-                        return Column(
-                          spacing: 10,
-                          children: [
-                            for (var i = 0; i < types.length; i += perRow)
-                              Row(
-                                spacing: 10,
-                                children: [
-                                  for (final type in types.skip(i).take(perRow))
-                                    Expanded(
-                                      child: _OperationToggle(
-                                        type: type,
-                                        selected: model.selectedOperations
-                                            .contains(type),
-                                        onPressed: () =>
-                                            model.toggleOperation(type),
-                                        compact: tight,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                          ],
-                        );
-                      },
-                    ),
+                    _KindToggles(compact: tight),
                     SizedBox(height: gap),
                     // Side by side when both fit, else full-width rows.
                     Flex(
@@ -1409,275 +1377,307 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
       compact ? 6 : 12,
     );
     final rowSpacing = compact ? 8.0 : 12.0;
-    return SafeArea(
-      child: SingleChildScrollView(
-        key: settingsSheetKey,
-        padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 8 : 16),
-        child: ListTileTheme.merge(
-          visualDensity: density,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            spacing: compact ? 0 : 4,
-            children: [
-              ListTile(
-                title: Semantics(
-                  header: true,
-                  child: Text(
-                    l.startingDifficulty,
-                    style: textTheme.titleLarge,
+    // Shorter than the screen, so the page shows above it. A drag down on
+    // the list at its top shrinks the sheet; at its smallest it closes.
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.8,
+      maxChildSize: 0.8,
+      minChildSize: 0.4,
+      snap: true,
+      builder: (_, scroll) => SafeArea(
+        child: SingleChildScrollView(
+          key: settingsSheetKey,
+          controller: scroll,
+          padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 8 : 16),
+          child: ListTileTheme.merge(
+            visualDensity: density,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              spacing: compact ? 0 : 4,
+              children: [
+                // The same kinds as before Start; a change applies from the
+                // next question. The menu is hidden during a sprint.
+                if (model.tier != null) ...[
+                  ListTile(
+                    title: Semantics(
+                      header: true,
+                      child: Text(l.menuKinds, style: textTheme.titleLarge),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _KindToggles(compact: compact),
+                  ),
+                  SizedBox(height: compact ? 4 : 8),
+                ],
+                ListTile(
+                  title: Semantics(
+                    header: true,
+                    child: Text(
+                      l.startingDifficulty,
+                      style: textTheme.titleLarge,
+                    ),
+                  ),
+                  subtitle: Text(
+                    key: currentTierNoteKey,
+                    l.currentTier(model.tier?.label(l) ?? l.tierNotChosen),
                   ),
                 ),
-                subtitle: Text(
-                  key: currentTierNoteKey,
-                  l.currentTier(model.tier?.label(l) ?? l.tierNotChosen),
+                for (final tier in Tier.values)
+                  ListTile(
+                    key: tierSettingKey(tier),
+                    title: Text(tier.label(l)),
+                    selected: tier == model.tier,
+                    trailing: tier == model.tier
+                        ? const Icon(Icons.check_circle)
+                        : null,
+                    onTap: () {
+                      if (tier != model.tier) model.chooseTier(tier);
+                      Navigator.pop(context);
+                    },
+                  ),
+                SizedBox(height: compact ? 4 : 8),
+                SwitchListTile(
+                  key: soundSwitchKey,
+                  title: Text(l.sound),
+                  subtitle: Text(l.soundSubtitle),
+                  value: model.sound,
+                  onChanged: model.setSound,
                 ),
-              ),
-              for (final tier in Tier.values)
+                if (model.soundMuted)
+                  Padding(
+                    key: soundVolumeHintKey,
+                    padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.volumeOff,
+                          style: listTileTheme.subtitleTextStyle,
+                        ),
+                        TextButton(
+                          key: openVolumeSettingsKey,
+                          onPressed: model.openVolumeSettings,
+                          child: Text(l.openPhoneSettings),
+                        ),
+                      ],
+                    ),
+                  ),
+                SwitchListTile(
+                  key: hapticsSwitchKey,
+                  title: Text(l.vibration),
+                  subtitle: Text(l.vibrationSubtitle),
+                  value: model.haptics,
+                  onChanged: model.setHaptics,
+                ),
+                if (model.vibrationBlocked)
+                  Padding(
+                    key: touchFeedbackHintKey,
+                    padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.touchFeedbackOff,
+                          style: listTileTheme.subtitleTextStyle,
+                        ),
+                        TextButton(
+                          key: openVibrationSettingsKey,
+                          onPressed: model.openVibrationSettings,
+                          child: Text(l.openPhoneSettings),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Laid out like the switch tiles above: same insets and text
+                // styles, with the choice on its own full-width line.
+                Padding(
+                  padding: rowPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: rowSpacing,
+                    children: [
+                      Text(l.theme, style: listTileTheme.titleTextStyle),
+                      SegmentedButton<ThemeMode>(
+                        expandedInsets: EdgeInsets.zero,
+                        showSelectedIcon: false,
+                        segments: [
+                          // Text only: an icon beside "System" wraps it at 360 px.
+                          for (final (mode, label) in [
+                            (ThemeMode.system, l.themeSystem),
+                            (ThemeMode.light, l.themeLight),
+                            (ThemeMode.dark, l.themeDark),
+                          ])
+                            ButtonSegment(
+                              value: mode,
+                              label: Text(
+                                label,
+                                key: themeModeKey(mode),
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                            ),
+                        ],
+                        selected: {model.themeMode},
+                        onSelectionChanged: (modes) =>
+                            model.setThemeMode(modes.single),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: rowPadding,
+                  child: Column(
+                    // Stretch: the Wrap below would otherwise shrink the
+                    // column and the sheet would centre it.
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: rowSpacing,
+                    children: [
+                      Text(l.colours, style: listTileTheme.titleTextStyle),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: [
+                          for (final palette in AppPalette.values)
+                            _Swatch(
+                              key: paletteKey(palette),
+                              palette: palette,
+                              selected: palette == model.palette,
+                              onTap: () => model.setPalette(palette),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: rowPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: rowSpacing,
+                    children: [
+                      Text(l.layout, style: listTileTheme.titleTextStyle),
+                      SegmentedButton<LayoutMode>(
+                        expandedInsets: EdgeInsets.zero,
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final (mode, label) in [
+                            (LayoutMode.comfortable, l.layoutComfortable),
+                            (LayoutMode.compact, l.layoutCompact),
+                          ])
+                            ButtonSegment(
+                              value: mode,
+                              label: Text(
+                                label,
+                                key: layoutModeKey(mode),
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                            ),
+                        ],
+                        selected: {model.layoutMode},
+                        onSelectionChanged: (modes) =>
+                            model.setLayoutMode(modes.single),
+                      ),
+                    ],
+                  ),
+                ),
+                // Eleven choices: a dialog, not a segmented row.
                 ListTile(
-                  key: tierSettingKey(tier),
-                  title: Text(tier.label(l)),
-                  selected: tier == model.tier,
-                  trailing: tier == model.tier
-                      ? const Icon(Icons.check_circle)
-                      : null,
-                  onTap: () {
-                    if (tier != model.tier) model.chooseTier(tier);
+                  key: languageTileKey,
+                  leading: const Icon(Icons.translate),
+                  title: Text(l.language),
+                  subtitle: Text(
+                    _languageName(model.language) ?? l.languageSystem,
+                  ),
+                  onTap: () => _showLanguages(context),
+                ),
+                SizedBox(height: compact ? 4 : 8),
+                ListTile(
+                  key: privacyTileKey,
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: Text(l.privacy),
+                  subtitle: Text(l.privacySubtitle),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const _PrivacyPage(),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  key: licencesTileKey,
+                  leading: const Icon(Icons.description_outlined),
+                  title: Text(l.licences),
+                  subtitle: Text(l.licencesSubtitle),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LicencesPage(),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  key: impressumTileKey,
+                  leading: const Icon(Icons.open_in_new),
+                  title: Text(l.impressum),
+                  subtitle: Text(l.impressumSubtitle),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    // Closed first, so a failure notice is not hidden behind it.
                     Navigator.pop(context);
+                    if (!await model.openImpressum()) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l.browserDidNotOpen)),
+                      );
+                    }
                   },
                 ),
-              SizedBox(height: compact ? 4 : 8),
-              SwitchListTile(
-                key: soundSwitchKey,
-                title: Text(l.sound),
-                subtitle: Text(l.soundSubtitle),
-                value: model.sound,
-                onChanged: model.setSound,
-              ),
-              if (model.soundMuted)
-                Padding(
-                  key: soundVolumeHintKey,
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(l.volumeOff, style: listTileTheme.subtitleTextStyle),
-                      TextButton(
-                        key: openVolumeSettingsKey,
-                        onPressed: model.openVolumeSettings,
-                        child: Text(l.openPhoneSettings),
-                      ),
-                    ],
-                  ),
+                ListTile(
+                  key: sendProblemReportTileKey,
+                  leading: const Icon(Icons.outlined_flag),
+                  title: Text(l.reportSendProblem),
+                  subtitle: Text(l.reportSendProblemSubtitle),
+                  onTap: () {
+                    // The sheet closes first; the dialog opens on the page.
+                    final page = Navigator.of(context);
+                    page.pop();
+                    showReportDialog(page.context);
+                  },
                 ),
-              SwitchListTile(
-                key: hapticsSwitchKey,
-                title: Text(l.vibration),
-                subtitle: Text(l.vibrationSubtitle),
-                value: model.haptics,
-                onChanged: model.setHaptics,
-              ),
-              if (model.vibrationBlocked)
-                Padding(
-                  key: touchFeedbackHintKey,
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l.touchFeedbackOff,
-                        style: listTileTheme.subtitleTextStyle,
-                      ),
-                      TextButton(
-                        key: openVibrationSettingsKey,
-                        onPressed: model.openVibrationSettings,
-                        child: Text(l.openPhoneSettings),
-                      ),
-                    ],
-                  ),
+                ListTile(
+                  key: reportProblemTileKey,
+                  leading: const Icon(Icons.bug_report_outlined),
+                  title: Text(l.reportProblem),
+                  subtitle: Text(l.reportProblemSubtitle),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    Navigator.pop(context);
+                    if (!await model.openProblemReport()) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l.browserDidNotOpen)),
+                      );
+                    }
+                  },
                 ),
-              // Laid out like the switch tiles above: same insets and text
-              // styles, with the choice on its own full-width line.
-              Padding(
-                padding: rowPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: rowSpacing,
-                  children: [
-                    Text(l.theme, style: listTileTheme.titleTextStyle),
-                    SegmentedButton<ThemeMode>(
-                      expandedInsets: EdgeInsets.zero,
-                      showSelectedIcon: false,
-                      segments: [
-                        // Text only: an icon beside "System" wraps it at 360 px.
-                        for (final (mode, label) in [
-                          (ThemeMode.system, l.themeSystem),
-                          (ThemeMode.light, l.themeLight),
-                          (ThemeMode.dark, l.themeDark),
-                        ])
-                          ButtonSegment(
-                            value: mode,
-                            label: Text(
-                              label,
-                              key: themeModeKey(mode),
-                              maxLines: 1,
-                              softWrap: false,
-                            ),
-                          ),
-                      ],
-                      selected: {model.themeMode},
-                      onSelectionChanged: (modes) =>
-                          model.setThemeMode(modes.single),
-                    ),
-                  ],
+                ListTile(
+                  key: appVersionTileKey,
+                  leading: const Icon(Icons.info_outline),
+                  title: Text(l.appVersionTitle(appVersion)),
+                  subtitle: Text(l.releaseNotesSubtitle),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    Navigator.pop(context);
+                    if (!await model.openReleaseNotes()) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text(l.browserDidNotOpen)),
+                      );
+                    }
+                  },
                 ),
-              ),
-              Padding(
-                padding: rowPadding,
-                child: Column(
-                  // Stretch: the Wrap below would otherwise shrink the
-                  // column and the sheet would centre it.
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: rowSpacing,
-                  children: [
-                    Text(l.colours, style: listTileTheme.titleTextStyle),
-                    Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: [
-                        for (final palette in AppPalette.values)
-                          _Swatch(
-                            key: paletteKey(palette),
-                            palette: palette,
-                            selected: palette == model.palette,
-                            onTap: () => model.setPalette(palette),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: rowPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: rowSpacing,
-                  children: [
-                    Text(l.layout, style: listTileTheme.titleTextStyle),
-                    SegmentedButton<LayoutMode>(
-                      expandedInsets: EdgeInsets.zero,
-                      showSelectedIcon: false,
-                      segments: [
-                        for (final (mode, label) in [
-                          (LayoutMode.comfortable, l.layoutComfortable),
-                          (LayoutMode.compact, l.layoutCompact),
-                        ])
-                          ButtonSegment(
-                            value: mode,
-                            label: Text(
-                              label,
-                              key: layoutModeKey(mode),
-                              maxLines: 1,
-                              softWrap: false,
-                            ),
-                          ),
-                      ],
-                      selected: {model.layoutMode},
-                      onSelectionChanged: (modes) =>
-                          model.setLayoutMode(modes.single),
-                    ),
-                  ],
-                ),
-              ),
-              // Eleven choices: a dialog, not a segmented row.
-              ListTile(
-                key: languageTileKey,
-                leading: const Icon(Icons.translate),
-                title: Text(l.language),
-                subtitle: Text(
-                  _languageName(model.language) ?? l.languageSystem,
-                ),
-                onTap: () => _showLanguages(context),
-              ),
-              SizedBox(height: compact ? 4 : 8),
-              ListTile(
-                key: privacyTileKey,
-                leading: const Icon(Icons.privacy_tip_outlined),
-                title: Text(l.privacy),
-                subtitle: Text(l.privacySubtitle),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
-                ),
-              ),
-              ListTile(
-                key: licencesTileKey,
-                leading: const Icon(Icons.description_outlined),
-                title: Text(l.licences),
-                subtitle: Text(l.licencesSubtitle),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => const LicencesPage()),
-                ),
-              ),
-              ListTile(
-                key: impressumTileKey,
-                leading: const Icon(Icons.open_in_new),
-                title: Text(l.impressum),
-                subtitle: Text(l.impressumSubtitle),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  // Closed first, so a failure notice is not hidden behind it.
-                  Navigator.pop(context);
-                  if (!await model.openImpressum()) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(l.browserDidNotOpen)),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                key: sendProblemReportTileKey,
-                leading: const Icon(Icons.outlined_flag),
-                title: Text(l.reportSendProblem),
-                subtitle: Text(l.reportSendProblemSubtitle),
-                onTap: () {
-                  // The sheet closes first; the dialog opens on the page.
-                  final page = Navigator.of(context);
-                  page.pop();
-                  showReportDialog(page.context);
-                },
-              ),
-              ListTile(
-                key: reportProblemTileKey,
-                leading: const Icon(Icons.bug_report_outlined),
-                title: Text(l.reportProblem),
-                subtitle: Text(l.reportProblemSubtitle),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(context);
-                  if (!await model.openProblemReport()) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(l.browserDidNotOpen)),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                key: appVersionTileKey,
-                leading: const Icon(Icons.info_outline),
-                title: Text(l.appVersionTitle(appVersion)),
-                subtitle: Text(l.releaseNotesSubtitle),
-                onTap: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(context);
-                  if (!await model.openReleaseNotes()) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text(l.browserDidNotOpen)),
-                    );
-                  }
-                },
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1793,6 +1793,44 @@ const _toggleMinWidth = 58.0;
 @visibleForTesting
 int togglesPerRow(double width, int count) =>
     width >= count * _toggleMinWidth - 10 ? count : (count + 1) ~/ 2;
+
+/// The kind toggles in rows, on the start screen and in the menu sheet.
+class _KindToggles extends StatelessWidget {
+  const _KindToggles({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final model = context.watch<MathTesterModel>();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const types = OperationType.values;
+        final perRow = togglesPerRow(constraints.maxWidth, types.length);
+        return Column(
+          spacing: 10,
+          children: [
+            for (var i = 0; i < types.length; i += perRow)
+              Row(
+                spacing: 10,
+                children: [
+                  for (final type in types.skip(i).take(perRow))
+                    Expanded(
+                      child: _OperationToggle(
+                        type: type,
+                        selected: model.selectedOperations.contains(type),
+                        onPressed: () => model.toggleOperation(type),
+                        compact: compact,
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
 
 /// Selected stands up on its slab with a check; unselected sits flat on a
 /// sunken fill, so the state reads without colour.

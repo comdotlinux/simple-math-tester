@@ -168,6 +168,8 @@ void main() {
           'hud-combo',
           'hud-xp',
           'end-practice-button',
+          // The menu stays during practice to change the kinds (#179).
+          'settings-button',
           'question-on-problems-page',
           'next-question-button',
           'hint-button',
@@ -188,6 +190,8 @@ void main() {
           'hud-combo',
           'hud-xp',
           'end-practice-button',
+          // The menu stays during practice to change the kinds (#179).
+          'settings-button',
           'question-on-problems-page',
           'next-question-button',
           'hint-button',
