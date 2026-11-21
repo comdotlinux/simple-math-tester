@@ -511,6 +511,21 @@ void main() {
           await tester.ensureVisible(find.byKey(revealStepButtonKey));
           await shoot(tester, '$tag-13e-algebra-level-2-hints');
 
+          // The blank next to a minus sign: a longer line, on the baseline.
+          for (final (name, variant, a, b) in [
+            ('13j-algebra-minus-blank', 'missingSubtrahend', 4, 6),
+            ('13k-algebra-blank-minus', 'missingMinuend', 3, 5),
+          ]) {
+            final minus = await launch(
+              tester,
+              size,
+              brightness,
+              problem: equation(variant, a, b),
+            );
+            minus.toggleOperation(OperationType.algebra);
+            await shoot(tester, '$tag-$name');
+          }
+
           // Levels 3 to 5 with the letter n, every hint step shown; level 5
           // with an answer below zero and one in tenths. The pad has the
           // minus and decimal keys whenever algebra is on.

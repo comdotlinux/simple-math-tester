@@ -7,8 +7,8 @@ library;
 
 import 'package:math_expressions/math_expressions.dart';
 
-/// The text form of the drawn blank box, U+25A1. The screen draws a box
-/// widget; the question text (history, review, screen readers) uses this
+/// The text form of the drawn blank, U+25A1. The screen draws a line on the
+/// baseline; the question text (history, review, screen readers) uses this
 /// character.
 const box = '□';
 

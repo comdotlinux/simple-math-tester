@@ -168,7 +168,7 @@ Tagging, promoting and pushing the listing reach real users. Do them only when t
 - Several pull requests that touch `operations.dart`, `solution_steps.dart`, `problem_page.dart`, `progress.dart` or `app_en.arb` at once will conflict. Keep diffs local and rebase onto `origin/main` when it moves.
 - Widget tests that start with a default `Progress(tier: ...)` show the one-time new-kind card above the toggles. Pass `seenKinds: [for (final k in OperationType.values) k.name]` when the old layout is needed.
 - A shell loop that waits with `pgrep -f "<text>"` matches itself and never ends. Use `gh run watch <id> --exit-status` or `gh pr checks <pr> --watch`.
-- No bundled font has U+25A1 or U+2192. The blank box and the arrow are drawn widgets; tests fail if those characters reach a `RichText` or a semantics label.
+- No bundled font has U+25A1 or U+2192. The blank (a line on the baseline) and the arrow are drawn widgets; tests fail if those characters reach a `RichText` or a semantics label.
 
 ## 9. Before saying a task is done
 

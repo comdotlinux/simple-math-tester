@@ -550,7 +550,7 @@ class _ResultsPageState extends State<ResultsPage> {
     child: child,
   );
 
-  /// The question with a drawn box for a blank, read with the blank as a
+  /// The question with a drawn line for a blank, read with the blank as a
   /// word.
   Widget _questionText(
     BuildContext context,

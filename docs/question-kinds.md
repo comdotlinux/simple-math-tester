@@ -21,8 +21,10 @@ the arithmetic operations.
 
 ## Algebra
 
-The unknown is an empty box at levels 1 and 2 and the letter *n* from
-level 3. Screen readers say "blank" for the box. Every answer is whole and at
+The unknown is a blank, a thick line on the baseline about two digits wide
+(3 + __ = 7), at levels 1 and 2 and the letter *n* from level 3. The tables
+write it as □, the text form the app keeps in saved progress and tests.
+Screen readers say "blank" for it. Every answer is whole and at
 least 0, except at level 5, where answers can be below zero or in tenths.
 With algebra on, the number pad has a minus key and a decimal key.
 
