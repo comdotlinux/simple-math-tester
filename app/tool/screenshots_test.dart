@@ -594,6 +594,49 @@ void main() {
           }
         });
 
+        testWidgets('squares screenshots $tag', (tester) async {
+          language = code;
+          final algebra = OperationType.algebra.source as AlgebraSource;
+          // One question of each square and root family, then every hint
+          // step, at text scale 1 and 2.
+          for (final scale in [1.0, 2.0]) {
+            for (final (variant, params, level, wrong) in [
+              ('missingSquare', [7], 2, '48'),
+              ('missingSquareRoot', [7], 2, '6'),
+              ('aSquared', [12], 3, '140'),
+              ('squareRootOfC', [17], 4, '16'),
+              ('nSquared', [7], 5, '6'),
+              ('anSquared', [2, 5], 5, '4'),
+            ]) {
+              final name = '$tag-15-squares-$variant-x$scale';
+              final model = await launch(
+                tester,
+                size,
+                brightness,
+                scale: scale,
+                problem: algebra.build(
+                  OperationType.algebra,
+                  variant,
+                  params,
+                  level: level,
+                )!,
+              );
+              model.toggleOperation(OperationType.algebra);
+              await shoot(tester, '$name-practice');
+              await check(tester, wrong);
+              while (model.canRevealStep) {
+                model.revealStep();
+              }
+              await tester.pumpAndSettle();
+              final reveal = find.byKey(revealStepButtonKey);
+              if (reveal.evaluate().isNotEmpty) {
+                await tester.ensureVisible(reveal);
+              }
+              await shoot(tester, '$name-hints');
+            }
+          }
+        });
+
         testWidgets('geometry screenshots $tag', (tester) async {
           language = code;
           final geometry = OperationType.geometry.source as GeometrySource;

@@ -729,8 +729,16 @@ class _QuestionCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+    // A condition line under an equation ("n is positive") in body size.
+    final [line, ...notes] = problem.shown(l).split('\n');
     Widget question(TextStyle? style) => Text.rich(
-      mathSpan(context, problem.question, style),
+      TextSpan(
+        children: [
+          mathSpan(context, line, style),
+          for (final note in notes)
+            mathSpan(context, '\n$note', textTheme.titleLarge),
+        ],
+      ),
       key: questionOnProblemsPageKey,
       textAlign: TextAlign.center,
       semanticsLabel: l.mathQuestion(problem.spoken(l)),

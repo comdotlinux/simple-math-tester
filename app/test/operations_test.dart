@@ -167,14 +167,24 @@ void main() {
     });
 
     test('level 2 is 360 different missing-factor problems in four families '
-        'of 90', () {
+        'of 90, and 10 squares and 10 square roots', () {
       final problems = source.problems(kind, 2).toList();
-      expect(problems, hasLength(360));
-      expect(problems.map((p) => p.question).toSet(), hasLength(360));
+      expect(problems, hasLength(380));
+      expect(problems.map((p) => p.question).toSet(), hasLength(380));
       final byVariant = <String, int>{};
       for (final p in problems) {
         byVariant[p.variant] = (byVariant[p.variant] ?? 0) + 1;
         expect([p.kind, p.level], [kind, 2]);
+        expect(p.tokens.where((t) => t == EquationProblem.blank), hasLength(1));
+        if (p.params case [final r]) {
+          // a² = □ with a 1 to 10, or √c = □ with c = r × r.
+          expect(r, inInclusiveRange(1, 10));
+          expect(
+            p.question,
+            p.variant == 'missingSquare' ? '$r² = □' : '√${r * r} = □',
+          );
+          continue;
+        }
         final [a, b] = p.params;
         expect(a, inInclusiveRange(2, 10));
         expect(b, inInclusiveRange(1, 10));
@@ -193,6 +203,8 @@ void main() {
         'missingSecondFactor': 90,
         'missingDivisor': 90,
         'missingDividend': 90,
+        'missingSquare': 10,
+        'missingSquareRoot': 10,
       });
     });
 
@@ -206,14 +218,22 @@ void main() {
 
     test('levels 3 to 5 have their families, ranges and counts', () {
       // a 2..12 and the other number 0..20.
+      // Squares and roots: bases 6..12 at level 3, 13..20 at level 4.
       expect(countByVariant(3), {
         'nPlusA': 231,
         'nMinusA': 231,
         'aTimesN': 231,
         'nDividedByA': 231,
+        'aSquared': 7,
+        'squareRootOfC': 7,
       });
       // a 2..9, b 1..20, n 1..20; an − b at least 0.
-      expect(countByVariant(4), {'anPlusB': 3200, 'anMinusB': 2911});
+      expect(countByVariant(4), {
+        'anPlusB': 3200,
+        'anMinusB': 2911,
+        'aSquared': 8,
+        'squareRootOfC': 8,
+      });
       // a 2..9, b 1..10, n −10..10 (the quotient for ÷, never 0); tenths
       // −10.0..10.0, never whole, with a whole right-hand side.
       expect(countByVariant(5), {
@@ -222,12 +242,20 @@ void main() {
         'nDividedByAPlusB': 1600,
         'anPlusBNegativeN': 800,
         'anTenths': 160,
+        // n² = c with n 1..12; an² = c with a 2..9 and n 2..12.
+        'nSquared': 12,
+        'anSquared': 88,
       });
       for (var level = 3; level <= 5; level++) {
         for (final p in source.problems(kind, level)) {
           expect([p.kind, p.level], [kind, level]);
           expect(p.tokens, isNot(contains(EquationProblem.blank)));
-          expect('n'.allMatches(p.question), hasLength(1), reason: p.question);
+          // The condition line "n > 0" names n a second time.
+          expect(
+            'n'.allMatches(p.question.replaceFirst(', n > 0', '')),
+            hasLength(1),
+            reason: p.question,
+          );
           for (final (i, (low, high))
               in source.levels[level - 1]
                   .firstWhere((family) => family.$1 == p.variant)
@@ -291,6 +319,18 @@ void main() {
       expect(source.build(kind, 'nDividedByAPlusB', [4, 3, 1])!.result, 4);
       expect(source.build(kind, 'anTenths', [4, 25])!.resultHundredths, 250);
       expect(source.build(kind, 'anTenths', [5, -2])!.resultHundredths, -20);
+      expect(letter('missingSquare', [7]), '7² = □');
+      expect(letter('missingSquareRoot', [7]), '√49 = □');
+      expect(letter('aSquared', [12]), '12² = n');
+      expect(letter('squareRootOfC', [20]), '√400 = n');
+      expect(letter('nSquared', [7]), 'n² = 49, n > 0');
+      expect(letter('anSquared', [2, 5]), '2n² = 50, n > 0');
+      expect(source.build(kind, 'missingSquare', [7])!.result, 49);
+      expect(source.build(kind, 'missingSquareRoot', [7])!.result, 7);
+      expect(source.build(kind, 'aSquared', [12])!.result, 144);
+      expect(source.build(kind, 'squareRootOfC', [20])!.result, 20);
+      expect(source.build(kind, 'nSquared', [7])!.result, 7);
+      expect(source.build(kind, 'anSquared', [2, 5])!.result, 5);
     });
 
     test('an unknown variant or params that do not fit build nothing', () {
@@ -319,6 +359,18 @@ void main() {
       expect(source.build(kind, 'anTenths', [4, 20]), isNull);
       expect(source.build(kind, 'anTenths', [3, 25]), isNull);
       expect(source.build(kind, 'aBracketNPlusB', [1, 2, 3]), isNull);
+      // Squares and roots: one param (two for an²), never below zero; n at
+      // least 1, and at least 2 where a is divided off first.
+      expect(source.build(kind, 'missingSquare', [3, 4]), isNull);
+      expect(source.build(kind, 'missingSquare', [-3]), isNull);
+      expect(source.build(kind, 'missingSquareRoot', [-3]), isNull);
+      expect(source.build(kind, 'aSquared', []), isNull);
+      expect(source.build(kind, 'squareRootOfC', [-1]), isNull);
+      expect(source.build(kind, 'nSquared', [0]), isNull);
+      expect(source.build(kind, 'nSquared', [-7]), isNull);
+      expect(source.build(kind, 'anSquared', [2, 1]), isNull);
+      expect(source.build(kind, 'anSquared', [1, 5]), isNull);
+      expect(source.build(kind, 'anSquared', [5]), isNull);
     });
 
     test('generate draws every family, only problems of the level', () {
@@ -338,7 +390,7 @@ void main() {
 
     test('generate draws each family of a level equally often, also one that '
         'rejects most params', () {
-      for (final level in [4, 5]) {
+      for (final level in [2, 3, 4, 5]) {
         final families = source.levels[level - 1].length;
         final random = Random(11);
         const draws = 10000;

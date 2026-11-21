@@ -335,6 +335,28 @@
   "@blank": {
     "description": "What a screen reader says for the empty box that stands for the missing number in an equation, as in '3 plus blank equals 7'. One short word, lower case."
   },
+  "equationPositive": "n is positive",
+  "@equationPositive": {
+    "description": "Line shown under an equation such as 'n² = 49': the unknown number n is above zero, so only one answer is meant. Keep the letter n. Short, no full stop."
+  },
+  "spokenSquared": "{base} squared",
+  "@spokenSquared": {
+    "description": "What a screen reader says for a number or the letter n with a small raised 2, as in '7²' (7 times 7). {base} is like '7' or 'n'.",
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "spokenSquareRoot": "square root of {square}",
+  "@spokenSquareRoot": {
+    "description": "What a screen reader says for the root sign before a number, as in '√49'. {square} is a number like '49'. Lower case.",
+    "placeholders": {
+      "square": {
+        "type": "String"
+      }
+    }
+  },
   "tierEasy": "Easy",
   "@tierEasy": {
     "description": "Starting difficulty, easiest. Button label, very short."
@@ -1341,6 +1363,24 @@
         "type": "String"
       },
       "check": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationWhichRoot": "√{square} asks: which number times itself makes {square}?",
+  "@stepEquationWhichRoot": {
+    "description": "Hint step for a square root question such as '√49 = n'. Keep the root sign √ and numbers exactly as given. {square} is a number like '49'.",
+    "placeholders": {
+      "square": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationWhichPositiveRoot": "n² means n × n, and n is positive. Which number above zero times itself makes {square}?",
+  "@stepEquationWhichPositiveRoot": {
+    "description": "Hint step for an equation such as 'n² = 49' with the line 'n is positive' under it. Keep the letter n, n², math symbols (× =) and numbers exactly as given. {square} is a number like '49'.",
+    "placeholders": {
+      "square": {
         "type": "String"
       }
     }

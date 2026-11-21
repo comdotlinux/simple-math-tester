@@ -179,6 +179,12 @@ const Map<String, EquationBuild> _equations = {
   'nDividedByAPlusB': _nDividedByAPlusB,
   'anPlusBNegativeN': _anPlusBNegativeN,
   'anTenths': _anTenths,
+  'missingSquare': _missingSquare,
+  'missingSquareRoot': _missingSquareRoot,
+  'aSquared': _aSquared,
+  'squareRootOfC': _squareRootOfC,
+  'nSquared': _nSquared,
+  'anSquared': _anSquared,
 };
 
 /// The families of each level, index 0 is level 1, with the range of each
@@ -195,16 +201,24 @@ const List<List<(String, List<Range>)>> _algebraLevels = [
     ('missingSecondFactor', [(2, 10), (1, 10)]),
     ('missingDivisor', [(2, 10), (1, 10)]),
     ('missingDividend', [(2, 10), (1, 10)]),
+    ('missingSquare', [(1, 10)]),
+    ('missingSquareRoot', [(1, 10)]),
   ],
   [
     ('nPlusA', [(2, 12), (0, 20)]),
     ('nMinusA', [(2, 12), (0, 20)]),
     ('aTimesN', [(2, 12), (0, 20)]),
     ('nDividedByA', [(2, 12), (0, 20)]),
+    // Bases and roots 6 to 12 here and 13 to 20 at level 4: the range moves
+    // up, so no level repeats a lower level's whole range.
+    ('aSquared', [(6, 12)]),
+    ('squareRootOfC', [(6, 12)]),
   ],
   [
     ('anPlusB', [(2, 9), (1, 20), (1, 20)]),
     ('anMinusB', [(2, 9), (1, 20), (1, 20)]),
+    ('aSquared', [(13, 20)]),
+    ('squareRootOfC', [(13, 20)]),
   ],
   [
     ('aBracketNMinusB', [(2, 9), (1, 10), (-10, 10)]),
@@ -212,6 +226,8 @@ const List<List<(String, List<Range>)>> _algebraLevels = [
     ('nDividedByAPlusB', [(2, 9), (1, 10), (-10, 10)]),
     ('anPlusBNegativeN', [(2, 9), (1, 10), (-10, -1)]),
     ('anTenths', [(2, 9), (-100, 100)]),
+    ('nSquared', [(1, 12)]),
+    ('anSquared', [(2, 9), (2, 12)]),
   ],
 ];
 
@@ -408,6 +424,54 @@ String signedText(int value) => value < 0 ? '$minusSign${-value}' : '$value';
   _ => null,
 };
 
+// Squares and square roots: a² is a × a, and √c is the number at least 0
+// that times itself makes c. The param is the base a or the root r, so c is
+// always the perfect square r × r.
+
+/// a² = □, answer a × a.
+(List<String>, int)? _missingSquare(List<int> params) => switch (params) {
+  [final a] when a >= 0 => (['$a²', '=', _blank], a * a * 100),
+  _ => null,
+};
+
+/// √c = □ with c = r × r, answer r.
+(List<String>, int)? _missingSquareRoot(List<int> params) => switch (params) {
+  [final r] when r >= 0 => (['√${r * r}', '=', _blank], r * 100),
+  _ => null,
+};
+
+/// a² = n, answer a × a.
+(List<String>, int)? _aSquared(List<int> params) => switch (params) {
+  [final a] when a >= 0 => (['$a²', '=', 'n'], a * a * 100),
+  _ => null,
+};
+
+/// √c = n with c = r × r, answer r.
+(List<String>, int)? _squareRootOfC(List<int> params) => switch (params) {
+  [final r] when r >= 0 => (['√${r * r}', '=', 'n'], r * 100),
+  _ => null,
+};
+
+/// n² = c with the line "n is positive", answer n; without that line −n
+/// would solve it too.
+(List<String>, int)? _nSquared(List<int> params) => switch (params) {
+  [final n] when n >= 1 => (
+    ['n²', '=', '${n * n}', EquationProblem.positive],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// an² = c with the line "n is positive", answer n; n at least 2, so the
+/// step that divides first (n² = c ÷ a) never shows the answer.
+(List<String>, int)? _anSquared(List<int> params) => switch (params) {
+  [final a, final n] when a >= 2 && n >= 2 => (
+    ['${a}n²', '=', '${a * n * n}', EquationProblem.positive],
+    n * 100,
+  ),
+  _ => null,
+};
+
 /// Equations with one unknown, built answer first by pure family builds.
 class AlgebraSource extends ProblemSource<EquationProblem> {
   const AlgebraSource(this.levels, this.families, this._steps);
@@ -600,11 +664,17 @@ class EquationProblem extends Problem {
   final String variant;
   final List<int> params;
 
-  /// Numbers, signs and [blank], in reading order.
+  /// The last token of an equation in n² that holds only for n above zero.
+  /// The text form puts it after a comma (`n² = 49, n > 0`); screens show it
+  /// as a line under the equation ("n is positive").
+  static const positive = 'n > 0';
+
+  /// Numbers, signs and [blank], in reading order, and maybe [positive].
   final List<String> tokens;
 
   @override
-  String get question => tokens.join(' ');
+  String get question =>
+      tokens.join(' ').replaceFirst(' $positive', ', $positive');
 }
 
 /// A figure question, made by the geometry family [variant] from [params].

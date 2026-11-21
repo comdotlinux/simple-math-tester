@@ -375,6 +375,138 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  group('squares and roots', () {
+    for (final (variant, params, level, shown, spoken) in [
+      ('missingSquare', [7], 2, '7² = ￼', '7 squared = blank'),
+      ('missingSquareRoot', [10], 2, '√100 = ￼', 'square root of 100 = blank'),
+      ('aSquared', [12], 3, '12² = n', '12 squared = n'),
+      ('squareRootOfC', [20], 4, '√400 = n', 'square root of 400 = n'),
+      (
+        'nSquared',
+        [12],
+        5,
+        'n² = 144\nn is positive',
+        'n squared = 144, n is positive',
+      ),
+      (
+        'anSquared',
+        [9, 12],
+        5,
+        '9n² = 1296\nn is positive',
+        '9 × n squared = 1296, n is positive',
+      ),
+    ]) {
+      testWidgets('$variant shows ² and √ as text and reads them as words, '
+          'at 320x568 and text scale 2', (tester) async {
+        final semantics = tester.ensureSemantics();
+        final problem = source.build(
+          OperationType.algebra,
+          variant,
+          params,
+          level: level,
+        )!;
+        await launch(
+          tester,
+          size: const Size(320, 568),
+          scale: 2,
+          problem: problem,
+        );
+        final text = tester
+            .widgetList<RichText>(
+              find.descendant(
+                of: find.byKey(questionOnProblemsPageKey),
+                matching: find.byType(RichText),
+              ),
+            )
+            .map((widget) => widget.text.toPlainText())
+            .single;
+        expect(text, shown);
+        expect(text, isNot(contains('^')));
+        expect(find.bySemanticsLabel('Math question: $spoken'), findsOneWidget);
+        expectNoGlyph(tester);
+        expect(tester.takeException(), isNull);
+        semantics.dispose();
+      });
+    }
+
+    final positive = source.build(OperationType.algebra, 'nSquared', [
+      7,
+    ], level: 5)!;
+
+    testWidgets('the condition line is in the pinned band', (tester) async {
+      // Text scale 1, as for the band above: at 2 the docked answer strip
+      // itself overflows after a wrong answer, whatever the question.
+      final model = await launch(
+        tester,
+        size: const Size(320, 568),
+        problem: positive,
+      );
+      model.setDraftInput('6');
+      model.submitAnswer();
+      await tester.pumpAndSettle();
+      final pinned = find.byKey(pinnedQuestionKey);
+      for (var i = 0; i < 20 && pinned.evaluate().isEmpty; i++) {
+        await tester.drag(
+          find.byType(Scrollable).first,
+          const Offset(0, -100),
+          warnIfMissed: false,
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(
+        tester
+            .widget<RichText>(
+              find.descendant(of: pinned, matching: find.byType(RichText)),
+            )
+            .text
+            .toPlainText(),
+        'n² = 49\nn is positive',
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final (name, size, layout) in [
+      ('card', const Size(412, 900), LayoutMode.comfortable),
+      ('table row', const Size(1000, 900), LayoutMode.comfortable),
+      ('compact row', const Size(412, 900), LayoutMode.compact),
+    ]) {
+      testWidgets('a history $name shows and reads the condition line', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        final model = await launch(
+          tester,
+          size: size,
+          layout: layout,
+          problem: positive,
+          attempts: [
+            Attempt(
+              positive,
+              firstAnswer: 7,
+              elapsedMs: 4000,
+              answeredAt: DateTime(2026, 11, 21, 9),
+            ),
+          ],
+        );
+        model.setCurrentPage(1);
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byKey(historyRowKey(0)),
+            matching: find.textContaining('n² = 49\nn is positive'),
+          ),
+          findsWidgets,
+        );
+        expect(
+          find.bySemanticsLabel(RegExp('n squared = 49, n is positive')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+        semantics.dispose();
+      });
+    }
+  });
+
   group('selection toggles', () {
     testWidgets('six wrap to two rows of three at 320 wide, text scale 2', (
       tester,
