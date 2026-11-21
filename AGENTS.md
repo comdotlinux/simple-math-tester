@@ -272,6 +272,10 @@ Execute `omx setup` to install all components. Execute `omx doctor` to verify in
 
 # Simple Math Tester: project workflow
 
+## Picking up work
+
+Run the `/smt` skill (`.claude/skills/smt/SKILL.md`) at the start of a session: it holds the code map, the build and test commands, what each workflow does, the release steps and the start-of-session checklist. Every feature and every bug goes through the board below.
+
 ## How work is tracked
 
 Work is planned on the GitHub Projects board **SimpleMatchTester**
