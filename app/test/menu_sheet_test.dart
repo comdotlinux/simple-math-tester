@@ -169,7 +169,12 @@ void main() {
     expect(model.current, question);
     expect(model.practising, isTrue);
 
-    await tester.drag(sheet, const Offset(0, 400));
+    // One slow drag: the list scrolls back to its top, then the sheet closes.
+    await tester.timedDrag(
+      sheet,
+      const Offset(0, 500),
+      const Duration(milliseconds: 600),
+    );
     await tester.pumpAndSettle();
     await tap(tester, find.byKey(endPracticeButtonKey));
     for (final (kind, selected) in [

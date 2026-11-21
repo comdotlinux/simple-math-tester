@@ -68,7 +68,13 @@ void settingsJourneys() {
           ),
         );
         expect(modelOf(tester).practising, isTrue);
-        await tester.drag(sheet, Offset(0, tester.getSize(sheet).height));
+        // A finger's pace: the list scrolls back to its top, then the sheet
+        // follows the finger down and closes.
+        await tester.timedDrag(
+          sheet,
+          Offset(0, tester.getSize(sheet).height),
+          const Duration(milliseconds: 600),
+        );
         await tester.pumpAndSettle();
         expect(sheet, findsNothing);
         await pressEnd(tester);
