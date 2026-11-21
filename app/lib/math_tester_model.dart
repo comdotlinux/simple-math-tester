@@ -110,6 +110,12 @@ class MathTesterModel extends ChangeNotifier {
   late DateTime _shownAt;
   late bool _checked;
   late int _revealed;
+  late bool _hintOpened;
+  late bool _answerShown;
+
+  /// The current question's attempt once recorded, so hint use after the
+  /// first check reaches it too.
+  Attempt? _attempt;
   String _draftInput = '';
   InputProblem? _inputProblem;
   bool? _answerCorrect;
@@ -132,6 +138,11 @@ class MathTesterModel extends ChangeNotifier {
   List<SolutionStep> get steps => _steps;
   int get revealedSteps => _revealed;
   bool get canRevealStep => _nextRevealed(HintEvent.reveal) > _revealed;
+
+  /// Whether the player opened the current question's hint, and whether its
+  /// last step, the answer, showed. Also on the question's [Attempt].
+  bool get hintOpened => _hintOpened;
+  bool get answerShown => _answerShown;
 
   /// Replaced, never mutated, so `context.select` sees every change.
   List<Attempt> get history => _progress.history;
@@ -549,11 +560,29 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The "Hint" and "Next step" controls.
+  /// "Hint" and "Show a hint": the hint opens with at least its first step.
+  void openHint() {
+    if (inSprint) return;
+    if (_revealed == 0) _revealed = _nextRevealed(HintEvent.reveal);
+    _noteHints();
+    notifyListeners();
+  }
+
+  /// The hint's "Next step" and "Show the answer" buttons.
   void revealStep() {
     if (inSprint || !canRevealStep) return;
     _revealed = _nextRevealed(HintEvent.reveal);
+    _answerShown = _revealed == _steps.length;
+    _noteHints();
     notifyListeners();
+  }
+
+  void _noteHints() {
+    _hintOpened = true;
+    if (_attempt case final old?) {
+      _attempt = old.withHints(hintOpened: true, answerShown: _answerShown);
+      _progress = _progress.withAttemptReplaced(old, _attempt!);
+    }
   }
 
   /// Refuses to deselect the last selected operation. The problem on screen
@@ -711,6 +740,9 @@ class MathTesterModel extends ChangeNotifier {
     _shownAt = _clock();
     _checked = false;
     _revealed = 0;
+    _hintOpened = false;
+    _answerShown = false;
+    _attempt = null;
   }
 
   int _nextRevealed(HintEvent event) => nextRevealed(
@@ -733,9 +765,11 @@ class MathTesterModel extends ChangeNotifier {
       elapsedMs: now.difference(_shownAt).inMilliseconds,
       at: now,
       sprint: inSprint,
+      hintOpened: _hintOpened,
     );
     _checked = true;
     if (attempt == null) return null;
+    _attempt = attempt;
     if (!inSprint) _lastSprint = null;
     final kind = attempt.problem.kind;
     final before = game;

@@ -10,7 +10,13 @@ const noResultsOnResultsPageKey = Key('no-results-on-results-page');
 const questionOnProblemsPageKey = Key('question-on-problems-page');
 const checkAnswerButtonKey = Key('check-answer-button');
 const nextQuestionButtonKey = Key('next-question-button');
+// The hint: the page's Hint (or Show a hint) and Try again buttons; the
+// modal ([solutionStepsKey]) with its Next step or Show the answer button
+// and its Close button.
+const hintButtonKey = Key('hint-button');
+const tryAgainButtonKey = Key('try-again-button');
 const revealStepButtonKey = Key('reveal-step-button');
+const hintCloseKey = Key('hint-close');
 const settingsButtonKey = Key('settings-button');
 const settingsSheetKey = Key('settings-sheet');
 const currentTierNoteKey = Key('current-tier-note');

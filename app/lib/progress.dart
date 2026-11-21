@@ -180,6 +180,14 @@ class Progress {
   Progress withAttempt(Attempt attempt) =>
       _copy(entries: [..._entries, attempt]);
 
+  /// [attempt] in the place of [old], such as the current question's attempt
+  /// once its hint opened after the first check.
+  Progress withAttemptReplaced(Attempt old, Attempt attempt) => _copy(
+    entries: [
+      for (final entry in _entries) identical(entry, old) ? attempt : entry,
+    ],
+  );
+
   /// A kind outside [arithmeticKinds] switched on counts as seen.
   Progress withSelectedOperations(Set<OperationType> selected) => _copy(
     selected: selected,

@@ -31,7 +31,8 @@ void gameLoopJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
-      await tapKey(tester, revealStepButtonKey);
+      await tapKey(tester, hintButtonKey);
+      await tapKey(tester, hintCloseKey);
 
       await submit(tester, modelOf(tester).current.result);
 

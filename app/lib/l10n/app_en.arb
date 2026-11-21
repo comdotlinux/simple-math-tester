@@ -547,15 +547,31 @@
   },
   "workItOut": "Let’s work it out",
   "@workItOut": {
-    "description": "Heading of the hint card with solution steps, friendly."
+    "description": "Heading of the hint window with solution steps, friendly."
   },
   "hint": "Hint",
   "@hint": {
-    "description": "Button that shows the first solution step. Very short."
+    "description": "Button that opens the hint window with the first solution step. Very short."
   },
   "nextStep": "Next step",
   "@nextStep": {
-    "description": "Button that shows the next solution step. Short."
+    "description": "Button in the hint window that shows the next solution step. Short."
+  },
+  "tryAgain": "Try again",
+  "@tryAgain": {
+    "description": "After a wrong answer: the main button, which puts the cursor back in the answer field for another try. Short."
+  },
+  "showHint": "Show a hint",
+  "@showHint": {
+    "description": "After a wrong answer: the second button, which opens the hint window with the solution steps. Short."
+  },
+  "showAnswer": "Show the answer",
+  "@showAnswer": {
+    "description": "Button in the hint window that shows the last solution step, which states the answer. Short."
+  },
+  "hintAnswerAfterCheck": "Check an answer first. Then you can see the answer.",
+  "@hintAnswerAfterCheck": {
+    "description": "Note in the hint window, for children: the last step, which states the answer, opens only after the child has checked an answer."
   },
   "tierPickerTitle": "How hard should it start?",
   "@tierPickerTitle": {

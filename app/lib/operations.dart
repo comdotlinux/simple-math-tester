@@ -717,7 +717,24 @@ class Attempt {
     this.hintsUsed = 0,
     this.sprint = false,
     this._answerHundredths,
+    this.hintOpened = false,
+    this.answerShown = false,
   });
+
+  /// This attempt with the hint use of its question so far, which can grow
+  /// after the first check.
+  Attempt withHints({required bool hintOpened, required bool answerShown}) =>
+      Attempt(
+        problem,
+        firstAnswer: firstAnswer,
+        elapsedMs: elapsedMs,
+        answeredAt: answeredAt,
+        hintsUsed: hintsUsed,
+        sprint: sprint,
+        answerHundredths: _answerHundredths,
+        hintOpened: hintOpened,
+        answerShown: answerShown,
+      );
 
   final Problem problem;
 
@@ -739,6 +756,11 @@ class Attempt {
   final DateTime answeredAt;
   final int hintsUsed;
   final bool sprint;
+
+  /// Whether the player opened the question's hint, and whether its last
+  /// step, the answer, showed; in memory only, not saved yet.
+  final bool hintOpened;
+  final bool answerShown;
 
   bool get skipped => firstAnswer == null;
 

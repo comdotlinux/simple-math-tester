@@ -165,12 +165,19 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a wrong answer opens the first hint', (tester) async {
+  testWidgets('after a wrong answer, Show a hint opens the first step', (
+    tester,
+  ) async {
     final model = await launch(tester);
     model.setDraftInput('15');
     model.submitAnswer();
     await tester.pumpAndSettle();
     expect(model.answerCorrect, isFalse);
+    expect(find.byKey(hintFigureKey), findsNothing);
+    await tester.ensureVisible(find.byKey(hintButtonKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(hintButtonKey));
+    await tester.pumpAndSettle();
     expect(
       find.text(
         'We need the distance all the way around the shape. This is called '

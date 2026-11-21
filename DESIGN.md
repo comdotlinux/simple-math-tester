@@ -117,7 +117,7 @@ A new problem is drawn after a reload.
 (`app/lib/slab.dart`) is the one shared widget: the hard slab under a card or
 button. Adaptive navigation shell, game-style header (flame, goal ring, combo, XP
 bar), question card with an operation band, a row of operation toggles (two rows when they do not fit),
-answer field, feedback strip, hint steps, sprint card, stats chips and result rows
+answer field, feedback strip, hint modal, sprint card, stats chips and result rows
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
 The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
 then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
@@ -125,8 +125,9 @@ text field, which keeps focus and accepts digits only. Phone-height pages dock t
 field, a compact feedback strip (which carries Next after a check) and a denser pad
 together below the page, and the question card drops its band, so the question,
 answer, feedback and Next stay on screen; once the card scrolls out of view (for
-example while reading hint steps) a strip pinned over the top of the page repeats
-the question.
+example to show Try again on a short screen) a strip pinned over the top of the
+page repeats the question. Where large text would leave the strip's message a
+few words a line beside Next, Next moves under it.
 Taller pages dock the pad alone below the page; pages 700px and wider dock it at the
 top of a page-coloured column beside the practice column; when docking would squeeze the question (short screens,
 large text) it sits under the field, above the feedback, so a message never moves a
@@ -158,18 +159,32 @@ Initial: a clear question with an empty labeled answer field; before a starting 
 is chosen, a tier picker covers Practice. Invalid: inline hint, no submission.
 The first valid check is the answer on record; retries are allowed and do not change
 it. Correct: encouraging confirmation, combo and XP; a correct first check pops the
-answer and the header XP counts up. Wrong: invitation to try again with the first
-hint opened and a short shake. A level-up or the reached daily goal throws one
+answer and the header XP counts up. Wrong: invitation to try again and a short
+shake, with no hint text on the page: two buttons under the answer, Try again
+(the main one; it puts the focus back in the field with the answer selected)
+and Show a hint. A level-up or the reached daily goal throws one
 confetti burst. Motion never blocks typing and never loops. Haptics: a light tap per
 pad key, stronger on correct, wrong and a milestone, all behind the haptics switch. Sound: a short
 chime on correct, a soft low pair on wrong, an arpeggio on a level-up and a chord on
 the daily goal (one clip per check; the level-up wins), all behind the Sound switch.
-Hints are progressive: Hint shows one step, Next step
-shows another, and only the last step states the answer. Algebra and geometry
+Hints are progressive and open in the app's own modal
+(`app/lib/hint_modal.dart`), never a platform dialog: a card with the slab over
+the dimmed page, anchored to the bottom and most of the height on phones,
+centred and at most 560 wide on wider screens. The title and the question stay
+at the top while the steps scroll (they scroll too when large text leaves no
+room); Next step shows one more, and the last step, which states the answer,
+has its own button, Show the answer, offered only after a valid check. Close,
+the dimmed area, Back and Escape close it; the focus stays inside while it is
+open and returns to the answer field after; reopened, it shows the steps
+already opened. The quiet Hint button under the page opens it before a check,
+Show a hint after a wrong one. Algebra and geometry
 hints say what is asked, the idea and why, the working in small steps, then the
 answer and its check; above the newest geometry step the figure highlights the parts that
-step uses as an accent band. Next skips and records
-Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
+step uses as an accent band. A correct first check after a hint was opened
+earns half the XP (rounded up), still counts for the combo, the daily goal
+and the streak, and leaves the level counters as they were; a hint opened
+after the first check changes nothing, because only the first check counts.
+Next skips and records Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
 check moves to the next problem; the result card shows score beside the personal
 best. Results: useful empty state, then correct/incorrect/skipped rows.
 No data-loading placeholders: computation and history are local. If progress cannot

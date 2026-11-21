@@ -95,6 +95,7 @@ Attempt? historyEntry({
   required DateTime at,
   bool sprint = false,
   int? answerHundredths,
+  bool hintOpened = false,
 }) => alreadyChecked
     ? null
     : Attempt(
@@ -105,6 +106,7 @@ Attempt? historyEntry({
         elapsedMs: elapsedMs,
         answeredAt: at,
         sprint: sprint,
+        hintOpened: hintOpened,
       );
 
 const dailyGoal = 10;
