@@ -952,4 +952,76 @@ void main() {
       }
     });
   });
+
+  group('Start and End', () {
+    MathTesterModel practice({Set<OperationType>? kinds}) {
+      final model = MathTesterModel(
+        initialProblem: addition,
+        random: Random(1),
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: kinds ?? arithmeticKinds,
+        ),
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    test('the model opens before Start; Start needs a tier', () {
+      expect(practice().practising, isFalse);
+      final untiered = MathTesterModel();
+      addTearDown(untiered.dispose);
+      untiered.startPractice();
+      expect(untiered.practising, isFalse);
+    });
+
+    test('Start keeps a question of a selected kind and draws again when '
+        'its kind was switched off', () {
+      final kept = practice()..startPractice();
+      expect(kept.current, same(addition));
+
+      final redrawn = practice()
+        ..toggleOperation(OperationType.plus)
+        ..startPractice();
+      expect(redrawn.current.kind, isNot(OperationType.plus));
+      expect(redrawn.history, isEmpty);
+    });
+
+    test('a sprint starts only before Start', () {
+      final model = practice()..startPractice();
+      model.startSprint();
+      expect(model.inSprint, isFalse);
+      model.endPractice();
+      model.startSprint();
+      expect(model.inSprint, isTrue);
+      model.endSprint();
+      expect(model.practising, isFalse);
+      expect(model.lastRound, isNull);
+    });
+
+    test('a hint opened after the first check counts in the summary', () {
+      final model = practice()..startPractice();
+      model.setDraftInput('4');
+      model.submitAnswer();
+      model.openHint();
+      model.endPractice();
+      expect(model.lastRound!.hintsOpened, 1);
+      expect(model.lastRound!.answered, 1);
+      expect(model.lastRound!.correct, 0);
+    });
+
+    test('a second round counts only its own answers', () {
+      final model = practice()..startPractice();
+      model.setDraftInput('5');
+      model.submitAnswer();
+      model.endPractice();
+      model.startPractice();
+      model.generateNextProblem();
+      model.endPractice();
+      expect(model.lastRound!.attempts, hasLength(1));
+      expect(model.lastRound!.skipped, 1);
+      expect(model.lastRound!.xp, 0);
+      expect(model.history, hasLength(2));
+    });
+  });
 }
