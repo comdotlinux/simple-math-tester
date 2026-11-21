@@ -47,7 +47,12 @@
     "halvesRectanglePerimeter",
     "halvesRectangleArea",
     "circleCircumference",
-    "circleArea"
+    "circleArea",
+    "verticallyOppositeAngles",
+    "anglesAroundPoint",
+    "pythagorasHypotenuse",
+    "pythagorasLeg",
+    "rectangleDiagonal"
   ],
   "locales": ["en", "de", "pl", "hi", "mr", "te", "ta", "ml", "fr", "ro", "uk", "pt", "pt_PT", "pa"]
 }

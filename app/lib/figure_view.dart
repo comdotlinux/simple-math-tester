@@ -111,6 +111,11 @@ class FigurePainter extends CustomPainter {
     } else {
       outline.addPolygon(layout.vertices, true);
     }
+    if (layout.diagonal case (final from, final to)) {
+      outline
+        ..moveTo(from.dx, from.dy)
+        ..lineTo(to.dx, to.dy);
+    }
     if (layout.shaded) {
       canvas.drawPath(outline, Paint()..color = colors.shade);
     }

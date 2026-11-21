@@ -57,6 +57,8 @@ FigureLayout redrawn(
   String? pi,
   bool keepPi = true,
   String? total,
+  (Offset, Offset)? diagonal,
+  bool keepDiagonal = true,
 }) => FigureLayout(
   vertices: drawn.vertices,
   labels: labels ?? drawn.labels,
@@ -69,6 +71,7 @@ FigureLayout redrawn(
   circle: drawn.circle,
   total: total ?? drawn.total,
   pi: keepPi ? pi ?? drawn.pi : null,
+  diagonal: keepDiagonal ? diagonal ?? drawn.diagonal : null,
 );
 
 /// [figure] with some parts replaced, as a lying generator would build it.
@@ -78,6 +81,7 @@ Figure copy(
   List<SideLabel>? labels,
   List<AngleLabel>? angles,
   int? total,
+  bool? diagonal,
 }) => Figure(
   shape: figure.shape,
   vertices: vertices ?? figure.vertices,
@@ -88,6 +92,7 @@ Figure copy(
   centre: figure.centre,
   total: total ?? figure.total,
   pi: figure.pi,
+  diagonal: diagonal ?? figure.diagonal,
 );
 
 /// The value of a calculation such as "8 × 6 − 3 × 4", in exact
@@ -193,12 +198,17 @@ void main() {
       'halvesRectangleArea': 324,
       'circleCircumference': 20,
       'circleArea': 10,
+      'verticallyOppositeAngles': 282,
+      'anglesAroundPoint': 496,
+      'pythagorasHypotenuse': 12,
+      'pythagorasLeg': 12,
+      'rectangleDiagonal': 11,
     });
     expect(count(1), 276);
     expect(count(2), 84);
     expect(count(3), 240);
-    expect(count(4), 7593);
-    expect(count(5), 1568);
+    expect(count(4), 8371);
+    expect(count(5), 1603);
     expect(
       GeometryFamily.values.map((family) => family.level).reduce(max),
       maxGeometryLevel,
@@ -365,6 +375,78 @@ void main() {
     expect(GeometryFamily.circleArea.build([3]).answer, 2826);
   });
 
+  test('Pythagoras: the six whole-number triples with sides up to 20, '
+      'both leg orders; the diagonal with the same sides but 5 by 12', () {
+    const triples = [
+      (3, 4, 5),
+      (6, 8, 10),
+      (5, 12, 13),
+      (9, 12, 15),
+      (8, 15, 17),
+      (12, 16, 20),
+    ];
+    final legs = {
+      for (final (a, b, _) in triples) (a, b),
+      for (final (a, b, _) in triples) (b, a),
+    };
+    int longest(int a, int b) =>
+        triples.firstWhere((t) => {t.$1, t.$2}.containsAll({a, b})).$3;
+    for (final family in [
+      GeometryFamily.pythagorasHypotenuse,
+      GeometryFamily.pythagorasLeg,
+      GeometryFamily.rectangleDiagonal,
+    ]) {
+      final space = {for (final [a, b] in family.space) (a, b)};
+      expect(space, hasLength(family.space.length));
+      expect(
+        space,
+        family == GeometryFamily.rectangleDiagonal
+            ? legs.difference({(5, 12)})
+            : legs,
+      );
+      for (final [a, b] in family.space) {
+        final c = longest(a, b);
+        // Integer arithmetic only: a whole-number right triangle.
+        expect(a * a + b * b, c * c);
+        expect(family.build([a, b]).answer, switch (family) {
+          GeometryFamily.pythagorasLeg => b * 100,
+          _ => c * 100,
+        });
+      }
+    }
+  });
+
+  test('crossing lines: the given angle 20° to 160°, the asked one '
+      'opposite (equal) or a neighbour (180° minus)', () {
+    final space = GeometryFamily.verticallyOppositeAngles.space;
+    expect(space.map((p) => p[0]).toSet(), {for (var a = 20; a <= 160; a++) a});
+    for (final [a, neighbour] in space) {
+      final (:figure, :answer) = GeometryFamily.verticallyOppositeAngles.build([
+        a,
+        neighbour,
+      ]);
+      expect(figure.angles.first.degrees, a);
+      expect(answer, (neighbour == 1 ? 180 - a : a) * 100);
+    }
+  });
+
+  test('angles around a point: three angles 20° to 170° in steps of 5°, '
+      'adding up to 360°', () {
+    for (final params in GeometryFamily.anglesAroundPoint.space) {
+      final (:figure, :answer) = GeometryFamily.anglesAroundPoint.build(params);
+      final angles = [...params, answer ~/ 100];
+      expect(answer % 500, 0, reason: '$params');
+      expect(angles, hasLength(3));
+      expect(angles.reduce((a, b) => a + b), 360);
+      expect(
+        angles.every((a) => a >= 20 && a <= 170 && a % 5 == 0),
+        isTrue,
+        reason: '$params',
+      );
+      expect(figure.angles.last.degrees, isNull);
+    }
+  });
+
   test('build rejects parameters outside the space', () {
     for (final (family, params) in [
       (GeometryFamily.squarePerimeter, [0]),
@@ -398,6 +480,19 @@ void main() {
       (GeometryFamily.circleCircumference, [21]),
       (GeometryFamily.circleArea, [11]),
       (GeometryFamily.circleArea, [5, 5]),
+      (GeometryFamily.pythagorasHypotenuse, [3, 5]),
+      (GeometryFamily.pythagorasHypotenuse, [4, 4]),
+      (GeometryFamily.pythagorasLeg, [15, 20]),
+      (GeometryFamily.pythagorasLeg, [3]),
+      (GeometryFamily.rectangleDiagonal, [5, 12]),
+      (GeometryFamily.rectangleDiagonal, [7, 24]),
+      (GeometryFamily.verticallyOppositeAngles, [19, 0]),
+      (GeometryFamily.verticallyOppositeAngles, [50, 2]),
+      (GeometryFamily.verticallyOppositeAngles, [161, 1]),
+      (GeometryFamily.anglesAroundPoint, [180, 90]),
+      (GeometryFamily.anglesAroundPoint, [100, 101]),
+      (GeometryFamily.anglesAroundPoint, [15, 175]),
+      (GeometryFamily.anglesAroundPoint, [90, 90, 90]),
     ]) {
       expect(
         () => family.build(params),
@@ -447,6 +542,19 @@ void main() {
     // With π = 3.14: diameter 6 gives 18.84, radius 5 gives 78.5.
     solves(GeometryFamily.circleCircumference, [6], 1884);
     solves(GeometryFamily.circleArea, [5], 7850);
+    // Legs 3 and 4: 9 + 16 = 25 = 5 × 5. Leg 12 and longest side 13:
+    // 169 − 144 = 25, so the other leg is 5. A 6 by 8 rectangle has a
+    // diagonal of 10 (36 + 64 = 100).
+    solves(GeometryFamily.pythagorasHypotenuse, [3, 4], 500);
+    solves(GeometryFamily.pythagorasHypotenuse, [15, 8], 1700);
+    solves(GeometryFamily.pythagorasLeg, [12, 5], 500);
+    solves(GeometryFamily.pythagorasLeg, [16, 12], 1200);
+    solves(GeometryFamily.rectangleDiagonal, [6, 8], 1000);
+    // Crossing lines with 50°: the opposite angle is 50, a neighbour 130.
+    solves(GeometryFamily.verticallyOppositeAngles, [50, 0], 5000);
+    solves(GeometryFamily.verticallyOppositeAngles, [50, 1], 13000);
+    // Around a point with 100° and 150°: 360 − 250 = 110.
+    solves(GeometryFamily.anglesAroundPoint, [100, 150], 11000);
     expect(parseHundredths('2.5'), 250);
     expect(parseHundredths('12'), 1200);
     expect(parseHundredths('?'), isNull);
@@ -526,6 +634,11 @@ void main() {
             figure.shape == FigureShape.circle) {
           continue;
         }
+        // Lines crossing at 90° make four equal angles.
+        if (family == GeometryFamily.verticallyOppositeAngles &&
+            params[0] == 90) {
+          continue;
+        }
         final Figure moved;
         if (figure.labels.isEmpty) {
           final angles = [...figure.angles];
@@ -589,10 +702,19 @@ void main() {
         for (final stretch in [const Offset(1.2, 1), const Offset(1, 1.2)]) {
           // A ray nearly square to the line turns by less than a degree:
           // no drawn angle changes by a whole degree.
-          if (family == GeometryFamily.straightAngle) {
-            final a = params[0] * pi / 180;
-            final turned = atan2(sin(a) * stretch.dy, cos(a) * stretch.dx);
-            if ((turned - a).abs() * 180 / pi < 1) continue;
+          if (layout(figure).rays) {
+            double turn(Offset v) {
+              final d =
+                  atan2(v.dy * stretch.dy, v.dx * stretch.dx) -
+                  atan2(v.dy, v.dx);
+              return (d + 3 * pi) % (2 * pi) - pi;
+            }
+
+            if (figure.vertices
+                .skip(1)
+                .every((v) => turn(v).abs() * 180 / pi < 1)) {
+              continue;
+            }
           }
           final stretched = copy(
             figure,
@@ -810,6 +932,125 @@ void main() {
         }
       }
     });
+
+    test('the diagonal removed or drawn along a side', () {
+      for (final params in GeometryFamily.rectangleDiagonal.space) {
+        final (:figure, :answer) = GeometryFamily.rectangleDiagonal.build(
+          params,
+        );
+        final drawn = layout(figure);
+        final corners = drawn.vertices;
+        for (final mutant in [
+          redrawn(drawn, keepDiagonal: false),
+          layout(copy(figure, diagonal: false)),
+          for (var i = 0; i < 4; i++)
+            redrawn(drawn, diagonal: (corners[i], corners[(i + 1) % 4])),
+        ]) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params ${mutant.diagonal}',
+          );
+        }
+      }
+    });
+
+    test('the ? moved to another side or angle', () {
+      for (final family in [
+        GeometryFamily.pythagorasHypotenuse,
+        GeometryFamily.pythagorasLeg,
+        GeometryFamily.rectangleDiagonal,
+        GeometryFamily.verticallyOppositeAngles,
+        GeometryFamily.anglesAroundPoint,
+      ]) {
+        for (final params in family.space) {
+          final (:figure, :answer) = family.build(params);
+          final mutants = <FigureLayout>[];
+          if (figure.diagonal) {
+            // The ? on a side, that side's number on the diagonal.
+            final drawn = layout(figure);
+            final asked = drawn.labels.indexWhere((l) => l.text == '?');
+            for (var i = 0; i < drawn.labels.length; i++) {
+              if (i == asked) continue;
+              final labels = [...drawn.labels];
+              labels[i] = PlacedLabel(labels[i].text, drawn.labels[asked].box);
+              labels[asked] = PlacedLabel('?', drawn.labels[i].box);
+              mutants.add(redrawn(drawn, labels: labels));
+            }
+          } else if (figure.labels.isNotEmpty) {
+            // The ? and another side's number swap sides.
+            final asked = figure.labels.indexWhere((l) => l.hundredths == null);
+            for (var i = 0; i < figure.labels.length; i++) {
+              if (i == asked) continue;
+              final labels = [...figure.labels];
+              labels[i] = SideLabel(
+                figure.labels[asked].edge,
+                labels[i].hundredths,
+              );
+              labels[asked] = SideLabel(figure.labels[i].edge, null);
+              mutants.add(layout(copy(figure, labels: labels)));
+            }
+          } else {
+            final count = figure.vertices.length;
+            final asked = figure.angles.indexWhere((a) => a.degrees == null);
+            for (var corner = 1; corner < count; corner++) {
+              if (corner == figure.angles[asked].corner) continue;
+              // Onto a labelled angle, that angle's number takes the ?'s
+              // place; equal numbers there change nothing a child sees.
+              final other = figure.angles.indexWhere((a) => a.corner == corner);
+              final angles = [...figure.angles];
+              angles[asked] = AngleLabel(corner, null);
+              if (other >= 0) {
+                final value = figure.angles[other].degrees!;
+                if (value * 100 == answer) continue;
+                angles[other] = AngleLabel(figure.angles[asked].corner, value);
+              } else {
+                // Both neighbours of the given angle are equal, and at 90°
+                // all four angles are.
+                final given = figure.angles.firstWhere(
+                  (a) => a != figure.angles[asked],
+                );
+                final a = given.degrees!;
+                final same = (corner - given.corner) % 4 == 2 ? a : 180 - a;
+                if (same * 100 == answer) continue;
+              }
+              mutants.add(layout(copy(figure, angles: angles)));
+            }
+          }
+          for (final mutant in mutants) {
+            mustFail(
+              () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+              '$family $params',
+            );
+          }
+        }
+      }
+    });
+
+    test('a ray turned by 10° with its label kept', () {
+      for (final (family, params) in every) {
+        final (:figure, :answer) = family.build(params);
+        if (!layout(figure).rays) continue;
+        for (var ray = 1; ray < figure.vertices.length; ray++) {
+          final v = figure.vertices[ray];
+          const by = 10 * pi / 180;
+          final vertices = [...figure.vertices];
+          // Counterclockwise on screen, where y points down.
+          vertices[ray] = Offset(
+            v.dx * cos(by) + v.dy * sin(by),
+            -v.dx * sin(by) + v.dy * cos(by),
+          );
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              layout(copy(figure, vertices: vertices)),
+              answer,
+            ),
+            '$family $params ray $ray',
+          );
+        }
+      }
+    });
   });
 
   test('labels are at least 12 px, inside the canvas, apart from each other '
@@ -871,6 +1112,32 @@ void main() {
               for (var t = 0.0; t <= 1; t += 1 / 64) {
                 if (inner.contains(Offset.lerp(a, b, t)!)) {
                   fail('$where: ${label.text} covers the outline');
+                }
+              }
+            }
+            // A diagonal's ? stands on its middle like a textbook label and
+            // leaves at least 16 px of it showing at each end; every other
+            // label stays off it.
+            if (drawn.diagonal case (final a, final b)) {
+              final middle = (a + b) / 2;
+              if (label.text == '?' &&
+                  (label.box.center - middle).distance < .5) {
+                for (final end in [a, b]) {
+                  var t = 0.0;
+                  while (label.box.contains(Offset.lerp(middle, end, t)!)) {
+                    t += 1 / 256;
+                  }
+                  expect(
+                    (1 - t) * (end - middle).distance,
+                    greaterThanOrEqualTo(16),
+                    reason: '$where: the ? hides the diagonal',
+                  );
+                }
+              } else {
+                for (var t = 0.0; t <= 1; t += 1 / 64) {
+                  if (inner.contains(Offset.lerp(a, b, t)!)) {
+                    fail('$where: ${label.text} covers the diagonal');
+                  }
                 }
               }
             }
@@ -973,6 +1240,7 @@ void main() {
           FigurePrompt.sideFromArea => 'Side?',
           FigurePrompt.angle => 'Angle?',
           FigurePrompt.circumference => 'Circumference? Use π = 3.14.',
+          FigurePrompt.length => 'Length?',
         }),
         reason: sentence,
       );
@@ -1035,6 +1303,30 @@ void main() {
       sentence(GeometryFamily.circleArea, [5]),
       'Circle, radius 5. Area? Use π = 3.14.',
     );
+    expect(
+      sentence(GeometryFamily.pythagorasHypotenuse, [3, 4]),
+      'Right triangle, legs 3 and 4, longest side ?. Length?',
+    );
+    expect(
+      sentence(GeometryFamily.pythagorasLeg, [12, 5]),
+      'Right triangle, legs 12 and ?, longest side 13. Length?',
+    );
+    expect(
+      sentence(GeometryFamily.rectangleDiagonal, [8, 6]),
+      'Rectangle, sides 8 and 6, diagonal ?. Length?',
+    );
+    expect(
+      sentence(GeometryFamily.verticallyOppositeAngles, [50, 0]),
+      'Two crossing lines, one angle 50°; ? is the angle opposite it. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.verticallyOppositeAngles, [50, 1]),
+      'Two crossing lines, one angle 50°; ? is the angle next to it. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.anglesAroundPoint, [100, 150]),
+      'Around a point, angles 100° and 150°. Angle?',
+    );
   });
 
   test('hints: at least two steps, every calculation right, the answer only '
@@ -1068,7 +1360,12 @@ void main() {
       // The last step's last calculation ends in the answer; for a square
       // from its area it is side × side = area, then the side.
       final last = _calculation.allMatches(steps.last).last;
-      if (family == GeometryFamily.squareSideFromArea) {
+      if (const {
+        GeometryFamily.squareSideFromArea,
+        GeometryFamily.pythagorasHypotenuse,
+        GeometryFamily.pythagorasLeg,
+        GeometryFamily.rectangleDiagonal,
+      }.contains(family)) {
         expect(last[1], '$answerText × $answerText', reason: where);
         expect(steps.last, endsWith('is $answerText.'), reason: where);
       } else {
@@ -1141,6 +1438,51 @@ void main() {
       'The area of a circle is π × radius × radius. Use π = 3.14.',
       'So 3.14 × 5 × 5 = 78.5.',
     ]);
+    const pythagoras =
+        "Pythagoras' theorem: in a right triangle, the longest side times "
+        'itself equals the two other sides times themselves, added. The '
+        'square on the longest side holds exactly as much as the squares on '
+        'the two other sides together.';
+    expect(hint(GeometryFamily.pythagorasHypotenuse, [3, 4]), [
+      pythagoras,
+      '3 × 3 = 9 and 4 × 4 = 16.',
+      'Add them: 9 + 16 = 25.',
+      'Which number times itself makes 25? 5 × 5 = 25, so the side marked ? '
+          'is 5.',
+    ]);
+    expect(hint(GeometryFamily.pythagorasLeg, [15, 8]), [
+      pythagoras,
+      '17 × 17 = 289 and 15 × 15 = 225.',
+      "Take away the other side's: 289 − 225 = 64.",
+      'Which number times itself makes 64? 8 × 8 = 64, so the side marked ? '
+          'is 8.',
+    ]);
+    expect(hint(GeometryFamily.rectangleDiagonal, [8, 6]), [
+      'The diagonal cuts the rectangle into two right triangles, and it is '
+          'their longest side.',
+      pythagoras,
+      '8 × 8 = 64 and 6 × 6 = 36.',
+      'Add them: 64 + 36 = 100.',
+      'Which number times itself makes 100? 10 × 10 = 100, so the side '
+          'marked ? is 10.',
+    ]);
+    expect(hint(GeometryFamily.verticallyOppositeAngles, [50, 0]), [
+      'Vertically opposite angles are equal: each of them and the angle '
+          'between them make a straight line, 180°.',
+      'The angle between them: 180 − 50 = 130.',
+      'So 180 − 130 = 50.',
+    ]);
+    expect(hint(GeometryFamily.verticallyOppositeAngles, [50, 1]), [
+      'Angles on a straight line add up to 180°: an angle and the one next '
+          'to it lie along one of the lines.',
+      'So 180 − 50 = 130.',
+    ]);
+    expect(hint(GeometryFamily.anglesAroundPoint, [100, 150]), [
+      'Angles around a point add up to 360°: together they make one full '
+          'turn.',
+      'Add the angles you know: 100 + 150 = 250.',
+      'So 360 − 250 = 110.',
+    ]);
   });
 
   test('a hint calculation off by one hundredth fails the recomputation', () {
@@ -1196,6 +1538,8 @@ void main() {
       (GeometryFamily.triangleAngle, [50, 60], [60, 50]),
       (GeometryFamily.circleArea, [5], [4]),
       (GeometryFamily.rectangleSideFromArea, [5, 3], [5, 4]),
+      (GeometryFamily.verticallyOppositeAngles, [50, 0], [50, 1]),
+      (GeometryFamily.rectangleDiagonal, [6, 8], [8, 6]),
     ]) {
       expect(family.build(a).figure, family.build(a).figure);
       expect(family.build(a).figure.hashCode, family.build(a).figure.hashCode);
@@ -1205,5 +1549,8 @@ void main() {
       GeometryFamily.circleArea.build([5]).figure,
       isNot(copy(GeometryFamily.circleArea.build([5]).figure, total: 1)),
     );
+    final diagonal = GeometryFamily.rectangleDiagonal.build([6, 8]).figure;
+    expect(diagonal, isNot(copy(diagonal, diagonal: false)));
+    expect(diagonal.hashCode, isNot(copy(diagonal, diagonal: false).hashCode));
   });
 }

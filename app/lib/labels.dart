@@ -66,12 +66,18 @@ String figureSentence(AppLocalizations l, Figure figure) {
   ];
   final shape = switch (figure.shape) {
     FigureShape.square => l.figureSquare(sides[0]),
+    FigureShape.rectangle when figure.diagonal => l.figureRectangleDiagonal(
+      sides[0],
+      sides[1],
+    ),
     FigureShape.rectangle => l.figureRectangle(sides[0], sides[1]),
     FigureShape.triangle when angles.isNotEmpty => l.figureTriangleAngles(
       angles[0],
       angles[1],
     ),
     FigureShape.triangle => l.figureTriangle(sides[0], sides[1], sides[2]),
+    FigureShape.rightTriangle when sides.length == 3 =>
+      l.figureRightTriangleSides(sides[0], sides[1], sides[2]),
     FigureShape.rightTriangle => l.figureRightTriangle(sides[0], sides[1]),
     FigureShape.lShape => l.figureLShape(
       sides[0],
@@ -81,6 +87,12 @@ String figureSentence(AppLocalizations l, Figure figure) {
     ),
     FigureShape.straightAngle => l.figureStraightAngle(angles[0]),
     FigureShape.rightAngle => l.figureRightAngle(angles[0]),
+    // The ? two angles on from the given one is opposite it.
+    FigureShape.crossingLines
+        when (figure.angles[1].corner - figure.angles[0].corner) % 4 == 2 =>
+      l.figureCrossingOpposite(angles[0]),
+    FigureShape.crossingLines => l.figureCrossingNeighbour(angles[0]),
+    FigureShape.aroundPoint => l.figureAroundPoint(angles[0], angles[1]),
     FigureShape.circle =>
       figure.vertices.contains(figure.centre)
           ? l.figureCircleRadius(sides[0])
@@ -103,6 +115,7 @@ String figurePromptText(AppLocalizations l, Figure figure) {
     FigurePrompt.sideFromArea => l.figureSideFromArea(number(figure.total!)),
     FigurePrompt.angle => l.figureAngle,
     FigurePrompt.circumference => l.figureCircumference,
+    FigurePrompt.length => l.figureLength,
   };
   return switch (figure.pi) {
     final pi? => '$prompt ${l.figureUsePi(number(pi))}',
