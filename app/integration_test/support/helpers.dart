@@ -198,8 +198,8 @@ Future<void> pressEnd(WidgetTester tester) =>
 bool practising(WidgetTester tester) =>
     find.byKey(endPracticeButtonKey).evaluate().isNotEmpty;
 
-/// My answers and settings wait before Start: from practice each is two
-/// taps, End and then the item.
+/// My answers waits before Start: from practice it is two taps, End and
+/// then the item.
 Future<void> openHistory(WidgetTester tester) async {
   if (practising(tester)) await pressEnd(tester);
   await tapKey(tester, myAnswersNavKey);
@@ -208,10 +208,9 @@ Future<void> openHistory(WidgetTester tester) async {
 Future<void> returnToPractice(WidgetTester tester) =>
     tapKey(tester, practiceNavKey);
 
-Future<void> openSettings(WidgetTester tester) async {
-  if (practising(tester)) await pressEnd(tester);
-  await tapKey(tester, settingsButtonKey);
-}
+/// The menu opens before Start and during practice (#179).
+Future<void> openSettings(WidgetTester tester) =>
+    tapKey(tester, settingsButtonKey);
 
 /// Closes the settings sheet with a tap on the barrier halfway between the
 /// top of the screen and the sheet, wherever the sheet ends with large text

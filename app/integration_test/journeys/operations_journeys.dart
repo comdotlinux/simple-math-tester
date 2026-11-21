@@ -156,16 +156,17 @@ void operationsJourneys() {
       expect(model.history.last.problem.kind, OperationType.geometry);
     });
 
-    testWidgets('practice hides the kinds, settings, the sprint and the '
-        'navigation; End brings them back with the summary and records '
+    testWidgets('practice hides the kinds, the sprint and the navigation and '
+        'keeps the menu; End brings them back with the summary and records '
         'nothing for the open question', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
       expect(find.byKey(questionOnProblemsPageKey), findsNothing);
       await pressStart(tester);
       expect(await answerFocused(tester), isTrue);
+      // The menu stays, so the kinds can change during practice (#179).
+      expect(find.byKey(settingsButtonKey), findsOneWidget);
       for (final key in [
-        settingsButtonKey,
         sprintButtonKey,
         startPracticeButtonKey,
         myAnswersNavKey,

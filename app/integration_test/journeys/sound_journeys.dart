@@ -68,7 +68,6 @@ void soundJourneys() {
         await openSettings(tester);
         await tapKey(tester, soundSwitchKey);
         await closeSettings(tester);
-        await pressStart(tester);
         await submit(tester, model.current.result + 1);
         expect(sounds.played, [Sound.wrong]);
         await submit(tester, model.current.result);

@@ -418,5 +418,6 @@
   "summaryKind": "{correct} of {answered} right",
   "summaryLevelUp": "You reached level {level}!",
   "summaryDone": "Done",
-  "summarySeeAnswers": "See my answers"
+  "summarySeeAnswers": "See my answers",
+  "menuKinds": "Question kinds"
 }
