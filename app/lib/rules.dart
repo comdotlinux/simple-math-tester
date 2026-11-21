@@ -343,6 +343,11 @@ int goalRingValue(GameState state, DateTime now) =>
 
 const sprintLength = Duration(seconds: 60);
 
+/// After a report was sent, the app sends no other report (question or
+/// problem) for this long. It limits honest use only: a script calling the
+/// report function directly is not stopped by it.
+const reportPause = Duration(seconds: 60);
+
 /// Clock time left in a sprint started at [start]: time in the background
 /// counts, and a clock set back never adds time.
 Duration sprintRemaining(DateTime start, DateTime now) {

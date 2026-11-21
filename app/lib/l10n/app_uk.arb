@@ -360,6 +360,7 @@
   "reportFailedQuestion": "Could not send the report. The mark is kept on this device, so it can be sent later from My answers.",
   "reportFailedProblem": "Could not send the report. Please try again later.",
   "reportTryAgain": "Try again",
+  "reportWait": "A report was just sent. The next one can be sent in {seconds, plural, =1{1 second} other{{seconds} seconds}}.",
   "reportSendProblem": "Send a problem report",
   "reportSendProblemSubtitle": "Pick what went wrong; a grown-up sends it",
   "checkNumber17": "seventeen",

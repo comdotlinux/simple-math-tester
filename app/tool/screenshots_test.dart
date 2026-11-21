@@ -587,6 +587,13 @@ void main() {
                   ? '$tag-16h-report-flag-sent'
                   : '$tag-16i-report-flag-marked',
             );
+            if (outcome == ReportOutcome.sent) {
+              await tap(endPracticeButtonKey);
+              await tap(settingsButtonKey);
+              await tap(sendProblemReportTileKey);
+              await shoot(tester, '$tag-16l-report-wait');
+              await tap(reportCloseKey);
+            }
           }
           await launch(tester, size, brightness, start: false);
           await tap(settingsButtonKey);
