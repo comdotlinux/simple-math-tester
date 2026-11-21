@@ -53,18 +53,36 @@ class _HintModalState extends State<_HintModal> {
     _toNewest();
   }
 
-  /// The newest step is the last one.
+  /// The newest step is the last one; a figure above it, which
+  /// highlights what it uses, keeps its top in view.
   void _toNewest() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || !_scroll.hasClients) return;
+      final duration = MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 200);
       final end = _scroll.position.maxScrollExtent;
-      if (MediaQuery.disableAnimationsOf(context)) {
+      if (duration == Duration.zero) {
         _scroll.jumpTo(end);
       } else {
-        _scroll.animateTo(
-          end,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
+        await _scroll.animateTo(end, duration: duration, curve: Curves.easeOut);
+      }
+      if (!mounted) return;
+      Element? figure;
+      void find(Element element) {
+        if (element.widget.key == hintFigureKey) {
+          figure = element;
+        } else {
+          element.visitChildElements(find);
+        }
+      }
+
+      context.visitChildElements(find);
+      if (figure case final figure?) {
+        await Scrollable.ensureVisible(
+          figure,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+          duration: duration,
         );
       }
     });
