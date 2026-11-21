@@ -362,5 +362,17 @@
   "checkNumber79": "seventy-nine",
   "checkNumber84": "eighty-four",
   "checkNumber93": "ninety-three",
-  "checkNumber98": "ninety-eight"
+  "checkNumber98": "ninety-eight",
+  "figureExteriorOutside": "Triangle with one side drawn longer, inside angles {a} and {b}; ? is the outside angle.",
+  "figureExteriorInside": "Triangle with one side drawn longer, inside angle {inside}, outside angle {outside}; ? is the other inside angle across from the outside angle.",
+  "figureIsoscelesTop": "Isosceles triangle (two equal sides), top angle {angle}; ? is a base angle.",
+  "figureIsoscelesBase": "Isosceles triangle (two equal sides), base angle {angle}; ? is the top angle.",
+  "figureQuadrilateral": "Quadrilateral, angles {a}, {b} and {c}.",
+  "hintIdeaExterior": "The outside angle of a triangle equals the two opposite inside angles added together. It makes a straight line, {degrees}°, with the inside angle next to it. The three inside angles also make {degrees}°.",
+  "hintIdeaIsosceles": "An isosceles triangle has two equal sides and two equal angles. The ticks mark the equal sides. Fold it in half between them, and the two bottom angles meet exactly.",
+  "hintIdeaQuadrilateral": "The four angles of a quadrilateral always add up to {degrees}°. A line between opposite corners cuts it into two triangles. Its angles are the angles of both triangles together.",
+  "hintOppositeAngles": "The inside angles opposite the outside angle are {a}° and {b}°.",
+  "hintExteriorMissing": "The outside angle {outside}° is {angle}° and the angle marked ? together.",
+  "hintIsoscelesRest": "The two equal angles share what is left: {calculation} = {rest}.",
+  "hintOtherBase": "The other angle at the bottom is also {angle}°."
 }

@@ -1123,6 +1123,11 @@ void main() {
       ('pythagorasHypotenuse', [3, 4], 5, 5),
       ('pythagorasLeg', [12, 5], 5, 5),
       ('rectangleDiagonal', [6, 8], 5, 10),
+      ('exteriorAngle', [50, 60, 0], 4, 110),
+      ('exteriorAngle', [50, 60, 1], 4, 60),
+      ('isoscelesTriangle', [40, 0], 4, 70),
+      ('isoscelesTriangle', [70, 1], 4, 40),
+      ('quadrilateralAngles', [80, 100, 70], 5, 110),
     ]) {
       test('a $variant attempt round-trips with its decimal answer', () {
         final problem = (OperationType.geometry.source as GeometrySource).build(
@@ -1176,6 +1181,21 @@ void main() {
         'four angles around a point',
         '"variant":"anglesAroundPoint","params":[90,90,90]',
         90,
+      ),
+      (
+        'a top angle that leaves half degrees',
+        '"variant":"isoscelesTriangle","params":[41,0]',
+        69.5,
+      ),
+      (
+        'quadrilateral angles off the 10° steps',
+        '"variant":"quadrilateralAngles","params":[85,95,90]',
+        90,
+      ),
+      (
+        'an outside angle over 160°',
+        '"variant":"exteriorAngle","params":[100,70,0]',
+        170,
       ),
       (
         'params outside the family',

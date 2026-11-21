@@ -35,7 +35,7 @@ final every = [
 ];
 
 /// The figure's edges as drawn: rays from the first corner, a circle's
-/// radius or diameter, or the closed outline.
+/// radius or diameter, or the closed outline and a side drawn on.
 List<(Offset, Offset)> drawnEdges(FigureLayout drawn) {
   final corners = drawn.vertices;
   if (drawn.rays) {
@@ -45,6 +45,7 @@ List<(Offset, Offset)> drawnEdges(FigureLayout drawn) {
   return [
     for (var i = 0; i < corners.length; i++)
       (corners[i], corners[(i + 1) % corners.length]),
+    ?drawn.extension,
   ];
 }
 
@@ -59,6 +60,9 @@ FigureLayout redrawn(
   String? total,
   (Offset, Offset)? diagonal,
   bool keepDiagonal = true,
+  (Offset, Offset)? extension,
+  bool keepExtension = true,
+  List<(Offset, Offset)>? ticks,
 }) => FigureLayout(
   vertices: drawn.vertices,
   labels: labels ?? drawn.labels,
@@ -72,6 +76,8 @@ FigureLayout redrawn(
   total: total ?? drawn.total,
   pi: keepPi ? pi ?? drawn.pi : null,
   diagonal: keepDiagonal ? diagonal ?? drawn.diagonal : null,
+  extension: keepExtension ? extension ?? drawn.extension : null,
+  ticks: ticks ?? drawn.ticks,
 );
 
 /// [figure] with some parts replaced, as a lying generator would build it.
@@ -82,6 +88,8 @@ Figure copy(
   List<AngleLabel>? angles,
   int? total,
   bool? diagonal,
+  Offset? extension,
+  List<int>? ticks,
 }) => Figure(
   shape: figure.shape,
   vertices: vertices ?? figure.vertices,
@@ -93,6 +101,8 @@ Figure copy(
   total: total ?? figure.total,
   pi: figure.pi,
   diagonal: diagonal ?? figure.diagonal,
+  extension: extension ?? figure.extension,
+  ticks: ticks ?? figure.ticks,
 );
 
 /// The value of a calculation such as "8 × 6 − 3 × 4", in exact
@@ -165,6 +175,9 @@ const _ideas = {
   FigureMove.aroundPoint,
   FigureMove.pythagoras,
   FigureMove.diagonalTriangles,
+  FigureMove.exteriorAngle,
+  FigureMove.isosceles,
+  FigureMove.quadrilateral,
 };
 const _answers = {
   FigureMove.perimeterIs,
@@ -424,12 +437,15 @@ void main() {
       'pythagorasHypotenuse': 12,
       'pythagorasLeg': 12,
       'rectangleDiagonal': 11,
+      'exteriorAngle': 13502,
+      'isoscelesTriangle': 110,
+      'quadrilateralAngles': 1064,
     });
     expect(count(1), 276);
     expect(count(2), 84);
     expect(count(3), 240);
-    expect(count(4), 8371);
-    expect(count(5), 1603);
+    expect(count(4), 21983);
+    expect(count(5), 2667);
     expect(
       GeometryFamily.values.map((family) => family.level).reduce(max),
       maxGeometryLevel,
@@ -668,6 +684,103 @@ void main() {
     }
   });
 
+  test('outside angle: whole inside angles a and b, every drawn angle at '
+      'least 20°, the outside angle a + b 75° to 160°', () {
+    final space = GeometryFamily.exteriorAngle.space;
+    expect({for (final [a, b, _] in space) (a, b)}, hasLength(6751));
+    for (final [a, b, form] in space) {
+      final (:figure, :answer) = GeometryFamily.exteriorAngle.build([
+        a,
+        b,
+        form,
+      ]);
+      expect([a, b, 180 - a - b].every((angle) => angle >= 20), isTrue);
+      expect(a + b, inInclusiveRange(75, 160));
+      expect(answer, (form == 0 ? a + b : b) * 100);
+      expect(figure.extension, isNotNull);
+      expect(
+        figure.angles.where((angle) => angle.degrees == null),
+        hasLength(1),
+      );
+    }
+  });
+
+  test('isosceles: the top 32° to 140° (even, so the base angles are '
+      'whole) or a base angle 20° to 74°', () {
+    for (final [angle, form] in GeometryFamily.isoscelesTriangle.space) {
+      final (:figure, :answer) = GeometryFamily.isoscelesTriangle.build([
+        angle,
+        form,
+      ]);
+      final base = form == 0 ? (180 - angle) ~/ 2 : angle;
+      final top = 180 - 2 * base;
+      expect(base + base + top, 180);
+      expect(base, greaterThanOrEqualTo(20), reason: '$angle');
+      expect(top, inInclusiveRange(32, 140), reason: '$angle');
+      if (form == 0) expect(angle.isEven, isTrue);
+      expect(answer, (form == 0 ? base : top) * 100);
+      expect(figure.ticks, [0, 1]);
+    }
+  });
+
+  test('quadrilaterals: four angles 20° to 160° in steps of 10°, adding up '
+      'to 360°, the fourth asked', () {
+    for (final params in GeometryFamily.quadrilateralAngles.space) {
+      final (:figure, :answer) = GeometryFamily.quadrilateralAngles.build(
+        params,
+      );
+      final angles = [...params, answer ~/ 100];
+      expect(angles.reduce((a, b) => a + b), 360);
+      expect(
+        angles.every((a) => a >= 20 && a <= 160 && a % 10 == 0),
+        isTrue,
+        reason: '$params',
+      );
+      expect(figure.angles.last, const AngleLabel(3, null));
+    }
+    // With the left-out ones, every combination in steps of 10°.
+    expect(
+      GeometryFamily.quadrilateralAngles.space.length +
+          quadrilateralsLeftOut.length,
+      2255,
+    );
+  });
+
+  test('each left-out quadrilateral breaks a layout rule on the compact '
+      'card at text scale 2', () {
+    const canvas = Size(248, 150);
+    for (final code in quadrilateralsLeftOut) {
+      final [a, b, c] = [for (final unit in code.codeUnits) (unit - 95) * 10];
+      expect(
+        () => GeometryFamily.quadrilateralAngles.build([a, b, c]),
+        throwsArgumentError,
+      );
+      // Drawn as the family would draw it.
+      final figure = Figure(
+        shape: FigureShape.quadrilateral,
+        vertices: quadrilateralCorners(a, b, c),
+        labels: const [],
+        angles: [
+          AngleLabel(0, a),
+          AngleLabel(1, b),
+          AngleLabel(2, c),
+          const AngleLabel(3, null),
+        ],
+        prompt: FigurePrompt.angle,
+      );
+      final drawn = layoutFigure(figure, canvas, measures[2.0]!);
+      final edges = drawnEdges(drawn);
+      final boxes = [for (final label in drawn.labels) label.box];
+      final broken =
+          edges.any((e) => (e.$2 - e.$1).distance < 16) ||
+          [
+            for (final (i, box) in boxes.indexed)
+              for (final other in boxes.skip(i + 1)) box.overlaps(other),
+          ].contains(true);
+      expect(broken, isTrue, reason: '$code [$a, $b, $c] fits now');
+    }
+  });
+
   test('build rejects parameters outside the space', () {
     for (final (family, params) in [
       (GeometryFamily.squarePerimeter, [0]),
@@ -714,6 +827,25 @@ void main() {
       (GeometryFamily.anglesAroundPoint, [100, 101]),
       (GeometryFamily.anglesAroundPoint, [15, 175]),
       (GeometryFamily.anglesAroundPoint, [90, 90, 90]),
+      (GeometryFamily.exteriorAngle, [19, 60, 0]),
+      (GeometryFamily.exteriorAngle, [100, 61, 0]),
+      (GeometryFamily.exteriorAngle, [50, 60, 2]),
+      (GeometryFamily.exteriorAngle, [50, 60]),
+      (GeometryFamily.isoscelesTriangle, [41, 0]),
+      (GeometryFamily.isoscelesTriangle, [142, 0]),
+      (GeometryFamily.isoscelesTriangle, [18, 0]),
+      (GeometryFamily.isoscelesTriangle, [81, 1]),
+      (GeometryFamily.isoscelesTriangle, [19, 1]),
+      (GeometryFamily.isoscelesTriangle, [60, 2]),
+      (GeometryFamily.quadrilateralAngles, [85, 95, 90]),
+      (GeometryFamily.quadrilateralAngles, [170, 100, 30]),
+      (GeometryFamily.quadrilateralAngles, [20, 20, 20]),
+      (GeometryFamily.quadrilateralAngles, [100, 100]),
+      (GeometryFamily.quadrilateralAngles, [20, 30, 160]),
+      (GeometryFamily.exteriorAngle, [20, 20, 0]),
+      (GeometryFamily.exteriorAngle, [40, 34, 1]),
+      (GeometryFamily.isoscelesTriangle, [30, 0]),
+      (GeometryFamily.isoscelesTriangle, [75, 1]),
     ]) {
       expect(
         () => family.build(params),
@@ -776,6 +908,19 @@ void main() {
     solves(GeometryFamily.verticallyOppositeAngles, [50, 1], 13000);
     // Around a point with 100° and 150°: 360 − 250 = 110.
     solves(GeometryFamily.anglesAroundPoint, [100, 150], 11000);
+    // Inside angles 50° and 60°: the outside angle is 110; from the
+    // outside angle 110 and 50, the other inside angle is 60.
+    solves(GeometryFamily.exteriorAngle, [50, 60, 0], 11000);
+    solves(GeometryFamily.exteriorAngle, [50, 60, 1], 6000);
+    solves(GeometryFamily.exteriorAngle, [70, 30, 1], 3000);
+    // Isosceles with a 40° top: (180 − 40) ÷ 2 = 70; with 70° at the
+    // bottom: 180 − 140 = 40.
+    solves(GeometryFamily.isoscelesTriangle, [40, 0], 7000);
+    solves(GeometryFamily.isoscelesTriangle, [70, 1], 4000);
+    // A quadrilateral with 80°, 100° and 70°: 360 − 250 = 110; a
+    // rectangle: 90.
+    solves(GeometryFamily.quadrilateralAngles, [80, 100, 70], 11000);
+    solves(GeometryFamily.quadrilateralAngles, [90, 90, 90], 9000);
     expect(parseHundredths('2.5'), 250);
     expect(parseHundredths('12'), 1200);
     expect(parseHundredths('?'), isNull);
@@ -860,6 +1005,10 @@ void main() {
             params[0] == 90) {
           continue;
         }
+        // An isosceles triangle with a 60° angle has three equal angles.
+        if (family == GeometryFamily.isoscelesTriangle && params[0] == 60) {
+          continue;
+        }
         final Figure moved;
         if (figure.labels.isEmpty) {
           final angles = [...figure.angles];
@@ -937,12 +1086,26 @@ void main() {
               continue;
             }
           }
+          Offset stretchOf(Offset v) =>
+              Offset(v.dx * stretch.dx, v.dy * stretch.dy);
+          // A shape with angles only and every side along x or y (a
+          // rectangle drawn as a quadrilateral) keeps its angles.
+          final corners = figure.vertices;
+          if (figure.labels.isEmpty &&
+              !layout(figure).rays &&
+              [
+                for (var i = 0; i < corners.length; i++)
+                  corners[(i + 1) % corners.length] - corners[i],
+              ].every((d) => d.dx.abs() < 1e-9 || d.dy.abs() < 1e-9)) {
+            continue;
+          }
           final stretched = copy(
             figure,
-            vertices: [
-              for (final v in figure.vertices)
-                Offset(v.dx * stretch.dx, v.dy * stretch.dy),
-            ],
+            vertices: [for (final v in figure.vertices) stretchOf(v)],
+            extension: switch (figure.extension) {
+              final end? => stretchOf(end),
+              null => null,
+            },
           );
           mustFail(
             () => checkFigure(
@@ -1274,6 +1437,116 @@ void main() {
     });
   });
 
+  group('mutations of the outside angle, isosceles and quadrilateral '
+      'figures', () {
+    void mustFail(void Function() check, String why) =>
+        expect(check, throwsA(isA<OracleFailure>()), reason: why);
+
+    test('a tick mark removed or moved, or a ticked side drawn 20% longer', () {
+      for (final params in GeometryFamily.isoscelesTriangle.space) {
+        final (:figure, :answer) = GeometryFamily.isoscelesTriangle.build(
+          params,
+        );
+        final drawn = layout(figure);
+        final [c0, c1, c2] = figure.vertices;
+        final mutants = <FigureLayout>[
+          for (var i = 0; i < drawn.ticks.length; i++)
+            redrawn(drawn, ticks: [...drawn.ticks]..removeAt(i)),
+          redrawn(drawn, ticks: const []),
+          // The left side 20% longer, so the ticked sides differ.
+          layout(copy(figure, vertices: [c1 + (c0 - c1) * 1.2, c1, c2])),
+          // A tick moved onto the base: another corner becomes the top.
+          // With a 60° top all three angles are equal.
+          if (params[0] != 60)
+            for (final ticks in const [
+              [1, 2],
+              [0, 2],
+            ])
+              layout(copy(figure, ticks: ticks)),
+        ];
+        for (final mutant in mutants) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params ${mutant.ticks.length} ticks',
+          );
+        }
+      }
+    });
+
+    test('the side drawn on removed, or bent by 10°', () {
+      for (final params in GeometryFamily.exteriorAngle.space) {
+        final (:figure, :answer) = GeometryFamily.exteriorAngle.build(params);
+        final corner = figure.vertices[2];
+        final end = figure.extension! - corner;
+        final mutants = [
+          redrawn(layout(figure), keepExtension: false),
+          for (final by in const [10 * pi / 180, -10 * pi / 180])
+            layout(
+              copy(
+                figure,
+                extension:
+                    corner +
+                    Offset(
+                      end.dx * cos(by) - end.dy * sin(by),
+                      end.dx * sin(by) + end.dy * cos(by),
+                    ),
+              ),
+            ),
+        ];
+        for (final mutant in mutants) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params ${mutant.extension}',
+          );
+        }
+      }
+    });
+
+    test('the ? moved to another angle', () {
+      for (final family in [
+        GeometryFamily.exteriorAngle,
+        GeometryFamily.isoscelesTriangle,
+        GeometryFamily.quadrilateralAngles,
+      ]) {
+        for (final params in family.space) {
+          final (:figure, :answer) = family.build(params);
+          final asked = figure.angles.indexWhere((a) => a.degrees == null);
+          final from = figure.angles[asked].corner;
+          // Every corner, and the outside angle past the last one.
+          final count =
+              figure.vertices.length + (figure.extension == null ? 0 : 1);
+          for (var corner = 0; corner < count; corner++) {
+            if (corner == from) continue;
+            final angles = [...figure.angles];
+            angles[asked] = AngleLabel(corner, null);
+            final other = figure.angles.indexWhere((a) => a.corner == corner);
+            if (other >= 0) {
+              // That angle's number takes the ?'s place; equal numbers
+              // change nothing a child sees.
+              final value = figure.angles[other].degrees!;
+              if (value * 100 == answer) continue;
+              angles[other] = AngleLabel(from, value);
+            } else if (family == GeometryFamily.isoscelesTriangle) {
+              // The angle the ? lands on, from the drawing's own numbers.
+              final base = params[1] == 0 ? (180 - params[0]) ~/ 2 : params[0];
+              final there = corner == 1 ? 180 - 2 * base : base;
+              if (there * 100 == answer) continue;
+            }
+            mustFail(
+              () => checkFigure(
+                figure.shape,
+                figure.prompt,
+                layout(copy(figure, angles: angles)),
+                answer,
+              ),
+              '$family $params ? at $corner',
+            );
+          }
+        }
+      }
+    });
+  });
+
   test('labels are at least 12 px, inside the canvas, apart from each other '
       'and off every corner and edge, at text scale 1 and 2, in phone and '
       'compact sizes', () {
@@ -1329,7 +1602,7 @@ void main() {
               );
             }
             final inner = label.box.deflate(.5);
-            for (final (a, b) in edges) {
+            for (final (a, b) in [...edges, ...drawn.ticks]) {
               for (var t = 0.0; t <= 1; t += 1 / 64) {
                 if (inner.contains(Offset.lerp(a, b, t)!)) {
                   fail('$where: ${label.text} covers the outline');
@@ -1565,6 +1838,31 @@ void main() {
     expect(
       sentence(GeometryFamily.anglesAroundPoint, [100, 150]),
       'Around a point, angles 100° and 150°. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.exteriorAngle, [50, 60, 0]),
+      'Triangle with one side drawn longer, inside angles 50° and 60°; ? is '
+      'the outside angle. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.exteriorAngle, [50, 60, 1]),
+      'Triangle with one side drawn longer, inside angle 50°, outside angle '
+      '110°; ? is the other inside angle across from the outside angle. '
+      'Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.isoscelesTriangle, [40, 0]),
+      'Isosceles triangle (two equal sides), top angle 40°; ? is a base '
+      'angle. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.isoscelesTriangle, [70, 1]),
+      'Isosceles triangle (two equal sides), base angle 70°; ? is the top '
+      'angle. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.quadrilateralAngles, [80, 100, 70]),
+      'Quadrilateral, angles 80°, 100° and 70°. Angle?',
     );
   });
 
@@ -1821,6 +2119,41 @@ void main() {
       'Add the angles you know: 100 + 150 = 250.',
       '360 − 250 = 110. So the angle is 110°. Check: 100 + 150 + 110 = 360.',
     ]);
+    const exterior =
+        'The outside angle of a triangle equals the two opposite inside '
+        'angles added together. It makes a straight line, 180°, with the '
+        'inside angle next to it. The three inside angles also make 180°.';
+    expect(hint(GeometryFamily.exteriorAngle, [50, 60, 0]), [
+      'We need the size of the angle marked ?.',
+      exterior,
+      'The inside angles opposite the outside angle are 50° and 60°.',
+      '50 + 60 = 110. So the angle is 110°. Check: 110 − 50 = 60.',
+    ]);
+    expect(hint(GeometryFamily.exteriorAngle, [50, 60, 1]).skip(2), [
+      'The outside angle 110° is 50° and the angle marked ? together.',
+      '110 − 50 = 60. So the angle is 60°. Check: 50 + 60 = 110.',
+    ]);
+    expect(hint(GeometryFamily.isoscelesTriangle, [40, 0]), [
+      'We need the size of the angle marked ?.',
+      'An isosceles triangle has two equal sides and two equal angles. The '
+          'ticks mark the equal sides. Fold it in half between them, and the '
+          'two bottom angles meet exactly.',
+      'The two equal angles share what is left: 180 − 40 = 140.',
+      '140 ÷ 2 = 70. So the angle is 70°. Check: 70 + 70 + 40 = 180.',
+    ]);
+    expect(hint(GeometryFamily.isoscelesTriangle, [70, 1]).skip(2), [
+      'The other angle at the bottom is also 70°.',
+      'Take away the first angle: 180 − 70 = 110.',
+      '110 − 70 = 40. So the angle is 40°. Check: 70 + 70 + 40 = 180.',
+    ]);
+    expect(hint(GeometryFamily.quadrilateralAngles, [80, 100, 70]).skip(1), [
+      'The four angles of a quadrilateral always add up to 360°. A line '
+          'between opposite corners cuts it into two triangles. Its angles '
+          'are the angles of both triangles together.',
+      'Add the angles you know: 80 + 100 + 70 = 250.',
+      '360 − 250 = 110. So the angle is 110°. Check: 80 + 100 + 70 + 110 = '
+          '360.',
+    ]);
   });
 
   test('each hint step highlights the parts it names', () {
@@ -1862,6 +2195,15 @@ void main() {
     expect(
       parts(GeometryFamily.rectangleDiagonal, [8, 6], 1),
       const FigureParts(diagonal: true),
+    );
+    // The two ticked sides; the outside angle with the given inside one.
+    expect(
+      parts(GeometryFamily.isoscelesTriangle, [40, 0], 1),
+      const FigureParts(edges: {0, 1}),
+    );
+    expect(
+      parts(GeometryFamily.exteriorAngle, [50, 60, 1], 2),
+      const FigureParts(angles: {3, 1}),
     );
   });
 
@@ -1920,6 +2262,9 @@ void main() {
       (GeometryFamily.rectangleSideFromArea, [5, 3], [5, 4]),
       (GeometryFamily.verticallyOppositeAngles, [50, 0], [50, 1]),
       (GeometryFamily.rectangleDiagonal, [6, 8], [8, 6]),
+      (GeometryFamily.exteriorAngle, [50, 60, 0], [50, 60, 1]),
+      (GeometryFamily.isoscelesTriangle, [40, 0], [40, 1]),
+      (GeometryFamily.quadrilateralAngles, [80, 100, 70], [80, 100, 80]),
     ]) {
       expect(family.build(a).figure, family.build(a).figure);
       expect(family.build(a).figure.hashCode, family.build(a).figure.hashCode);
@@ -1932,5 +2277,9 @@ void main() {
     final diagonal = GeometryFamily.rectangleDiagonal.build([6, 8]).figure;
     expect(diagonal, isNot(copy(diagonal, diagonal: false)));
     expect(diagonal.hashCode, isNot(copy(diagonal, diagonal: false).hashCode));
+    final isosceles = GeometryFamily.isoscelesTriangle.build([40, 0]).figure;
+    expect(isosceles, isNot(copy(isosceles, ticks: [0, 2])));
+    final exterior = GeometryFamily.exteriorAngle.build([50, 60, 0]).figure;
+    expect(exterior, isNot(copy(exterior, extension: Offset.zero)));
   });
 }

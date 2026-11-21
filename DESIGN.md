@@ -29,7 +29,9 @@ shaded inside with a unit grid for the area); history and screen readers get a
 sentence that names the shape, every label and the question. Its levels 3 to 5
 ask a missing side (a `?` on the side, the perimeter or area given), a missing
 angle (an arc at every angle, a square in a right angle; also between two
-crossing lines and around a point), the area of a right triangle, an
+crossing lines, around a point, outside a triangle with one side drawn
+longer, in an isosceles triangle with ticks on its equal sides and in a
+quadrilateral), the area of a right triangle, an
 L-shape, rectangles with sides in halves, a circle's circumference or area
 with "Use π = 3.14" shown, and a side or a rectangle's diagonal by
 Pythagoras' theorem (the hint names the theorem and says why it holds); decimal answers are exact

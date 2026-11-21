@@ -175,7 +175,7 @@ class FigurePainter extends CustomPainter {
     } else {
       outline.addPolygon(layout.vertices, true);
     }
-    if (layout.diagonal case (final from, final to)) {
+    for (final (from, to) in [?layout.diagonal, ?layout.extension]) {
       outline
         ..moveTo(from.dx, from.dy)
         ..lineTo(to.dx, to.dy);
@@ -237,6 +237,9 @@ class FigurePainter extends CustomPainter {
         thinStroke,
         Paint()..color = marks.color,
       );
+    }
+    for (final (from, to) in layout.ticks) {
+      canvas.drawLine(from, to, marks);
     }
     for (final (i, mark) in layout.marks.indexed) {
       final Path path;

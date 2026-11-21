@@ -11,7 +11,7 @@ import 'hundredths.dart';
 /// lines crossing at corner 0) and [aroundPoint] (rays all the way round)
 /// are rays from corner 0 to the other corners, in turning order. A
 /// [circle] stores the drawn radius or diameter as its two corners, and its
-/// [Figure.centre].
+/// [Figure.centre]. A [quadrilateral] is any convex four-sided shape.
 enum FigureShape {
   square,
   rectangle,
@@ -23,6 +23,7 @@ enum FigureShape {
   circle,
   crossingLines,
   aroundPoint,
+  quadrilateral,
 }
 
 /// What a figure asks for, and so which language-free cue it carries: a
@@ -71,7 +72,8 @@ class SideLabel {
 }
 
 /// An angle in whole degrees, null for the asked one (`?`). On a polygon
-/// [corner] is the corner whose inside angle it is; on rays it is the
+/// [corner] is the corner whose inside angle it is, and one past the last
+/// corner the outside angle at a [Figure.extension]; on rays it is the
 /// angle from the ray to corner [corner] to the ray to the next corner
 /// (after the last ray comes the first again, see [nextRay]).
 @immutable
@@ -102,6 +104,13 @@ class AngleLabel {
 /// among rays from corner 0 to the other [count] - 1 corners.
 int nextRay(int corner, int count) => corner % (count - 1) + 1;
 
+/// The corner where two ticked [edges] of a shape with [count] corners
+/// meet: the top of an isosceles triangle.
+int tickedTop(List<int> edges, int count) {
+  final [e, f] = edges;
+  return (e + 1) % count == f ? f : e;
+}
+
 /// A figure to scale, as data: the corners in model units (one unit is
 /// one length unit of the labels), the labels, an optional unit grid and
 /// what is asked. Squares and rectangles have whole-number corners; a
@@ -120,6 +129,8 @@ class Figure {
     this.total,
     this.pi,
     this.diagonal = false,
+    this.extension,
+    this.ticks = const [],
   });
 
   final FigureShape shape;
@@ -150,6 +161,14 @@ class Figure {
   /// `?` (it is always the asked length).
   final bool diagonal;
 
+  /// The end of the side from corner 0 to the last corner, drawn on past
+  /// the last corner. The outside angle there lies between this line and
+  /// the side to the corner before the last.
+  final Offset? extension;
+
+  /// The edges that carry a tick mark across their middle: equal sides.
+  final List<int> ticks;
+
   @override
   bool operator ==(Object other) =>
       other is Figure &&
@@ -162,7 +181,9 @@ class Figure {
       other.centre == centre &&
       other.total == total &&
       other.pi == pi &&
-      other.diagonal == diagonal;
+      other.diagonal == diagonal &&
+      other.extension == extension &&
+      listEquals(other.ticks, ticks);
 
   @override
   int get hashCode => Object.hash(
@@ -176,6 +197,8 @@ class Figure {
     total,
     pi,
     diagonal,
+    extension,
+    Object.hashAll(ticks),
   );
 }
 
@@ -274,6 +297,8 @@ class FigureLayout {
     this.total,
     this.pi,
     this.diagonal,
+    this.extension,
+    this.ticks = const [],
   });
 
   /// The corners, scaled uniformly from the model, so the drawing is to
@@ -309,6 +334,12 @@ class FigureLayout {
   /// A drawn diagonal, from corner to corner; its `?` stands on its middle
   /// like a textbook label, on a patch of the card that breaks the line.
   final (Offset, Offset)? diagonal;
+
+  /// A side drawn on past a corner, from that corner to its end.
+  final (Offset, Offset)? extension;
+
+  /// Tick marks, each a short line across the middle of an edge.
+  final List<(Offset, Offset)> ticks;
 }
 
 /// The outline widths: thick is the perimeter cue.
@@ -326,12 +357,17 @@ const canvasMargin = 4.0;
 const arcRadius = 24.0;
 const arcShare = .3;
 
+/// The length of a tick mark across an edge.
+const tickLength = 12.0;
+
 /// Fits [figure] into [canvas]: one uniform scale for the whole figure, as
 /// large as fits with every label box outside its own edge and inside the
 /// canvas. [measure] gives the drawn size of a label's text; numbers are
 /// written in the language [localeName]. Rays all the way round a point
 /// have no up or down, so they are turned (in steps of 15°) to the angle
-/// that keeps their labels apart and draws them longest.
+/// that keeps their labels apart and draws them longest; so are a
+/// quadrilateral and a triangle with a side drawn on, whose labels crowd a
+/// short card.
 FigureLayout layoutFigure(
   Figure figure,
   Size canvas,
@@ -339,7 +375,9 @@ FigureLayout layoutFigure(
   String localeName = 'en',
 }) {
   if (figure.shape != FigureShape.crossingLines &&
-      figure.shape != FigureShape.aroundPoint) {
+      figure.shape != FigureShape.aroundPoint &&
+      figure.shape != FigureShape.quadrilateral &&
+      figure.extension == null) {
     return _layoutFigure(figure, canvas, measure, localeName);
   }
   FigureLayout? best;
@@ -347,15 +385,17 @@ FigureLayout layoutFigure(
   var apart = false;
   for (var step = 0; step < 24; step++) {
     final (c, s) = (cos(step * pi / 12), sin(step * pi / 12));
+    Offset turn(Offset v) => Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
     final turned = Figure(
       shape: figure.shape,
-      vertices: [
-        for (final v in figure.vertices)
-          Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c),
-      ],
+      vertices: [for (final v in figure.vertices) turn(v)],
       labels: figure.labels,
       prompt: figure.prompt,
       angles: figure.angles,
+      extension: switch (figure.extension) {
+        final end? => turn(end),
+        null => null,
+      },
     );
     final drawn = _layoutFigure(turned, canvas, measure, localeName);
     final length = (drawn.vertices[1] - drawn.vertices[0]).distance;
@@ -424,12 +464,28 @@ FigureLayout _layoutFigure(
   double reach(Size half, Offset n) =>
       half.width * n.dx.abs() + half.height * n.dy.abs();
 
+  // A tick mark stands across the middle of its edge.
+  ({Offset middle, Offset across}) tick(int edge) {
+    final (a, b) = (model[edge], model[(edge + 1) % count]);
+    final along = unit(b - a);
+    return (middle: (a + b) / 2, across: Offset(-along.dy, along.dx));
+  }
+
   // Each point is placed at s * at + shift, inside a half-size of half.
+  final dot = Size(stroke / 2, stroke / 2);
   final points = <({Offset at, Offset shift, Size half})>[
-    if (centre == null)
-      for (final v in model)
-        (at: v, shift: Offset.zero, half: Size(stroke / 2, stroke / 2))
-    else
+    if (centre == null) ...[
+      for (final v in model) (at: v, shift: Offset.zero, half: dot),
+      if (figure.extension case final end?)
+        (at: end, shift: Offset.zero, half: dot),
+      for (final edge in figure.ticks)
+        for (final side in const [-1, 1])
+          (
+            at: tick(edge).middle,
+            shift: tick(edge).across * (side * tickLength / 2),
+            half: dot,
+          ),
+    ] else
       for (final d in const [
         Offset(1, 0),
         Offset(0, 1),
@@ -510,6 +566,21 @@ FigureLayout _layoutFigure(
       points.add((
         at: o + bisector * (a - o).distance,
         shift: bisector * (stroke / 2 + labelGap + reach(half, bisector)),
+        half: half,
+      ));
+    } else if (angle.corner == count) {
+      // The outside angle at a side drawn on: on the line that halves it,
+      // far enough out that the box clears both of its lines.
+      final v = model[count - 1];
+      final (a, b) = (unit(figure.extension! - v), unit(model[count - 2] - v));
+      final halfAngle = acos((a.dx * b.dx + a.dy * b.dy).clamp(-1.0, 1.0)) / 2;
+      final clear = [
+        for (final d in [a, b])
+          reach(half, Offset(-d.dy, d.dx)) + stroke / 2 + labelGap,
+      ].reduce(max);
+      points.add((
+        at: v,
+        shift: unit(a + b) * (clear / sin(halfAngle)),
         half: half,
       ));
     } else {
@@ -604,6 +675,8 @@ FigureLayout _layoutFigure(
     for (final angle in figure.angles)
       if (rays)
         mark(model[0], model[angle.corner], model[nextRay(angle.corner, count)])
+      else if (angle.corner == count)
+        mark(model[count - 1], figure.extension!, model[count - 2])
       else
         mark(
           model[angle.corner],
@@ -647,5 +720,16 @@ FigureLayout _layoutFigure(
       null => null,
     },
     diagonal: figure.diagonal ? (place(model[0]), place(model[2])) : null,
+    extension: switch (figure.extension) {
+      final end? => (place(model[count - 1]), place(end)),
+      null => null,
+    },
+    ticks: [
+      for (final edge in figure.ticks)
+        (
+          place(tick(edge).middle) - tick(edge).across * (tickLength / 2),
+          place(tick(edge).middle) + tick(edge).across * (tickLength / 2),
+        ),
+    ],
   );
 }

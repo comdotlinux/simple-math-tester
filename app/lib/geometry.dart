@@ -25,6 +25,10 @@ typedef FigureQuestion = ({Figure figure, int answer});
 /// two of its three vertical edges, a circle its radius or diameter. A
 /// Pythagoras triangle shows two of its sides and a `?` on the third; a
 /// rectangle with a diagonal two adjacent sides and a `?` on the diagonal.
+/// A triangle with a side drawn on shows the two inside angles opposite
+/// the outside angle and that angle, one of the three a `?`; an isosceles
+/// triangle a tick on each equal side, one angle and a `?`; a
+/// quadrilateral three angles and a `?`.
 enum GeometryFamily {
   squarePerimeter(1, _squareSpace, _squarePerimeter),
   rectanglePerimeter(1, _rectangleSpace, _rectanglePerimeter),
@@ -48,7 +52,10 @@ enum GeometryFamily {
   anglesAroundPoint(4, _aroundSpace, _anglesAroundPoint),
   pythagorasHypotenuse(5, _tripleLegSpace, _pythagorasHypotenuse),
   pythagorasLeg(5, _tripleLegSpace, _pythagorasLeg),
-  rectangleDiagonal(5, _diagonalSpace, _rectangleDiagonal);
+  rectangleDiagonal(5, _diagonalSpace, _rectangleDiagonal),
+  exteriorAngle(4, _exteriorSpace, _exteriorAngle),
+  isoscelesTriangle(4, _isoscelesSpace, _isoscelesTriangle),
+  quadrilateralAngles(5, _quadrilateralSpace, _quadrilateralAngles);
 
   const GeometryFamily(this.level, this._space, this.build);
 
@@ -216,6 +223,128 @@ final _around = [
       if (360 - a - b case final c when c >= 20 && c <= 170) [a, b],
 ];
 
+/// A triangle's inside angles a and b (as for [_triangleAngles]) and the
+/// form: 0 asks the outside angle, 1 the angle b from a and the outside
+/// angle. The outside angle a + b is 75° to 160°: in a narrower one its
+/// label does not fit between its two lines clear of the other labels on
+/// a short card at large text.
+final _exterior = [
+  for (final [a, b] in _triangleAngles)
+    if (a + b >= 75)
+      for (final form in [0, 1]) [a, b, form],
+];
+
+/// An isosceles triangle: the top angle 32° to 140° with a base angle
+/// asked (form 0; even, so the base angle is whole), or a base angle 20° to
+/// 74° with the top angle asked (form 1). A sharper top makes the base
+/// shorter than 16 px on a short card at large text.
+final _isosceles = [
+  for (var top = 32; top <= 140; top += 2) [top, 0],
+  for (var base = 20; base <= 74; base++) [base, 1],
+];
+
+/// Three angles of a quadrilateral, in steps of 10°; each angle, also the
+/// asked fourth, 20° to 160°. Left out are [quadrilateralsLeftOut].
+final _quadrilateral = [
+  for (var a = 20; a <= 160; a += 10)
+    for (var b = 20; b <= 160; b += 10)
+      for (var c = 20; c <= 160; c += 10)
+        if (360 - a - b - c case final d
+            when d >= 20 &&
+                d <= 160 &&
+                !quadrilateralsLeftOut.contains(_angleCode([a, b, c])))
+          [a, b, c],
+];
+
+/// Angles in steps of 10° as letters, 20° as a to 160° as o: [20, 30, 160]
+/// is "abo".
+String _angleCode(List<int> angles) =>
+    String.fromCharCodes([for (final a in angles) 97 + a ~/ 10 - 2]);
+
+/// The quadrilaterals (their three given angles, see [_angleCode]) whose
+/// four labels do not fit the compact card (248 by 150) at text scale 2:
+/// with the side proportions chosen they overlap or leave a side shorter
+/// than 16 px at every turn the layout tries. A test checks that each of
+/// them still fails there, so the list is redone when the layout changes.
+final quadrilateralsLeftOut = _leftOutCodes.split(' ').toSet();
+
+const _leftOutCodes =
+    'abo acn aco adn ado aen aeo afn afo agm agn ago ahk ahl ahm ahn '
+    'aho aii aij aik ail aim ain aio aji ajj ajk ajl ajm ajn ajo akh '
+    'aki akj akk akl akm akn ako alg alh ali alj alk all alm aln alo '
+    'ame amf amg amh ami amj amk aml amm amn amo anf ang anh ani anj '
+    'ank anl anm ann ano aof aoh aoj aol aom aoo ban bao bbm bfo bgm '
+    'bgn bgo bhk bhl bhm bhn bho bii bij bik bil bim bin bio bji bjj '
+    'bjk bjl bjm bjn bjo bkh bki bkj bkk bkl bkm bkn bko blg blh bli '
+    'blj blk bll blm bln blo bmg bmh bmi bmj bmk bml bmm bmn bmo bnd '
+    'bne bnf bng bnh bnk bnn bno bol bom bon cam can cao cck cgn chk '
+    'chl chm chn cho cii cij cik cil cim cin cio cji cjj cjk cjl cjm '
+    'cjn cjo ckh cki ckj ckk ckl ckm ckn cko clh cli clj clk cll clm '
+    'cln clo cmi cnj cnk cnl cnm cnn coa coi coj cok col com dal dam '
+    'dan dao dbk dbn dcj dck ddi dgm dgn dgo dhk dhl dhm dhn dho dii '
+    'dij dik dil dim din dio dji djj djk djl djm djn djo dki dkj dkk '
+    'dkl dkm dkn dko dlo dmi dmj dmk dml dmm dmn dni dnj dnk dnl dnm '
+    'dog doh doi doj dok dol eak eal eam ean ebj ebk eci ecj eck ecm '
+    'edi edj eff egf egm egn ego ehm ehn eho eie eif eih eii eij eik '
+    'eil eim ein eio ejj ejk ejl ejm ejn ejo ekk ekl eli elj elk ell '
+    'elm eln ema emi emj emk eml emm ena enb eng enh eni enj enk enl '
+    'eoa eoe eof eog eoh eoi eoj eok faj fak fal fam fan fao fbi fbj '
+    'fbk fbl fch fci fcj fck fcl fdg fdh fdi fdj fef fei ffe fff ffo '
+    'fge fgf fgn fgo fhm fhn fho fie fij fik fil fim fin fio fjj fjl '
+    'fjm fjn fjo fki fkj fkk fkl fkm fkn fli flj flk fll flm fma fmb '
+    'fmg fmh fmi fmj fmk fml fna fnf fng fnh fni fnj fnk foa foe fof '
+    'fog foh foi foj gai gaj gak gal gam gan gbh gbi gbj gbk gbl gbm '
+    'gbn gcg gch gci gcj gck gcl gdf gdg gdh gdi gdj gdk geg geh gei '
+    'gej gfg gfh gfi gfn gfo ggn ggo ghn gik gil gim gin gio gjj gjk '
+    'gjl gjm gjn gkd gki gkj gkk gkl gkm gla glb gli glj glk gll gma '
+    'gmb gmc gmf gmg gmh gmi gmj gmk gna gne gnf gng gnh gni gnj goa '
+    'god goe gof gog goh goi hah hai haj hak hal ham han hao hbg hbh '
+    'hbi hbj hbk hbl hbm hbn hcf hcg hch hci hcj hck hcl hcm hdg hdh '
+    'hdi hdj hdk hdl heg heh hei hej hek hfg hfh hfi hfj hfo hgo hie '
+    'hij hik hil him hin hji hjj hjk hjl hjm hka hkb hkc hkd hki hkj '
+    'hkk hkl hla hlb hlc hld hlh hli hlj hlk hma hmb hmf hmg hmh hmi '
+    'hmj hna hne hnf hng hnh hni hoa hod hoe hof hog hoh iag iah iai '
+    'iaj iak ial iam ian iao ibf ibg ibh ibi ibj ibk ibl ibm ibn ice '
+    'icf icg ich ici icj ick icl idd ide idf idg idh idi idj idk idl '
+    'ieg ieh iei iej ieo ifg ifh ifi ifj ifo igj ihl ihm ihn iia iib '
+    'iic iid iie iii iij iik iil iim ija ijd ijh iji ijj ijk ijl ika '
+    'ikb ikc ikd ikf ikg ikh iki ikj ikk ila ilb ilc ild ile ilf ilg '
+    'ilh ili ilj ima imb imd ime imf img imh imi ina inb ind ine inf '
+    'ing inh ioa ioc iod ioe iof iog jaf jag jah jai jaj jak jal jam '
+    'jan jao jbe jbf jbg jbh jbi jbj jbk jbl jbm jcd jce jcf jcg jch '
+    'jci jcj jck jcl jcm jde jdf jdg jdh jdi jdj jdk jdn jdo jeg jeh '
+    'jei jej jeo jgj jgk jgl jgm jgn jha jhh jhj jhk jhl jhm jia jib '
+    'jic jid jie jif jih jii jij jik jil jja jjb jjc jjd jje jjg jjh '
+    'jji jjj jjk jka jkb jkc jkd jkf jkg jkh jki jkj jla jlb jlc jle '
+    'jlf jlg jlh jli jma jmb jmd jme jmf jmg jmh jna jnd jne jnf jng '
+    'joa joc jod joe jof kae kaf kag kah kai kaj kak kal kam kan kao '
+    'kbd kbe kbf kbg kbh kbi kbj kbk kbl kbm kce kcf kcg kch kci kcj '
+    'kck kcl kdg kdh kdi kdj kdk kei kej kem ken keo kfl kfm kfn kga '
+    'kgj kgk kgl kgm kha khc khd khj khk khl kia kib kic kid kie kif '
+    'kih kii kij kik kja kjb kjc kjd kje kjf kjg kjh kji kjj kka kkb '
+    'kkc kkd kke kkf kkg kkh kki kla klb klc kle klf klg klh kma kmb '
+    'kmd kme kmf kmg kna knb knc knd kne knf koc kod koe lad lae laf '
+    'lag lah lai laj lak lal lam lan lao lbc lbd lbe lbf lbg lbh lbi '
+    'lbj lbk lbl lbm lbn lcf lcg lch lci lcj lck lcl lea lem len lfa '
+    'lfk lfl lfm lga lgj lgk lgl lha lhb lhc lhd lhe lhi lhj lhk lia '
+    'lib lic lid lie lif lig lih lii lij lja ljb ljc ljd lje ljf ljg '
+    'ljh lji lka lkb lkc lkd lke lkf lkg lkh lla llb llc lld lle llf '
+    'llg lma lmb lmd lme lmf lna lnc lnd lne loa lob loc lod mac mad '
+    'mae maf mag mah mai maj mak mal mam man mbb mbc mbf mbg mbh mbi '
+    'mbj mbk mbl mbm mca mck mda mdl mdn mea mek mel mem mfa mfk mfl '
+    'mga mgf mgj mgk mha mhb mhc mhd mhe mhf mhi mhj mia mib mic mid '
+    'mie mif mig mih mii mja mjb mjc mjd mje mjg mjh mka mkb mkc mkd '
+    'mkf mkg mla mlb mlc mld mle mlf mma mmb mmd mme mna mnc mnd mob '
+    'moc nab nac nad nae naf nag nah nai naj nak nal nam nan nbk nbl '
+    'nca nda ndl ndm nea nek nel nfa nfg nfk nga ngb ngc ngd nge ngf '
+    'ngg ngi ngj nha nhb nhc nhd nhe nhf nhh nhi nia nib nic nid nie '
+    'nif nig nih nja njb njc njd nje njf njg nka nkb nkc nkd nkf nla '
+    'nlb nlc nld nle nma nmb nmd nna nnc noa nob oae oaf oag oah oai '
+    'oaj oal oba oca oda odj odl oea oei ofa ofb off ofg ofh ofj oga '
+    'ogb ogc ogd oge ogf ogg oha ohb ohc ohd ohe ohf ohg oia oib oic '
+    'oid oie oig oja ojb ojc ojd oje ojf oka okb okc okd ola olb olc '
+    'old oma omb omc ona onb ooa';
+
 List<List<int>> _squareSpace() => _squares;
 List<List<int>> _rectangleSpace() => _rectangles;
 List<List<int>> _triangleSpace() => _triangles;
@@ -232,6 +361,9 @@ List<List<int>> _tripleLegSpace() => _tripleLegs;
 List<List<int>> _diagonalSpace() => _diagonals;
 List<List<int>> _crossingSpace() => _crossing;
 List<List<int>> _aroundSpace() => _around;
+List<List<int>> _exteriorSpace() => _exterior;
+List<List<int>> _isoscelesSpace() => _isosceles;
+List<List<int>> _quadrilateralSpace() => _quadrilateral;
 
 /// A rectangle with its top-left corner at the origin; edge 1 is the
 /// right side, edge 2 the bottom.
@@ -392,34 +524,48 @@ Offset _direction(int degrees) {
   return Offset(cos(radians), -sin(radians));
 }
 
-/// A triangle with the angles a at corner 0 and b at corner 2; the angle
-/// at corner 1 is asked. It is turned so its longest side lies at the
-/// bottom, where it fits a wide card best.
-FigureQuestion _triangleAngle(List<int> params) {
-  _require(_inSpace(_triangleAngles, params), params);
-  final [a, b] = params;
+/// A triangle with its base from the origin to (10, 0), the angle a at
+/// the origin and b at the other end of the base (law of sines: the side
+/// from the origin is opposite the angle b).
+List<Offset> _triangleWithAngles(int a, int b) {
   const base = 10.0;
-  // Law of sines: the side from corner 0 to 1 is opposite the angle b.
   final left = base * sin(b * pi / 180) / sin((a + b) * pi / 180);
-  final corners = [Offset.zero, _direction(a) * left, const Offset(base, 0)];
+  return [Offset.zero, _direction(a) * left, const Offset(base, 0)];
+}
+
+/// The turn that brings the longest side of the convex shape [corners] to
+/// the bottom, with the shape above it, where it fits a wide card best.
+Offset Function(Offset) _longestDown(List<Offset> corners) {
+  final count = corners.length;
   var longest = 0;
-  for (var i = 1; i < 3; i++) {
-    if ((corners[(i + 1) % 3] - corners[i]).distance >
-        (corners[(longest + 1) % 3] - corners[longest]).distance) {
+  for (var i = 1; i < count; i++) {
+    if ((corners[(i + 1) % count] - corners[i]).distance >
+        (corners[(longest + 1) % count] - corners[longest]).distance) {
       longest = i;
     }
   }
   final from = corners[longest];
-  final along = corners[(longest + 1) % 3] - from;
+  final along = corners[(longest + 1) % count] - from;
   Offset turn(Offset v, double by) =>
       Offset(v.dx * cos(by) - v.dy * sin(by), v.dx * sin(by) + v.dy * cos(by));
   var by = -atan2(along.dy, along.dx);
-  // The third corner above the longest side, with y down.
-  if (turn(corners[(longest + 2) % 3] - from, by).dy > 0) by += pi;
+  // Another corner above the longest side, with y down.
+  if (turn(corners[(longest + 2) % count] - from, by).dy > 0) by += pi;
+  return (v) => turn(v - from, by);
+}
+
+/// A triangle with the angles a at corner 0 and b at corner 2; the angle
+/// at corner 1 is asked. It is turned so its longest side lies at the
+/// bottom.
+FigureQuestion _triangleAngle(List<int> params) {
+  _require(_inSpace(_triangleAngles, params), params);
+  final [a, b] = params;
+  final corners = _triangleWithAngles(a, b);
+  final turn = _longestDown(corners);
   return (
     figure: Figure(
       shape: FigureShape.triangle,
-      vertices: [for (final c in corners) turn(c - from, by)],
+      vertices: [for (final c in corners) turn(c)],
       labels: const [],
       angles: [AngleLabel(0, a), const AngleLabel(1, null), AngleLabel(2, b)],
       prompt: FigurePrompt.angle,
@@ -693,4 +839,140 @@ FigureQuestion _rectangleDiagonal(List<int> params) {
     ),
     answer: _longest(width, height) * 100,
   );
+}
+
+/// A triangle with the inside angles a and b, standing on the side across
+/// from the larger of them (so the triangle lies flat). Corner 0 has the
+/// larger of a and b, corner 1 the smaller, corner 2 the rest; the side
+/// from corner 0 to corner 2 is drawn on past corner 2, so the outside
+/// angle there borders the long side, away from the other labels. Form 0
+/// asks the outside angle (a + b), form 1 the angle b from a and the
+/// outside angle.
+FigureQuestion _exteriorAngle(List<int> params) {
+  _require(_inSpace(_exterior, params), params);
+  final [a, b, form] = params;
+  final (atA, atB) = a > b ? (0, 1) : (1, 0);
+  final [small, large, c2] = _triangleWithAngles(min(a, b), 180 - a - b);
+  final along = c2 - large;
+  return (
+    figure: Figure(
+      shape: FigureShape.triangle,
+      vertices: [large, small, c2],
+      labels: const [],
+      angles: [
+        AngleLabel(atA, a),
+        AngleLabel(atB, form == 0 ? b : null),
+        AngleLabel(3, form == 0 ? null : a + b),
+      ],
+      prompt: FigurePrompt.angle,
+      // Half as long as the base.
+      extension: c2 + along / along.distance * 5,
+    ),
+    answer: (form == 0 ? a + b : b) * 100,
+  );
+}
+
+/// An isosceles triangle standing on its base, the top at corner 1 and a
+/// tick on each of the two equal sides. Form 0 gives the top angle and asks
+/// the base angle at corner 0; form 1 gives that base angle and asks the
+/// top angle.
+FigureQuestion _isoscelesTriangle(List<int> params) {
+  _require(_inSpace(_isosceles, params), params);
+  final [angle, form] = params;
+  final base = form == 0 ? (180 - angle) ~/ 2 : angle;
+  final top = 180 - 2 * base;
+  return (
+    figure: Figure(
+      shape: FigureShape.triangle,
+      vertices: [
+        Offset.zero,
+        Offset(5, -5 * tan(base * pi / 180)),
+        const Offset(10, 0),
+      ],
+      labels: const [],
+      angles: form == 0
+          ? [AngleLabel(1, top), const AngleLabel(0, null)]
+          : [AngleLabel(0, base), const AngleLabel(1, null)],
+      prompt: FigurePrompt.angle,
+      ticks: const [0, 1],
+    ),
+    answer: (form == 0 ? base : top) * 100,
+  );
+}
+
+/// A convex quadrilateral with the angles a, b and c at corners 0 to 2;
+/// the angle at corner 3 is asked.
+FigureQuestion _quadrilateralAngles(List<int> params) {
+  _require(_inSpace(_quadrilateral, params), params);
+  final [a, b, c] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.quadrilateral,
+      vertices: quadrilateralCorners(a, b, c),
+      labels: const [],
+      angles: [
+        AngleLabel(0, a),
+        AngleLabel(1, b),
+        AngleLabel(2, c),
+        const AngleLabel(3, null),
+      ],
+      prompt: FigurePrompt.angle,
+    ),
+    answer: (360 - a - b - c) * 100,
+  );
+}
+
+/// The corners of a convex quadrilateral with the angles a, b and c at
+/// corners 0 to 2 and the rest of 360° at corner 3. Its sides are chosen
+/// so the shortest side is as long as it can be next to the shape's
+/// thinnest width, so it still shows when the shape is drawn flat on a
+/// short card; it is turned so its longest side lies at the bottom.
+List<Offset> quadrilateralCorners(int a, int b, int c) {
+  final d = 360 - a - b - c;
+  // Edge i leaves corner i; at each next corner the outline turns by 180°
+  // minus the angle there.
+  final directions = [_direction(0)];
+  var heading = 0;
+  for (final angle in [b, c, d]) {
+    directions.add(_direction(heading += 180 - angle));
+  }
+  final [u0, u1, u2, u3] = directions;
+  final det = u2.dx * u3.dy - u2.dy * u3.dx;
+  List<Offset>? best;
+  var bestRatio = double.infinity;
+  // The first side 10 long; the second picked from 2 to 40, the last two
+  // then close the shape.
+  for (var step = 4; step <= 80; step++) {
+    final lengths = [10.0, step / 2];
+    final rest = -(u0 * lengths[0] + u1 * lengths[1]);
+    lengths
+      ..add((rest.dx * u3.dy - rest.dy * u3.dx) / det)
+      ..add((u2.dx * rest.dy - u2.dy * rest.dx) / det);
+    if (lengths.any((length) => length <= 0)) continue;
+    final corners = [Offset.zero];
+    for (var i = 0; i < 3; i++) {
+      corners.add(corners.last + directions[i] * lengths[i]);
+    }
+    // The thinnest width: across from some side, its farthest corner.
+    final thinnest = [
+      for (var i = 0; i < 4; i++)
+        [
+          for (final corner in corners)
+            _distanceToLine(corner, corners[i], corners[(i + 1) % 4]),
+        ].reduce(max),
+    ].reduce(min);
+    final ratio = thinnest / lengths.reduce(min);
+    if (ratio < bestRatio) {
+      bestRatio = ratio;
+      best = corners;
+    }
+  }
+  final turn = _longestDown(best!);
+  return [for (final corner in best) turn(corner)];
+}
+
+/// The distance from [p] to the line through [a] and [b].
+double _distanceToLine(Offset p, Offset a, Offset b) {
+  final ab = b - a;
+  return ((p - a).dx * ab.dy - (p - a).dy * ab.dx).abs() / ab.distance;
 }
