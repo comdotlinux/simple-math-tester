@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
 import 'app_theme.dart' show AppPalette;
+import 'hundredths.dart';
 import 'legal.dart';
 import 'operations.dart';
 import 'progress.dart';
@@ -53,6 +54,7 @@ class MathTesterModel extends ChangeNotifier {
     this._sounds = const SilentSoundPlayer(),
     Future<bool> Function(Uri)? openLink,
     this._updateReminders = false,
+    @visibleForTesting this._signedDecimalAnswers = _kindSignedDecimalAnswers,
   }) : _openLink = openLink ?? openInBrowser,
        _ticker = ticker ?? _everySecond,
        // Silent unless given, so a model built without a binding works.
@@ -71,6 +73,13 @@ class MathTesterModel extends ChangeNotifier {
   }
 
   static void _silent(Haptic _) {}
+
+  static bool _kindSignedDecimalAnswers(OperationType kind) =>
+      kind.signedDecimalAnswers;
+
+  /// Which kinds get the minus and decimal keys; tests stand in for a kind
+  /// whose answers can be negative or decimal before one exists.
+  final bool Function(OperationType kind) _signedDecimalAnswers;
 
   static Stream<void> _everySecond() =>
       Stream.periodic(const Duration(seconds: 1));
@@ -129,8 +138,8 @@ class MathTesterModel extends ChangeNotifier {
   /// shape for a session; the kind on screen counts too, so an answer can
   /// still be typed after its kind was deselected.
   bool get signedDecimalInput =>
-      _current.kind.signedDecimalAnswers ||
-      selectedOperations.any((kind) => kind.signedDecimalAnswers);
+      _signedDecimalAnswers(_current.kind) ||
+      selectedOperations.any(_signedDecimalAnswers);
 
   /// Null until the player picks a starting tier.
   Tier? get tier => _progress.tier;
@@ -366,8 +375,22 @@ class MathTesterModel extends ChangeNotifier {
       _tick();
       if (!inSprint) return false;
     }
-    final input = double.tryParse(_draftInput.trim());
-    if (input == null || !input.isFinite) {
+    // Arithmetic reads the number as it always has. An equation's answer is
+    // read as whole hundredths by string code and compared in hundredths,
+    // so no floating point decides it.
+    final text = _draftInput.trim();
+    int? hundredths;
+    final num? input = switch (_current) {
+      ArithmeticProblem() => switch (double.tryParse(text)) {
+        final number? when number.isFinite => number,
+        _ => null,
+      },
+      EquationProblem() => switch (hundredths = parseHundredths(text)) {
+        final value? => numberOfHundredths(value),
+        null => null,
+      },
+    };
+    if (input == null) {
       _inputProblem = _draftInput.trim().isEmpty
           ? InputProblem.empty
           : InputProblem.notANumber;
@@ -377,8 +400,12 @@ class MathTesterModel extends ChangeNotifier {
     }
 
     final firstCheck = !_checked;
-    final correct = input == _current.result;
-    final milestone = _record(input);
+    final correct = switch (_current) {
+      ArithmeticProblem(:final result) => input == result,
+      EquationProblem(:final resultHundredths) =>
+        hundredths == resultHundredths,
+    };
+    final milestone = _record(input, hundredths);
     _lastCheck = (
       count: (_lastCheck?.count ?? 0) + 1,
       correct: correct,
@@ -594,12 +621,13 @@ class MathTesterModel extends ChangeNotifier {
 
   /// Returns the milestone the attempt reached, if any: a player level
   /// (which wins when both happen at once) or the daily goal.
-  Sound? _record(num? answer) {
+  Sound? _record(num? answer, [int? answerHundredths]) {
     final now = _clock();
     final attempt = historyEntry(
       problem: _current,
       alreadyChecked: _checked,
       answer: answer,
+      answerHundredths: answerHundredths,
       hintsUsed: _revealed,
       elapsedMs: now.difference(_shownAt).inMilliseconds,
       at: now,

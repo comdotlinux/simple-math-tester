@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -277,4 +278,180 @@ void main() {
       });
     }
   }
+
+  group('in the app, with a kind whose answers can be negative or decimal', () {
+    // Algebra stands in for such a kind: its level with negative and
+    // decimal answers is not there yet, so the test switches the keys on
+    // for it.
+    final equation = (OperationType.algebra.source as AlgebraSource).build(
+      OperationType.algebra,
+      'missingSecondAddend',
+      [3, 4],
+    )!;
+
+    Future<MathTesterModel> launch(
+      WidgetTester tester, {
+      Size size = const Size(1000, 900),
+      String? language,
+      bool keys = true,
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final model = MathTesterModel(
+        initialProblem: equation,
+        random: Random(4),
+        progress: Progress(
+          tier: Tier.easy,
+          language: language,
+          selectedOperations: {OperationType.plus, OperationType.algebra},
+        ),
+        signedDecimalAnswers: keys
+            ? (kind) => kind == OperationType.algebra
+            : (kind) => kind.signedDecimalAnswers,
+      );
+      addTearDown(model.dispose);
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: model,
+          child: MediaQuery(
+            data: MediaQueryData(size: size),
+            child: const MathTesterApp(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return model;
+    }
+
+    String fieldText(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField)).controller!.text;
+
+    testWidgets('algebra as it is today keeps today\'s pad', (tester) async {
+      final model = await launch(tester, keys: false);
+      expect(model.signedDecimalInput, isFalse);
+      expect(find.byKey(padMinusKey), findsNothing);
+      expect(find.byKey(padDecimalKey), findsNothing);
+    });
+
+    testWidgets('the pad keeps its keys and shape from question to question', (
+      tester,
+    ) async {
+      final model = await launch(tester);
+      final kinds = <OperationType>{};
+      Rect? shape;
+      for (var question = 0; question < 6; question++) {
+        kinds.add(model.current.kind);
+        expect(find.byKey(padMinusKey), findsOne);
+        expect(find.byKey(padDecimalKey), findsOne);
+        shape ??= tester.getRect(pad);
+        expect(tester.getRect(pad), shape, reason: model.current.question);
+        await tester.tap(find.byKey(padDigitKey('9')));
+        await tester.pump();
+        await tester.tap(find.byKey(checkAnswerButtonKey));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(pad), shape);
+        await tester.tap(find.byKey(checkAnswerButtonKey));
+        await tester.pumpAndSettle();
+      }
+      expect(kinds, {OperationType.plus, OperationType.algebra});
+    });
+
+    testWidgets('an answer typed on the pad is checked in hundredths', (
+      tester,
+    ) async {
+      final model = await launch(tester);
+      for (final key in [
+        padDigitKey('4'),
+        padDecimalKey,
+        padDigitKey('0'),
+        padDigitKey('0'),
+      ]) {
+        await tester.tap(find.byKey(key));
+        await tester.pump();
+      }
+      expect(fieldText(tester), '4.00');
+      await tester.tap(find.byKey(checkAnswerButtonKey));
+      await tester.pumpAndSettle();
+      expect(model.answerCorrect, isTrue);
+      expect(model.history.single.answerHundredths, 400);
+      expect(model.history.single.firstAnswer, 4);
+    });
+
+    for (final (language, typed, refused) in const [
+      ('de', '-2,5', '-2,5,'),
+      ('en', '−2.5', '−2.5e'),
+    ]) {
+      testWidgets('$language: the system keyboard types $typed', (
+        tester,
+      ) async {
+        // A phone starts with the system keyboard.
+        final model = await launch(
+          tester,
+          size: const Size(390, 844),
+          language: language,
+        );
+        expect(pad, findsNothing);
+        final inputType =
+            tester.testTextInput.setClientArgs!['inputType']
+                as Map<String, dynamic>;
+        expect(inputType['name'], 'TextInputType.number');
+        expect(inputType['signed'], isTrue);
+        expect(inputType['decimal'], isTrue);
+        await tester.enterText(find.byType(TextField), typed);
+        await tester.pump();
+        expect(fieldText(tester), typed);
+        await tester.enterText(find.byType(TextField), refused);
+        await tester.pump();
+        expect(fieldText(tester), typed);
+        expect(model.draftInput, typed);
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pumpAndSettle();
+        expect(model.answerCorrect, isFalse);
+        expect(model.history.single.answerHundredths, -250);
+      });
+    }
+  });
+
+  group('checking an equation', () {
+    final equation = (OperationType.algebra.source as AlgebraSource).build(
+      OperationType.algebra,
+      'missingMinuend',
+      [3, 4],
+    )!;
+
+    MathTesterModel modelWith(String draft) {
+      final model = MathTesterModel(initialProblem: equation);
+      addTearDown(model.dispose);
+      model.setDraftInput(draft);
+      return model;
+    }
+
+    test('text that is not a number is the "use a number" feedback', () {
+      for (final draft in ['-', '.', '-.', '1e1', '+7', '7.001', '7..']) {
+        final model = modelWith(draft);
+        expect(model.submitAnswer(), isFalse, reason: draft);
+        expect(model.inputProblem, InputProblem.notANumber, reason: draft);
+        expect(model.history, isEmpty);
+      }
+      final empty = modelWith('  ');
+      expect(empty.submitAnswer(), isFalse);
+      expect(empty.inputProblem, InputProblem.empty);
+    });
+
+    test('equal hundredths are right, however they are written', () {
+      for (final draft in ['7', '7.', '7,0', '07.00', ' 7 ']) {
+        final model = modelWith(draft);
+        expect(model.submitAnswer(), isTrue, reason: draft);
+        expect(model.answerCorrect, isTrue, reason: draft);
+        expect(model.history.single.answerHundredths, 700);
+      }
+      for (final draft in ['-7', '7.01', '6,99', '70']) {
+        final model = modelWith(draft);
+        expect(model.submitAnswer(), isTrue, reason: draft);
+        expect(model.answerCorrect, isFalse, reason: draft);
+      }
+    });
+  });
 }

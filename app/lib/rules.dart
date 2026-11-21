@@ -94,11 +94,13 @@ Attempt? historyEntry({
   required int elapsedMs,
   required DateTime at,
   bool sprint = false,
+  int? answerHundredths,
 }) => alreadyChecked
     ? null
     : Attempt(
         problem,
         firstAnswer: answer,
+        answerHundredths: answerHundredths,
         hintsUsed: hintsUsed,
         elapsedMs: elapsedMs,
         answeredAt: at,

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 import 'package:simple_math_tester/app_theme.dart' show AppPalette;
+import 'package:simple_math_tester/hundredths.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -752,6 +753,7 @@ void main() {
       expect(entries.first, {
         'variant': 'missingSecondAddend',
         'params': [3, 4],
+        'firstAnswerHundredths': 400,
         'kind': 'algebra',
         'result': 4,
         'level': 1,
@@ -787,6 +789,62 @@ void main() {
       );
       expect(decoded.history.first.correct, isTrue);
       expect(decoded.encode(), progress.encode());
+    });
+
+    test('an equation answer is compared and saved as whole hundredths', () {
+      Attempt answered(num? answer, [int? hundredths]) => Attempt(
+        equation,
+        firstAnswer: answer,
+        answerHundredths: hundredths,
+        elapsedMs: 10,
+        answeredAt: DateTime.utc(2026, 11, 21, 10).toLocal(),
+      );
+      expect(equation.resultHundredths, 400);
+      expect(answered(4, 400).correct, isTrue);
+      expect(answered(numberOfHundredths(401), 401).correct, isFalse);
+      expect(answered(numberOfHundredths(-400), -400).correct, isFalse);
+      expect(answered(null).correct, isFalse);
+      // Without the parsed hundredths, the number's text is read: 4.0 is
+      // what this build's check stored before answers had hundredths.
+      expect(answered(4.0).correct, isTrue);
+      expect(answered(4.0).answerHundredths, 400);
+
+      final decimal = answered(numberOfHundredths(-25), -25);
+      final entry = Progress(history: [decimal]).toJsonHistory().single as Map;
+      expect(entry['firstAnswerHundredths'], -25);
+      expect(entry['firstAnswer'], -0.25);
+      final back = Progress.decode(Progress(history: [decimal]).encode());
+      expect(back.history.single.answerHundredths, -25);
+      expect(back.history.single.correct, isFalse);
+      expect(
+        Progress.decode(Progress(history: [decimal]).encode()).encode(),
+        Progress(history: [decimal]).encode(),
+      );
+    });
+
+    test('the saved hundredths win; an entry without them (an older build '
+        'drops fields it does not know) is read from its number', () {
+      Attempt decoded(String fields) => Progress.decode(
+        '{"history":[{"variant":"missingSecondAddend","params":[3,4],'
+        '$fields"kind":"algebra","result":4,"level":1,"elapsedMs":10,'
+        '"hintsUsed":0,"answeredAt":"2026-11-21T10:00:00.000Z",'
+        '"sprint":false}]}',
+      ).history.single;
+      final fromHundredths = decoded(
+        '"firstAnswerHundredths":400,"firstAnswer":3.99,',
+      );
+      expect(fromHundredths.answerHundredths, 400);
+      expect(fromHundredths.firstAnswer, 4);
+      expect(fromHundredths.correct, isTrue);
+      expect(decoded('"firstAnswer":4.0,').correct, isTrue);
+      expect(decoded('"firstAnswer":-2.5,').answerHundredths, -250);
+      expect(decoded('"firstAnswer":0.29,').answerHundredths, 29);
+      expect(decoded('"firstAnswer":null,').skipped, isTrue);
+      expect(
+        () => decoded('"firstAnswerHundredths":4.5,"firstAnswer":4,'),
+        throwsFormatException,
+        reason: 'as a malformed firstAnswer',
+      );
     });
 
     test('a document with algebra survives an older build that does not '

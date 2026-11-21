@@ -40,6 +40,12 @@ int? parseHundredths(String text) {
 /// only such text.
 bool canCompleteHundredths(String text) => _number.hasMatch(text);
 
+/// [hundredths] as a number for the text form, history and saved data:
+/// a whole number as an int, others as the nearest double (`250` is `2.5`).
+/// Never compared: answers of such kinds are compared in hundredths.
+num numberOfHundredths(int hundredths) =>
+    hundredths % 100 == 0 ? hundredths ~/ 100 : hundredths / 100;
+
 /// The decimal separator of the language [localeName], such as `.` for
 /// `en` and `,` for `de`.
 String decimalSeparator(String localeName) =>
