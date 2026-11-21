@@ -31,19 +31,19 @@ void hintsJourneys() {
       expect(_label(hintButtonKey, 'Show a hint'), findsOneWidget);
     });
 
-    testWidgets('Try again puts the focus back on the answer, and a right '
-        'retry is checked', (tester) async {
+    // Typing after it is in test/hint_modal_test.dart: a typed value
+    // injected here races the desktop engine's echo of the selection.
+    testWidgets('Try again puts the focus back on the answer', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
       await submit(tester, model.current.result + 1);
+      final checked = model.current;
 
       await tapKey(tester, tryAgainButtonKey);
 
       expect(await answerFocused(tester), isTrue);
-      await typeAnswer(tester, '${model.current.result}');
-      await pressEnter(tester);
-      expect(model.answerCorrect, isTrue);
-      expect(find.text('You got it!'), findsOneWidget);
+      expect(model.current, same(checked));
+      expect(model.history, hasLength(1));
     });
 
     testWidgets('the hint steps through to the answer in its modal, closes '
