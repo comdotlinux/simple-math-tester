@@ -176,16 +176,20 @@ class FigurePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final circle = layout.circle;
     final outline = Path();
-    if (circle != null) {
-      outline.addOval(circle);
-    } else if (layout.rays) {
-      for (final end in layout.vertices.skip(1)) {
+    final corners = layout.vertices;
+    if (circle != null) outline.addOval(circle);
+    if (layout.rays) {
+      for (final end in corners.skip(1)) {
         outline
-          ..moveTo(layout.vertices[0].dx, layout.vertices[0].dy)
+          ..moveTo(corners[0].dx, corners[0].dy)
           ..lineTo(end.dx, end.dy);
       }
-    } else {
-      outline.addPolygon(layout.vertices, true);
+    } else if (circle == null || corners.length > 2) {
+      // One closed outline, or separate lines or triangles.
+      final piece = layout.piece ?? corners.length;
+      for (var i = 0; i < corners.length; i += piece) {
+        outline.addPolygon(corners.sublist(i, i + piece), piece > 2);
+      }
     }
     for (final (from, to) in [?layout.diagonal, ?layout.extension]) {
       outline
@@ -219,11 +223,12 @@ class FigurePainter extends CustomPainter {
     if (lit != null) {
       final band = Path();
       if (lit.outline) band.addPath(outline, Offset.zero);
-      final corners = layout.vertices;
       for (final edge in lit.edges) {
         final (from, to) = layout.rays
             ? (corners[0], corners[edge + 1])
-            : (corners[edge], corners[(edge + 1) % corners.length]);
+            : switch (edgeEnds(edge, corners.length, layout.piece)) {
+                (final a, final b) => (corners[a], corners[b]),
+              };
         band
           ..moveTo(from.dx, from.dy)
           ..lineTo(to.dx, to.dy);
@@ -240,8 +245,9 @@ class FigurePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = thinStroke;
     if (circle != null) {
-      // A highlighted radius or diameter is already drawn as a band.
-      if (!(lit?.edges.contains(0) ?? false)) {
+      // A highlighted radius or diameter is already drawn as a band; a
+      // triangle in a circle draws its sides with the outline.
+      if (corners.length == 2 && !(lit?.edges.contains(0) ?? false)) {
         canvas.drawLine(layout.vertices[0], layout.vertices[1], marks);
       }
       canvas.drawCircle(
@@ -252,6 +258,22 @@ class FigurePainter extends CustomPainter {
     }
     for (final (from, to) in layout.ticks) {
       canvas.drawLine(from, to, marks);
+    }
+    // An arrowhead at the tip, its wings reaching back to the tail.
+    for (final (tail, tip) in layout.arrows) {
+      final across = Offset(tail.dy - tip.dy, tip.dx - tail.dx) * .5;
+      canvas.drawPath(
+        Path()
+          ..moveTo((tail + across).dx, (tail + across).dy)
+          ..lineTo(tip.dx, tip.dy)
+          ..lineTo((tail - across).dx, (tail - across).dy),
+        Paint()
+          ..color = marks.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = thinStroke
+          ..strokeJoin = StrokeJoin.round
+          ..strokeCap = StrokeCap.round,
+      );
     }
     for (final (i, mark) in layout.marks.indexed) {
       final Path path;

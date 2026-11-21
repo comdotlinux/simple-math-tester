@@ -55,7 +55,10 @@
     "rectangleDiagonal",
     "exteriorAngle",
     "isoscelesTriangle",
-    "quadrilateralAngles"
+    "quadrilateralAngles",
+    "parallelLines",
+    "angleInSemicircle",
+    "similarTriangles"
   ],
   "locales": ["en", "de", "pl", "hi", "mr", "te", "ta", "ml", "fr", "ro", "uk", "pt", "pt_PT", "pa"]
 }

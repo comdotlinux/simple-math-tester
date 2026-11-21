@@ -998,6 +998,12 @@ void main() {
             figure('isoscelesTriangle', [40, 0], 4),
             figure('isoscelesTriangle', [70, 1], 4),
             figure('quadrilateralAngles', [80, 100, 70], 5),
+            figure('parallelLines', [70, 0], 5),
+            figure('parallelLines', [70, 2], 5),
+            figure('parallelLines', [70, 3], 5),
+            figure('angleInSemicircle', [35], 5),
+            figure('similarTriangles', [5, 3, 4, 0], 5),
+            figure('similarTriangles', [6, 4, 5, 7], 5),
           ];
           for (final scale in [1.0, 2.0]) {
             for (final problem in families) {

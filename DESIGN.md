@@ -31,10 +31,12 @@ ask a missing side (a `?` on the side, the perimeter or area given), a missing
 angle (an arc at every angle, its label inside the angle next to the arc where it
 fits, a square in a right angle; also between two
 crossing lines, around a point, outside a triangle with one side drawn
-longer, in an isosceles triangle with ticks on its equal sides and in a
-quadrilateral), the area of a right triangle, an
+longer, in an isosceles triangle with ticks on its equal sides, in a
+quadrilateral, on two parallel lines marked with arrows and in a triangle on
+the diameter of a circle), the area of a right triangle, an
 L-shape, rectangles with sides in halves, a circle's circumference or area
-with "Use π = 3.14" shown, and a side or a rectangle's diagonal by
+with "Use π = 3.14" shown, a side of two similar triangles (equal angles
+marked by one, two and three arcs), and a side or a rectangle's diagonal by
 Pythagoras' theorem (the hint names the theorem and says why it holds); decimal answers are exact
 hundredths, written with the language's decimal separator. A kind that is off
 and was never used gets a one-time card under the header that switches it on

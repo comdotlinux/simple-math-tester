@@ -275,7 +275,9 @@ const _levelsWithoutRow = {1};
 /// them that the family draws exactly (L-shape and halves rows are read by
 /// the oracle alone, see [_oracleOnly]). The theorem families of #165
 /// (crossing lines, angles around a point, Pythagoras) and of #166 (the
-/// outside angle, isosceles triangles, quadrilaterals) have no row yet.
+/// outside angle, isosceles triangles, quadrilaterals) and of #167
+/// (parallel lines, the angle in a semicircle, similar triangles) have no
+/// row yet.
 const _familiesWithoutRow = {
   GeometryFamily.squarePerimeter,
   GeometryFamily.rectanglePerimeter,
@@ -296,6 +298,9 @@ const _familiesWithoutRow = {
   GeometryFamily.exteriorAngle,
   GeometryFamily.isoscelesTriangle,
   GeometryFamily.quadrilateralAngles,
+  GeometryFamily.parallelLines,
+  GeometryFamily.angleInSemicircle,
+  GeometryFamily.similarTriangles,
 };
 
 void main() {
