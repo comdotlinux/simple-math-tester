@@ -153,7 +153,7 @@ void settingsJourneys() {
 
       expect(find.byKey(privacyPageKey), findsOneWidget);
       expect(find.text('Privacy policy'), findsOneWidget);
-      expect(find.textContaining('collects no personal data'), findsOneWidget);
+      expect(find.text(en.privacyCollects), findsOneWidget);
     });
 
     // Never opens the real page: the opener only records the address.
