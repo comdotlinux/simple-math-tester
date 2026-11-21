@@ -2,6 +2,10 @@
 
 Flutter arithmetic practice app for children (`app/`), web build on Cloudflare Pages (math.munich-tech.de, `functions/` for the Impressum), Android release on Google Play (`com.linux.simplemathtester`). GitHub Actions in `.github/`, Node tools in `tool/`, docs in `docs/`.
 
+## Picking up work
+
+Run the `/smt` skill (`.claude/skills/smt/SKILL.md`) at the start of a session: it holds the code map, the build and test commands, what each workflow does, the release steps and the start-of-session checklist. Every feature and every bug goes through the board below.
+
 ## How work is tracked
 
 Work is planned on the GitHub Projects board **SimpleMatchTester**
