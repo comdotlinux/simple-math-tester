@@ -294,6 +294,65 @@ void main() {
     }
   }
 
+  // A figure at large text gets a taller canvas: the question card still
+  // fits the page between the bar and the docked answer, so scrolling shows
+  // all of it, and Skip and the field are reachable.
+  final geometry = OperationType.geometry.source as GeometrySource;
+  for (final size in const [Size(320, 568), Size(360, 640)]) {
+    for (final (variant, params, level) in const [
+      ('quadrilateralAngles', [80, 100, 70], 5),
+      ('exteriorAngle', [50, 60, 0], 4),
+    ]) {
+      testWidgets('a $variant figure at text 2 fits the page at '
+          '${size.width.toInt()}x${size.height.toInt()}', (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final model = MathTesterModel(
+          initialProblem: geometry.build(
+            OperationType.geometry,
+            variant,
+            params,
+            level: level,
+          ),
+          progress: Progress(tier: Tier.easy),
+        );
+        addTearDown(model.dispose);
+        await tester.pumpWidget(
+          ChangeNotifierProvider.value(
+            value: model,
+            child: MediaQuery(
+              data: MediaQueryData(
+                size: size,
+                textScaler: const TextScaler.linear(2),
+              ),
+              child: const MathTesterApp(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        final question = find.byKey(questionOnProblemsPageKey);
+        final page = find.ancestor(
+          of: question,
+          matching: find.byType(Scrollable),
+        );
+        expect(
+          tester.getSize(question).height,
+          lessThanOrEqualTo(tester.getSize(page).height),
+        );
+        for (final finder in [question, find.byKey(nextQuestionButtonKey)]) {
+          await tester.ensureVisible(finder);
+          await tester.pumpAndSettle();
+          expectOnScreen(tester, finder, size);
+        }
+        expectOnScreen(tester, find.byType(TextField), size);
+        expect(tester.takeException(), isNull);
+      });
+    }
+  }
+
   // A phone's own number keyboard covers the bottom of the screen: about
   // 260 dp on a small phone, as Gboard's number layout and iOS's number
   // pad with its bar.

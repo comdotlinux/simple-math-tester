@@ -607,11 +607,15 @@ void _convex(List<Offset> corners) {
   }
 }
 
-/// Each angle label at its corner, with an arc spanning that angle: a label
-/// stands straight out from its corner, on the line that halves the angle,
-/// outside the shape, within 10°. An [outside] angle (its corner, then a
-/// point on each of its two lines) takes the key one past the last corner;
-/// its label stands inside it, on the line that halves it, within 10°.
+/// Each angle label at its corner, with an arc spanning that angle. A label
+/// stands on the line that halves its angle, within 10°: inside the angle,
+/// or straight out across the corner from it. An [outside] angle (its
+/// corner, then a point on each of its two lines) takes the key one past
+/// the last corner; its label stands inside it, on the line that halves
+/// it, within 10°. Where a label stands on the lines of two angles (inside
+/// a symmetric shape the line that halves one angle can run through the
+/// opposite corner), it belongs to the one whose arc it is nearer. Every
+/// label is nearer the arc of its own angle than any other arc.
 Map<int, int?> _angleLabels(
   FigureLayout layout, {
   (Offset, Offset, Offset)? outside,
@@ -627,18 +631,33 @@ Map<int, int?> _angleLabels(
       ),
     count: ?outside,
   };
+  final arcs = {
+    for (final MapEntry(key: k, value: (v, a, b)) in angles.entries)
+      k: ?_spanning(layout.marks, v, a, b),
+  };
   final byKey = <int, int?>{};
+  final keyOf = <PlacedLabel, int>{};
   for (final label in layout.labels) {
+    final centre = label.box.center;
     final at = [
       for (final MapEntry(key: k, value: (v, a, b)) in angles.entries)
-        if (_degreesBetween(
-              v,
-              label.box.center,
-              k == count ? _halfway(v, a, b) : v * 2 - _halfway(v, a, b),
-            ) <=
-            10)
+        if ([
+          _halfway(v, a, b),
+          if (k != count) v * 2 - _halfway(v, a, b),
+        ].any((p) => _degreesBetween(v, centre, p) <= 10))
           k,
     ];
+    if (at.length > 1) {
+      double toArc(int k) => switch (arcs[k]) {
+        final arc? => (centre - arcMiddle(arc)).distance,
+        null => double.infinity,
+      };
+      at.sort((x, y) => toArc(x).compareTo(toArc(y)));
+      if (toArc(at[0]) >= toArc(at[1])) {
+        throw OracleFailure('label ${label.text} is as near two arcs');
+      }
+      at.removeRange(1, at.length);
+    }
     if (at.length != 1) {
       throw OracleFailure('label ${label.text} is not clearly at one corner');
     }
@@ -646,6 +665,7 @@ Map<int, int?> _angleLabels(
       throw OracleFailure('two labels at corner ${at.single}');
     }
     byKey[at.single] = _degrees(label.text);
+    keyOf[label] = at.single;
   }
   if (layout.marks.length != byKey.length) {
     throw OracleFailure(
@@ -654,20 +674,44 @@ Map<int, int?> _angleLabels(
     );
   }
   for (final key in byKey.keys) {
-    final (v, a, b) = angles[key]!;
-    if (!layout.marks.any((mark) {
-      try {
-        _checkMark(mark, v, a, b, right: false);
-        return true;
-      } on OracleFailure {
-        return false;
-      }
-    })) {
-      throw OracleFailure('no arc at angle $key');
-    }
+    if (!arcs.containsKey(key)) throw OracleFailure('no arc at angle $key');
   }
+  _nearestArc(keyOf, arcs, layout.marks);
   return byKey;
 }
+
+/// The first of [marks] that is an arc spanning the angle at [v] between
+/// [a] and [b] (see [_checkMark]), or null.
+AngleMark? _spanning(List<AngleMark> marks, Offset v, Offset a, Offset b) {
+  for (final mark in marks) {
+    if (_markProblem(mark, v, a, b, right: false) == null) return mark;
+  }
+  return null;
+}
+
+/// Each label (with its key in [keyOf]) is nearer the middle of the arc of
+/// its own angle ([arcOf]) than the middle of any other arc among [marks].
+/// (Arcs of neighbouring rays meet on the ray they share, so the middle,
+/// not the nearest point, tells them apart.)
+void _nearestArc(
+  Map<PlacedLabel, int> keyOf,
+  Map<int, AngleMark> arcOf,
+  List<AngleMark> marks,
+) {
+  for (final MapEntry(key: label, value: key) in keyOf.entries) {
+    final own = (label.box.center - arcMiddle(arcOf[key]!)).distance;
+    for (final mark in marks) {
+      if (mark.right || identical(mark, arcOf[key])) continue;
+      if ((label.box.center - arcMiddle(mark)).distance <= own) {
+        throw OracleFailure('label ${label.text} is nearer another arc');
+      }
+    }
+  }
+}
+
+/// The middle of the arc [mark].
+Offset arcMiddle(AngleMark mark) =>
+    mark.centre + Offset.fromDirection(mark.from + mark.sweep / 2, mark.radius);
 
 /// Rays from one point: on a straight line the angles add up to 180°, in
 /// a corner marked as a right angle to 90°, around the point to 360°. Two
@@ -746,8 +790,10 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   }
 
   // A label belongs to the wedge its direction from the point lies in,
-  // clear of both rays by a degree.
+  // clear of both rays by a degree, and is nearer that wedge's arc than
+  // any other arc.
   final byWedge = <int, int?>{};
+  final keyOf = <PlacedLabel, int>{};
   for (final label in layout.labels) {
     final d = direction(label.box.center);
     final inside = [
@@ -763,24 +809,20 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
       throw OracleFailure('two labels in one angle');
     }
     byWedge[inside.single] = _degrees(label.text);
+    keyOf[label] = inside.single;
   }
   final arcs = layout.marks.where((m) => !m.right).toList();
   if (arcs.length != byWedge.length) {
     throw OracleFailure('${arcs.length} arcs for ${byWedge.length} angles');
   }
+  final arcOf = <int, AngleMark>{};
   for (final i in byWedge.keys) {
     final w = wedges[i];
-    if (!arcs.any((m) {
-      try {
-        _checkMark(m, o, corners[w.from], corners[w.to], right: false);
-        return true;
-      } on OracleFailure {
-        return false;
-      }
-    })) {
-      throw OracleFailure('no arc spans angle $i');
-    }
+    arcOf[i] =
+        _spanning(arcs, o, corners[w.from], corners[w.to]) ??
+        (throw OracleFailure('no arc spans angle $i'));
   }
+  _nearestArc(keyOf, arcOf, layout.marks);
   final measured = [for (final w in wedges) w.size];
   if (shape == FigureShape.crossingLines) {
     return _solveCrossing(byWedge, measured);
@@ -972,11 +1014,25 @@ void _checkMark(
   Offset b, {
   required bool right,
 }) {
-  if (mark.right != right) throw OracleFailure('the wrong kind of mark');
-  if ((mark.centre - v).distance > 1 || mark.radius <= 0) {
-    throw OracleFailure('a mark away from its corner');
+  if (_markProblem(mark, v, a, b, right: right) case final problem?) {
+    throw OracleFailure(problem);
   }
-  if (mark.sweep.abs() >= pi) throw OracleFailure('a mark around the outside');
+}
+
+/// What is wrong with [mark] as the mark of the angle at [v] between the
+/// directions to [a] and [b] (see [_checkMark]), or null.
+String? _markProblem(
+  AngleMark mark,
+  Offset v,
+  Offset a,
+  Offset b, {
+  required bool right,
+}) {
+  if (mark.right != right) return 'the wrong kind of mark';
+  if ((mark.centre - v).distance > 1 || mark.radius <= 0) {
+    return 'a mark away from its corner';
+  }
+  if (mark.sweep.abs() >= pi) return 'a mark around the outside';
   double angleOf(Offset d) => atan2(d.dy, d.dx);
   bool same(double x, double y) {
     final d = (x - y) % (2 * pi);
@@ -987,8 +1043,9 @@ void _checkMark(
   final (toA, toB) = (angleOf(a - v), angleOf(b - v));
   if (!(same(start, toA) && same(end, toB) ||
       same(start, toB) && same(end, toA))) {
-    throw OracleFailure('a mark that does not span its angle');
+    return 'a mark that does not span its angle';
   }
+  return null;
 }
 
 /// The angle at [v] between the directions to [a] and [b], in degrees.

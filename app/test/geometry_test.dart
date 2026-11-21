@@ -16,17 +16,6 @@ import 'app_theme_test.dart' show contrast;
 import 'en.dart';
 import 'geometry_oracle.dart';
 
-/// The question area of the phone (320 to 412 wide) and the compact
-/// layout, and the widest card: the page gutter is 16 and the card padding
-/// 20 on each side, and the card is at most 640 wide.
-const canvases = [
-  Size(248, 210),
-  Size(340, 210),
-  Size(600, 210),
-  Size(248, 150),
-  Size(340, 150),
-  Size(600, 150),
-];
 const scales = [1.0, 2.0];
 
 final every = [
@@ -48,6 +37,99 @@ List<(Offset, Offset)> drawnEdges(FigureLayout drawn) {
     ?drawn.extension,
   ];
 }
+
+/// The corner of [angle] in [drawn]: the point of rays, the corner past
+/// the last for an outside angle, or its own corner.
+Offset angleCorner(Figure figure, FigureLayout drawn, AngleLabel angle) {
+  final corners = drawn.vertices;
+  return drawn.rays
+      ? corners[0]
+      : corners[min(angle.corner, corners.length - 1)];
+}
+
+/// How far the label of the angle [i] of [figure] stands from that angle
+/// in [drawn]: from its box to the nearest point of the angle's arc, of its
+/// two lines or of its corner. Angle labels follow the side labels and a
+/// diagonal's ?; the angle arcs come first among the marks, in the same
+/// order.
+double fromAngle(Figure figure, FigureLayout drawn, int i) {
+  final angle = figure.angles[i];
+  final label =
+      drawn.labels[figure.labels.length + (figure.diagonal ? 1 : 0) + i];
+  final mark = drawn.marks[i];
+  final corners = drawn.vertices;
+  final count = corners.length;
+  final v = angleCorner(figure, drawn, angle);
+  final arms = drawn.rays
+      ? [corners[angle.corner], corners[nextRay(angle.corner, count)]]
+      : angle.corner == count
+      ? [drawn.extension!.$2, corners[count - 2]]
+      : [
+          corners[(angle.corner + count - 1) % count],
+          corners[(angle.corner + 1) % count],
+        ];
+  return [
+    for (var t = 0; t <= 16; t++)
+      toBox(
+        label.box,
+        mark.centre +
+            Offset.fromDirection(mark.from + mark.sweep * t / 16, mark.radius),
+      ),
+    for (final end in arms) toSegment(label.box, v, end),
+  ].reduce(min);
+}
+
+/// Whether the line from [a] to [b] meets [rect]: the part of the line
+/// between each pair of the rectangle's sides is cut off in turn.
+bool meets(Offset a, Offset b, Rect rect) {
+  final d = b - a;
+  var (from, to) = (0.0, 1.0);
+  for (final (p, q) in [
+    (-d.dx, a.dx - rect.left),
+    (d.dx, rect.right - a.dx),
+    (-d.dy, a.dy - rect.top),
+    (d.dy, rect.bottom - a.dy),
+  ]) {
+    if (p == 0) {
+      if (q < 0) return false;
+    } else if (p < 0) {
+      from = max(from, q / p);
+    } else {
+      to = min(to, q / p);
+    }
+    if (from > to) return false;
+  }
+  return true;
+}
+
+/// The distance from the line from [a] to [b] to [box]; 0 where they meet.
+double toSegment(Rect box, Offset a, Offset b) {
+  if (meets(a, b, box)) return 0;
+  double toLine(Offset p) {
+    final ab = b - a;
+    final t = (((p - a).dx * ab.dx + (p - a).dy * ab.dy) / ab.distanceSquared)
+        .clamp(0.0, 1.0);
+    return (p - (a + ab * t)).distance;
+  }
+
+  return [
+    toBox(box, a),
+    toBox(box, b),
+    for (final corner in [
+      box.topLeft,
+      box.topRight,
+      box.bottomLeft,
+      box.bottomRight,
+    ])
+      toLine(corner),
+  ].reduce(min);
+}
+
+/// The distance from [p] to [box]; 0 inside it.
+double toBox(Rect box, Offset p) => Offset(
+  max(0, max(box.left - p.dx, p.dx - box.right)),
+  max(0, max(box.top - p.dy, p.dy - box.bottom)),
+).distance;
 
 /// [drawn] with some parts replaced, as a lying painter would draw it.
 FigureLayout redrawn(
@@ -399,8 +481,38 @@ void main() {
         );
       })(),
   };
-  FigureLayout layout(Figure figure, [Size canvas = const Size(340, 210)]) =>
-      layoutFigure(figure, canvas, measures[1.0]!);
+  // The last figure laid out: a test checks several mutants of one figure
+  // in a row, each against the figure's own layout.
+  (Figure, Size, FigureLayout)? last;
+  FigureLayout layout(Figure figure, [Size canvas = const Size(340, 210)]) {
+    if (last case (final f, final c, final drawn)
+        when f == figure && c == canvas) {
+      return drawn;
+    }
+    final drawn = layoutFigure(figure, canvas, measures[1.0]!);
+    last = (figure, canvas, drawn);
+    return drawn;
+  }
+
+  // The question area of the phone (320 to 412 wide) and the compact
+  // layout, and the widest card (the page gutter is 16 and the card padding
+  // 20 on each side, and the card is at most 640 wide), as tall as the
+  // figure in the regular and the compact card at each text scale.
+  final canvases = {
+    for (final scale in scales)
+      scale: [
+        for (final compact in [false, true])
+          for (final width in const [248.0, 340.0, 600.0])
+            Size(
+              width,
+              figureCanvasHeight(
+                figureHeight(compact: compact),
+                style,
+                TextScaler.linear(scale),
+              ),
+            ),
+      ],
+  };
 
   test('the parameter spaces have the sizes of the plan', () {
     int count(int level) => [
@@ -436,54 +548,19 @@ void main() {
       'anglesAroundPoint': 496,
       'pythagorasHypotenuse': 12,
       'pythagorasLeg': 12,
-      'rectangleDiagonal': 11,
-      'exteriorAngle': 13502,
-      'isoscelesTriangle': 110,
-      'quadrilateralAngles': 1064,
+      'rectangleDiagonal': 12,
+      'exteriorAngle': 14060,
+      'isoscelesTriangle': 122,
+      'quadrilateralAngles': 2135,
     });
     expect(count(1), 276);
     expect(count(2), 84);
     expect(count(3), 240);
-    expect(count(4), 21983);
-    expect(count(5), 2667);
+    expect(count(4), 22553);
+    expect(count(5), 3739);
     expect(
       GeometryFamily.values.map((family) => family.level).reduce(max),
       maxGeometryLevel,
-    );
-  });
-
-  test('every problem of every level passes the oracle in every size', () {
-    final watch = Stopwatch()..start();
-    final checks = <int, int>{};
-    final times = <int, int>{};
-    for (final (family, params) in every) {
-      final started = watch.elapsedMicroseconds;
-      final (:figure, :answer) = family.build(params);
-      expect(figure.grid, family.level == 2, reason: '$family $params');
-      for (final scale in scales) {
-        for (final canvas in canvases) {
-          final drawn = layoutFigure(figure, canvas, measures[scale]!);
-          checkFigure(figure.shape, figure.prompt, drawn, answer);
-          checks.update(family.level, (n) => n + 1, ifAbsent: () => 1);
-        }
-      }
-      times.update(
-        family.level,
-        (t) => t + watch.elapsedMicroseconds - started,
-        ifAbsent: () => watch.elapsedMicroseconds - started,
-      );
-    }
-    for (var level = 1; level <= maxGeometryLevel; level++) {
-      // ignore: avoid_print
-      print(
-        'geometry oracle level $level: ${checks[level]} checks in '
-        '${times[level]! ~/ 1000} ms',
-      );
-    }
-    // ignore: avoid_print
-    print(
-      'geometry oracle: ${checks.values.reduce((a, b) => a + b)} checks of '
-      '${every.length} problems in ${watch.elapsedMilliseconds} ms',
     );
   });
 
@@ -613,7 +690,7 @@ void main() {
   });
 
   test('Pythagoras: the six whole-number triples with sides up to 20, '
-      'both leg orders; the diagonal with the same sides but 5 by 12', () {
+      'both leg orders, also for the diagonal', () {
     const triples = [
       (3, 4, 5),
       (6, 8, 10),
@@ -635,12 +712,7 @@ void main() {
     ]) {
       final space = {for (final [a, b] in family.space) (a, b)};
       expect(space, hasLength(family.space.length));
-      expect(
-        space,
-        family == GeometryFamily.rectangleDiagonal
-            ? legs.difference({(5, 12)})
-            : legs,
-      );
+      expect(space, legs);
       for (final [a, b] in family.space) {
         final c = longest(a, b);
         // Integer arithmetic only: a whole-number right triangle.
@@ -685,9 +757,9 @@ void main() {
   });
 
   test('outside angle: whole inside angles a and b, every drawn angle at '
-      'least 20°, the outside angle a + b 75° to 160°', () {
+      'least 20°, the outside angle a + b 66° to 160°', () {
     final space = GeometryFamily.exteriorAngle.space;
-    expect({for (final [a, b, _] in space) (a, b)}, hasLength(6751));
+    expect({for (final [a, b, _] in space) (a, b)}, hasLength(7030));
     for (final [a, b, form] in space) {
       final (:figure, :answer) = GeometryFamily.exteriorAngle.build([
         a,
@@ -695,7 +767,7 @@ void main() {
         form,
       ]);
       expect([a, b, 180 - a - b].every((angle) => angle >= 20), isTrue);
-      expect(a + b, inInclusiveRange(75, 160));
+      expect(a + b, inInclusiveRange(66, 160));
       expect(answer, (form == 0 ? a + b : b) * 100);
       expect(figure.extension, isNotNull);
       expect(
@@ -705,8 +777,8 @@ void main() {
     }
   });
 
-  test('isosceles: the top 32° to 140° (even, so the base angles are '
-      'whole) or a base angle 20° to 74°', () {
+  test('isosceles: the top 20° to 140° (even, so the base angles are '
+      'whole) or a base angle 20° to 80°', () {
     for (final [angle, form] in GeometryFamily.isoscelesTriangle.space) {
       final (:figure, :answer) = GeometryFamily.isoscelesTriangle.build([
         angle,
@@ -716,7 +788,7 @@ void main() {
       final top = 180 - 2 * base;
       expect(base + base + top, 180);
       expect(base, greaterThanOrEqualTo(20), reason: '$angle');
-      expect(top, inInclusiveRange(32, 140), reason: '$angle');
+      expect(top, inInclusiveRange(20, 140), reason: '$angle');
       if (form == 0) expect(angle.isEven, isTrue);
       expect(answer, (form == 0 ? base : top) * 100);
       expect(figure.ticks, [0, 1]);
@@ -746,9 +818,8 @@ void main() {
     );
   });
 
-  test('each left-out quadrilateral breaks a layout rule on the compact '
-      'card at text scale 2', () {
-    const canvas = Size(248, 150);
+  test('each left-out quadrilateral breaks a layout rule, does not read or '
+      'has a label pushed away from its angle on some card', () {
     for (final code in quadrilateralsLeftOut) {
       final [a, b, c] = [for (final unit in code.codeUnits) (unit - 95) * 10];
       expect(
@@ -768,16 +839,39 @@ void main() {
         ],
         prompt: FigurePrompt.angle,
       );
-      final drawn = layoutFigure(figure, canvas, measures[2.0]!);
-      final edges = drawnEdges(drawn);
-      final boxes = [for (final label in drawn.labels) label.box];
-      final broken =
-          edges.any((e) => (e.$2 - e.$1).distance < 16) ||
-          [
-            for (final (i, box) in boxes.indexed)
-              for (final other in boxes.skip(i + 1)) box.overlaps(other),
-          ].contains(true);
-      expect(broken, isTrue, reason: '$code [$a, $b, $c] fits now');
+      bool broken(Size canvas, double scale) {
+        final drawn = layoutFigure(figure, canvas, measures[scale]!);
+        final boxes = [for (final label in drawn.labels) label.box];
+        if (drawnEdges(drawn).any((e) => (e.$2 - e.$1).distance < 16) ||
+            [for (var i = 0; i < 4; i++) fromAngle(figure, drawn, i)]
+                .any((near) => near > 16.5) ||
+            [
+              for (final (i, box) in boxes.indexed)
+                for (final other in boxes.skip(i + 1)) box.overlaps(other),
+            ].contains(true)) {
+          return true;
+        }
+        try {
+          checkFigure(
+            figure.shape,
+            figure.prompt,
+            drawn,
+            (360 - a - b - c) * 100,
+          );
+          return false;
+        } on OracleFailure {
+          return true;
+        }
+      }
+
+      expect(
+        [
+          for (final scale in scales)
+            for (final canvas in canvases[scale]!) broken(canvas, scale),
+        ].contains(true),
+        isTrue,
+        reason: '$code [$a, $b, $c] fits now',
+      );
     }
   });
 
@@ -818,7 +912,6 @@ void main() {
       (GeometryFamily.pythagorasHypotenuse, [4, 4]),
       (GeometryFamily.pythagorasLeg, [15, 20]),
       (GeometryFamily.pythagorasLeg, [3]),
-      (GeometryFamily.rectangleDiagonal, [5, 12]),
       (GeometryFamily.rectangleDiagonal, [7, 24]),
       (GeometryFamily.verticallyOppositeAngles, [19, 0]),
       (GeometryFamily.verticallyOppositeAngles, [50, 2]),
@@ -841,11 +934,9 @@ void main() {
       (GeometryFamily.quadrilateralAngles, [170, 100, 30]),
       (GeometryFamily.quadrilateralAngles, [20, 20, 20]),
       (GeometryFamily.quadrilateralAngles, [100, 100]),
-      (GeometryFamily.quadrilateralAngles, [20, 30, 160]),
+      (GeometryFamily.quadrilateralAngles, [20, 70, 160]),
       (GeometryFamily.exteriorAngle, [20, 20, 0]),
-      (GeometryFamily.exteriorAngle, [40, 34, 1]),
-      (GeometryFamily.isoscelesTriangle, [30, 0]),
-      (GeometryFamily.isoscelesTriangle, [75, 1]),
+      (GeometryFamily.exteriorAngle, [40, 25, 1]),
     ]) {
       expect(
         () => family.build(params),
@@ -1547,22 +1638,34 @@ void main() {
     });
   });
 
-  test('labels are at least 12 px, inside the canvas, apart from each other '
-      'and off every corner and edge, at text scale 1 and 2, in phone and '
+  test('every problem of every level passes the oracle in every size, and '
+      'its labels are at least 12 px, inside the canvas, apart from each '
+      'other and off every corner and edge; each angle label next to its own '
+      'angle and nearer its arc than any other; arcs at one point apart; '
+      'the figure fills the canvas; at text scale 1 and 2, in phone and '
       'compact sizes', () {
     final watch = Stopwatch()..start();
+    final checks = <int, int>{};
     var shortestEdge = double.infinity;
     var smallestSquare = double.infinity;
+    // The farthest an angle label stands from its own angle, and the least
+    // share of the canvas a figure fills, at each text scale.
+    var farthest = 0.0;
+    final least = {for (final scale in scales) scale: 1.0};
+    final smallest = <double, String>{};
     for (final scale in scales) {
       expect(
         TextScaler.linear(scale).scale(style.fontSize!),
         greaterThanOrEqualTo(12),
       );
-      for (final canvas in canvases) {
+      for (final canvas in canvases[scale]!) {
         final area = Offset.zero & canvas;
         for (final (family, params) in every) {
-          final figure = family.build(params).figure;
+          final (:figure, :answer) = family.build(params);
+          expect(figure.grid, family.level == 2, reason: '$family $params');
           final drawn = layoutFigure(figure, canvas, measures[scale]!);
+          checkFigure(figure.shape, figure.prompt, drawn, answer);
+          checks.update(family.level, (n) => n + 1, ifAbsent: () => 1);
           final where = '$family $params $canvas x$scale';
           final corners = drawn.vertices;
           final edges = drawnEdges(drawn);
@@ -1603,10 +1706,8 @@ void main() {
             }
             final inner = label.box.deflate(.5);
             for (final (a, b) in [...edges, ...drawn.ticks]) {
-              for (var t = 0.0; t <= 1; t += 1 / 64) {
-                if (inner.contains(Offset.lerp(a, b, t)!)) {
-                  fail('$where: ${label.text} covers the outline');
-                }
+              if (meets(a, b, inner)) {
+                fail('$where: ${label.text} covers the outline');
               }
             }
             // A diagonal's ? stands on its middle like a textbook label and
@@ -1627,12 +1728,8 @@ void main() {
                     reason: '$where: the ? hides the diagonal',
                   );
                 }
-              } else {
-                for (var t = 0.0; t <= 1; t += 1 / 64) {
-                  if (inner.contains(Offset.lerp(a, b, t)!)) {
-                    fail('$where: ${label.text} covers the diagonal');
-                  }
-                }
+              } else if (meets(a, b, inner)) {
+                fail('$where: ${label.text} covers the diagonal');
               }
             }
             // Inside a circle, clear of its outline.
@@ -1652,6 +1749,95 @@ void main() {
               }
             }
           }
+          // Angle labels follow the side labels and a diagonal's ?; the
+          // angle arcs come first among the marks, in the same order.
+          final first = figure.labels.length + (figure.diagonal ? 1 : 0);
+          for (final (i, angle) in figure.angles.indexed) {
+            final label = drawn.labels[first + i];
+            final mark = drawn.marks[i];
+            // Next to its angle (within 16.5 px of its arc, one of its two
+            // lines or its corner), or as near as it can stand clear of
+            // another label: 3 px nearer its corner it would overlap one.
+            final near = fromAngle(figure, drawn, i);
+            final corner = angleCorner(figure, drawn, angle);
+            final nearer = label.box.shift(
+              Offset.fromDirection((corner - label.box.center).direction, 3),
+            );
+            if (near > 16.5) {
+              expect(
+                drawn.labels.any(
+                  (other) =>
+                      !identical(other, label) && other.box.overlaps(nearer),
+                ),
+                isTrue,
+                reason: '$where: ${label.text} stands $near px from its angle',
+              );
+            } else {
+              farthest = max(farthest, near);
+            }
+            // Nearer the middle of its own arc than of any other arc.
+            final own = (label.box.center - arcMiddle(mark)).distance;
+            for (final other in drawn.marks) {
+              if (identical(other, mark) || other.right) continue;
+              expect(
+                (label.box.center - arcMiddle(other)).distance,
+                greaterThan(own),
+                reason: '$where: ${label.text} is nearer another arc',
+              );
+            }
+          }
+          // Arcs at one point never meet: those whose angles touch or
+          // overlap differ in radius by at least the line width.
+          final arcs = [
+            for (final mark in drawn.marks)
+              if (!mark.right) mark,
+          ];
+          for (final (i, arc) in arcs.indexed) {
+            for (final other in arcs.skip(i + 1)) {
+              if ((arc.centre - other.centre).distance > 1) continue;
+              (double, double) span(AngleMark m) => m.sweep < 0
+                  ? (m.from + m.sweep, -m.sweep)
+                  : (m.from, m.sweep);
+              final (start, sweep) = span(arc);
+              final (otherStart, otherSweep) = span(other);
+              // How far the second arc starts past the first one's start,
+              // and the first past the second's.
+              final ahead = (otherStart - start) % (2 * pi);
+              final behind = (start - otherStart) % (2 * pi);
+              final touch =
+                  ahead <= sweep + .02 ||
+                  behind <= otherSweep + .02 ||
+                  2 * pi - ahead < .02 ||
+                  2 * pi - behind < .02;
+              if (touch) {
+                expect(
+                  (arc.radius - other.radius).abs(),
+                  greaterThanOrEqualTo(thinStroke),
+                  reason: '$where: two arcs at one point join',
+                );
+              }
+            }
+          }
+          // The figure's corners (a circle's outline, a side drawn on) fill
+          // a share of the canvas across its tighter direction.
+          final extent = [
+            ...corners,
+            ?drawn.extension?.$2,
+            if (drawn.circle case final circle?) ...[
+              circle.topLeft,
+              circle.bottomRight,
+            ],
+          ];
+          final xs = extent.map((p) => p.dx);
+          final ys = extent.map((p) => p.dy);
+          final share = max(
+            (xs.reduce(max) - xs.reduce(min)) / canvas.width,
+            (ys.reduce(max) - ys.reduce(min)) / canvas.height,
+          );
+          if (share < least[scale]!) {
+            least[scale] = share;
+            smallest[scale] = where;
+          }
         }
       }
     }
@@ -1659,8 +1845,17 @@ void main() {
     // grid square is still a square to count.
     expect(shortestEdge, greaterThanOrEqualTo(16));
     expect(smallestSquare, greaterThanOrEqualTo(8));
+    // At large text the labels are twice as big, so they take more of the
+    // canvas, which grows only by two lines of text.
+    expect(least[1.0], greaterThanOrEqualTo(.4), reason: smallest[1.0]);
+    expect(least[2.0], greaterThanOrEqualTo(.24), reason: smallest[2.0]);
     // ignore: avoid_print
-    print('geometry layout rules: ${watch.elapsedMilliseconds} ms');
+    print(
+      'geometry oracle and layout rules: $checks checks by level of '
+      '${every.length} problems in ${watch.elapsedMilliseconds} ms; angle '
+      'labels at most ${farthest.toStringAsFixed(1)} px from their angle; '
+      'figures fill at least $least of the canvas',
+    );
   });
 
   test('the label, outline, shading, grid and mark colours are readable in '
