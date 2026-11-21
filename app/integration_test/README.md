@@ -44,8 +44,10 @@ the real `SharedPreferencesStore`, then starts the app as `main()` does, with
 a `SilentSoundPlayer`), so tests never depend
 on each other or on their order. `startHarness` runs the real `MathTesterApp`
 widget on a model the test builds. Use it only where the real entry point
-cannot get there in reasonable time: a test clock for the sprint timer and
-recorders for vibrations and sounds.
+cannot get there in reasonable time: a test clock for the sprint timer,
+recorders for vibrations and sounds, and a recorder for reports. Its
+`reportClient` is a `RecordedReports` unless a journey passes its own, so no
+journey ever reaches the real report function.
 
 ## Running
 
@@ -125,6 +127,7 @@ Built from reading `lib/`. Each row needs at least one journey.
 | Comfortable / compact layout | `settings_journeys.dart` | choosing Compact shows dense answer rows and survives a restart; Comfortable brings the cards back |
 | Saving and restart | `persistence_journeys.dart` | restart shows the saved history and selection; a restart keeps answers, selection, tier and switches; XP and a streak earned in play are shown again after a restart; the operation selection survives a restart |
 | Unreadable saved data | `persistence_journeys.dart` | unreadable saved data is backed up and the app starts fresh |
+| Marking a question and the report dialog | `report_journeys.dart` | marking a question keeps the mark on the device, and cancelling at the grown-up check sends nothing (`startHarness(reportClient:)` takes a `RecordedReports`; no journey sends a report, and none reaches the real report function) |
 | Offline web app | `tool/browser_check.mjs` | not a Flutter journey (phase 10) |
 
 ### What the keyboard journey proves on each device

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/legal.dart';
+import 'package:simple_math_tester/report.dart';
 
 void main() {
   test('the in-app privacy policy equals web/privacy.html', () {
@@ -29,7 +30,8 @@ void main() {
     expect(html, isNot(contains('&')), reason: 'entities would not match');
   });
 
-  test('the only web address in lib/ is the Impressum', () {
+  test('the only web addresses in lib/ are the Impressum and the report '
+      'function', () {
     final addresses = {
       for (final file in Directory('lib').listSync(recursive: true))
         if (file is File && file.path.endsWith('.dart'))
@@ -38,7 +40,14 @@ void main() {
             '"]+',
           ).allMatches(file.readAsStringSync()).map((m) => m[0]),
     };
-    expect(addresses, {impressumUrl.toString()});
+    expect(addresses, {
+      impressumUrl.toString(),
+      'https://math.munich-tech.de/api/report',
+    });
+  });
+
+  test('outside the web the report goes to the production function', () {
+    expect(reportEndpoint.toString(), 'https://math.munich-tech.de/api/report');
   });
 
   test('an untagged build links to the list of releases', () {

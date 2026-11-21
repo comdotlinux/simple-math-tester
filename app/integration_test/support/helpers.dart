@@ -11,6 +11,7 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
+import 'package:simple_math_tester/report.dart';
 import 'package:simple_math_tester/rules.dart';
 import 'package:simple_math_tester/sound_player.dart';
 
@@ -71,9 +72,9 @@ Future<Progress> savedProgress() async =>
 
 /// Runs the real app widget on a model the test builds, for what the real
 /// entry point cannot reach in reasonable time: a clock to move, ticks to
-/// send, vibrations and sounds to count, and links to record instead of
-/// opening a browser. Nothing is written through the
-/// plugin.
+/// send, vibrations and sounds to count, links to record instead of
+/// opening a browser, and reports to record instead of sending them.
+/// Nothing is written through the plugin.
 Future<MathTesterModel> startHarness(
   WidgetTester tester, {
   required Progress progress,
@@ -82,6 +83,7 @@ Future<MathTesterModel> startHarness(
   void Function(Haptic)? haptic,
   SoundPlayer sounds = const SilentSoundPlayer(),
   Future<bool> Function(Uri)? openLink,
+  ReportClient? reportClient,
   MemoryProgressStore? store,
 }) async {
   final model = MathTesterModel(
@@ -91,6 +93,8 @@ Future<MathTesterModel> startHarness(
     haptic: haptic,
     sounds: sounds,
     openLink: openLink,
+    // A journey never reaches the real report function.
+    reportClient: reportClient ?? RecordedReports(),
     store: store ?? MemoryProgressStore(),
   );
   runApp(
@@ -317,3 +321,15 @@ Attempt attempt(Problem problem, num? answer) => Attempt(
   elapsedMs: 1500,
   answeredAt: DateTime(2026, 11, 13, 18),
 );
+
+/// Records each report instead of sending it, and answers [outcome].
+class RecordedReports implements ReportClient {
+  final bodies = <String>[];
+  ReportOutcome outcome = ReportOutcome.sent;
+
+  @override
+  Future<ReportOutcome> send(String body) async {
+    bodies.add(body);
+    return outcome;
+  }
+}

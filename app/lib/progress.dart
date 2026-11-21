@@ -49,6 +49,7 @@ class Progress {
     AppPalette palette = AppPalette.sunny,
     String? updateReminderDate,
     List<String> seenKinds = const [],
+    List<SuspectQuestion> suspects = const [],
   }) : this._(
          selectedOperations ?? arithmeticKinds,
          const [],
@@ -64,6 +65,7 @@ class Progress {
          palette,
          updateReminderDate,
          seenKinds,
+         suspects,
          const {},
          const {},
        );
@@ -83,6 +85,7 @@ class Progress {
     this.palette,
     this.updateReminderDate,
     List<String> seenKinds,
+    List<Object> suspectEntries,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -99,13 +102,23 @@ class Progress {
               ),
       }),
       seenKinds = List.unmodifiable(seenKinds.toSet()),
+      _suspectEntries = List.unmodifiable(
+        suspectEntries.length > suspectCap
+            ? suspectEntries.sublist(suspectEntries.length - suspectCap)
+            : suspectEntries,
+      ),
       _unknownOperations = Map.unmodifiable(unknownOperations),
       extra = Map.unmodifiable(extra) {
     history = List.unmodifiable(_entries.whereType<Attempt>());
+    suspects = List.unmodifiable(_suspectEntries.whereType<SuspectQuestion>());
   }
 
   static const schemaVersion = 2;
   static const historyCap = 200;
+
+  /// The most marked questions kept, so the document cannot grow without
+  /// bound; the oldest marks go first.
+  static const suspectCap = 200;
 
   /// Never empty: a selection with no known operation falls back to the
   /// arithmetic kinds.
@@ -149,6 +162,13 @@ class Progress {
   /// on, so the card never shows for them again. Unknown names are kept.
   final List<String> seenKinds;
 
+  /// The questions the player marked as suspect, oldest first.
+  late final List<SuspectQuestion> suspects;
+
+  /// [SuspectQuestion]s and raw entries this build cannot read, in stored
+  /// order.
+  final List<Object> _suspectEntries;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -190,6 +210,23 @@ class Progress {
   Progress withSeenKind(OperationType kind) =>
       _copy(seenKinds: [...seenKinds, kind.name]);
 
+  /// Adds [suspect], or replaces the mark of the same question in place.
+  Progress withSuspect(SuspectQuestion suspect) {
+    final at = _suspectEntries.indexWhere(
+      (entry) => entry is SuspectQuestion && entry.sameQuestion(suspect),
+    );
+    final entries = [..._suspectEntries];
+    at < 0 ? entries.add(suspect) : entries[at] = suspect;
+    return _copy(suspectEntries: entries);
+  }
+
+  Progress withoutSuspect(SuspectQuestion suspect) => _copy(
+    suspectEntries: [
+      for (final entry in _suspectEntries)
+        if (entry is! SuspectQuestion || !entry.sameQuestion(suspect)) entry,
+    ],
+  );
+
   /// Sets [tier] and resets every arithmetic kind to its level; other kinds
   /// keep their levels.
   Progress withTier(Tier tier) => _copy(
@@ -217,6 +254,7 @@ class Progress {
     AppPalette? palette,
     String? updateReminderDate,
     List<String>? seenKinds,
+    List<Object>? suspectEntries,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -232,6 +270,7 @@ class Progress {
     palette ?? this.palette,
     updateReminderDate ?? this.updateReminderDate,
     seenKinds ?? this.seenKinds,
+    suspectEntries ?? _suspectEntries,
     _unknownOperations,
     extra,
   );
@@ -284,6 +323,11 @@ class Progress {
     'updateReminderDate': ?updateReminderDate,
     // Left out while empty, which keeps older documents' bytes.
     if (seenKinds.isNotEmpty) 'seenKinds': seenKinds,
+    if (_suspectEntries.isNotEmpty)
+      'suspectQuestions': [
+        for (final entry in _suspectEntries)
+          entry is SuspectQuestion ? entry.toJson() : entry,
+      ],
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -379,6 +423,7 @@ class Progress {
       'palette',
       'updateReminderDate',
       'seenKinds',
+      'suspectQuestions',
     };
     return Progress._(
       selected,
@@ -407,6 +452,14 @@ class Progress {
           name is String
               ? name
               : throw FormatException('seenKinds holds a non-string', name),
+      ],
+      [
+        for (final entry
+            in _field<List<Object?>>(json, 'suspectQuestions') ?? const [])
+          if (entry is Map<String, Object?>)
+            SuspectQuestion.decode(entry) ?? entry
+          else
+            throw FormatException('suspectQuestions holds a non-object', entry),
       ],
       unknownOperations,
       {
@@ -540,4 +593,89 @@ class Progress {
 
   static T _required<T extends Object>(Map<String, Object?> json, String key) =>
       _field<T>(json, key) ?? (throw FormatException('$key is missing'));
+}
+
+/// A question the player marked as suspect: its code (kind, variant, params
+/// and level, as the report sends it) and whether a report was sent. Only
+/// equations and figures have a code; arithmetic questions cannot be marked.
+class SuspectQuestion {
+  const SuspectQuestion({
+    required this.kind,
+    required this.variant,
+    required this.params,
+    required this.level,
+    this.sent = false,
+  });
+
+  /// Null for a question without a code.
+  static SuspectQuestion? of(Problem problem) => switch (problem) {
+    EquationProblem(:final variant, :final params) ||
+    FigureProblem(:final variant, :final params) => SuspectQuestion(
+      kind: problem.kind.name,
+      variant: variant,
+      params: List.unmodifiable(params),
+      level: problem.level,
+    ),
+    ArithmeticProblem() => null,
+  };
+
+  final String kind;
+  final String variant;
+  final List<int> params;
+  final int level;
+  final bool sent;
+
+  /// The same question, whatever its level or sent state.
+  bool sameQuestion(SuspectQuestion other) =>
+      kind == other.kind &&
+      variant == other.variant &&
+      params.length == other.params.length &&
+      Iterable.generate(params.length)
+          .every((i) => params[i] == other.params[i]);
+
+  SuspectQuestion asSent() => SuspectQuestion(
+    kind: kind,
+    variant: variant,
+    params: params,
+    level: level,
+    sent: true,
+  );
+
+  Map<String, Object?> toJson() => {
+    'kind': kind,
+    'variant': variant,
+    'params': params,
+    'level': level,
+    'sent': sent,
+  };
+
+  static const _keys = {'kind', 'variant', 'params', 'level', 'sent'};
+
+  /// Null for an entry this build cannot read exactly (another field, a
+  /// missing one or another type); the caller keeps such an entry as it is.
+  static SuspectQuestion? decode(Map<String, Object?> json) => switch ((
+    json['kind'],
+    json['variant'],
+    json['params'],
+    json['level'],
+    json['sent'],
+  )) {
+    (
+      final String kind,
+      final String variant,
+      final List<Object?> params,
+      final int level,
+      final bool sent,
+    )
+        when params.every((param) => param is int) &&
+            _keys.containsAll(json.keys) =>
+      SuspectQuestion(
+        kind: kind,
+        variant: variant,
+        params: List.unmodifiable(params.cast<int>()),
+        level: level,
+        sent: sent,
+      ),
+    _ => null,
+  };
 }

@@ -1,1 +1,3 @@
+# INTERNET only for a report a grown-up sends after the grown-up check (issue #150); the app makes no other request.
+android.permission.INTERNET
 com.linux.simplemathtester.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

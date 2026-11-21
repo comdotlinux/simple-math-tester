@@ -7,6 +7,7 @@ import 'journeys/number_pad_journeys.dart';
 import 'journeys/operations_journeys.dart';
 import 'journeys/persistence_journeys.dart';
 import 'journeys/practice_journeys.dart';
+import 'journeys/report_journeys.dart';
 import 'journeys/settings_journeys.dart';
 import 'journeys/sound_journeys.dart';
 import 'journeys/sprint_journeys.dart';
@@ -28,4 +29,5 @@ void main() {
   settingsJourneys();
   soundJourneys();
   persistenceJourneys();
+  reportJourneys();
 }

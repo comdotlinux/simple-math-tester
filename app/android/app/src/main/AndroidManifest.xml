@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Only for a report a grown-up sends after the grown-up check (issue #150).
+         The app makes no other request. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
    <application
         android:label="Simple Math Tester"
         android:name="${applicationName}"
