@@ -108,7 +108,7 @@ async function readCapped(request) {
 
 class GitHubError extends Error {}
 
-async function github(token, path, init = {}) {
+async function github({ token, signal }, path, init = {}) {
   let response;
   try {
     response = await fetch(`${REPOSITORY}${path}`, {
@@ -120,7 +120,7 @@ async function github(token, path, init = {}) {
         'X-GitHub-Api-Version': '2022-11-28',
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
       },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal,
     });
     if (response.status !== 200 && response.status !== 201) throw new GitHubError();
     return await response.json();
@@ -131,8 +131,8 @@ async function github(token, path, init = {}) {
 
 // Open issues with [label], first page only: the limit is below a page, so
 // a label at or past it already fills the page.
-async function openIssues(token, label) {
-  const issues = await github(token, `/issues?state=open&labels=${label}&per_page=100`);
+async function openIssues(auth, label) {
+  const issues = await github(auth, `/issues?state=open&labels=${label}&per_page=100`);
   if (!Array.isArray(issues)) throw new GitHubError();
   return issues.filter((issue) => !issue.pull_request);
 }
@@ -153,30 +153,40 @@ export async function onRequestPost({ request, env }) {
 
   const token = env.GITHUB_REPORT_TOKEN;
   if (!token) return answer(500, 'Not configured.');
+  // One deadline for all GitHub calls of this request.
+  const auth = { token, signal: AbortSignal.timeout(TIMEOUT_MS) };
 
   const label = LABELS[report.type];
   const { title, body } = issueFor(report);
   try {
     const [questions, problems] = await Promise.all(
-      [LABELS.question, LABELS.problem].map((l) => openIssues(token, l)),
+      [LABELS.question, LABELS.problem].map((l) => openIssues(auth, l)),
     );
     const existing = (label === LABELS.question ? questions : problems).find((i) => i.title === title);
     if (existing) {
       if (!Number.isInteger(existing.number)) throw new GitHubError();
-      await github(token, `/issues/${existing.number}/reactions`, {
+      await github(auth, `/issues/${existing.number}/reactions`, {
         method: 'POST',
         body: JSON.stringify({ content: '+1' }),
       });
       return answer(200, 'Already reported.');
     }
     if (questions.length + problems.length >= OPEN_LIMIT) return answer(429, 'Too many reports.');
-    const created = await github(token, '/issues', {
+    const created = await github(auth, '/issues', {
       method: 'POST',
       body: JSON.stringify({ title, body, labels: [label] }),
     });
     // GitHub drops labels the token may not set; such an issue would escape
-    // the dedupe and the limit, so the setup is wrong.
-    if (!created?.labels?.some((l) => l?.name === label)) return answer(500, 'Not configured.');
+    // the dedupe and the limit, so it is closed and the setup is wrong.
+    if (!created?.labels?.some((l) => l?.name === label)) {
+      if (Number.isInteger(created?.number)) {
+        await github(auth, `/issues/${created.number}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ state: 'closed', state_reason: 'not_planned' }),
+        });
+      }
+      return answer(500, 'Not configured.');
+    }
     return answer(201, 'Reported.');
   } catch {
     return unavailable();

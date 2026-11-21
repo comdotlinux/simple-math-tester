@@ -144,8 +144,8 @@ headers (the web app calls the same origin; native apps need no CORS):
 | 400 | `Invalid report.` | Not one of the two shapes, wrong `Content-Type`, or larger than 1024 bytes |
 | 405 | `Method not allowed.` | Any method but POST |
 | 429 | `Too many reports.` | 100 or more issues with the two labels are open; nothing was created |
-| 500 | `Not configured.` | No `GITHUB_REPORT_TOKEN`, or GitHub dropped the label (token without the right access) |
-| 502 | `Unavailable.` | GitHub did not answer within 8 seconds, answered with an error, or could not be reached |
+| 500 | `Not configured.` | No `GITHUB_REPORT_TOKEN`, or GitHub dropped the label (token without the right access); that issue is closed again |
+| 502 | `Unavailable.` | GitHub did not finish within 8 seconds (one deadline for all calls of a request), answered with an error, or could not be reached |
 
 ### The issues
 
@@ -164,8 +164,8 @@ repeat are not kept. After the issue is closed, the next report of the same
 question opens a new one.
 
 The two labels exist on the repository (created with #149). The function does
-not create labels; if one is deleted, issues come back without it and the
-function answers 500. Create it again with:
+not create labels; if one is deleted, issues come back without it, and the
+function closes each such issue at once and answers 500. Create it again with:
 
 ```sh
 gh label create suspect-question --color D93F0B --description "Reported from the app: a question that may be wrong (functions/api/report.js)"
@@ -214,10 +214,15 @@ safe to deploy first.
 2. Cloudflare dashboard, Workers & Pages, `simple-math-tester`, Settings,
    Variables and Secrets, Add: type **Secret**, name `GITHUB_REPORT_TOKEN`, the
    token as value, environment **Production**. Paste the token nowhere else.
-3. A secret reaches only the next deployment. Redeploy `main` with
+3. Cloudflare dashboard, the zone of `munich-tech.de`, Security, WAF, Rate
+   limiting rules: add a rule for requests whose path is `/api/report`, for
+   example 5 requests per 1 minute per IP, action Block (the free plan allows
+   one such rule; it needs the domain's DNS on Cloudflare). This is the only
+   per-caller limit (see the gaps below); add it before the token goes live.
+4. A secret reaches only the next deployment. Redeploy `main` with
    `gh workflow run flutter-checks.yml --ref main -f environment-name=prod`
    (this run also builds the phones, about 30 minutes).
-4. Send one report and check that the issue appears with its label, then close
+5. Send one report and check that the issue appears with its label, then close
    it:
 
    ```sh
@@ -227,7 +232,7 @@ safe to deploy first.
    ```
 
 To renew the token, generate a new one with the same settings, replace the secret
-value in the dashboard and redeploy as in step 3.
+value in the dashboard and redeploy as in step 4.
 
 ### Abuse limits and their gaps
 
@@ -237,21 +242,26 @@ value in the dashboard and redeploy as in step 3.
   content.
 - At most 100 open issues with the two labels together (`OPEN_LIMIT` in
   `report.js`); at the limit the function answers 429 and creates nothing. A
-  repeat still gets its reaction, as it creates nothing.
+  repeat still gets its reaction, as it creates nothing. The check and the
+  create are separate GitHub calls, so requests sent at the same moment can
+  each create an issue and go past 100; only GitHub's own limits on creating
+  content (roughly 80 per minute) and the rate-limiting rule bound that.
 - Repeats cost one reaction, which GitHub keeps once per account.
-- Each GitHub call has an 8-second timeout.
+- All GitHub calls of one request share an 8-second deadline.
 
 Gaps:
 
-- **No per-IP rate limit.** The function stores nothing about callers. A script
-  can create up to 100 issues (all from the allow-list: noise, not content) and
-  then block new reports with 429 until the owner closes issues. A rate limit
-  needs a Cloudflare rule (Security, WAF, Rate limiting rules, for example 5
-  requests per minute per IP on `/api/report`), which the owner adds in the
-  dashboard if abuse happens.
-- Each request makes two GitHub list calls. A flood of valid requests uses up the
-  token's rate limit (5000 requests per hour); reports then answer 502 until the
-  hour resets.
+- **No per-IP limit in the function.** It stores nothing about callers. Without
+  the rate-limiting rule of owner step 3, a script can create 100 issues or more
+  (all from the allow-list: noise, not content), each one a notification to the
+  owner, and then block new reports with 429 until the owner closes issues.
+- The token acts as the owner's account. Each request makes two GitHub list
+  calls, which count against the owner's 5000 requests per hour, shared with
+  `gh` and the owner's other tokens. A flood of valid requests can use that up
+  for an hour; reports then answer 502. A GitHub App or a separate account's
+  token would have its own limit.
+- Invalid requests cost no GitHub call but still count against the Pages
+  Functions request quota, which `/api/impressum` shares.
 - The limit counts open issues only.
 
 ## Modernization record

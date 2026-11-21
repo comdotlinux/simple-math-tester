@@ -50,6 +50,7 @@ function fakeGitHub({ open = {}, create, react } = {}) {
       return json(open[searchParams.get('labels')] ?? []);
     }
     if (pathname.endsWith('/reactions')) return react ? react() : json({ content: '+1' }, 201);
+    if (init.method === 'PATCH') return json({ state: 'closed' });
     if (pathname.endsWith('/issues')) {
       if (create) return create();
       const sent = JSON.parse(init.body);
@@ -130,9 +131,12 @@ describe('new reports', () => {
     assert.equal(calls.find((c) => c.method === 'POST').body.title, 'Suspect question: algebra anTenths [-1000,1000] L5');
   });
 
-  test('an issue GitHub created without the label gives 500', async () => {
-    fakeGitHub({ create: () => json({ number: 9, labels: [] }, 201) });
+  test('an issue GitHub created without the label is closed and gives 500', async () => {
+    const calls = fakeGitHub({ create: () => json({ number: 9, labels: [] }, 201) });
     assert.equal(await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 500), 'Not configured.');
+    const close = calls.find((c) => c.method === 'PATCH');
+    assert.equal(close.url, `${API}/issues/9`);
+    assert.deepEqual(close.body, { state: 'closed', state_reason: 'not_planned' });
   });
 });
 
@@ -237,17 +241,24 @@ describe('configuration and GitHub failures', () => {
     await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 502);
   });
 
-  test('a GitHub call is aborted by its signal', async () => {
-    let seen;
-    globalThis.fetch = (url, init) => {
-      seen = init.signal;
-      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+  test('GitHub that never answers is cut off by the deadline: 502', async (t) => {
+    // The real deadline is 8 seconds; this one is 20 ms, through the same AbortSignal.timeout.
+    const timeout = AbortSignal.timeout;
+    t.after(() => {
+      AbortSignal.timeout = timeout;
+    });
+    const asked = [];
+    AbortSignal.timeout = (ms) => {
+      asked.push(ms);
+      return timeout.call(AbortSignal, 20);
     };
-    const pending = onRequestPost({ request: post(QUESTION), env: env() });
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    // AbortSignal.timeout cannot be sped up; dispatching abort shows the wait ends with it.
-    seen.dispatchEvent(new Event('abort'));
-    await expectAnswer(await pending, 502);
+    globalThis.fetch = (url, init) =>
+      new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    // AbortSignal.timeout does not keep Node's event loop alive; this timer does.
+    const alive = setTimeout(() => {}, 5000);
+    t.after(() => clearTimeout(alive));
+    await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 502);
+    assert.deepEqual(asked, [8000]);
   });
 });
 
