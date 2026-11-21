@@ -21,7 +21,13 @@
     "aBracketNPlusB",
     "nDividedByAPlusB",
     "anPlusBNegativeN",
-    "anTenths"
+    "anTenths",
+    "missingSquare",
+    "missingSquareRoot",
+    "aSquared",
+    "squareRootOfC",
+    "nSquared",
+    "anSquared"
   ],
   "geometry": [
     "squarePerimeter",

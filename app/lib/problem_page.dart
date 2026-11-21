@@ -616,6 +616,8 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
+        // A condition line ("n is positive") makes the pinned question two.
+        final pinnedLines = model.current.shown(l).split('\n').length;
         return TextFieldTapRegion(
           child: Flex(
             direction: side ? Axis.horizontal : Axis.vertical,
@@ -632,7 +634,10 @@ class _ProblemPageState extends State<ProblemPage> {
                       if (compact &&
                           _questionPinned &&
                           area.maxHeight >=
-                              scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48)
+                              scaler.scale(22) * 1.25 * pinnedLines +
+                                  2 * 6 +
+                                  2 +
+                                  48)
                         Positioned(
                           top: 0,
                           left: 0,
@@ -729,8 +734,16 @@ class _QuestionCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
+    // A condition line under an equation ("n is positive") in body size.
+    final [line, ...notes] = problem.shown(l).split('\n');
     Widget question(TextStyle? style) => Text.rich(
-      mathSpan(context, problem.question, style),
+      TextSpan(
+        children: [
+          mathSpan(context, line, style),
+          for (final note in notes)
+            mathSpan(context, '\n$note', textTheme.titleLarge),
+        ],
+      ),
       key: questionOnProblemsPageKey,
       textAlign: TextAlign.center,
       semanticsLabel: l.mathQuestion(problem.spoken(l)),

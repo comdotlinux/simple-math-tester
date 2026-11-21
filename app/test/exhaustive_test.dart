@@ -65,16 +65,22 @@ int _pairs(OperationType type, int level) {
   return (aMax - aMin + 1) * (bMax - bMin + 1);
 }
 
+/// The condition line's text form, which an equation in n² may end with.
+const _positive = ', n > 0';
+
 /// [p]'s question with [hundredths] in place of the unknown, bracketed where
-/// it multiplies and is below zero (`3 × (−2) + 9 = 3`).
+/// it multiplies and is below zero (`3 × (−2) + 9 = 3`); a condition line is
+/// left out.
 String _substitute(EquationProblem p, int hundredths) {
   final number = formatHundredths(hundredths, 'en');
-  return p.question.replaceAllMapped(
-    RegExp('(\\d)?n|$box'),
-    (m) => m[1] == null
-        ? number
-        : '${m[1]} × ${hundredths < 0 ? '($number)' : number}',
-  );
+  return p.question
+      .replaceFirst(_positive, '')
+      .replaceAllMapped(
+        RegExp('(\\d)?n|$box'),
+        (m) => m[1] == null
+            ? number
+            : '${m[1]} × ${hundredths < 0 ? '($number)' : number}',
+      );
 }
 
 void main() {
@@ -124,7 +130,7 @@ void main() {
     const kind = OperationType.algebra;
     final source = kind.source as AlgebraSource;
     // The count of each level's problems.
-    const counts = {1: 484, 2: 360, 3: 924, 4: 6111, 5: 5920};
+    const counts = {1: 484, 2: 380, 3: 938, 4: 6127, 5: 6020};
     final clock = Stopwatch();
     setUpAll(clock.start);
     tearDownAll(() {
@@ -170,26 +176,38 @@ void main() {
         },
       );
 
-      test('level $level: an answer + 1 and a displayed right-hand side + 1 '
-          'fail', () {
-        for (final p in problems) {
-          expect(
-            check(p.question, p.result + 1),
-            Verdict.wrongRoot,
-            reason: p.question,
-          );
-          final right = parseHundredths(p.tokens.last)! ~/ 100;
-          final mutant = [
-            ...p.tokens.take(p.tokens.length - 1),
-            signedText(right + 1),
-          ];
-          expect(
-            check(mutant.join(' '), p.result),
-            Verdict.wrongRoot,
-            reason: mutant.join(' '),
-          );
-        }
-      });
+      test(
+        'level $level: an answer + 1 and a displayed right-hand side + 1 '
+        '(a base or radicand + 1 where the unknown is on the right) fail',
+        () {
+          for (final p in problems) {
+            expect(
+              check(p.question, p.result + 1),
+              Verdict.wrongRoot,
+              reason: p.question,
+            );
+            final i = p.tokens.indexOf('=') + 1;
+            final tokens = [...p.tokens];
+            if (parseHundredths(p.tokens[i]) case final right?) {
+              tokens[i] = signedText(right ~/ 100 + 1);
+            } else {
+              // 7² = □ becomes 8² = □, √49 = n becomes √50 = n.
+              tokens[0] = tokens[0].replaceFirstMapped(
+                RegExp(r'\d+'),
+                (m) => '${int.parse(m[0]!) + 1}',
+              );
+            }
+            final mutant = EquationProblem(
+              p.variant,
+              p.params,
+              tokens,
+              p.kind,
+              p.resultHundredths,
+            ).question;
+            expect(check(mutant, p.result), Verdict.wrongRoot, reason: mutant);
+          }
+        },
+      );
 
       test('level $level: the oracle recomputes every hint step', () {
         final start = clock.elapsedMilliseconds;
@@ -203,10 +221,44 @@ void main() {
             for (final match in RegExp(r'−?\d+').allMatches(p.question))
               int.parse(match[0]!.replaceFirst('−', '-')),
           };
+          final condition = p.question.endsWith(_positive) ? _positive : '';
           // The value of the last undo done, which the next one starts from.
           int? previous;
+          // The square whose root the last step finds.
+          int? square;
           for (final (i, step) in hint.indexed) {
             final last = i == hint.length - 1;
+            if (step.move == EquationMove.whichRoot ||
+                step.move == EquationMove.whichPositiveRoot) {
+              // A square the question shows or the undo before left; the
+              // question has the condition line exactly when the step asks
+              // for a number above zero, and √ when it asks for a root.
+              if (!(shown.contains(step.right) || step.right == previous) ||
+                  last ||
+                  hint[i + 1].move != EquationMove.rootAnswer ||
+                  (step.move == EquationMove.whichPositiveRoot) !=
+                      condition.isNotEmpty ||
+                  (step.move == EquationMove.whichRoot) !=
+                      p.question.contains('√${step.right}')) {
+                fail(step);
+              }
+              square = step.right;
+              continue;
+            }
+            if (step.move == EquationMove.rootAnswer) {
+              // The root times itself makes that square; the root is the
+              // value, at least 0.
+              final value = step.valueHundredths!;
+              if (!last ||
+                  square == null ||
+                  step.left != step.right ||
+                  value != step.left * 100 ||
+                  value < 0 ||
+                  check(step.calculation, square) != Verdict.ok) {
+                fail(step);
+              }
+              continue;
+            }
             if (step.move == EquationMove.belowZero) {
               // First, and only when the answer is below zero.
               if (i != 0 || p.resultHundredths >= 0) fail(step);
@@ -251,9 +303,10 @@ void main() {
               fail(step);
             }
             if (!last) {
-              // Every undo before the last leaves the same one solution.
+              // Every undo before the last leaves the same one solution,
+              // with the question's condition line.
               final equation = step.equation ?? '';
-              if (check(equation, p.result) != Verdict.ok ||
+              if (check('$equation$condition', p.result) != Verdict.ok ||
                   !equation.endsWith(' = ${signedText(value ~/ 100)}')) {
                 fail(step);
               }
@@ -264,7 +317,10 @@ void main() {
           final last = hint.last;
           final [left, right] = last.check!.split(' = ');
           if (hint.length < 2 ||
-              last.move != EquationMove.answer ||
+              !{
+                EquationMove.answer,
+                EquationMove.rootAnswer,
+              }.contains(last.move) ||
               last.valueHundredths != p.resultHundredths ||
               last.check != _substitute(p, p.resultHundredths) ||
               check(left, parseHundredths(right)! / 100) != Verdict.ok ||
@@ -283,8 +339,12 @@ void main() {
 
       test('level $level: a hint calculation or check off by 1 fails', () {
         for (final p in problems) {
-          for (final step in equationHint(p)) {
-            final value = step.valueHundredths;
+          final hint = equationHint(p);
+          for (final (i, step) in hint.indexed) {
+            // A root's last step makes the square the step before names.
+            final value = step.move == EquationMove.rootAnswer
+                ? hint[i - 1].right * 100
+                : step.valueHundredths;
             if (value == null) continue;
             final calculations = [
               '${signedText(step.left + 1)} ${step.sign} ${step.right}',
@@ -389,6 +449,12 @@ void main() {
       '3n + 9 = 3': -2,
       '4n = 10': 2.5,
       '13.68 + n = 16.05': 2.37,
+      '7² = $box': 49,
+      '√49 = $box': 7,
+      '12² = n': 144,
+      '√400 = n': 20,
+      'n² = 49, n > 0': 7,
+      '2n² = 50, n > 0': 5,
     };
 
     samples.forEach((question, answer) {
@@ -401,6 +467,8 @@ void main() {
 
     test('a displayed right-hand side + 1 fails', () {
       samples.forEach((question, answer) {
+        // Only a number at the very end, not a blank or a condition line.
+        if (!question.contains(RegExp(r'= \d+$'))) return;
         final last = RegExp(r'\d+$');
         final mutant = question.replaceFirstMapped(
           last,
@@ -424,6 +492,79 @@ void main() {
       expect(check('n + 5 = 12', 8), Verdict.wrongRoot);
       expect(check('n + 5 = 12 = 12', 7), Verdict.unparsable);
       expect(check('n + 5', 7), Verdict.unparsable);
+    });
+
+    test('an equation in n² needs its condition line for one solution', () {
+      expect(check('n² = 49', 7), Verdict.twoSolutions);
+      expect(check('n² = 49', -7), Verdict.twoSolutions);
+      expect(check('2n² = 50', 5), Verdict.twoSolutions);
+      expect(check('n² = 49, n > 0', -7), Verdict.wrongRoot);
+      expect(check('n² = 0, n > 0', 0), Verdict.noSolution);
+      expect(check('n² + 1 = 0', 1), Verdict.noSolution);
+      expect(check('n + 5 = 2, n > 0', -3), Verdict.noSolution);
+      expect(check('n² = 0', 0), Verdict.ok);
+      expect(check('(n − 3)² = 0', 3), Verdict.ok);
+      expect(check('n² = 50, n > 0', 7.07), Verdict.wrongRoot);
+      expect(check('1 ÷ (n² + 1) = 1, n > 0', 1), Verdict.notLinear);
+      expect(check('7² + 1', 50), Verdict.ok);
+      expect(check('√49 × 2', 14), Verdict.ok);
+      expect(check('√49, n > 0', 7), Verdict.unparsable);
+      expect(check('√n = 7', 49), Verdict.unparsable);
+      expect(check('√50 = n', 7.07), Verdict.wrongRoot);
+    });
+  });
+
+  group('squares and roots: mutations fail the oracle', () {
+    const kind = OperationType.algebra;
+    final source = kind.source as AlgebraSource;
+    const families = {
+      'missingSquare',
+      'missingSquareRoot',
+      'aSquared',
+      'squareRootOfC',
+      'nSquared',
+      'anSquared',
+    };
+    late final problems = [
+      for (var level = 1; level <= kind.highestLevel; level++)
+        for (final p in source.problems(kind, level))
+          if (families.contains(p.variant)) p,
+    ];
+
+    test('every family is asked at some level', () {
+      expect({for (final p in problems) p.variant}, families);
+      expect(problems, hasLength(20 + 14 + 16 + 100));
+    });
+
+    test('the exponent, the root sign or the condition line removed', () {
+      for (final p in problems) {
+        final question = p.question;
+        // 1² and √1 are 1 itself: nothing to tell apart.
+        if (p.params.last == 1) continue;
+        if (question.contains('²')) {
+          final mutant = question.replaceAll('²', '');
+          expect(check(mutant, p.result), Verdict.wrongRoot, reason: mutant);
+        }
+        if (question.contains('√')) {
+          final mutant = question.replaceAll('√', '');
+          expect(check(mutant, p.result), Verdict.wrongRoot, reason: mutant);
+        }
+        if (question.endsWith(_positive)) {
+          final mutant = question.replaceFirst(_positive, '');
+          expect(check(mutant, p.result), Verdict.twoSolutions, reason: mutant);
+        }
+      }
+    });
+
+    test('a radicand + 1 is not a perfect square', () {
+      for (final p in problems) {
+        if (!p.question.contains('√')) continue;
+        final mutant = p.question.replaceFirstMapped(
+          RegExp(r'√(\d+)'),
+          (m) => '√${int.parse(m[1]!) + 1}',
+        );
+        expect(check(mutant, p.result), Verdict.wrongRoot, reason: mutant);
+      }
     });
   });
 }

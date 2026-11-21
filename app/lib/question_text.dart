@@ -7,12 +7,15 @@ import 'operations.dart';
 
 /// [text] in [style], with a drawn blank (a line on the baseline, as in a
 /// textbook) for each [EquationProblem.blank]: no bundled font has that
-/// glyph, and the web engine would fetch a font for it. The letter n on its own (not in a word such as a figure's sentence),
-/// the unknown from level 3 on, is italic, as in a textbook. Callers give
-/// the [Text.rich] a semantics label, because the blank has no words.
+/// glyph, and the web engine would fetch a font for it. The letter n on its
+/// own (not in a word such as a figure's sentence), the unknown from level 3
+/// on, is italic, as in a textbook; a square sign after it leans with it, so
+/// the two do not touch. `²` and `√` stay text: every bundled Roboto face has
+/// both glyphs. Callers give the [Text.rich] a semantics label, because the
+/// blank has no words.
 TextSpan mathSpan(BuildContext context, String text, TextStyle? style) {
   final marks = RegExp(
-    '${EquationProblem.blank}|(?<!\\p{L})n(?!\\p{L})',
+    '${EquationProblem.blank}|(?<!\\p{L})n(?!\\p{L})²?',
     unicode: true,
   ).allMatches(text);
   if (marks.isEmpty) return TextSpan(text: text, style: style);
@@ -23,11 +26,12 @@ TextSpan mathSpan(BuildContext context, String text, TextStyle? style) {
     if (mark.start > start) {
       children.add(TextSpan(text: text.substring(start, mark.start)));
     }
+    final found = mark[0]!;
     children.add(
-      mark[0] == 'n'
-          ? const TextSpan(
-              text: 'n',
-              style: TextStyle(fontStyle: FontStyle.italic),
+      found.startsWith('n')
+          ? TextSpan(
+              text: found,
+              style: const TextStyle(fontStyle: FontStyle.italic),
             )
           : WidgetSpan(
               alignment: PlaceholderAlignment.aboveBaseline,

@@ -31,13 +31,37 @@ With algebra on, the number pad has a minus key and a decimal key.
 | Level | What it asks | Ranges | Example | Problems |
 |---|---|---|---|---|
 | 1 | A missing addend, subtrahend or minuend: a + □ = c, □ + a = c, c − □ = a, □ − a = b | a and b 0 to 10 | 3 + □ = 7 (4) | 484 |
-| 2 | A missing factor, divisor or dividend: □ × a = c, a × □ = c, c ÷ □ = a, □ ÷ a = b | a 2 to 10, b 1 to 10 | 18 ÷ □ = 6 (3) | 360 |
-| 3 | The same four forms with the letter *n*: n + a = c, n − a = b, a × n = c, n ÷ a = b | a 2 to 12, the other number 0 to 20 | 3 × n = 15 (5) | 924 |
-| 4 | Two steps: an + b = c and an − b = c (an means a × n) | a 2 to 9, b 1 to 20, n 1 to 20 | 2n + 3 = 11 (4) | 6111 |
-| 5 | Brackets, a division, answers below zero and in tenths: a(n − b) = c, a(n + b) = c, n ÷ a + b = c, an + b = c with n below zero, an = c with n in tenths | a 2 to 9, b 1 to 10, n −10 to 10 | 3n + 9 = 3 (−2), 4n = 10 (2.5) | 5920 |
+| 2 | A missing factor, divisor or dividend: □ × a = c, a × □ = c, c ÷ □ = a, □ ÷ a = b; a square or square root: a² = □, √c = □ | a 2 to 10, b 1 to 10; squares and roots of 1 to 10 | 18 ÷ □ = 6 (3), 7² = □ (49), √49 = □ (7) | 380 |
+| 3 | The same four forms with the letter *n*: n + a = c, n − a = b, a × n = c, n ÷ a = b; a² = n, √c = n | a 2 to 12, the other number 0 to 20; squares and roots of 6 to 12 | 3 × n = 15 (5), √144 = n (12) | 938 |
+| 4 | Two steps: an + b = c and an − b = c (an means a × n); a² = n, √c = n | a 2 to 9, b 1 to 20, n 1 to 20; squares and roots of 13 to 20 | 2n + 3 = 11 (4), 17² = n (289) | 6127 |
+| 5 | Brackets, a division, answers below zero and in tenths: a(n − b) = c, a(n + b) = c, n ÷ a + b = c, an + b = c with n below zero, an = c with n in tenths; n² = c and an² = c with the line "n is positive" | a 2 to 9, b 1 to 10, n −10 to 10; n² = c with n 1 to 12, an² = c with a 2 to 9 and n 2 to 12 | 3n + 9 = 3 (−2), 4n = 10 (2.5), 2n² = 50 (5) | 6020 |
+
+Squares and square roots come in two kinds. At levels 2 to 4 the question
+works out a square or a root (a² = □, √c = n); c is always a perfect
+square, and the range moves up with the level (bases 1 to 10, then 6 to
+12, then 13 to 20), so no level repeats a lower level's whole range. At level 5 the child solves n² = c or
+an² = c. Such an equation has two solutions, n and −n, so the line "n is
+positive" stands under it on the card, in the pinned band and in the
+history, and screen readers hear it; with that line there is exactly one
+answer. No question asks for a negative root or for two answers. The
+exponent and the root sign are the characters ² and √, which every
+bundled Roboto face has (the web build fetches no font for them); screen
+readers say "7 squared" and "square root of 49".
+
+| Variant | Form | Params | Levels | Problems |
+|---|---|---|---|---|
+| `missingSquare` | a² = □ | `[a]`, 1 to 10 | 2 | 10 |
+| `missingSquareRoot` | √c = □, c = r × r | `[r]`, 1 to 10 | 2 | 10 |
+| `aSquared` | a² = n | `[a]`, 6 to 12; 13 to 20 | 3; 4 | 7; 8 |
+| `squareRootOfC` | √c = n, c = r × r | `[r]`, 6 to 12; 13 to 20 | 3; 4 | 7; 8 |
+| `nSquared` | n² = c, n is positive | `[n]`, 1 to 12 | 5 | 12 |
+| `anSquared` | an² = c, n is positive | `[a, n]`, a 2 to 9, n 2 to 12 | 5 | 88 |
 
 Hints undo one step at a time; only the last step states the answer,
-followed by a check with the answer put back into the equation.
+followed by a check with the answer put back into the equation. A square
+says what it means (7² means 7 × 7); a root asks which number times itself
+makes the square; an² = c first divides both sides by a, then asks for the
+root.
 
 ## Geometry
 
@@ -72,12 +96,17 @@ states the answer.
   question text: it is parsed with the `math_expressions` package (a test-only
   dependency), the equation must have exactly one solution, that solution
   must be the app's answer, and putting it back must make both sides equal
-  in exact hundredths. For geometry (`app/test/geometry_oracle.dart`), it is
+  in exact hundredths. Squares and roots go to the package as `^2` and
+  `sqrt`. An equation in n² is solved by the oracle itself: it evaluates
+  left minus right at four points, requires them to lie on one parabola,
+  finds every real root with the quadratic formula, keeps those above zero
+  when the question ends in the condition line, and requires exactly one;
+  without the line, `n² = 49` is rejected as having two solutions. For geometry (`app/test/geometry_oracle.dart`), it is
   the shape type, the prompt and the drawn layout: each label belongs to its
   nearest edge or angle, every drawn edge matches one common scale within
   0.5%, right angles are right, the grid squares are evenly spaced and their
   count is the area, and the oracle solves the figure from the labels.
-- **Exhaustive runs.** Algebra: 484, 360, 924, 6111 and 5920 problems
+- **Exhaustive runs.** Algebra: 484, 380, 938, 6127 and 6020 problems
   (levels 1 to 5), each through the oracle, and the oracle recomputes every
   hint step of every problem. Geometry: 9761 problems, each laid out on 6
   canvas sizes at text scale 1 and 2, 117132 oracle checks in all (3312,
@@ -86,7 +115,8 @@ states the answer.
   and apart from each other, readable colours in every palette.
 - **Mutation tests.** The oracles must reject wrong versions: an answer + 1,
   a displayed number + 1, a generator that returns the result + 1, a hint
-  calculation off by 1 (algebra); an answer + 1, a label changed, moved or
+  calculation off by 1, the exponent or the root sign removed, a radicand
+  + 1, the condition line removed (two solutions) (algebra); an answer + 1, a label changed, moved or
   hidden, the figure stretched by 20%, the prompts swapped, a grid square,
   an angle arc or the π line removed, the radius and diameter cues swapped,
   and the missing side moved (geometry).

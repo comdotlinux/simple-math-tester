@@ -930,8 +930,50 @@ void main() {
       expect(again.history.last.problem.question, '3 + □ = 7');
     });
 
+    // One problem of each square and root family; the variant names are
+    // saved, so they are fixed here.
+    for (final (variant, params, level, result) in [
+      ('missingSquare', [7], 2, 49),
+      ('missingSquareRoot', [7], 2, 7),
+      ('aSquared', [12], 3, 144),
+      ('squareRootOfC', [17], 4, 17),
+      ('nSquared', [7], 5, 7),
+      ('anSquared', [2, 5], 5, 5),
+    ]) {
+      test('a $variant attempt round-trips', () {
+        final problem = (OperationType.algebra.source as AlgebraSource).build(
+          OperationType.algebra,
+          variant,
+          params,
+          level: level,
+        )!;
+        expect(problem.result, result);
+        final answered = Attempt(
+          problem,
+          firstAnswer: result,
+          elapsedMs: 3000,
+          answeredAt: DateTime.utc(2026, 11, 21, 12).toLocal(),
+        );
+        final progress = Progress(history: [answered]);
+        final saved = progress.toJsonHistory().single as Map;
+        expect(
+          [saved['variant'], saved['params'], saved['result'], saved['level']],
+          [variant, params, result, level],
+        );
+        final decoded = Progress.decode(progress.encode());
+        final again = decoded.history.single;
+        expect(again.problem.question, problem.question);
+        expect(again.correct, isTrue);
+        expect(decoded.encode(), progress.encode());
+      });
+    }
+
     for (final (name, fields) in [
       ('an unknown variant', '"variant":"missingFactor","params":[3,4]'),
+      ('a square with two params', '"variant":"missingSquare","params":[3,4]'),
+      ('a negative root', '"variant":"squareRootOfC","params":[-7]'),
+      ('n² with n at 0', '"variant":"nSquared","params":[0]'),
+      ('an² with n at 1', '"variant":"anSquared","params":[2,1]'),
       ('no variant', '"params":[3,4]'),
       ('params that are not a list', '"variant":"missingMinuend","params":7'),
       (

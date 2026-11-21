@@ -248,8 +248,15 @@ enum EquationMove {
   undoDivide,
 
   /// From level 3, `2n` or `3(n − 2)`: a number written straight before
-  /// the letter or a bracket multiplies.
+  /// the letter or a bracket multiplies. Also `7²`, which means `7 × 7`.
   means,
+
+  /// `√right`: which number times itself makes right.
+  whichRoot,
+
+  /// `n² = right` with n positive: which number above zero times itself
+  /// makes right.
+  whichPositiveRoot,
 
   /// From level 3, the first step when the answer is below zero: such a
   /// number is written with a minus sign.
@@ -270,6 +277,10 @@ enum EquationMove {
   /// The last step: the calculation with its value, which is the answer,
   /// and the check.
   answer,
+
+  /// The last step of a root: `left × right`, the root times itself, makes
+  /// the square the step before named; its value is the root, the answer.
+  rootAnswer,
 }
 
 /// One step of an equation hint as data, before a sentence wraps it, so
@@ -332,6 +343,58 @@ class EquationStep {
 /// last undo is named, then done in the answer step.
 List<EquationStep> equationHint(EquationProblem problem) {
   final answer = problem.resultHundredths;
+  // Squares and roots: what a² means, or which number times itself makes c;
+  // an² = c divides by a first.
+  EquationStep root(int r, String check) => EquationStep(
+    EquationMove.rootAnswer,
+    left: r,
+    sign: '×',
+    right: r,
+    valueHundredths: answer,
+    check: check,
+  );
+  switch ((problem.variant, problem.params)) {
+    case ('missingSquare' || 'aSquared', [final a]):
+      return [
+        EquationStep(EquationMove.means, shorthand: '$a²', meaning: '$a × $a'),
+        EquationStep(
+          EquationMove.answer,
+          left: a,
+          sign: '×',
+          right: a,
+          valueHundredths: answer,
+          check: '$a² = ${a * a}',
+        ),
+      ];
+    case ('missingSquareRoot' || 'squareRootOfC', [final r]):
+      return [
+        EquationStep(EquationMove.whichRoot, right: r * r),
+        root(r, '√${r * r} = $r'),
+      ];
+    case ('nSquared', [final n]):
+      return [
+        EquationStep(EquationMove.whichPositiveRoot, right: n * n),
+        root(n, '$n² = ${n * n}'),
+      ];
+    case ('anSquared', [final a, final n]):
+      return [
+        EquationStep(
+          EquationMove.means,
+          shorthand: '${a}n²',
+          meaning: '$a × n²',
+        ),
+        EquationStep(
+          EquationMove.divideBoth,
+          left: a * n * n,
+          sign: '÷',
+          right: a,
+          valueHundredths: n * n * 100,
+          equation: 'n² = ${n * n}',
+        ),
+        EquationStep(EquationMove.whichPositiveRoot, right: n * n),
+        root(n, '$a × $n² = ${a * n * n}'),
+      ];
+  }
   if (problem.tokens.contains(EquationProblem.blank)) {
     final (move, left, sign, right) = switch ((
       problem.variant,
@@ -523,7 +586,10 @@ SolutionStep _equationSentence(EquationStep step, {required bool letter}) {
       text.replaceAll('.', decimalSeparator(l.localeName));
   String value(AppLocalizations l) =>
       formatHundredths(step.valueHundredths!, l.localeName);
-  String calculation(AppLocalizations l) => '${step.calculation} = ${value(l)}';
+  // A root's last step multiplies the root by itself to make the square.
+  String calculation(AppLocalizations l) => step.move == EquationMove.rootAnswer
+      ? '${step.calculation} = ${step.left * step.right}'
+      : '${step.calculation} = ${value(l)}';
   String undo(AppLocalizations l) => switch (step.move) {
     EquationMove.subtractBoth => l.stepEquationSubtractBoth(right),
     EquationMove.addBoth => l.stepEquationAddBoth(right),
@@ -542,6 +608,10 @@ SolutionStep _equationSentence(EquationStep step, {required bool letter}) {
       step.meaning!,
     ),
     EquationMove.belowZero => (l) => l.stepEquationBelowZero,
+    EquationMove.whichRoot => (l) => l.stepEquationWhichRoot(right),
+    EquationMove.whichPositiveRoot => (l) => l.stepEquationWhichPositiveRoot(
+      right,
+    ),
     EquationMove.subtractBoth ||
     EquationMove.addBoth ||
     EquationMove.divideBoth ||
@@ -549,16 +619,15 @@ SolutionStep _equationSentence(EquationStep step, {required bool letter}) {
       (l) => step.equation == null
           ? undo(l)
           : '${undo(l)} ${l.stepEquationSoNow(calculation(l), step.equation!)}',
-    EquationMove.answer when letter => (l) => l.stepEquationLetterIs(
+    EquationMove.answer ||
+    EquationMove.rootAnswer when letter => (l) => l.stepEquationLetterIs(
       calculation(l),
       value(l),
       local(l, step.check!),
     ),
-    EquationMove.answer => (l) => l.stepEquationBlankIs(
-      calculation(l),
-      value(l),
-      local(l, step.check!),
-    ),
+    EquationMove.answer || EquationMove.rootAnswer => (
+      l,
+    ) => l.stepEquationBlankIs(calculation(l), value(l), local(l, step.check!)),
   };
 }
 

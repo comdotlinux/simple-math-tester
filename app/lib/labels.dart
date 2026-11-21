@@ -19,20 +19,36 @@ extension OperationLabel on OperationType {
 }
 
 extension ProblemLabel on Problem {
-  /// The question as text in the pinned band, the history and the review:
-  /// a figure is its sentence, others are [Problem.question].
+  /// The question as text on the card, in the pinned band, the history and
+  /// the review: a figure is its sentence, an equation's condition is a line
+  /// of words under it ("n is positive"), others are [Problem.question].
   String shown(AppLocalizations l) => switch (this) {
     FigureProblem(:final figure) => figureSentence(l, figure),
+    EquationProblem() => question.replaceFirst(
+      ', ${EquationProblem.positive}',
+      '\n${l.equationPositive}',
+    ),
     _ => question,
   };
 
   /// [shown] for screen readers: the blank is a word, not a "white square",
   /// and in an equation `2n` or `3(n − 2)` say their multiplication
-  /// (`2 × n`), so a number is not read into the letter.
+  /// (`2 × n`), so a number is not read into the letter; `7²` and `√49` are
+  /// read as words ("7 squared", "square root of 49").
   String spoken(AppLocalizations l) {
     final text = shown(l).replaceAll(EquationProblem.blank, l.blank);
     return this is EquationProblem
-        ? text.replaceAllMapped(RegExp(r'(\d)(?=[n(])'), (m) => '${m[1]} × ')
+        ? text
+              .replaceAllMapped(RegExp(r'(\d)(?=[n(])'), (m) => '${m[1]} × ')
+              .replaceAllMapped(
+                RegExp(r'(\d+|n)²'),
+                (m) => l.spokenSquared(m[1]!),
+              )
+              .replaceAllMapped(
+                RegExp(r'√(\d+)'),
+                (m) => l.spokenSquareRoot(m[1]!),
+              )
+              .replaceAll('\n', ', ')
         : text;
   }
 }

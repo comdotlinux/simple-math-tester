@@ -445,6 +445,39 @@ void main() {
       ]);
     });
 
+    test('a square says what it means; a root asks which number times '
+        'itself makes the square; an² = c divides first', () {
+      expect(steps(letter('missingSquare', [7])), [
+        '7² means 7 × 7.',
+        '7 × 7 = 49, so the blank is 49. Check: 7² = 49',
+      ]);
+      expect(steps(letter('missingSquareRoot', [7])), [
+        '√49 asks: which number times itself makes 49?',
+        '7 × 7 = 49, so the blank is 7. Check: √49 = 7',
+      ]);
+      expect(steps(letter('aSquared', [12])), [
+        '12² means 12 × 12.',
+        '12 × 12 = 144, so n = 144. Check: 12² = 144',
+      ]);
+      expect(steps(letter('squareRootOfC', [17])), [
+        '√289 asks: which number times itself makes 289?',
+        '17 × 17 = 289, so n = 17. Check: √289 = 17',
+      ]);
+      const positive =
+          'n² means n × n, and n is positive. Which number above zero '
+          'times itself makes';
+      expect(steps(letter('nSquared', [7])), [
+        '$positive 49?',
+        '7 × 7 = 49, so n = 7. Check: 7² = 49',
+      ]);
+      expect(steps(letter('anSquared', [2, 5])), [
+        '2n² means 2 × n².',
+        'To undo × 2, divide both sides by 2. 50 ÷ 2 = 25, so n² = 25.',
+        '$positive 25?',
+        '5 × 5 = 25, so n = 5. Check: 2 × 5² = 50',
+      ]);
+    });
+
     test('level 5 tenths use the language decimal separator', () {
       expect(steps(letter('anTenths', [4, 25])), [
         '4n means 4 × n.',
