@@ -15,8 +15,9 @@ Bundled in `app/assets/fonts/`, each with its licence file next to it:
 
 ## Illustrative Mathematics (test data only)
 
-`app/test/algebra_known_answers_test.dart` holds known-answer rows: an
-equation and the answer printed for it on a page of
+`app/test/algebra_known_answers_test.dart` and
+`app/test/geometry_known_answers_test.dart` hold known-answer rows: an
+equation or a figure question and the answer printed for it on a page of
 
 - IM 6–8 Math, originally developed by Open Up Resources and authored by
   Illustrative Mathematics, copyright 2017-2019 Open Up Resources;
@@ -31,6 +32,7 @@ was read from.
 The rows are used only to test that the app's questions and answers agree
 with the textbook; they are not shipped in the app. Changes were made: the
 equations are rewritten in the app's notation (the letter n or a box for the
-unknown, and the signs −, × and ÷). The Illustrative Mathematics name and
+unknown, and the signs −, × and ÷), and figure questions are rebuilt as
+the app's figures, without units. The Illustrative Mathematics name and
 logo are not covered by the licence, and neither Illustrative Mathematics
 nor Open Up Resources endorses this app.
