@@ -108,4 +108,18 @@ const List<({String name, String credit, String? licenseAsset})> attributions =
         credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
         licenseAsset: 'assets/fonts/NotoSansGurmukhi_LICENSE.txt',
       ),
+      (
+        name: 'Illustrative Mathematics',
+        credit:
+            'Equations and their printed answers from IM 6–8 Math (originally '
+            'developed by Open Up Resources and authored by Illustrative '
+            'Mathematics, copyright 2017-2019 Open Up Resources; adaptations '
+            'copyright 2019 Illustrative Mathematics) and IM K–5 Math '
+            '(copyright 2021 Illustrative Mathematics), '
+            'im.kendallhunt.com, licensed under CC BY 4.0, '
+            'creativecommons.org/licenses/by/4.0. Used only to test the '
+            "app's questions; changes were made to the notation. Not "
+            'endorsed by Illustrative Mathematics or Open Up Resources.',
+        licenseAsset: null,
+      ),
     ];
