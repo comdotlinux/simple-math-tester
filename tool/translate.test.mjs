@@ -39,6 +39,8 @@ test('a translation must keep placeholders, braces, plurals and digits', () => {
   assert.equal(problem('Level 1', 'स्तर १'), 'non-Western digits');
   assert.equal(problem('Level 1', 'स्तर 1'), null);
   assert.equal(problem('Hint', ''), 'empty');
+  assert.equal(problem('Hint', { text: 'Tipp', description: 'x' }), 'not a string: {"text":"Tipp","description":"x"}');
+  assert.equal(problem('Hint', null), 'not a string: null');
 });
 
 test('a translation must keep every number, in any order', () => {
@@ -154,6 +156,16 @@ test('only rejected or missing keys fall back; after 3 attempts they are failed'
   assert.deepEqual(requests, ['abcd', 'bcd', 'bd', 'bd']);
   assert.ok(log.includes('de: batch 1/1: c rejected (attempt 1/1): missing'));
   assert.ok(log.includes('de: batch 1/1 fallback 1/1: b rejected (attempt 3/3): placeholders none instead of n'));
+});
+
+test('an answer that mirrors {text, description} objects is accepted by its text', async () => {
+  const template = { a: 'A {n}', b: 'B' };
+  const request = async (ks) =>
+    reply(ks, JSON.stringify({ a: { text: 'Ä {n}', description: 'Ä' }, b: { description: 'no text' } }));
+  const log = [];
+  const result = await translateBatch('pl: batch 1/1', template, ['a', 'b'], request, (l) => log.push(l));
+  assert.deepEqual(result, { accepted: { a: 'Ä {n}' }, failed: ['b'] });
+  assert.ok(log.includes('pl: batch 1/1: b rejected (attempt 1/1): not a string: {"description":"no text"}'));
 });
 
 test('failed keys are listed per language and give exit code 2', async () => {

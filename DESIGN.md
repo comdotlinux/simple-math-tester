@@ -31,7 +31,10 @@ ask a missing side (a `?` on the side, the perimeter or area given), a missing
 angle (an arc at every angle, a square in a right angle), the area of a right
 triangle, an L-shape, rectangles with sides in halves, and a circle's
 circumference or area with "Use π = 3.14" shown; decimal answers are exact
-hundredths, written with the language's decimal separator. Combo, XP, player levels, a daily goal and a daily streak reward progress.
+hundredths, written with the language's decimal separator. A kind that is off
+and was never used gets a one-time card under the header that switches it on
+in one tap. Level tables, how every question is checked, and the rules for
+saved answers: [docs/question-kinds.md](docs/question-kinds.md). Combo, XP, player levels, a daily goal and a daily streak reward progress.
 Retry and skip behavior stay. Progress and the last 200 answers are saved on the
 device. No accounts, cloud features or leaderboards. Success means a child can
 enter, check, retry and move on without losing input or context, and sees progress

@@ -111,7 +111,8 @@ const List<({String name, String credit, String? licenseAsset})> attributions =
       (
         name: 'Illustrative Mathematics',
         credit:
-            'Equations and their printed answers from IM 6–8 Math (originally '
+            'Equations, figure questions and their printed answers from IM 6–8 '
+            'Math (originally '
             'developed by Open Up Resources and authored by Illustrative '
             'Mathematics, copyright 2017-2019 Open Up Resources; adaptations '
             'copyright 2019 Illustrative Mathematics) and IM K–5 Math '

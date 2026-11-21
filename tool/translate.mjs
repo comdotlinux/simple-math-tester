@@ -50,7 +50,8 @@ export function digits(message) {
 
 /** Why [translation] cannot replace [source], or null when it can. */
 export function problem(source, translation) {
-  if (typeof translation !== 'string' || translation.trim() === '') return 'empty';
+  if (typeof translation !== 'string') return `not a string: ${JSON.stringify(translation)?.slice(0, 80)}`;
+  if (translation.trim() === '') return 'empty';
   let depth = 0;
   for (const c of translation) {
     depth += c === '{' ? 1 : c === '}' ? -1 : 0;
@@ -162,9 +163,9 @@ export function parseAnswer(body, keys) {
 }
 
 async function ask(model, key, template, arb, language, keys) {
-  const request = Object.fromEntries(
-    keys.map((k) => [k, { text: template[k], description: template[`@${k}`]?.description ?? '' }]),
-  );
+  // Plain strings: sent as {text, description} objects, the model sometimes answered with objects too.
+  const request = Object.fromEntries(keys.map((k) => [k, template[k]]));
+  const notes = Object.fromEntries(keys.map((k) => [k, template[`@${k}`]?.description ?? '']));
   const existing = {};
   let chars = 0;
   for (const [k, v] of Object.entries(arb)) {
@@ -180,10 +181,12 @@ async function ask(model, key, template, arb, language, keys) {
     // A glossary of terms, not of translations: the standard school word is the model's to pick.
     'These are school mathematics terms: perimeter, area, angle, side, triangle, rectangle, square, circle, equation, blank (the empty box in an equation). Translate each with the standard term schools in the target language use, and always the same way.',
     'Keep these words unchanged: Impressum, XP, GitHub, Cloudflare, Cloudflare Pages, Cloudflare Turnstile, Google Play, Android, iOS.',
+    'The notes say where each string is shown and how; use them, but do not translate them.',
     'Answer with one JSON object that maps each requested key to its translated message string, nothing else.',
   ].join('\n');
   const user = JSON.stringify({
     translate: request,
+    notes,
     existingTranslationsForConsistency: existing,
   });
   const response = await fetch(endpoint, {
@@ -226,7 +229,8 @@ async function attempt(name, template, keys, request, attempts, log) {
     }
     const rejected = [];
     for (const k of keys) {
-      const text = westernDigits(answer[k]);
+      // An answer that mirrors a {text: ...} object still counts.
+      const text = westernDigits(answer[k]?.text ?? answer[k]);
       const why = k in answer ? problem(template[k], text) : 'missing';
       if (why) {
         rejected.push(k);
