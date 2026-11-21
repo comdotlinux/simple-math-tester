@@ -144,6 +144,10 @@ const Map<String, EquationBuild> _equations = {
   'missingFirstAddend': _missingFirstAddend,
   'missingSubtrahend': _missingSubtrahend,
   'missingMinuend': _missingMinuend,
+  'missingFirstFactor': _missingFirstFactor,
+  'missingSecondFactor': _missingSecondFactor,
+  'missingDivisor': _missingDivisor,
+  'missingDividend': _missingDividend,
 };
 
 /// The families of each level, index 0 is level 1, with the range of each
@@ -154,6 +158,12 @@ const List<List<(String, List<Range>)>> _algebraLevels = [
     ('missingFirstAddend', [(0, 10), (0, 10)]),
     ('missingSubtrahend', [(0, 10), (0, 10)]),
     ('missingMinuend', [(0, 10), (0, 10)]),
+  ],
+  [
+    ('missingFirstFactor', [(2, 10), (1, 10)]),
+    ('missingSecondFactor', [(2, 10), (1, 10)]),
+    ('missingDivisor', [(2, 10), (1, 10)]),
+    ('missingDividend', [(2, 10), (1, 10)]),
   ],
 ];
 
@@ -194,6 +204,45 @@ const _blank = EquationProblem.blank;
   [final a, final b] when a >= 0 && b >= 0 => (
     [_blank, '−', '$a', '=', '$b'],
     a + b,
+  ),
+  _ => null,
+};
+
+// Level 2: params are the factors a and b, a never 0, and the third number is
+// their product a × b. The blank is never 0 where it divides.
+
+/// □ × a = a × b, answer b.
+(List<String>, int)? _missingFirstFactor(List<int> params) => switch (params) {
+  [final a, final b] when a > 0 && b >= 0 => (
+    [_blank, '×', '$a', '=', '${a * b}'],
+    b,
+  ),
+  _ => null,
+};
+
+/// a × □ = a × b, answer b.
+(List<String>, int)? _missingSecondFactor(List<int> params) => switch (params) {
+  [final a, final b] when a > 0 && b >= 0 => (
+    ['$a', '×', _blank, '=', '${a * b}'],
+    b,
+  ),
+  _ => null,
+};
+
+/// a × b ÷ □ = a, answer b.
+(List<String>, int)? _missingDivisor(List<int> params) => switch (params) {
+  [final a, final b] when a > 0 && b > 0 => (
+    ['${a * b}', '÷', _blank, '=', '$a'],
+    b,
+  ),
+  _ => null,
+};
+
+/// □ ÷ a = b, answer a × b.
+(List<String>, int)? _missingDividend(List<int> params) => switch (params) {
+  [final a, final b] when a > 0 && b >= 0 => (
+    [_blank, '÷', '$a', '=', '$b'],
+    a * b,
   ),
   _ => null,
 };

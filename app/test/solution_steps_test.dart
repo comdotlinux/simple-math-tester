@@ -313,17 +313,44 @@ void main() {
             '3 back to 4.',
         '4 + 3 = 7, so the blank is 7. Check: 7 − 3 = 4',
       ]);
+      expect(steps(equation('missingFirstFactor', 4, 5)), [
+        'Multiplying 4 and the blank makes 20. To undo the multiplying, '
+            'divide 20 by 4.',
+        '20 ÷ 4 = 5, so the blank is 5. Check: 5 × 4 = 20',
+      ]);
+      expect(steps(equation('missingSecondFactor', 4, 5)), [
+        'Multiplying 4 and the blank makes 20. To undo the multiplying, '
+            'divide 20 by 4.',
+        '20 ÷ 4 = 5, so the blank is 5. Check: 4 × 5 = 20',
+      ]);
+      expect(steps(equation('missingDivisor', 6, 3)), [
+        'Dividing 18 by the blank gives 6. To find the blank, divide 18 by 6.',
+        '18 ÷ 6 = 3, so the blank is 3. Check: 18 ÷ 3 = 6',
+      ]);
+      expect(steps(equation('missingDividend', 3, 6)), [
+        'Dividing the blank by 3 gives 6. To undo the dividing, multiply 6 '
+            'by 3.',
+        '6 × 3 = 18, so the blank is 18. Check: 18 ÷ 3 = 6',
+      ]);
     });
 
-    test('every level 1 equation ends with its answer put back', () {
-      for (final problem in source.problems(OperationType.algebra, 1)) {
-        final last = steps(problem).last;
-        final answer = formatNumber(problem.result);
-        expect(
-          last,
-          endsWith(problem.question.replaceAll(EquationProblem.blank, answer)),
-        );
-        expect(last, contains('the blank is $answer.'));
+    test('every equation ends with its answer put back', () {
+      for (
+        var level = 1;
+        level <= OperationType.algebra.highestLevel;
+        level++
+      ) {
+        for (final problem in source.problems(OperationType.algebra, level)) {
+          final last = steps(problem).last;
+          final answer = formatNumber(problem.result);
+          expect(
+            last,
+            endsWith(
+              problem.question.replaceAll(EquationProblem.blank, answer),
+            ),
+          );
+          expect(last, contains('the blank is $answer.'));
+        }
       }
     });
   });
