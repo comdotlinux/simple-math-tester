@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -152,6 +154,27 @@ void main() {
         'locale': 'de',
       });
       expect(decoded(reports.bodies.single).keys.toSet(), problemKeys);
+    });
+
+    test('every algebra and geometry question, at every level, has a code '
+        'the report function accepts', () {
+      final allow = jsonDecode(
+        File('../functions/report-allowlist.json').readAsStringSync(),
+      ) as Map<String, Object?>;
+      final random = Random(150);
+      for (final kind in [OperationType.algebra, OperationType.geometry]) {
+        final variants = <String>{};
+        for (var level = 1; level <= kind.highestLevel; level++) {
+          for (var i = 0; i < 200; i++) {
+            final code = SuspectQuestion.of(kind.generate(random, level))!;
+            expect(code.kind, kind.name);
+            expect(allow[kind.name] as List, contains(code.variant));
+            expect(code.level, inInclusiveRange(1, 5));
+            variants.add(code.variant);
+          }
+        }
+        expect(variants, unorderedEquals(allow[kind.name] as List));
+      }
     });
 
     test('geometry adds the drawing reason; algebra does not', () {
