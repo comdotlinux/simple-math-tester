@@ -2569,5 +2569,129 @@
   "checkNumber98": "ninety-eight",
   "@checkNumber98": {
     "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "figureExteriorOutside": "Triangle with one side drawn longer, inside angles {a} and {b}; ? is the outside angle.",
+  "@figureExteriorOutside": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. One side of the triangle is drawn on past a corner. The angle between that longer line and the other side at the corner is the outside angle, marked ?. The two inside angles across from it are labelled, such as 50°. Keep the ?.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "figureExteriorInside": "Triangle with one side drawn longer, inside angle {inside}, outside angle {outside}; ? is the other inside angle across from the outside angle.",
+  "@figureExteriorInside": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. One side of the triangle is drawn on past a corner. The angle between that longer line and the other side at the corner is the outside angle, labelled such as 120°. Of the two inside angles across from it, one is labelled and the other is marked ?. Keep the ?.",
+    "placeholders": {
+      "inside": {
+        "type": "String"
+      },
+      "outside": {
+        "type": "String"
+      }
+    }
+  },
+  "figureIsoscelesTop": "Isosceles triangle (two equal sides), top angle {angle}; ? is a base angle.",
+  "@figureIsoscelesTop": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with two equal sides, each marked with a small tick. The top angle, between the two equal sides, is labelled such as 40°; an angle at the bottom (a base angle) is marked ?. Keep the ?.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureIsoscelesBase": "Isosceles triangle (two equal sides), base angle {angle}; ? is the top angle.",
+  "@figureIsoscelesBase": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with two equal sides, each marked with a small tick. An angle at the bottom (a base angle) is labelled such as 70°; the top angle, between the two equal sides, is marked ?. Keep the ?.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureQuadrilateral": "Quadrilateral, angles {a}, {b} and {c}.",
+  "@figureQuadrilateral": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A shape with four straight sides and four corners. Three of its angles are labelled, such as 80°; the fourth is asked.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaExterior": "The outside angle of a triangle equals the two opposite inside angles added together. It makes a straight line, {degrees}°, with the inside angle next to it. The three inside angles also make {degrees}°.",
+  "@hintIdeaExterior": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for a triangle with one side drawn on past a corner. The outside angle lies between that longer line and the other side at the corner; the opposite inside angles are the two at the other corners. {degrees} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaIsosceles": "An isosceles triangle has two equal sides and two equal angles. The ticks mark the equal sides. Fold it in half between them, and the two bottom angles meet exactly.",
+  "@hintIdeaIsosceles": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for a triangle with two equal sides (isosceles), each marked with a small tick. Use the school word for isosceles. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaQuadrilateral": "The four angles of a quadrilateral always add up to {degrees}°. A line between opposite corners cuts it into two triangles. Its angles are the angles of both triangles together.",
+  "@hintIdeaQuadrilateral": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for a shape with four straight sides (a quadrilateral). Use the school word for quadrilateral. {degrees} is 360. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintOppositeAngles": "The inside angles opposite the outside angle are {a}° and {b}°.",
+  "@hintOppositeAngles": {
+    "description": "Hint step for a question about a drawn shape. Working step for a triangle with one side drawn on: the two inside angles across from the outside angle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "hintExteriorMissing": "The outside angle {outside}° is {angle}° and the angle marked ? together.",
+  "@hintExteriorMissing": {
+    "description": "Hint step for a question about a drawn shape. Working step for a triangle with one side drawn on: the outside angle equals the known inside angle plus the inside angle marked ?. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "outside": {
+        "type": "String"
+      },
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIsoscelesRest": "The two equal angles share what is left: {calculation} = {rest}.",
+  "@hintIsoscelesRest": {
+    "description": "Hint step for a question about a drawn shape. Working step for an isosceles triangle: the top angle taken away from all three angles together. {calculation} is a calculation such as 180 − 40. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "hintOtherBase": "The other angle at the bottom is also {angle}°.",
+  "@hintOtherBase": {
+    "description": "Hint step for a question about a drawn shape. Working step for an isosceles triangle: the two angles at the ends of the third side are equal. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
   }
 }

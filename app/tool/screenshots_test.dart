@@ -936,7 +936,7 @@ void main() {
                 params,
                 level: level,
               )!;
-          // One problem of each theorem family, both kinds of crossing.
+          // One problem of each theorem family and form.
           final families = [
             figure('verticallyOppositeAngles', [50, 0], 4),
             figure('verticallyOppositeAngles', [130, 1], 4),
@@ -944,6 +944,11 @@ void main() {
             figure('pythagorasHypotenuse', [8, 15], 5),
             figure('pythagorasLeg', [12, 5], 5),
             figure('rectangleDiagonal', [12, 5], 5),
+            figure('exteriorAngle', [50, 60, 0], 4),
+            figure('exteriorAngle', [50, 60, 1], 4),
+            figure('isoscelesTriangle', [40, 0], 4),
+            figure('isoscelesTriangle', [70, 1], 4),
+            figure('quadrilateralAngles', [80, 100, 70], 5),
           ];
           for (final scale in [1.0, 2.0]) {
             for (final problem in families) {

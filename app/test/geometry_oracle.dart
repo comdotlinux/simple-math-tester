@@ -20,7 +20,11 @@ import 'package:simple_math_tester/figure.dart';
 /// its angles but the asked one. Two crossing lines show one angle and a
 /// `?` on another one. For a length (Pythagoras' theorem) a right triangle
 /// shows two sides and a `?` on the third, a rectangle two adjacent sides
-/// and a `?` on its drawn diagonal. Anything else is not solvable.
+/// and a `?` on its drawn diagonal. A triangle with a side drawn on past a
+/// corner shows the two inside angles opposite that corner and the outside
+/// angle there, one of them `?`; an isosceles triangle a tick on each of
+/// its two equal sides, one angle and a `?`; a quadrilateral three angles
+/// and a `?`. Anything else is not solvable.
 class OracleFailure implements Exception {
   OracleFailure(this.message);
 
@@ -92,6 +96,12 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   if (layout.diagonal != null && shape != FigureShape.rectangle) {
     throw OracleFailure('a diagonal in a $shape');
   }
+  // A side drawn on and tick marks belong to angles in a triangle.
+  final triangleAngle =
+      shape == FigureShape.triangle && prompt == FigurePrompt.angle;
+  if ((layout.extension != null || layout.ticks.isNotEmpty) && !triangleAngle) {
+    throw OracleFailure('a side drawn on or tick marks on a $shape');
+  }
   if (layout.grid &&
       shape != FigureShape.square &&
       shape != FigureShape.rectangle) {
@@ -110,8 +120,16 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
     ),
     FigureShape.lShape => _solveLShape(prompt, layout),
     FigureShape.rightTriangle => _solveRightTriangle(prompt, layout),
-    FigureShape.triangle when prompt == FigurePrompt.angle =>
-      _solveTriangleAngles(layout),
+    FigureShape.triangle when triangleAngle && layout.extension != null =>
+      _solveExteriorAngle(layout),
+    FigureShape.triangle when triangleAngle && layout.ticks.isNotEmpty =>
+      _solveIsosceles(layout),
+    FigureShape.triangle when triangleAngle => _solvePolygonAngles(layout, 3),
+    FigureShape.quadrilateral when prompt == FigurePrompt.angle =>
+      _solvePolygonAngles(layout, 4),
+    FigureShape.quadrilateral => throw OracleFailure(
+      'a quadrilateral with the prompt $prompt',
+    ),
     FigureShape.square ||
     FigureShape.rectangle ||
     FigureShape.triangle => _solvePolygon(shape, prompt, layout),
@@ -409,62 +427,246 @@ int _solveLShape(FigurePrompt prompt, FigureLayout layout) {
   return _exact(twiceArea.abs(), 200);
 }
 
-/// The three angles of a triangle add up to 180°.
-int _solveTriangleAngles(FigureLayout layout) {
+/// The angles of a convex shape with [count] corners add up to
+/// (count − 2) × 180°: 180° in a triangle, 360° in a quadrilateral.
+int _solvePolygonAngles(FigureLayout layout, int count) {
+  final corners = layout.vertices;
+  if (corners.length != count) {
+    throw OracleFailure('${corners.length} corners, not $count');
+  }
+  _convex(corners);
+  return _solveAngles(
+    _angleLabels(layout),
+    _insideAngles(corners),
+    (count - 2) * 180,
+  );
+}
+
+/// The outside angle of a triangle, between a side drawn on past a corner
+/// and the other side at that corner, equals the two inside angles
+/// opposite it added together: it and the inside angle next to it make a
+/// straight line, and so do the three inside angles.
+int _solveExteriorAngle(FigureLayout layout) {
   final corners = layout.vertices;
   if (corners.length != 3) throw OracleFailure('a triangle has 3 corners');
-  final measured = [
-    for (var i = 0; i < 3; i++)
-      _degreesBetween(corners[i], corners[(i + 2) % 3], corners[(i + 1) % 3]),
+  _convex(corners);
+  if (layout.ticks.isNotEmpty) throw OracleFailure('ticks on this triangle');
+  final (start, end) = layout.extension!;
+  final k = _cornerAt(start, corners);
+  if ((end - start).distance <= 1) throw OracleFailure('no side drawn on');
+  // The line continues one side at the corner straight on.
+  final ends = [(k + 2) % 3, (k + 1) % 3];
+  final straight = [
+    for (final j in ends)
+      if (_degreesBetween(corners[k], end, corners[j]) >= 180 - angleTolerance)
+        j,
   ];
-  // A label stands straight out from its corner: on the line that halves
-  // the angle, outside the triangle, within 10°.
-  final byCorner = <int, int?>{};
+  if (straight.length != 1) {
+    throw OracleFailure('the line drawn on does not continue a side');
+  }
+  final other = ends.firstWhere((j) => j != straight.single);
+  final outside = (corners[k], end, corners[other]);
+  final byKey = _angleLabels(layout, outside: outside);
+  final inside = _insideAngles(corners);
+  final measured = {
+    for (final j in ends) j: inside[j],
+    3: _degreesBetween(outside.$1, outside.$2, outside.$3),
+  };
+  if (byKey.length != 3 || !measured.keys.every(byKey.containsKey)) {
+    throw OracleFailure(
+      'an outside angle needs the two inside angles opposite it',
+    );
+  }
+  final asked = [
+    for (final MapEntry(:key, :value) in byKey.entries)
+      if (value == null) key,
+  ];
+  if (asked.length != 1) throw OracleFailure('${asked.length} angles asked');
+  for (final MapEntry(:key, :value) in byKey.entries) {
+    if (value != null && (measured[key]! - value).abs() > angleTolerance) {
+      throw OracleFailure('angle $value° is drawn as ${measured[key]}°');
+    }
+  }
+  final (p, q) = (byKey[ends[0]], byKey[ends[1]]);
+  final solved = asked.single == 3 ? p! + q! : byKey[3]! - (p ?? q)!;
+  if (solved <= 0) throw OracleFailure('the asked angle is $solved°');
+  if ((measured[asked.single]! - solved).abs() > angleTolerance) {
+    throw OracleFailure(
+      'the asked angle $solved° is drawn as ${measured[asked.single]}°',
+    );
+  }
+  return solved * 100;
+}
+
+/// A triangle with a tick on two sides has those two sides equal, so it is
+/// isosceles: the angles where the equal sides meet the third side are
+/// equal, and all three add up to 180°.
+int _solveIsosceles(FigureLayout layout) {
+  final corners = layout.vertices;
+  if (corners.length != 3) throw OracleFailure('a triangle has 3 corners');
+  _convex(corners);
+  final ticked = _tickedEdges(layout.ticks, corners);
+  if (ticked.length != 2) {
+    throw OracleFailure('${ticked.length} ticked sides, not 2');
+  }
+  double length(int edge) => (corners[(edge + 1) % 3] - corners[edge]).distance;
+  final [e, f] = ticked;
+  if ((length(e) - length(f)).abs() > tolerance * max(length(e), length(f))) {
+    throw OracleFailure('the ticked sides are not drawn equal');
+  }
+  // The two ticked sides meet at the top.
+  final top = {e, (e + 1) % 3}.intersection({f, (f + 1) % 3}).single;
+  final byCorner = _angleLabels(layout);
+  final known = [
+    for (final MapEntry(:key, :value) in byCorner.entries)
+      if (value != null) key,
+  ];
+  final asked = [
+    for (final MapEntry(:key, :value) in byCorner.entries)
+      if (value == null) key,
+  ];
+  if (known.length != 1 || asked.length != 1) {
+    throw OracleFailure('an isosceles triangle needs one angle and one ?');
+  }
+  final given = byCorner[known.single]! * 100;
+  // Every angle in hundredths of a degree.
+  final angles = [
+    for (var i = 0; i < 3; i++)
+      if (known.single == top)
+        i == top ? given : _exact(18000 - given, 2)
+      else
+        i == top ? 18000 - 2 * given : given,
+  ];
+  final measured = _insideAngles(corners);
+  for (var i = 0; i < 3; i++) {
+    if (angles[i] <= 0) throw OracleFailure('an angle of ${angles[i]}');
+    if ((measured[i] - angles[i] / 100).abs() > angleTolerance) {
+      throw OracleFailure(
+        'angle $i is ${angles[i] / 100}° but drawn as ${measured[i]}°',
+      );
+    }
+  }
+  return angles[asked.single];
+}
+
+/// The edges that carry a tick: a line across the middle of the edge,
+/// square to it and at least half a tick long; at most one per edge.
+List<int> _tickedEdges(List<(Offset, Offset)> ticks, List<Offset> corners) {
+  final count = corners.length;
+  final edges = <int>[];
+  for (final (a, b) in ticks) {
+    final middle = (a + b) / 2;
+    final edge = [
+      for (var i = 0; i < count; i++)
+        if (((corners[i] + corners[(i + 1) % count]) / 2 - middle).distance <=
+            1)
+          i,
+    ];
+    if (edge.length != 1) throw OracleFailure('a tick off every middle');
+    final along = corners[(edge.single + 1) % count] - corners[edge.single];
+    final across = b - a;
+    final cosine =
+        (along.dx * across.dx + along.dy * across.dy) /
+        (along.distance * across.distance);
+    if (across.distance < tickLength / 2 ||
+        cosine.abs() > sin(angleTolerance * pi / 180)) {
+      throw OracleFailure('a tick that does not cross its edge');
+    }
+    if (edges.contains(edge.single)) {
+      throw OracleFailure('two ticks on edge ${edge.single}');
+    }
+    edges.add(edge.single);
+  }
+  return edges..sort();
+}
+
+/// Each corner's inside angle in degrees.
+List<double> _insideAngles(List<Offset> corners) {
+  final count = corners.length;
+  return [
+    for (var i = 0; i < count; i++)
+      _degreesBetween(
+        corners[i],
+        corners[(i + count - 1) % count],
+        corners[(i + 1) % count],
+      ),
+  ];
+}
+
+/// The outline turns the same way at every corner.
+void _convex(List<Offset> corners) {
+  final count = corners.length;
+  final turns = <double>{};
+  for (var i = 0; i < count; i++) {
+    final a = corners[(i + 1) % count] - corners[i];
+    final b = corners[(i + 2) % count] - corners[(i + 1) % count];
+    turns.add((a.dx * b.dy - a.dy * b.dx).sign);
+  }
+  if (turns.contains(0) || turns.length != 1) {
+    throw OracleFailure('the shape is not convex');
+  }
+}
+
+/// Each angle label at its corner, with an arc spanning that angle: a label
+/// stands straight out from its corner, on the line that halves the angle,
+/// outside the shape, within 10°. An [outside] angle (its corner, then a
+/// point on each of its two lines) takes the key one past the last corner;
+/// its label stands inside it, on the line that halves it, within 10°.
+Map<int, int?> _angleLabels(
+  FigureLayout layout, {
+  (Offset, Offset, Offset)? outside,
+}) {
+  final corners = layout.vertices;
+  final count = corners.length;
+  final angles = {
+    for (var i = 0; i < count; i++)
+      i: (
+        corners[i],
+        corners[(i + count - 1) % count],
+        corners[(i + 1) % count],
+      ),
+    count: ?outside,
+  };
+  final byKey = <int, int?>{};
   for (final label in layout.labels) {
     final at = [
-      for (var i = 0; i < 3; i++)
+      for (final MapEntry(key: k, value: (v, a, b)) in angles.entries)
         if (_degreesBetween(
-              corners[i],
+              v,
               label.box.center,
-              corners[i] * 2 -
-                  _halfway(
-                    corners[i],
-                    corners[(i + 1) % 3],
-                    corners[(i + 2) % 3],
-                  ),
+              k == count ? _halfway(v, a, b) : v * 2 - _halfway(v, a, b),
             ) <=
             10)
-          i,
+          k,
     ];
     if (at.length != 1) {
       throw OracleFailure('label ${label.text} is not clearly at one corner');
     }
-    final corner = at.single;
-    if (byCorner.containsKey(corner)) {
-      throw OracleFailure('two labels at corner $corner');
+    if (byKey.containsKey(at.single)) {
+      throw OracleFailure('two labels at corner ${at.single}');
     }
-    byCorner[corner] = _degrees(label.text);
+    byKey[at.single] = _degrees(label.text);
   }
-  if (layout.marks.length != byCorner.length) {
+  if (layout.marks.length != byKey.length) {
     throw OracleFailure(
-      '${layout.marks.length} arcs for ${byCorner.length} '
+      '${layout.marks.length} arcs for ${byKey.length} '
       'angles',
     );
   }
-  for (final corner in byCorner.keys) {
-    final mark = layout.marks.singleWhere(
-      (m) => _cornerAt(m.centre, corners) == corner,
-      orElse: () => throw OracleFailure('no arc at corner $corner'),
-    );
-    _checkMark(
-      mark,
-      corners[corner],
-      corners[(corner + 2) % 3],
-      corners[(corner + 1) % 3],
-      right: false,
-    );
+  for (final key in byKey.keys) {
+    final (v, a, b) = angles[key]!;
+    if (!layout.marks.any((mark) {
+      try {
+        _checkMark(mark, v, a, b, right: false);
+        return true;
+      } on OracleFailure {
+        return false;
+      }
+    })) {
+      throw OracleFailure('no arc at angle $key');
+    }
   }
-  return _solveAngles(byCorner, measured, 180);
+  return byKey;
 }
 
 /// Rays from one point: on a straight line the angles add up to 180°, in

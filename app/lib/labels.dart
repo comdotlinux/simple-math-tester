@@ -71,6 +71,17 @@ String figureSentence(AppLocalizations l, Figure figure) {
       sides[1],
     ),
     FigureShape.rectangle => l.figureRectangle(sides[0], sides[1]),
+    FigureShape.triangle when figure.extension != null =>
+      // The outside angle is the one past the last corner.
+      figure.angles.any((a) => a.corner == 3 && a.degrees == null)
+          ? l.figureExteriorOutside(angles[0], angles[1])
+          : l.figureExteriorInside(angles[0], angles[1]),
+    FigureShape.triangle when figure.ticks.isNotEmpty =>
+      figure.angles.any(
+            (a) => a.corner == tickedTop(figure.ticks, 3) && a.degrees != null,
+          )
+          ? l.figureIsoscelesTop(angles[0])
+          : l.figureIsoscelesBase(angles[0]),
     FigureShape.triangle when angles.isNotEmpty => l.figureTriangleAngles(
       angles[0],
       angles[1],
@@ -93,6 +104,11 @@ String figureSentence(AppLocalizations l, Figure figure) {
       l.figureCrossingOpposite(angles[0]),
     FigureShape.crossingLines => l.figureCrossingNeighbour(angles[0]),
     FigureShape.aroundPoint => l.figureAroundPoint(angles[0], angles[1]),
+    FigureShape.quadrilateral => l.figureQuadrilateral(
+      angles[0],
+      angles[1],
+      angles[2],
+    ),
     FigureShape.circle =>
       figure.vertices.contains(figure.centre)
           ? l.figureCircleRadius(sides[0])

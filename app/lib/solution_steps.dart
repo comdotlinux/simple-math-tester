@@ -754,6 +754,9 @@ enum FigureMove {
   aroundPoint,
   pythagoras,
   diagonalTriangles,
+  exteriorAngle,
+  isosceles,
+  quadrilateral,
 
   /// The working: a number read from the figure, or one small calculation.
   everySide,
@@ -784,6 +787,10 @@ enum FigureMove {
   squareSide,
   addSquares,
   takeSquare,
+  oppositeAngles,
+  exteriorMissing,
+  isoscelesRest,
+  otherBase,
 
   /// The last step: the calculation whose value is the answer, and the
   /// check. [rootSide] and [rootLength] multiply the answer by itself to
@@ -887,6 +894,39 @@ List<FigureStep> figureHint(Figure figure) {
       ];
       final asked = figure.angles.firstWhere((a) => a.degrees == null).corner;
       final sizes = [for (final angle in known) angle.degrees!];
+      if (figure.extension != null) {
+        return _exteriorHint(figure, asked);
+      }
+      if (figure.ticks.isNotEmpty) return _isoscelesHint(figure, asked);
+      if (figure.shape == FigureShape.quadrilateral) {
+        final sum = sizes.reduce((a, b) => a + b);
+        return [
+          FigureStep(FigureMove.askAngle, parts: FigureParts(angles: {asked})),
+          FigureStep(
+            FigureMove.quadrilateral,
+            numbers: const [36000],
+            parts: FigureParts(
+              angles: {for (final a in figure.angles) a.corner},
+            ),
+          ),
+          FigureStep(
+            FigureMove.addKnownAngles,
+            terms: [for (final size in sizes) size * 100],
+            signs: const ['+', '+'],
+            valueHundredths: sum * 100,
+            parts: FigureParts(angles: {for (final a in known) a.corner}),
+          ),
+          FigureStep(
+            FigureMove.angleIs,
+            terms: [36000, sum * 100],
+            signs: const ['−'],
+            valueHundredths: (360 - sum) * 100,
+            checkKind: FigureCheck.calculation,
+            check: '${[...sizes, 360 - sum].join(' + ')} = 360',
+            parts: FigureParts(angles: {asked}),
+          ),
+        ];
+      }
       if (figure.shape == FigureShape.triangle) {
         final [first, second] = known;
         final rest = 180 - sizes[0] - sizes[1];
@@ -1503,6 +1543,137 @@ List<FigureStep> _lShapeSides(int top, int inner, int right, int left) => [
 
 /// The sentences of [figureHint]; each only wraps its step's numbers, and
 /// numbers are written in the language's own way.
+/// The outside angle of a triangle with a side drawn on (the angle one past
+/// the last corner) is the two inside angles opposite it added together.
+List<FigureStep> _exteriorHint(Figure figure, int asked) {
+  final outside = figure.vertices.length;
+  final inside = [
+    for (final angle in figure.angles)
+      if (angle.corner != outside) angle,
+  ];
+  final all = FigureParts(angles: {for (final a in figure.angles) a.corner});
+  final ask = FigureStep(
+    FigureMove.askAngle,
+    parts: FigureParts(angles: {asked}),
+  );
+  final idea = FigureStep(
+    FigureMove.exteriorAngle,
+    numbers: const [18000],
+    parts: all,
+  );
+  if (asked == outside) {
+    final [a, b] = [for (final angle in inside) angle.degrees!];
+    return [
+      ask,
+      idea,
+      FigureStep(
+        FigureMove.oppositeAngles,
+        numbers: [a * 100, b * 100],
+        parts: FigureParts(angles: {for (final angle in inside) angle.corner}),
+      ),
+      FigureStep(
+        FigureMove.angleIs,
+        terms: [a * 100, b * 100],
+        signs: const ['+'],
+        valueHundredths: (a + b) * 100,
+        checkKind: FigureCheck.calculation,
+        check: '${a + b} − $a = $b',
+        parts: all,
+      ),
+    ];
+  }
+  final given = inside.firstWhere((angle) => angle.degrees != null);
+  final (a, whole) = (
+    given.degrees!,
+    figure.angles.firstWhere((angle) => angle.corner == outside).degrees!,
+  );
+  final both = FigureParts(angles: {outside, given.corner});
+  return [
+    ask,
+    idea,
+    FigureStep(
+      FigureMove.exteriorMissing,
+      numbers: [whole * 100, a * 100],
+      parts: both,
+    ),
+    FigureStep(
+      FigureMove.angleIs,
+      terms: [whole * 100, a * 100],
+      signs: const ['−'],
+      valueHundredths: (whole - a) * 100,
+      checkKind: FigureCheck.calculation,
+      check: '$a + ${whole - a} = $whole',
+      parts: FigureParts(angles: {outside, given.corner, asked}),
+    ),
+  ];
+}
+
+/// An isosceles triangle: the ticked sides are equal, so are the angles at
+/// the ends of the third side, and all three angles make 180°.
+List<FigureStep> _isoscelesHint(Figure figure, int asked) {
+  final given = figure.angles.firstWhere((angle) => angle.degrees != null);
+  final g = given.degrees!;
+  final ask = FigureStep(
+    FigureMove.askAngle,
+    parts: FigureParts(angles: {asked}),
+  );
+  final idea = FigureStep(
+    FigureMove.isosceles,
+    parts: FigureParts(edges: {...figure.ticks}),
+  );
+  final lit = FigureParts(angles: {given.corner});
+  if (given.corner == tickedTop(figure.ticks, 3)) {
+    // The two equal angles share what the top angle leaves.
+    final rest = 180 - g;
+    return [
+      ask,
+      idea,
+      FigureStep(
+        FigureMove.isoscelesRest,
+        terms: [18000, g * 100],
+        signs: const ['−'],
+        valueHundredths: rest * 100,
+        parts: lit,
+      ),
+      FigureStep(
+        FigureMove.angleIs,
+        terms: [rest * 100, 200],
+        signs: const ['÷'],
+        valueHundredths: rest * 50,
+        checkKind: FigureCheck.calculation,
+        check:
+            '${_hundredthsEn(rest * 50)} + ${_hundredthsEn(rest * 50)} + $g '
+            '= 180',
+        parts: FigureParts(angles: {asked}),
+      ),
+    ];
+  }
+  final top = 180 - 2 * g;
+  return [
+    ask,
+    idea,
+    FigureStep(FigureMove.otherBase, numbers: [g * 100], parts: lit),
+    FigureStep(
+      FigureMove.takeFirstAngle,
+      terms: [18000, g * 100],
+      signs: const ['−'],
+      valueHundredths: (180 - g) * 100,
+      parts: lit,
+    ),
+    FigureStep(
+      FigureMove.angleIs,
+      terms: [(180 - g) * 100, g * 100],
+      signs: const ['−'],
+      valueHundredths: top * 100,
+      checkKind: FigureCheck.calculation,
+      check: '$g + $g + $top = 180',
+      parts: FigureParts(angles: {given.corner, asked}),
+    ),
+  ];
+}
+
+String _hundredthsEn(int hundredths) => formatHundredths(hundredths, 'en');
+
 List<SolutionStep> figureSteps(Figure figure) => [
   for (final step in figureHint(figure)) _figureSentence(step),
 ];
@@ -1585,6 +1756,13 @@ SolutionStep _figureSentence(FigureStep step) => (l) {
     FigureMove.halveThenTakeAway => l.hintHalveThenTakeAway,
     FigureMove.pythagoras => l.hintIdeaPythagoras,
     FigureMove.diagonalTriangles => l.hintIdeaDiagonal,
+    FigureMove.exteriorAngle => l.hintIdeaExterior(numbers.single),
+    FigureMove.isosceles => l.hintIdeaIsosceles,
+    FigureMove.quadrilateral => l.hintIdeaQuadrilateral(numbers.single),
+    FigureMove.oppositeAngles => l.hintOppositeAngles(numbers[0], numbers[1]),
+    FigureMove.exteriorMissing => l.hintExteriorMissing(numbers[0], numbers[1]),
+    FigureMove.isoscelesRest => l.hintIsoscelesRest(calculation, value),
+    FigureMove.otherBase => l.hintOtherBase(numbers.single),
     FigureMove.verticallyOpposite => l.hintIdeaVerticallyOpposite(
       numbers.single,
     ),
