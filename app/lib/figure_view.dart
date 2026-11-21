@@ -2,7 +2,6 @@ import 'package:material_ui/material_ui.dart';
 
 import 'app_theme.dart';
 import 'figure.dart';
-import 'l10n/app_localizations.dart';
 
 /// The height of the figure in the question card; the width is the card's.
 double figureHeight({required bool compact}) => compact ? 150 : 210;
@@ -31,27 +30,6 @@ Size measureLabel(String text, TextStyle style, TextScaler scaler) {
   painter.dispose();
   return size;
 }
-
-/// The text form of [figure]: the shape, every label and what is asked,
-/// such as "Rectangle, sides 5 and 3. Perimeter?". Read from the labels
-/// themselves, so it says what the figure shows. Also the figure's
-/// semantics label and the line in the history.
-String figureSentence(AppLocalizations l, Figure figure) {
-  final sides = [for (final label in figure.labels) label.text];
-  final shape = switch (figure.shape) {
-    FigureShape.square => l.figureSquare(sides[0]),
-    FigureShape.rectangle => l.figureRectangle(sides[0], sides[1]),
-    FigureShape.triangle => l.figureTriangle(sides[0], sides[1], sides[2]),
-  };
-  return l.figureQuestion(shape, figurePromptText(l, figure.prompt));
-}
-
-/// The short line under the figure, such as "Perimeter?".
-String figurePromptText(AppLocalizations l, FigurePrompt prompt) =>
-    switch (prompt) {
-      FigurePrompt.perimeter => l.figurePerimeter,
-      FigurePrompt.area => l.figureArea,
-    };
 
 /// [figure] drawn to scale over the available width, [height] tall, with
 /// its labels in the theme's label style under the system text scale.

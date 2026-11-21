@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/figure.dart';
 import 'package:simple_math_tester/figure_view.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/geometry.dart';
 import 'package:simple_math_tester/solution_steps.dart';
 
@@ -576,23 +577,20 @@ void main() {
     );
   });
 
-  test('a drawn problem never repeats the one before', () {
+  test('draws stay in their level and reach every family of it', () {
     final random = Random(7);
     for (final level in [1, 2]) {
-      (GeometryFamily, List<int>)? previous;
-      for (var i = 0; i < 2000; i++) {
-        final next = drawGeometry(random, level, previous: previous);
-        expect(next.$1.level, level);
-        expect(next.$1.space, contains(next.$2));
-        if (previous != null) {
-          expect(
-            next.$1 == previous.$1 &&
-                next.$2.join(',') == previous.$2.join(','),
-            isFalse,
-          );
-        }
-        previous = next;
+      final seen = <GeometryFamily>{};
+      for (var i = 0; i < 300; i++) {
+        final (family, params) = drawGeometry(random, level);
+        expect(family.level, level);
+        expect(family.space, contains(params));
+        seen.add(family);
       }
+      expect(seen, {
+        for (final family in GeometryFamily.values)
+          if (family.level == level) family,
+      });
     }
   });
 

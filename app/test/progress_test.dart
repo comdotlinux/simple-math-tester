@@ -278,7 +278,8 @@ void main() {
     List<Object?> attemptFields(Attempt a) => [
       ...switch (a.problem) {
         ArithmeticProblem(:final lhs, :final rhs) => [lhs, rhs],
-        EquationProblem(:final variant, :final params) => [variant, params],
+        EquationProblem(:final variant, :final params) ||
+        FigureProblem(:final variant, :final params) => [variant, params],
       },
       a.problem.kind,
       a.problem.result,
@@ -910,6 +911,124 @@ void main() {
     });
   });
 
+  group('the geometry kind', () {
+    final figure = (OperationType.geometry.source as GeometrySource).build(
+      OperationType.geometry,
+      'rectanglePerimeter',
+      [5, 3],
+    )!;
+    final solved = Attempt(
+      figure,
+      firstAnswer: 16,
+      elapsedMs: 4200,
+      answeredAt: DateTime.utc(2026, 11, 21, 11).toLocal(),
+    );
+
+    test('starts at level 1 with tier harder and is capped at level 2', () {
+      expect(
+        Progress(tier: Tier.harder).difficulty[OperationType.geometry]!.level,
+        1,
+      );
+      expect(OperationType.geometry.highestLevel, 2);
+      expect(
+        Progress.decode('{"operations":{"geometry":{"level":5,"answered":3}}}')
+            .difficulty[OperationType.geometry]!
+            .level,
+        2,
+      );
+      expect(
+        Progress().selectedOperations,
+        isNot(contains(OperationType.geometry)),
+      );
+    });
+
+    test('an attempt saves its variant and params and decodes to the same '
+        'figure', () {
+      final progress = Progress(history: [solved, attempt(9)]);
+      expect(progress.toJsonHistory().first, {
+        'variant': 'rectanglePerimeter',
+        'params': [5, 3],
+        'firstAnswerHundredths': 1600,
+        'kind': 'geometry',
+        'result': 16,
+        'level': 1,
+        'firstAnswer': 16,
+        'elapsedMs': 4200,
+        'hintsUsed': 0,
+        'answeredAt': '2026-11-21T11:00:00.000Z',
+        'sprint': false,
+      });
+      final decoded = Progress.decode(progress.encode());
+      final problem = decoded.history.first.problem as FigureProblem;
+      expect(problem.figure, figure.figure);
+      expect(
+        [problem.variant, problem.params, problem.result],
+        [
+          'rectanglePerimeter',
+          [5, 3],
+          16,
+        ],
+      );
+      expect(decoded.history.first.correct, isTrue);
+      expect(decoded.encode(), progress.encode());
+    });
+
+    test('a document with geometry survives an older build that does not '
+        'know the kind', () {
+      final written =
+          Progress(
+                selectedOperations: {
+                  OperationType.plus,
+                  OperationType.geometry,
+                },
+                history: [attempt(6), solved],
+              )
+              .withDifficulty(
+                OperationType.geometry,
+                const Difficulty(answered: 1, correct: 1),
+              )
+              .encode();
+      final older = written.replaceAll('"geometry"', '"fromANewerBuild"');
+      final decoded = Progress.decode(older);
+      expect(decoded.selectedOperations, {OperationType.plus});
+      expect(decoded.history, hasLength(1));
+      expect(decoded.encode(), older);
+      final again = Progress.decode(
+        decoded.encode().replaceAll('"fromANewerBuild"', '"geometry"'),
+      );
+      expect(again.encode(), written);
+      expect(
+        (again.history.last.problem as FigureProblem).figure,
+        figure.figure,
+      );
+    });
+
+    for (final (name, fields, result) in [
+      ('an unknown variant', '"variant":"circleArea","params":[5,3]', 16),
+      ('no variant', '"params":[5,3]', 16),
+      (
+        'params outside the family',
+        '"variant":"rectanglePerimeter","params":[5,5]',
+        20,
+      ),
+      ('a decimal param', '"variant":"squarePerimeter","params":[4.5]', 18),
+      (
+        'a result its params do not build',
+        '"variant":"rectanglePerimeter","params":[5,3]',
+        15,
+      ),
+    ]) {
+      test('a geometry entry with $name is kept as it is', () {
+        expectKept(
+          '{$fields,"kind":"geometry","result":$result,"level":1,'
+          '"firstAnswer":7,"elapsedMs":10,"hintsUsed":0,'
+          '"answeredAt":"2026-11-21T10:00:00.000Z","sprint":false}',
+          solved,
+        );
+      });
+    }
+  });
+
   test('history and selection are unmodifiable', () {
     final progress = Progress(history: [attempt(1)]);
     expect(() => progress.history.add(attempt(2)), throwsUnsupportedError);
@@ -928,7 +1047,7 @@ void expectKept(String entry, Attempt known) {
   });
   final decoded = Progress.decode(source);
   expect(decoded.history, hasLength(1));
-  expect(decoded.history.single.problem, isA<EquationProblem>());
+  expect(decoded.history.single.problem.runtimeType, known.problem.runtimeType);
   final history = decoded.toJsonHistory();
   expect(history.first, jsonDecode(entry));
   expect(Progress.decode(decoded.encode()).toJsonHistory(), history);

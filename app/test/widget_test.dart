@@ -781,7 +781,7 @@ void main() {
 
     for (final width in [320.0, 390.0, 800.0, 1440.0]) {
       for (final scale in [1.0, 2.0]) {
-        testWidgets('chips stay on one line at $width, text scale $scale', (
+        testWidgets('chips fill whole rows at $width, text scale $scale', (
           tester,
         ) async {
           await launch(tester, size: Size(width, 900), scale: scale);
@@ -795,13 +795,18 @@ void main() {
               matching: find.byType(Card),
             ),
           );
-          for (final rect in rects) {
-            expect(rect.top, rects.first.top);
-            expect(rect.height, greaterThanOrEqualTo(48));
-            expect(rect.width, moreOrLessEquals(rects.first.width));
+          // Six toggles share one row where they fit, else two rows of three.
+          final perRow = width < 390 ? 3 : rects.length;
+          for (var start = 0; start < rects.length; start += perRow) {
+            final row = rects.sublist(start, start + perRow);
+            for (final rect in row) {
+              expect(rect.top, row.first.top);
+              expect(rect.height, greaterThanOrEqualTo(48));
+              expect(rect.width, moreOrLessEquals(rects.first.width));
+            }
+            expect(row.first.left, moreOrLessEquals(card.left));
+            expect(row.last.right, moreOrLessEquals(card.right));
           }
-          expect(rects.first.left, moreOrLessEquals(card.left));
-          expect(rects.last.right, moreOrLessEquals(card.right));
           expect(tester.takeException(), isNull);
         });
       }

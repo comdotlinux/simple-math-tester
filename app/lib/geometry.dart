@@ -1,8 +1,6 @@
 import 'dart:math';
 import 'dart:ui' show Offset;
 
-import 'package:flutter/foundation.dart';
-
 import 'figure.dart';
 
 /// The highest geometry level so far; raised as families are added.
@@ -39,27 +37,16 @@ enum GeometryFamily {
   List<List<int>> get space => _space();
 }
 
-/// One geometry problem drawn uniformly by family, then by parameters,
-/// never the same as [previous].
-(GeometryFamily, List<int>) drawGeometry(
-  Random random,
-  int level, {
-  (GeometryFamily, List<int>)? previous,
-}) {
+/// One geometry problem of [level], drawn uniformly by family, then by
+/// parameters. The model draws again when it repeats the one before.
+(GeometryFamily, List<int>) drawGeometry(Random random, int level) {
   final families = [
     for (final family in GeometryFamily.values)
       if (family.level == level) family,
   ];
-  while (true) {
-    final family = families[random.nextInt(families.length)];
-    final space = family.space;
-    final params = space[random.nextInt(space.length)];
-    if (previous == null ||
-        previous.$1 != family ||
-        !listEquals(previous.$2, params)) {
-      return (family, params);
-    }
-  }
+  final family = families[random.nextInt(families.length)];
+  final space = family.space;
+  return (family, space[random.nextInt(space.length)]);
 }
 
 /// Sides at most 12; the longer side at most 4 times the shorter, so the

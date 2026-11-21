@@ -191,7 +191,7 @@ void main() {
   });
 
   group('selection toggles', () {
-    testWidgets('five fit in one row at 320 wide, text scale 2', (
+    testWidgets('six wrap to two rows of three at 320 wide, text scale 2', (
       tester,
     ) async {
       await launch(tester, size: const Size(320, 900), scale: 2);
@@ -202,8 +202,9 @@ void main() {
           matching: find.byType(Tooltip),
         ),
       );
-      final tops = {for (final type in OperationType.values) toggle(type).top};
-      expect(tops, hasLength(1));
+      final tops = [for (final type in OperationType.values) toggle(type).top];
+      expect(tops.toSet(), hasLength(2));
+      expect(tops.where((top) => top == tops.first), hasLength(3));
       for (final type in OperationType.values) {
         expect(toggle(type).width, greaterThanOrEqualTo(48));
         expect(toggle(type).height, greaterThanOrEqualTo(48));

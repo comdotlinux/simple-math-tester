@@ -198,5 +198,17 @@
   "privacyChildrenHeading": "పిల్లలు",
   "privacyChildren": "ఈ యాప్ పిల్లల కోసం తయారుచేసినది, పిల్లలతో సహా ఎవరి నుంచీ ఎలాంటి డేటానూ సేకరించదు.",
   "privacyChangesHeading": "మార్పులు మరియు సంప్రదింపు",
-  "privacyChanges": "ఈ విధానం మారితే, కొత్త వెర్షన్ కొత్త తేదీతో యాప్‌లో మరియు వెబ్ వెర్షన్ గోప్యతా పేజీలో ప్రచురించబడుతుంది. ప్రశ్నలు ఉంటే, Google Play లో యాప్ పేజీలో చూపిన డెవలపర్ ఈ-మెయిల్ చిరునామాకు రాయి."
+  "privacyChanges": "ఈ విధానం మారితే, కొత్త వెర్షన్ కొత్త తేదీతో యాప్‌లో మరియు వెబ్ వెర్షన్ గోప్యతా పేజీలో ప్రచురించబడుతుంది. ప్రశ్నలు ఉంటే, Google Play లో యాప్ పేజీలో చూపిన డెవలపర్ ఈ-మెయిల్ చిరునామాకు రాయి.",
+  "operationGeometry": "Geometry",
+  "figureSquare": "Square, side {side}.",
+  "figureRectangle": "Rectangle, sides {width} and {height}.",
+  "figureTriangle": "Triangle, sides {a}, {b} and {c}.",
+  "figurePerimeter": "Perimeter?",
+  "figureArea": "Area?",
+  "figureQuestion": "{figure} {prompt}",
+  "stepSquareSides": "A square has four equal sides, each {side} long.",
+  "stepRectangleSides": "The two sides without a number are as long as the sides opposite them: {width} and {height}.",
+  "stepTriangleSides": "The perimeter is the length all the way around: add the three sides {a}, {b} and {c}.",
+  "stepPerimeterSum": "Add all the sides: {sides} = {perimeter}.",
+  "stepAreaRows": "Count the squares: {rows} rows of {columns} squares each."
 }

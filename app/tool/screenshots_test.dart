@@ -99,6 +99,7 @@ void main() {
       75,
       level: 3,
     ),
+    double scale = 1,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -139,6 +140,7 @@ void main() {
                 data: MediaQueryData(
                   size: size,
                   platformBrightness: brightness,
+                  textScaler: TextScaler.linear(scale),
                   viewInsets: EdgeInsets.only(bottom: keyboard),
                 ),
                 child: const MathTesterApp(),
@@ -534,6 +536,73 @@ void main() {
             // The first rows, just under the stats.
             scrollAnswers(tester, 400);
             await shoot(tester, '$tag-13c-algebra-answers-${layout.name}');
+          }
+        });
+
+        testWidgets('geometry screenshots $tag', (tester) async {
+          language = code;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          FigureProblem figure(String variant, List<int> params) =>
+              geometry.build(OperationType.geometry, variant, params)!;
+          final families = [
+            figure('squarePerimeter', [7]),
+            figure('rectanglePerimeter', [12, 3]),
+            figure('trianglePerimeter', [12, 5, 9]),
+            figure('rectangleArea', [5, 3]),
+            figure('rectangleArea', [3, 10]),
+          ];
+          for (final scale in [1.0, 2.0]) {
+            for (final layout in LayoutMode.values) {
+              for (final problem in families) {
+                final name =
+                    '$tag-14-geometry-${problem.variant}-'
+                    '${problem.params.join('x')}-${layout.name}-x$scale';
+                final practice = await launch(
+                  tester,
+                  size,
+                  brightness,
+                  problem: problem,
+                  layout: layout,
+                  scale: scale,
+                );
+                practice.toggleOperation(OperationType.geometry);
+                await shoot(tester, name);
+              }
+            }
+          }
+          final wrong = await launch(
+            tester,
+            size,
+            brightness,
+            problem: families[1],
+          );
+          await check(tester, '29');
+          wrong.revealStep();
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await shoot(tester, '$tag-14b-geometry-wrong-hints');
+
+          final history = [
+            for (final (i, problem) in families.indexed)
+              Attempt(
+                problem,
+                firstAnswer: i == 2 ? null : problem.result + i % 2,
+                elapsedMs: 6000,
+                answeredAt: now,
+              ),
+          ];
+          for (final layout in LayoutMode.values) {
+            final answers = await launch(
+              tester,
+              size,
+              brightness,
+              layout: layout,
+              history: history,
+            );
+            answers.setCurrentPage(1);
+            await tester.pumpAndSettle();
+            scrollAnswers(tester, 400);
+            await shoot(tester, '$tag-14c-geometry-answers-${layout.name}');
           }
         });
       }

@@ -399,10 +399,11 @@ class _ResultsPageState extends State<ResultsPage> {
                   TextSpan(
                     style: textTheme.titleMedium,
                     children: [
-                      mathSpan(context, attempt.problem.question, null),
-                      // An equation already has its "=", so an arrow leads
-                      // to its answer; drawn, as no bundled font has "→".
-                      if (attempt.problem is EquationProblem) ...[
+                      mathSpan(context, attempt.problem.shown(_l), null),
+                      // An equation already has its "=" and a figure is a
+                      // sentence, so an arrow leads to the answer; drawn, as
+                      // no bundled font has "→".
+                      if (attempt.problem is! ArithmeticProblem) ...[
                         WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: Padding(
@@ -535,7 +536,7 @@ class _ResultsPageState extends State<ResultsPage> {
     Attempt attempt,
     TextStyle? style,
   ) => Text.rich(
-    mathSpan(context, attempt.problem.question, style),
+    mathSpan(context, attempt.problem.shown(_l), style),
     semanticsLabel: attempt.problem.spoken(_l),
   );
 

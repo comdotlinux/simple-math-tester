@@ -521,6 +521,41 @@ void main() {
       }
     });
 
+    test('a figure never comes twice in a row', () {
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: {OperationType.geometry},
+        ),
+      );
+      var previous = model.current as FigureProblem;
+      for (var i = 0; i < 2000; i++) {
+        model.generateNextProblem();
+        final current = model.current as FigureProblem;
+        expect(current.figure, isNot(previous.figure), reason: 'draw $i');
+        previous = current;
+      }
+    });
+
+    test(
+      'geometry starts at level 1 whatever the tier and stops at level 2',
+      () {
+        final model = seeded(
+          progress: Progress(
+            tier: Tier.harder,
+            selectedOperations: {OperationType.geometry},
+          ),
+        );
+        expect(model.current.level, 1);
+        for (var i = 0; i < 9; i++) {
+          answer(model, right: true);
+        }
+        expect(model.difficulty[OperationType.geometry]!.level, 2);
+        expect(model.current.level, 2);
+        expect((model.current as FigureProblem).figure.grid, isTrue);
+      },
+    );
+
     test('algebra starts at level 1 and stops at its highest level, whatever '
         'the tier', () {
       final model = seeded(
