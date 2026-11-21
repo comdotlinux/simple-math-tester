@@ -2,7 +2,9 @@
 
 A friendly arithmetic practice app for school beginners. Practice with addition,
 subtraction, multiplication and division, then review answers for the current
-session. Supports web, Android and iOS.
+session. Algebra (equations with one missing number) and geometry (perimeter,
+area, sides and angles of figures drawn to scale) can be switched on; see
+[docs/question-kinds.md](docs/question-kinds.md). Supports web, Android and iOS.
 
 ## Local setup
 

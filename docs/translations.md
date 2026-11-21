@@ -33,7 +33,11 @@ when that language has no translation; Settings > Language overrides it.
    plurals and digits, runs the translation tests, and opens a pull request
    from the branch `translations/auto`, or updates the open one. Strings
    go to DeepSeek in batches of up to 60 (about 4500 English characters,
-   `max_tokens` 32768). When a batch fails (HTTP error, an answer cut off or
+   `max_tokens` 32768), as plain `key: text` pairs with the descriptions in
+   a separate `notes` map (when each key was an object with its text and
+   description, the model sometimes answered with objects, which failed
+   every retry; an answer object's `text` is still accepted, and a rejected
+   value that is not a string is quoted in the log). When a batch fails (HTTP error, an answer cut off or
    not valid JSON), its keys are sent again in batches of 20, each with up
    to two retries; a rejected or missing string is sent again the same way,
    alone with the other failed keys. A string that fails every attempt keeps
