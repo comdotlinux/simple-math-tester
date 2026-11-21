@@ -321,9 +321,13 @@ void main() {
             params,
             level: level,
           ),
-          progress: Progress(tier: Tier.easy),
+          progress: Progress(
+            tier: Tier.easy,
+            selectedOperations: {OperationType.geometry},
+          ),
         );
         addTearDown(model.dispose);
+        model.startPractice();
         await tester.pumpWidget(
           ChangeNotifierProvider.value(
             value: model,

@@ -45,6 +45,9 @@ class _ProblemPageState extends State<ProblemPage> {
   /// short phone with large text it starts below the screen.
   final _newKindKey = GlobalKey();
   bool _cardRevealed = false;
+
+  /// The summary End shows, brought to the top of the page.
+  final _summaryKey = GlobalKey();
   final _answerKey = GlobalKey();
 
   /// Skip under the question card, which a docked phone page keeps in view
@@ -142,6 +145,12 @@ class _ProblemPageState extends State<ProblemPage> {
   void _end() {
     if (_scroll.hasClients) _scroll.jumpTo(0);
     _model.endPractice();
+    // Large text on a short phone would leave it below the title.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final summary = _summaryKey.currentContext;
+      if (summary == null || !summary.mounted) return;
+      Scrollable.ensureVisible(summary);
+    });
   }
 
   @override
@@ -512,7 +521,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     const _TierPicker()
                   else if (setup) ...[
                     if (model.lastRound case final summary?) ...[
-                      RoundSummaryCard(summary: summary),
+                      RoundSummaryCard(key: _summaryKey, summary: summary),
                       SizedBox(height: gap),
                     ],
                     if (model.lastSprint case final result?) ...[

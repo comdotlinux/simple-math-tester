@@ -26,21 +26,16 @@ class RoundSummaryCard extends StatelessWidget {
       color: tokens.outline,
       width: AppTokens.outlineWidth,
     );
-    // One node per row, read as its label and then its value.
+    // One node per row, read as its label and then its value; the value
+    // goes under a label that leaves it no room (large text, a long word).
     Widget row(String label, String value, Key key) => MergeSemantics(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.end,
         spacing: 12,
         children: [
-          Expanded(child: Text(label, style: textTheme.bodyLarge)),
-          Flexible(
-            child: Text(
-              value,
-              key: key,
-              textAlign: TextAlign.end,
-              style: textTheme.titleMedium,
-            ),
-          ),
+          Text(label, style: textTheme.bodyLarge),
+          Text(value, key: key, style: textTheme.titleMedium),
         ],
       ),
     );
