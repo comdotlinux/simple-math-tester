@@ -132,13 +132,234 @@ int calculate(String calculation) {
   return result;
 }
 
-final _calculation = RegExp(
-  r'(\d+(?:\.\d+)?(?: [+−×÷] \d+(?:\.\d+)?)+) = (\d+(?:\.\d+)?)',
-);
-
 /// A number as a whole token of [text], not part of a longer number.
 RegExp numberToken(String number) =>
     RegExp('(?<![\\d.])${RegExp.escape(number)}(?![\\d]|\\.\\d)');
+
+const _asks = {
+  FigureMove.askPerimeter,
+  FigureMove.askArea,
+  FigureMove.askSideFromPerimeter,
+  FigureMove.askSideFromArea,
+  FigureMove.askAngle,
+  FigureMove.askCircumference,
+  FigureMove.askLength,
+};
+const _ideas = {
+  FigureMove.squareSides,
+  FigureMove.rectangleSides,
+  FigureMove.perimeterAdds,
+  FigureMove.gridArea,
+  FigureMove.rectangleArea,
+  FigureMove.halfPerimeter,
+  FigureMove.squareArea,
+  FigureMove.triangleAngles,
+  FigureMove.straightAngle,
+  FigureMove.rightAngle,
+  FigureMove.rightTriangle,
+  FigureMove.lShapePerimeter,
+  FigureMove.lShapeArea,
+  FigureMove.circumference,
+  FigureMove.circleArea,
+  FigureMove.verticallyOpposite,
+  FigureMove.aroundPoint,
+  FigureMove.pythagoras,
+  FigureMove.diagonalTriangles,
+};
+const _answers = {
+  FigureMove.perimeterIs,
+  FigureMove.areaIs,
+  FigureMove.sideIs,
+  FigureMove.rootSide,
+  FigureMove.rootLength,
+  FigureMove.angleIs,
+  FigureMove.circumferenceIs,
+};
+const _roots = {FigureMove.rootSide, FigureMove.rootLength};
+
+/// The numbers a rule may bring in: halves, four sides, 90°, 180°, 360°.
+const ruleNumbers = {200, 400, 9000, 18000, 36000};
+
+/// What is wrong with [hint] as the hint of [figure], whose answer the
+/// oracle solved as [solved] (hundredths); empty when nothing is. Checks
+/// the shape (what is asked, the idea, the working, the answer), that each
+/// calculation adds up in exact hundredths, that every number comes from a
+/// highlighted part, the given total or π, a rule or an earlier step, that
+/// every labelled part a calculation step highlights is read by it (or by
+/// the earlier steps whose values it uses), that only the last step has
+/// the answer and a check, and that the check holds.
+/// [calculate], or null when a division or product is not exact.
+int? _exact(String calculation) {
+  try {
+    return calculate(calculation);
+  } on TestFailure {
+    return null;
+  }
+}
+
+List<String> hintProblems(Figure figure, List<FigureStep> hint, int solved) {
+  final problems = <String>[];
+  final count = figure.vertices.length;
+  final rays = const {
+    FigureShape.straightAngle,
+    FigureShape.rightAngle,
+    FigureShape.crossingLines,
+    FigureShape.aroundPoint,
+  }.contains(figure.shape);
+  final edgeCount = figure.shape == FigureShape.circle
+      ? 1
+      : rays
+      ? count - 1
+      : count;
+  final ys = figure.vertices.map((v) => v.dy);
+  final rowCount = figure.grid ? (ys.reduce(max) - ys.reduce(min)).round() : 0;
+  final labelOf = {
+    for (final label in figure.labels) label.edge: label.hundredths,
+  };
+  final angleOf = {
+    for (final angle in figure.angles)
+      angle.corner: switch (angle.degrees) {
+        final degrees? => degrees * 100,
+        null => null,
+      },
+  };
+  final given = {?figure.total, ?figure.pi};
+  final answerToken = numberToken(formatHundredths(solved, 'en'));
+  final earlier = <int>{};
+  // The labels each value worked out so far was worked out from.
+  final from = <int, Set<int>>{};
+  if (hint.length < 4 ||
+      !_asks.contains(hint.first.move) ||
+      !_ideas.contains(hint[1].move) ||
+      !_answers.contains(hint.last.move)) {
+    problems.add('not shaped: what is asked, the idea, working, the answer');
+  }
+  for (final (i, step) in hint.indexed) {
+    final last = i == hint.length - 1;
+    void fail(String why) =>
+        problems.add('step ${i + 1} ${step.move.name}: $why');
+    if (i > 0 &&
+        !last &&
+        (_asks.contains(step.move) || _answers.contains(step.move))) {
+      fail('out of place');
+    }
+    final parts = step.parts;
+    if (parts.edges.any((edge) => edge < 0 || edge >= edgeCount) ||
+        !parts.angles.every(angleOf.containsKey) ||
+        parts.rows.any((row) => row < 0 || row >= rowCount) ||
+        parts.diagonal && !figure.diagonal ||
+        parts.rightAngle &&
+            figure.shape != FigureShape.rightAngle &&
+            figure.shape != FigureShape.rightTriangle) {
+      fail('highlights a part the figure does not have');
+    }
+    final lit = {
+      for (final edge in parts.edges) ?labelOf[edge],
+      for (final corner in parts.angles) ?angleOf[corner],
+    };
+    final allowed = {...lit, ...given, ...ruleNumbers, ...earlier};
+    final root = _roots.contains(step.move);
+    for (final number in [...step.numbers, if (!root) ...step.terms]) {
+      if (!allowed.contains(number)) {
+        fail('$number is not from a highlighted part, given or worked out');
+      }
+    }
+    final value = step.valueHundredths;
+    if (step.terms.isNotEmpty) {
+      if (value == null ||
+          step.signs.length != step.terms.length - 1 ||
+          _exact(step.calculation!) != value) {
+        fail('${step.calculation} is not $value');
+      }
+      final used = {
+        ...step.terms,
+        for (final term in step.terms) ...?from[term],
+      };
+      for (final label in lit) {
+        if (!used.contains(label)) {
+          fail('highlights $label but does not use it');
+        }
+      }
+    } else if (value != null) {
+      fail('a value without a calculation');
+    }
+    if (last) {
+      if (root) {
+        if (step.terms.length != 2 ||
+            step.terms.any((term) => term != solved) ||
+            i == 0 ||
+            hint[i - 1].move != FigureMove.whichSquare ||
+            hint[i - 1].numbers.single != value) {
+          fail('does not multiply the answer by itself to the square named');
+        }
+      } else if (value != solved) {
+        fail('$value is not the answer $solved');
+      }
+      switch (step.checkKind) {
+        case FigureCheck.calculation:
+          final [left, right] = step.check!.split(' = ');
+          final result = _exact(right);
+          // The answer put back makes a number the child knows, or a
+          // second way to the answer itself.
+          if (_exact(left) != result ||
+              !(answerToken.hasMatch(left) && allowed.contains(result) ||
+                  result == solved && left != step.calculation)) {
+            fail('check ${step.check}');
+          }
+        case FigureCheck.aBitMore:
+          final [left, right] = step.check!.split(' = ');
+          final result = _exact(right) ?? 0;
+          if (_exact(left) != result ||
+              !left.startsWith('3 × ') ||
+              !allowed.contains(_exact(left.substring(4))) ||
+              solved <= result ||
+              solved * 10 >= result * 11) {
+            fail('check a bit more than ${step.check}');
+          }
+        case FigureCheck.sides:
+          if (step.move != FigureMove.perimeterIs ||
+              step.terms.length != edgeCount) {
+            fail('check of ${step.terms.length} sides');
+          }
+        case FigureCheck.countSquares:
+          if (!figure.grid) fail('no squares to count');
+        case null:
+          if (!root) fail('no check');
+      }
+    } else if (step.checkKind != null || step.check != null) {
+      fail('a check before the last step');
+    }
+    earlier.addAll(step.numbers);
+    if (value != null) {
+      earlier.add(value);
+      from[value] = {
+        for (final term in step.terms)
+          if (lit.contains(term)) term,
+        for (final term in step.terms) ...?from[term],
+      };
+    }
+  }
+  return problems;
+}
+
+/// [step] with some fields replaced, as a wrong writer would make it.
+FigureStep copyStep(
+  FigureStep step, {
+  List<int>? numbers,
+  List<int>? terms,
+  int? valueHundredths,
+  String? check,
+  FigureParts? parts,
+}) => FigureStep(
+  step.move,
+  numbers: numbers ?? step.numbers,
+  terms: terms ?? step.terms,
+  signs: step.signs,
+  valueHundredths: valueHundredths ?? step.valueHundredths,
+  checkKind: step.checkKind,
+  check: check ?? step.check,
+  parts: parts ?? step.parts,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1210,10 +1431,28 @@ void main() {
           greaterThanOrEqualTo(3),
           reason: where,
         );
+        // A part a hint step uses: an accent band with an edge. Core and
+        // edge differ, and one of them stands out from the card, from a
+        // shaded inside and from the plain outline; a highlighted label is
+        // text in the edge colour on the accent.
+        double best(Color background) => max(
+          contrast(colors.highlight, background),
+          contrast(colors.highlightEdge, background),
+        );
+        expect(
+          contrast(colors.highlight, colors.highlightEdge),
+          greaterThanOrEqualTo(4.5),
+          reason: where,
+        );
+        for (final background in [colors.card, colors.shade, colors.line]) {
+          expect(best(background), greaterThanOrEqualTo(3), reason: where);
+        }
       }
     }
     // The cues differ in shape too, never by colour alone.
     expect(thickStroke, greaterThanOrEqualTo(2 * thinStroke));
+    // A highlighted part is a band wider than the thick outline.
+    expect(highlightCore + 2 * highlightEdgeWidth, greaterThan(thickStroke));
   });
 
   test('the sentence names the shape, every number shown and the question', () {
@@ -1329,13 +1568,23 @@ void main() {
     );
   });
 
-  test('hints: at least two steps, every calculation right, the answer only '
-      'in the last step unless the figure shows it', () {
+  test('hints: every step is data the test recomputes, its highlighted parts '
+      'are the ones its calculation reads, and the answer is only in the last '
+      'step unless the figure shows it', () {
+    final failures = <String>[];
+    var steps = 0;
     for (final (family, params) in every) {
       final (:figure, :answer) = family.build(params);
-      final steps = [for (final step in figureSteps(figure)) step(en)];
-      final where = '$family $params: $steps';
-      expect(steps.length, greaterThanOrEqualTo(2), reason: where);
+      // The answer the oracle reads off the drawing, not the generator's.
+      final solved = solveFigure(figure.shape, figure.prompt, layout(figure));
+      expect(solved, answer, reason: '$family $params');
+      final hint = figureHint(figure);
+      steps += hint.length;
+      for (final problem in hintProblems(figure, hint, solved)) {
+        failures.add('$family $params: $problem');
+      }
+      // In the sentences: the answer only in the last one, unless shown.
+      final texts = [for (final step in figureSteps(figure)) step(en)];
       final answerText = formatHundredths(answer, 'en');
       final shown = {
         for (final label in figure.labels) label.text(),
@@ -1343,146 +1592,277 @@ void main() {
         if (figure.total case final total?) formatHundredths(total, 'en'),
         if (figure.pi case final pi?) formatHundredths(pi, 'en'),
       };
-      for (final step in steps.take(steps.length - 1)) {
+      if (texts.length != hint.length) failures.add('$family $params');
+      for (final text in texts.take(texts.length - 1)) {
         if (shown.contains(answerText)) continue;
-        expect(step, isNot(contains(numberToken(answerText))), reason: where);
-      }
-      // Every calculation in every step adds up, in exact hundredths.
-      for (final step in steps) {
-        for (final match in _calculation.allMatches(step)) {
-          expect(
-            calculate(match[1]!),
-            calculate(match[2]!),
-            reason: '$where: ${match[0]}',
-          );
+        if (numberToken(answerText).hasMatch(text)) {
+          failures.add('$family $params: answer early in "$text"');
         }
       }
-      // The last step's last calculation ends in the answer; for a square
-      // from its area it is side × side = area, then the side.
-      final last = _calculation.allMatches(steps.last).last;
-      if (const {
-        GeometryFamily.squareSideFromArea,
-        GeometryFamily.pythagorasHypotenuse,
-        GeometryFamily.pythagorasLeg,
-        GeometryFamily.rectangleDiagonal,
-      }.contains(family)) {
-        expect(last[1], '$answerText × $answerText', reason: where);
-        expect(steps.last, endsWith('is $answerText.'), reason: where);
-      } else {
-        expect(last[2], answerText, reason: where);
+      if (!numberToken(answerText).hasMatch(texts.last)) {
+        failures.add('$family $params: no answer in "${texts.last}"');
       }
     }
+    expect(failures, isEmpty);
+    // ignore: avoid_print
+    print('geometry hints: $steps steps of ${every.length} problems');
+  });
+
+  test('a hint with a wrong value, number, check or highlight fails the '
+      'recomputation', () {
+    var mutants = 0;
+    void expectFails(
+      GeometryFamily family,
+      List<int> params,
+      List<FigureStep> mutant,
+      String what,
+    ) {
+      final (:figure, answer: _) = family.build(params);
+      final solved = solveFigure(figure.shape, figure.prompt, layout(figure));
+      expect(
+        hintProblems(figure, mutant, solved),
+        isNotEmpty,
+        reason: '$family $params: $what',
+      );
+      mutants++;
+    }
+
+    for (final (family, params) in every) {
+      final figure = family.build(params).figure;
+      final hint = figureHint(figure);
+      final labels = {
+        for (final label in figure.labels) ?label.hundredths,
+        for (final angle in figure.angles)
+          if (angle.degrees case final degrees?) degrees * 100,
+      };
+      final earlier = <int>{};
+      for (final (i, step) in hint.indexed) {
+        List<FigureStep> swap(FigureStep changed) => [
+          for (final (j, other) in hint.indexed) j == i ? changed : other,
+        ];
+        if (step.valueHundredths case final value?) {
+          expectFails(
+            family,
+            params,
+            swap(copyStep(step, valueHundredths: value + 1)),
+            'step ${i + 1} value + 1',
+          );
+          expectFails(
+            family,
+            params,
+            swap(
+              copyStep(
+                step,
+                terms: [step.terms.first + 100, ...step.terms.skip(1)],
+              ),
+            ),
+            'step ${i + 1} first term + 1',
+          );
+          // A label read here, and known no other way, needs its part
+          // highlighted.
+          final known = {...earlier, ...ruleNumbers, ?figure.total, ?figure.pi};
+          if (step.terms.any((t) => labels.contains(t) && !known.contains(t))) {
+            expectFails(
+              family,
+              params,
+              swap(copyStep(step, parts: const FigureParts())),
+              'step ${i + 1} without highlight',
+            );
+          }
+        }
+        if (step.numbers.isNotEmpty) {
+          expectFails(
+            family,
+            params,
+            swap(
+              copyStep(step, numbers: [for (final n in step.numbers) n + 1]),
+            ),
+            'step ${i + 1} numbers + 0.01',
+          );
+        }
+        if (step.check case final check?) {
+          final [left, right] = check.split(' = ');
+          expectFails(
+            family,
+            params,
+            swap(
+              copyStep(
+                step,
+                check:
+                    '$left = ${formatHundredths(calculate(right) + 100, 'en')}',
+              ),
+            ),
+            'step ${i + 1} check + 1',
+          );
+        }
+        // A calculation step that highlights a labelled part it does not
+        // read.
+        if (step.terms.isNotEmpty) {
+          final used = {...step.terms, ...earlier};
+          for (final label in figure.labels) {
+            if (label.hundredths case final value?
+                when !used.contains(value) &&
+                    !step.parts.edges.contains(label.edge)) {
+              expectFails(
+                family,
+                params,
+                swap(
+                  copyStep(
+                    step,
+                    parts: FigureParts(
+                      edges: {...step.parts.edges, label.edge},
+                      angles: step.parts.angles,
+                      rows: step.parts.rows,
+                      rightAngle: step.parts.rightAngle,
+                      outline: step.parts.outline,
+                      inside: step.parts.inside,
+                      diagonal: step.parts.diagonal,
+                    ),
+                  ),
+                ),
+                'step ${i + 1} highlights edge ${label.edge}',
+              );
+              break;
+            }
+          }
+        }
+        earlier.addAll([...step.numbers, ...step.terms, ?step.valueHundredths]);
+      }
+    }
+    // ignore: avoid_print
+    print('geometry hint mutants: $mutants, all caught');
+  });
+
+  test('hints in words, for one problem of some families', () {
     List<String> hint(GeometryFamily family, List<int> params) => [
       for (final step in figureSteps(family.build(params).figure)) step(en),
     ];
+    const perimeter =
+        'We need the distance all the way around the shape. This is called '
+        'the perimeter.';
     expect(hint(GeometryFamily.rectanglePerimeter, [5, 3]), [
-      'The two sides without a number are as long as the sides opposite '
-          'them: 5 and 3.',
-      'Add all the sides: 5 + 3 + 5 + 3 = 16.',
+      perimeter,
+      'A rectangle has two pairs of equal sides. A side with no number is as '
+          'long as the side opposite.',
+      'The top side is opposite 5, so it is 5 too.',
+      'The left side is opposite 3, so it is 3 too.',
+      'Add all the sides: 5 + 3 + 5 + 3 = 16. So the perimeter is 16. Check: '
+          'you added 4 sides, one for every side of the shape.',
     ]);
     expect(hint(GeometryFamily.rectangleArea, [4, 2]), [
-      'Count the squares: 2 rows of 4 squares each.',
-      'So 2 × 4 = 8.',
+      'We need the space inside the shape. This is called the area.',
+      'The area is the number of squares inside. Count them row by row.',
+      'Count the squares in one row: there are 4.',
+      'Now count the rows: there are 2.',
+      '2 × 4 = 8. So the area is 8. Check: count all the squares one by one.',
     ]);
-    expect(hint(GeometryFamily.rectangleSideFromPerimeter, [5, 3]), [
-      'Half the perimeter is two neighbouring sides.',
-      'So 16 ÷ 2 − 5 = 3.',
+    expect(hint(GeometryFamily.rectangleSideFromPerimeter, [5, 3]).skip(2), [
+      'Half the perimeter: 16 ÷ 2 = 8.',
+      '8 − 5 = 3. So the side is 3. Check: 5 + 3 + 5 + 3 = 16.',
     ]);
-    expect(hint(GeometryFamily.rectangleSideFromArea, [5, 3]), [
-      'The area is one side times the other: 5 × ? = 15.',
-      'So 15 ÷ 5 = 3.',
-    ]);
-    expect(hint(GeometryFamily.squareSideFromPerimeter, [7]), [
-      'A square has four equal sides, so divide the perimeter by four.',
-      'So 28 ÷ 4 = 7.',
-    ]);
-    expect(hint(GeometryFamily.squareSideFromArea, [7]), [
-      'The area of a square is side × side. Which number times itself '
-          'makes 49?',
-      '7 × 7 = 49, so the side is 7.',
+    // An answer of 2 would show in "÷ 2": both calculations come last.
+    expect(hint(GeometryFamily.rectangleSideFromPerimeter, [5, 2]).skip(2), [
+      'So halve the perimeter, then take away the side you know.',
+      '14 ÷ 2 − 5 = 2. So the side is 2. Check: 5 + 2 + 5 + 2 = 14.',
     ]);
     expect(hint(GeometryFamily.triangleAngle, [50, 60]), [
-      'The three angles of a triangle add up to 180°.',
-      'So 180 − 50 − 60 = 70.',
+      'We need the size of the angle marked ?.',
+      'The three angles inside a triangle always add up to 180°.',
+      'Take away the first angle: 180 − 50 = 130.',
+      '130 − 60 = 70. So the angle is 70°. Check: 50 + 60 + 70 = 180.',
     ]);
-    expect(hint(GeometryFamily.straightAngle, [35]), [
-      'The angles on a straight line add up to 180°.',
-      'So 180 − 35 = 145.',
+    expect(hint(GeometryFamily.lShapeArea, [8, 6, 3, 2]).skip(2), [
+      'The bottom is as long as the two top parts together: 5 + 3 = 8.',
+      'Left side take away right side gives the middle side: 6 − 4 = 2.',
+      'The whole rectangle is 8 × 6 = 48.',
+      'The cut-out corner is 3 × 2 = 6.',
+      '48 − 6 = 42. So the area is 42. Check: 42 + 6 = 48.',
     ]);
-    expect(hint(GeometryFamily.rightAngle, [30]), [
-      'The square in the corner marks a right angle: 90°.',
-      'So 90 − 30 = 60.',
-    ]);
-    expect(hint(GeometryFamily.rightTriangleArea, [3, 5]), [
-      'A right triangle is half of a rectangle with sides 3 and 5.',
-      'So 3 × 5 ÷ 2 = 7.5.',
-    ]);
-    expect(hint(GeometryFamily.lShapePerimeter, [8, 6, 3, 2]), [
-      'The sides without a number: 5 + 3 = 8 and 6 − 4 = 2.',
-      'Add all the sides: 5 + 2 + 3 + 4 + 8 + 6 = 28.',
-    ]);
-    expect(hint(GeometryFamily.lShapeArea, [8, 6, 3, 2]), [
-      'Think of the whole rectangle, then take away the missing corner.',
-      'The sides without a number: 5 + 3 = 8 and 6 − 4 = 2. So 8 × 6 − 3 × 2 '
-          '= 42.',
-    ]);
-    expect(hint(GeometryFamily.halvesRectangleArea, [5, 3]), [
-      'The area of a rectangle is one side times the other.',
-      'So 2.5 × 1.5 = 3.75.',
-    ]);
-    expect(hint(GeometryFamily.circleCircumference, [6]), [
-      'The circumference is π times the diameter. Use π = 3.14.',
-      'So 3.14 × 6 = 18.84.',
-    ]);
-    expect(hint(GeometryFamily.circleArea, [5]), [
+    expect(hint(GeometryFamily.circleArea, [5]).skip(1), [
       'The area of a circle is π × radius × radius. Use π = 3.14.',
-      'So 3.14 × 5 × 5 = 78.5.',
+      'The radius goes from the middle to the edge. Here it is 5.',
+      'Radius × radius: 5 × 5 = 25.',
+      '3.14 × 25 = 78.5. So the area is 78.5. Check: it is a bit more than '
+          '3 × 25 = 75.',
     ]);
     const pythagoras =
-        "Pythagoras' theorem: in a right triangle, the longest side times "
-        'itself equals the two other sides times themselves, added. The '
-        'square on the longest side holds exactly as much as the squares on '
-        'the two other sides together.';
-    expect(hint(GeometryFamily.pythagorasHypotenuse, [3, 4]), [
-      pythagoras,
-      '3 × 3 = 9 and 4 × 4 = 16.',
-      'Add them: 9 + 16 = 25.',
-      'Which number times itself makes 25? 5 × 5 = 25, so the side marked ? '
-          'is 5.',
-    ]);
+        "Pythagoras' theorem works in a right triangle. The square on the "
+        'longest side is as big as the other two squares together.';
     expect(hint(GeometryFamily.pythagorasLeg, [15, 8]), [
+      'We need the length marked ?.',
       pythagoras,
-      '17 × 17 = 289 and 15 × 15 = 225.',
-      "Take away the other side's: 289 − 225 = 64.",
-      'Which number times itself makes 64? 8 × 8 = 64, so the side marked ? '
-          'is 8.',
+      'The square on the side 17 is 17 × 17 = 289.',
+      'The square on the side 15 is 15 × 15 = 225.',
+      'Take the smaller square away from the bigger one: 289 − 225 = 64.',
+      'Which number times itself makes 64?',
+      '8 × 8 = 64, so the length marked ? is 8.',
     ]);
-    expect(hint(GeometryFamily.rectangleDiagonal, [8, 6]), [
-      'The diagonal cuts the rectangle into two right triangles, and it is '
-          'their longest side.',
+    expect(hint(GeometryFamily.rectangleDiagonal, [8, 6]).take(3), [
+      'We need the length marked ?.',
+      'The diagonal cuts the rectangle into two right triangles. It is their '
+          'longest side.',
       pythagoras,
-      '8 × 8 = 64 and 6 × 6 = 36.',
-      'Add them: 64 + 36 = 100.',
-      'Which number times itself makes 100? 10 × 10 = 100, so the side '
-          'marked ? is 10.',
     ]);
     expect(hint(GeometryFamily.verticallyOppositeAngles, [50, 0]), [
-      'Vertically opposite angles are equal: each of them and the angle '
-          'between them make a straight line, 180°.',
-      'The angle between them: 180 − 50 = 130.',
-      'So 180 − 130 = 50.',
+      'We need the size of the angle marked ?.',
+      'Vertically opposite angles are equal. Each one and the angle between '
+          'them make a straight line, 180°.',
+      'The angle between them is the rest of the straight line: 180 − 50 = '
+          '130.',
+      '180 − 130 = 50. So the angle is 50°. Check: 130 + 50 = 180.',
     ]);
-    expect(hint(GeometryFamily.verticallyOppositeAngles, [50, 1]), [
-      'Angles on a straight line add up to 180°: an angle and the one next '
-          'to it lie along one of the lines.',
-      'So 180 − 50 = 130.',
+    expect(hint(GeometryFamily.verticallyOppositeAngles, [50, 1]).skip(1), [
+      'Angles on a straight line always add up to 180°. That is half a turn.',
+      'One angle is 50°. The angle marked ? is the rest of the straight line.',
+      '180 − 50 = 130. So the angle is 130°. Check: 50 + 130 = 180.',
     ]);
-    expect(hint(GeometryFamily.anglesAroundPoint, [100, 150]), [
-      'Angles around a point add up to 360°: together they make one full '
-          'turn.',
+    expect(hint(GeometryFamily.anglesAroundPoint, [100, 150]).skip(1), [
+      'Angles around a point always add up to 360°. That is one full turn.',
       'Add the angles you know: 100 + 150 = 250.',
-      'So 360 − 250 = 110.',
+      '360 − 250 = 110. So the angle is 110°. Check: 100 + 150 + 110 = 360.',
     ]);
+  });
+
+  test('each hint step highlights the parts it names', () {
+    FigureParts parts(GeometryFamily family, List<int> params, int step) =>
+        figureHint(family.build(params).figure)[step].parts;
+    // The rectangle's top side with the bottom it is opposite.
+    expect(
+      parts(GeometryFamily.rectanglePerimeter, [5, 3], 2),
+      const FigureParts(edges: {2, 0}),
+    );
+    // One row of the grid, then all of them.
+    expect(
+      parts(GeometryFamily.rectangleArea, [4, 2], 2),
+      const FigureParts(edges: {2}, rows: {0}),
+    );
+    expect(
+      parts(GeometryFamily.rectangleArea, [4, 2], 3),
+      const FigureParts(edges: {1}, rows: {0, 1}),
+    );
+    // The angle taken away first, then the other and the asked one.
+    expect(
+      parts(GeometryFamily.triangleAngle, [50, 60], 2),
+      const FigureParts(angles: {0}),
+    );
+    expect(
+      parts(GeometryFamily.triangleAngle, [50, 60], 3),
+      const FigureParts(angles: {2, 1}),
+    );
+    // Between two vertically opposite angles: the rays to corners 2 and 3.
+    expect(
+      parts(GeometryFamily.verticallyOppositeAngles, [50, 0], 2),
+      const FigureParts(angles: {1}, edges: {1, 2}),
+    );
+    // A circle's radius, and the diagonal of a rectangle.
+    expect(
+      parts(GeometryFamily.circleArea, [5], 2),
+      const FigureParts(edges: {0}),
+    );
+    expect(
+      parts(GeometryFamily.rectangleDiagonal, [8, 6], 1),
+      const FigureParts(diagonal: true),
+    );
   });
 
   test('a hint calculation off by one hundredth fails the recomputation', () {

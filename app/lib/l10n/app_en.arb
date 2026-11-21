@@ -1300,7 +1300,7 @@
       }
     }
   },
-  "stepEquationBelowZero": "The answer is less than zero this time, so it is written with a minus sign (−) in front.",
+  "stepEquationBelowZero": "This time the answer is less than zero. It is written with a minus sign (−) in front.",
   "@stepEquationBelowZero": {
     "description": "Hint step for an equation with the letter n for the unknown number. Keep the letter n, math symbols (+ − × ÷ = and brackets) and numbers exactly as given. Shown first when the answer is a negative number; explains the minus sign."
   },
@@ -1384,6 +1384,42 @@
         "type": "String"
       }
     }
+  },
+  "hintAskBlank": "We need the number that goes in the blank.",
+  "@hintAskBlank": {
+    "description": "Hint step for an equation. First step: says what the question asks. The blank is the empty box in the equation. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskLetter": "We need the number that n stands for.",
+  "@hintAskLetter": {
+    "description": "Hint step for an equation. First step: says what the question asks. Keep the letter n. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaAddAndTakeAway": "Adding and taking away undo each other. Taking away is also called subtracting.",
+  "@hintIdeaAddAndTakeAway": {
+    "description": "Hint step for an equation. Second step: the idea the working uses. Use the everyday word for taking away first, then the school word for subtracting. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSwapTakeAway": "In a take away, the part taken away and the part left can swap places.",
+  "@hintIdeaSwapTakeAway": {
+    "description": "Hint step for an equation. Second step: the idea the working uses, for an equation like 9 − □ = 5. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaMultiplyAndDivide": "Multiplying and dividing undo each other.",
+  "@hintIdeaMultiplyAndDivide": {
+    "description": "Hint step for an equation. Second step: the idea the working uses. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSwapDivide": "In a division, the number you divide by and the result can swap places.",
+  "@hintIdeaSwapDivide": {
+    "description": "Hint step for an equation. Second step: the idea the working uses, for an equation like 18 ÷ □ = 6. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSquared": "A small ² after a number means the number times itself. We call it squared.",
+  "@hintIdeaSquared": {
+    "description": "Hint step for an equation. Second step: what the small raised ² means. Use the school word for squared. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSquareRoot": "The square root √ undoes squaring. Squaring means a number times itself.",
+  "@hintIdeaSquareRoot": {
+    "description": "Hint step for an equation. Second step: what the square root sign √ means. Use the school words for square root and squaring. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaBalance": "The two sides of = are equal, like a balance. Do the same to both sides, one step at a time.",
+  "@hintIdeaBalance": {
+    "description": "Hint step for an equation. Second step for an equation with the letter n: the idea of keeping both sides equal. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
   },
   "countTens": "{count, plural, =1{1 ten} other{{count} tens}}",
   "@countTens": {
@@ -1573,30 +1609,145 @@
       }
     }
   },
-  "stepSquareSides": "A square has four equal sides, each {side} long.",
-  "@stepSquareSides": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. Write 'four' as a word.",
+  "hintAskPerimeter": "We need the distance all the way around the shape. This is called the perimeter.",
+  "@hintAskPerimeter": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks and names the school word perimeter. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskArea": "We need the space inside the shape. This is called the area.",
+  "@hintAskArea": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks and names the school word area. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskSideFromPerimeter": "We know the perimeter, the distance all the way around. We need the side marked ?.",
+  "@hintAskSideFromPerimeter": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks. The ? is drawn on the asked side. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskSideFromArea": "We know the area, the space inside the shape. We need the side marked ?.",
+  "@hintAskSideFromArea": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks. The ? is drawn on the asked side. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskAngle": "We need the size of the angle marked ?.",
+  "@hintAskAngle": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks. The ? is drawn at the asked angle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskCircumference": "We need the distance all the way around the circle. This is called the circumference.",
+  "@hintAskCircumference": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks and names the school word circumference. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSquareSides": "A square has four sides, and they are all the same length.",
+  "@hintIdeaSquareSides": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. Write four as a word. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaRectangleSides": "A rectangle has two pairs of equal sides. A side with no number is as long as the side opposite.",
+  "@hintIdeaRectangleSides": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaPerimeterAdds": "The perimeter is all the sides added together.",
+  "@hintIdeaPerimeterAdds": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaGridArea": "The area is the number of squares inside. Count them row by row.",
+  "@hintIdeaGridArea": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. The squares are the grid drawn inside the shape. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaRectangleArea": "The area of a rectangle is one side times the side next to it.",
+  "@hintIdeaRectangleArea": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaHalfPerimeter": "A rectangle has two pairs of equal sides. So half the perimeter is two sides that meet at a corner.",
+  "@hintIdeaHalfPerimeter": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaSquareArea": "The area of a square is the side times itself.",
+  "@hintIdeaSquareArea": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaTriangleAngles": "The three angles inside a triangle always add up to {degrees}°.",
+  "@hintIdeaTriangleAngles": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. {degrees} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaStraightAngle": "Angles on a straight line always add up to {degrees}°. That is half a turn.",
+  "@hintIdeaStraightAngle": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. {degrees} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaRightAngle": "The small square in the corner marks a right angle. A right angle is {degrees}°.",
+  "@hintIdeaRightAngle": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses; names the school words right angle. {degrees} is 90. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaRightTriangle": "A right triangle is half of a rectangle. Two copies of it make the whole rectangle.",
+  "@hintIdeaRightTriangle": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why. A right triangle has one right angle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaLShapePerimeter": "The perimeter is all the sides added together. First find the two sides with no number.",
+  "@hintIdeaLShapePerimeter": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, for an L-shape. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaLShapeArea": "Think of the whole rectangle around the shape. Then take away the corner that is cut out.",
+  "@hintIdeaLShapeArea": {
+    "description": "Hint step for a question about a drawn shape. Second step: the idea the working uses, for an L-shape. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaCircumference": "The circumference is π × diameter. Use π = {pi}.",
+  "@hintIdeaCircumference": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. {pi} is a number such as 3.14. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "pi": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaCircleArea": "The area of a circle is π × radius × radius. Use π = {pi}.",
+  "@hintIdeaCircleArea": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. {pi} is a number such as 3.14. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "pi": {
+        "type": "String"
+      }
+    }
+  },
+  "hintEverySide": "So every side is {side}.",
+  "@hintEverySide": {
+    "description": "Hint step for a question about a drawn shape. Working step about a square. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
     "placeholders": {
       "side": {
         "type": "String"
       }
     }
   },
-  "stepRectangleSides": "The two sides without a number are as long as the sides opposite them: {width} and {height}.",
-  "@stepRectangleSides": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself.",
+  "hintOppositeTop": "The top side is opposite {side}, so it is {side} too.",
+  "@hintOppositeTop": {
+    "description": "Hint step for a question about a drawn shape. Working step about a rectangle: the top side has no number on the drawing. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
     "placeholders": {
-      "width": {
-        "type": "String"
-      },
-      "height": {
+      "side": {
         "type": "String"
       }
     }
   },
-  "stepTriangleSides": "The perimeter is the length all the way around: add the three sides {a}, {b} and {c}.",
-  "@stepTriangleSides": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself.",
+  "hintOppositeLeft": "The left side is opposite {side}, so it is {side} too.",
+  "@hintOppositeLeft": {
+    "description": "Hint step for a question about a drawn shape. Working step about a rectangle: the left side has no number on the drawing. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      }
+    }
+  },
+  "hintThreeSides": "The three sides are {a}, {b} and {c}.",
+  "@hintThreeSides": {
+    "description": "Hint step for a question about a drawn shape. Working step about a triangle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
     "placeholders": {
       "a": {
         "type": "String"
@@ -1609,11 +1760,213 @@
       }
     }
   },
-  "stepPerimeterSum": "Add all the sides: {sides} = {perimeter}.",
-  "@stepPerimeterSum": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. {sides} is a sum such as '5 + 3 + 5 + 3'.",
+  "hintOneRow": "Count the squares in one row: there are {columns}.",
+  "@hintOneRow": {
+    "description": "Hint step for a question about a drawn shape. Working step: the grid squares in one row of a rectangle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
     "placeholders": {
-      "sides": {
+      "columns": {
+        "type": "String"
+      }
+    }
+  },
+  "hintRows": "Now count the rows: there are {rows}.",
+  "@hintRows": {
+    "description": "Hint step for a question about a drawn shape. Working step: the rows of grid squares in a rectangle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "rows": {
+        "type": "String"
+      }
+    }
+  },
+  "hintShareFour": "The perimeter {perimeter} is four equal sides. So share it into four equal parts.",
+  "@hintShareFour": {
+    "description": "Hint step for a question about a drawn shape. Working step about a square. Write four as a word, not as a digit. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "perimeter": {
+        "type": "String"
+      }
+    }
+  },
+  "hintHalveThenTakeAway": "So halve the perimeter, then take away the side you know.",
+  "@hintHalveThenTakeAway": {
+    "description": "Hint step for a question about a drawn shape. Working step about a rectangle whose perimeter is given. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintWhichSquare": "Which number times itself makes {area}?",
+  "@hintWhichSquare": {
+    "description": "Hint step for a question about a drawn shape. Working step about a square whose area is given. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintHalfOf": "Half the perimeter: {calculation} = {half}.",
+  "@hintHalfOf": {
+    "description": "Hint step for a question about a drawn shape. Working step. {calculation} is a calculation such as 16 ÷ 2. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "half": {
+        "type": "String"
+      }
+    }
+  },
+  "hintUndoTimes": "Here {side} × ? = {area}. Dividing undoes multiplying, so divide {area} by {side}.",
+  "@hintUndoTimes": {
+    "description": "Hint step for a question about a drawn shape. Working step about a rectangle whose area is given; ? is the asked side. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintTakeFirstAngle": "Take away the first angle: {calculation} = {rest}.",
+  "@hintTakeFirstAngle": {
+    "description": "Hint step for a question about a drawn shape. Working step about the angles of a triangle. {calculation} is a calculation such as 180 − 50. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "hintKnownAngle": "One angle is {angle}°. The angle marked ? is the rest of the straight line.",
+  "@hintKnownAngle": {
+    "description": "Hint step for a question about a drawn shape. Working step about two angles on a straight line. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "hintKnownPart": "One part is {angle}°. The part marked ? is the rest of the right angle.",
+  "@hintKnownPart": {
+    "description": "Hint step for a question about a drawn shape. Working step about a right angle split in two parts. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLegsRectangle": "The rectangle has sides {a} and {b}. Its area is {calculation} = {area}.",
+  "@hintLegsRectangle": {
+    "description": "Hint step for a question about a drawn shape. Working step about a right triangle: the rectangle it is half of. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLBottom": "The bottom is as long as the two top parts together: {calculation} = {bottom}.",
+  "@hintLBottom": {
+    "description": "Hint step for a question about a drawn shape. Working step about an L-shape. {calculation} is a calculation such as 5 + 3. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "bottom": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLStep": "Left side take away right side gives the middle side: {calculation} = {step}.",
+  "@hintLStep": {
+    "description": "Hint step for a question about a drawn shape. Working step about an L-shape: the short side in the middle that has no number. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "hintWholeRectangle": "The whole rectangle is {calculation} = {area}.",
+  "@hintWholeRectangle": {
+    "description": "Hint step for a question about a drawn shape. Working step about an L-shape. {calculation} is a calculation such as 8 × 6. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCutCorner": "The cut-out corner is {calculation} = {area}.",
+  "@hintCutCorner": {
+    "description": "Hint step for a question about a drawn shape. Working step about an L-shape. {calculation} is a calculation such as 3 × 2. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintTwoSides": "The two sides are {a} and {b}.",
+  "@hintTwoSides": {
+    "description": "Hint step for a question about a drawn shape. Working step about a rectangle. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "hintDiameter": "The diameter goes across the circle through the middle. Here it is {diameter}.",
+  "@hintDiameter": {
+    "description": "Hint step for a question about a drawn shape. Working step; names and explains the school word diameter. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "diameter": {
+        "type": "String"
+      }
+    }
+  },
+  "hintRadius": "The radius goes from the middle to the edge. Here it is {radius}.",
+  "@hintRadius": {
+    "description": "Hint step for a question about a drawn shape. Working step; names and explains the school word radius. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "radius": {
+        "type": "String"
+      }
+    }
+  },
+  "hintRadiusSquared": "Radius × radius: {calculation} = {square}.",
+  "@hintRadiusSquared": {
+    "description": "Hint step for a question about a drawn shape. Working step about a circle. {calculation} is a calculation such as 5 × 5. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "square": {
+        "type": "String"
+      }
+    }
+  },
+  "hintPerimeterIs": "Add all the sides: {calculation} = {perimeter}. So the perimeter is {perimeter}.",
+  "@hintPerimeterIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the answer. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
         "type": "String"
       },
       "perimeter": {
@@ -1621,14 +1974,204 @@
       }
     }
   },
-  "stepAreaRows": "Count the squares: {rows} rows of {columns} squares each.",
-  "@stepAreaRows": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. The squares are the unit grid drawn inside the rectangle.",
+  "hintAreaIs": "{calculation} = {area}. So the area is {area}.",
+  "@hintAreaIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the answer. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
     "placeholders": {
-      "rows": {
+      "calculation": {
         "type": "String"
       },
-      "columns": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "hintSideIs": "{calculation} = {side}. So the side is {side}.",
+  "@hintSideIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the answer. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "side": {
+        "type": "String"
+      }
+    }
+  },
+  "hintRootSide": "{calculation} = {area}, so the side is {side}.",
+  "@hintRootSide": {
+    "description": "Hint step for a question about a drawn shape. Last step about a square whose area is given: {calculation} is the side times itself, such as 7 × 7. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      },
+      "side": {
+        "type": "String"
+      }
+    }
+  },
+  "hintAngleIs": "{calculation} = {angle}. So the angle is {angle}°.",
+  "@hintAngleIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the answer. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCircumferenceIs": "{calculation} = {length}. So the circumference is {length}.",
+  "@hintCircumferenceIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the answer. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCheck": "Check: {check}.",
+  "@hintCheck": {
+    "description": "Hint step for a question about a drawn shape. Added after the answer: a calculation that checks it, such as 5 × 3 = 15. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "check": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCheckSides": "Check: you added {count} sides, one for every side of the shape.",
+  "@hintCheckSides": {
+    "description": "Hint step for a question about a drawn shape. Added after the answer: count the sides on the drawing. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCheckABitMore": "Check: it is a bit more than {check}.",
+  "@hintCheckABitMore": {
+    "description": "Hint step for a question about a drawn shape. Added after the answer about a circle: π is a bit more than 3, so the answer is a bit more than {check}, such as 3 × 6 = 18. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "check": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCheckCountSquares": "Check: count all the squares one by one.",
+  "@hintCheckCountSquares": {
+    "description": "Hint step for a question about a drawn shape. Added after the answer: count the grid squares on the drawing. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintAskLength": "We need the length marked ?.",
+  "@hintAskLength": {
+    "description": "Hint step for a question about a drawn shape. First step: says what the question asks. The ? is drawn on a side or on the diagonal. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaPythagoras": "Pythagoras' theorem works in a right triangle. The square on the longest side is as big as the other two squares together.",
+  "@hintIdeaPythagoras": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why. Keep the name Pythagoras' theorem as your school books write it. A square on a side is that side times itself. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaDiagonal": "The diagonal cuts the rectangle into two right triangles. It is their longest side.",
+  "@hintIdeaDiagonal": {
+    "description": "Hint step for a question about a drawn shape. Second step: why the working can use the rule for right triangles. The diagonal is the line from corner to corner. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaVerticallyOpposite": "Vertically opposite angles are equal. Each one and the angle between them make a straight line, {degrees}°.",
+  "@hintIdeaVerticallyOpposite": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for two crossing lines. Use the school words for vertically opposite angles. {degrees} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaAroundPoint": "Angles around a point always add up to {degrees}°. That is one full turn.",
+  "@hintIdeaAroundPoint": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses. {degrees} is 360. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintBetweenAngle": "The angle between them is the rest of the straight line: {calculation} = {between}.",
+  "@hintBetweenAngle": {
+    "description": "Hint step for a question about a drawn shape. Working step about two crossing lines: the angle between the given one and the one marked ?. {calculation} is a calculation such as 180 − 50. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "between": {
+        "type": "String"
+      }
+    }
+  },
+  "hintAddKnownAngles": "Add the angles you know: {calculation} = {sum}.",
+  "@hintAddKnownAngles": {
+    "description": "Hint step for a question about a drawn shape. Working step. {calculation} is a calculation such as 120 + 150. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "sum": {
+        "type": "String"
+      }
+    }
+  },
+  "hintSquareSide": "The square on the side {side} is {calculation} = {square}.",
+  "@hintSquareSide": {
+    "description": "Hint step for a question about a drawn shape. Working step for Pythagoras' theorem: a side times itself. {calculation} is a calculation such as 3 × 3. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "square": {
+        "type": "String"
+      }
+    }
+  },
+  "hintAddSquares": "Add the two squares: {calculation} = {sum}.",
+  "@hintAddSquares": {
+    "description": "Hint step for a question about a drawn shape. Working step for Pythagoras' theorem. {calculation} is a calculation such as 9 + 16. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "sum": {
+        "type": "String"
+      }
+    }
+  },
+  "hintTakeSquare": "Take the smaller square away from the bigger one: {calculation} = {rest}.",
+  "@hintTakeSquare": {
+    "description": "Hint step for a question about a drawn shape. Working step for Pythagoras' theorem. {calculation} is a calculation such as 25 − 9. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "rest": {
+        "type": "String"
+      }
+    }
+  },
+  "hintRootLength": "{calculation} = {square}, so the length marked ? is {length}.",
+  "@hintRootLength": {
+    "description": "Hint step for a question about a drawn shape. Last step for Pythagoras' theorem: {calculation} is the length times itself, such as 5 × 5. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "square": {
+        "type": "String"
+      },
+      "length": {
         "type": "String"
       }
     }
@@ -1746,127 +2289,6 @@
       }
     }
   },
-  "stepHalfPerimeter": "Half the perimeter is two neighbouring sides.",
-  "@stepHalfPerimeter": {
-    "description": "Hint step that explains a geometry question to a child: the perimeter of a rectangle is twice one long side plus one short side. Never write a number yourself."
-  },
-  "stepRectangleSideFromArea": "The area is one side times the other: {side} × ? = {area}.",
-  "@stepRectangleSideFromArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The ? is the side asked.",
-    "placeholders": {
-      "side": {
-        "type": "String"
-      },
-      "area": {
-        "type": "String"
-      }
-    }
-  },
-  "stepSquareSideFromPerimeter": "A square has four equal sides, so divide the perimeter by four.",
-  "@stepSquareSideFromPerimeter": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Write 'four' as a word."
-  },
-  "stepSquareSideFromArea": "The area of a square is side × side. Which number times itself makes {area}?",
-  "@stepSquareSideFromArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
-    "placeholders": {
-      "area": {
-        "type": "String"
-      }
-    }
-  },
-  "stepSquareRoot": "{side} × {side} = {area}, so the side is {side}.",
-  "@stepSquareRoot": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
-    "placeholders": {
-      "side": {
-        "type": "String"
-      },
-      "area": {
-        "type": "String"
-      }
-    }
-  },
-  "stepTriangleAngles": "The three angles of a triangle add up to 180°.",
-  "@stepTriangleAngles": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 180 and the ° sign."
-  },
-  "stepStraightAngle": "The angles on a straight line add up to 180°.",
-  "@stepStraightAngle": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 180 and the ° sign."
-  },
-  "stepRightAngle": "The square in the corner marks a right angle: 90°.",
-  "@stepRightAngle": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 90 and the ° sign."
-  },
-  "stepRightTriangleArea": "A right triangle is half of a rectangle with sides {a} and {b}.",
-  "@stepRightTriangleArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
-    "placeholders": {
-      "a": {
-        "type": "String"
-      },
-      "b": {
-        "type": "String"
-      }
-    }
-  },
-  "stepLShapeSides": "The sides without a number: {first} and {second}.",
-  "@stepLShapeSides": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. {first} and {second} are sums such as '5 + 3 = 8'.",
-    "placeholders": {
-      "first": {
-        "type": "String"
-      },
-      "second": {
-        "type": "String"
-      }
-    }
-  },
-  "stepLShapeCutOut": "Think of the whole rectangle, then take away the missing corner.",
-  "@stepLShapeCutOut": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The shape is a rectangle with one corner cut away."
-  },
-  "stepLShapeArea": "The sides without a number: {first} and {second}. So {calculation} = {area}.",
-  "@stepLShapeArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. {first} and {second} are sums such as '5 + 3 = 8'; {calculation} is such as '8 × 6 − 3 × 4'.",
-    "placeholders": {
-      "first": {
-        "type": "String"
-      },
-      "second": {
-        "type": "String"
-      },
-      "calculation": {
-        "type": "String"
-      },
-      "area": {
-        "type": "String"
-      }
-    }
-  },
-  "stepRectangleArea": "The area of a rectangle is one side times the other.",
-  "@stepRectangleArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. "
-  },
-  "stepCircumference": "The circumference is π times the diameter. Use π = {pi}.",
-  "@stepCircumference": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
-    "placeholders": {
-      "pi": {
-        "type": "String"
-      }
-    }
-  },
-  "stepCircleArea": "The area of a circle is π × radius × radius. Use π = {pi}.",
-  "@stepCircleArea": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
-    "placeholders": {
-      "pi": {
-        "type": "String"
-      }
-    }
-  },
   "figureRightTriangleSides": "Right triangle, legs {a} and {b}, longest side {c}.",
   "@figureRightTriangleSides": {
     "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with a right angle; its two shorter sides (legs) and its longest side are labelled, one of them with ? (the side asked).",
@@ -1927,113 +2349,6 @@
   "figureLength": "Length?",
   "@figureLength": {
     "description": "Short question under a drawn shape: how long is the side or line marked ?. Keep the question mark; very short."
-  },
-  "stepPythagoras": "Pythagoras' theorem: in a right triangle, the longest side times itself equals the two other sides times themselves, added. The square on the longest side holds exactly as much as the squares on the two other sides together.",
-  "@stepPythagoras": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Names the theorem of Pythagoras and says in simple words why it works; 'square on a side' means a square drawn with that side as its edge."
-  },
-  "stepDiagonalTriangles": "The diagonal cuts the rectangle into two right triangles, and it is their longest side.",
-  "@stepDiagonalTriangles": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The diagonal is the line from one corner of the rectangle to the opposite corner."
-  },
-  "stepPythagorasSquares": "{a} × {a} = {aa} and {b} × {b} = {bb}.",
-  "@stepPythagorasSquares": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Each side length times itself.",
-    "placeholders": {
-      "a": {
-        "type": "String"
-      },
-      "aa": {
-        "type": "String"
-      },
-      "b": {
-        "type": "String"
-      },
-      "bb": {
-        "type": "String"
-      }
-    }
-  },
-  "stepPythagorasAdd": "Add them: {aa} + {bb} = {sum}.",
-  "@stepPythagorasAdd": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Adds the two results of the step before.",
-    "placeholders": {
-      "aa": {
-        "type": "String"
-      },
-      "bb": {
-        "type": "String"
-      },
-      "sum": {
-        "type": "String"
-      }
-    }
-  },
-  "stepPythagorasTakeAway": "Take away the other side's: {cc} − {bb} = {rest}.",
-  "@stepPythagorasTakeAway": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Takes the square of the known shorter side away from the square of the longest side.",
-    "placeholders": {
-      "cc": {
-        "type": "String"
-      },
-      "bb": {
-        "type": "String"
-      },
-      "rest": {
-        "type": "String"
-      }
-    }
-  },
-  "stepPythagorasRoot": "Which number times itself makes {square}? {side} × {side} = {square}, so the side marked ? is {side}.",
-  "@stepPythagorasRoot": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Finds the number that, times itself, gives the result of the step before. Keep the ?.",
-    "placeholders": {
-      "square": {
-        "type": "String"
-      },
-      "side": {
-        "type": "String"
-      }
-    }
-  },
-  "stepVerticallyOpposite": "Vertically opposite angles are equal: each of them and the angle between them make a straight line, 180°.",
-  "@stepVerticallyOpposite": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Names the rule for two crossing lines: the angles across the crossing point from each other are equal. Keep the number 180 and the ° sign."
-  },
-  "stepCrossingBetween": "The angle between them: {whole} − {angle} = {between}.",
-  "@stepCrossingBetween": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The angle beside both the given angle and the asked one.",
-    "placeholders": {
-      "whole": {
-        "type": "String"
-      },
-      "angle": {
-        "type": "String"
-      },
-      "between": {
-        "type": "String"
-      }
-    }
-  },
-  "stepCrossingNeighbour": "Angles on a straight line add up to 180°: an angle and the one next to it lie along one of the lines.",
-  "@stepCrossingNeighbour": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Two straight lines cross; neighbouring angles share one line. Keep the number 180 and the ° sign."
-  },
-  "stepAroundPoint": "Angles around a point add up to 360°: together they make one full turn.",
-  "@stepAroundPoint": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Names the rule for angles all the way round one point. Keep the number 360 and the ° sign."
-  },
-  "stepAddKnownAngles": "Add the angles you know: {calculation} = {sum}.",
-  "@stepAddKnownAngles": {
-    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. {calculation} is a sum such as '100 + 120 + 80'.",
-    "placeholders": {
-      "calculation": {
-        "type": "String"
-      },
-      "sum": {
-        "type": "String"
-      }
-    }
   },
   "reportFlag": "Mark this question as wrong",
   "@reportFlag": {

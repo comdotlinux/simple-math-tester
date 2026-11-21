@@ -57,7 +57,12 @@ readers say "7 squared" and "square root of 49".
 | `nSquared` | n² = c, n is positive | `[n]`, 1 to 12 | 5 | 12 |
 | `anSquared` | an² = c, n is positive | `[a, n]`, a 2 to 9, n 2 to 12 | 5 | 88 |
 
-Hints undo one step at a time; only the last step states the answer,
+Every hint has the same shape, written for a child of 7 to 12: what the
+question asks ("We need the number that goes in the blank."), the idea the
+working uses, with a short why (adding and taking away undo each other;
+the two sides of = are like a balance), then the working one small
+calculation at a time, and last the answer. Hints undo one step at a time;
+only the last step states the answer,
 followed by a check with the answer put back into the equation. A square
 says what it means (7² means 7 × 7); a root asks which number times itself
 makes the square; an² = c first divides both sides by a, then asks for the
@@ -91,12 +96,23 @@ Families (the variant names saved with each answer) by level: 1
 `circleArea`, `pythagorasHypotenuse` (12), `pythagorasLeg` (12),
 `rectangleDiagonal` (11).
 
-Hints name the sides or angles, then the calculation; only the last step
-states the answer. A theorem hint first names the theorem and says in a
-sentence why it holds ("Vertically opposite angles are equal", "Angles
-around a point add up to 360°", "Pythagoras' theorem"), then works in
-small steps; for Pythagoras each side times itself, the sum or the
-difference, then which number times itself makes it.
+Hints have the algebra shape: what is asked, naming the school word once
+("This is called the perimeter."), the rule and why it holds, the working
+one number or one small calculation a step, then the answer and its check
+(the answer put back, the sides counted, or "a bit more than 3 × 6 = 18"
+for π). Only the last step states the answer. A theorem hint names the
+theorem and says why it holds ("Vertically opposite angles are equal",
+"Angles around a point always add up to 360°", "Pythagoras' theorem"),
+then works in small steps; for Pythagoras each side's square on its own,
+the sum or the difference, then which number times itself makes it.
+
+Each step is data (`FigureStep` in `solution_steps.dart`): its numbers,
+its calculation as terms and signs with the value, its check, and the
+parts of the figure it uses (`FigureParts`: edges, angles, grid rows, the
+right-angle mark, the outline, the inside, the diagonal). The hint card
+shows the figure right above the newest step with those parts drawn as an
+accent band edged in the colour drawn on the accent, and their labels on
+accent patches (`HintSteps` in `hint_steps.dart`).
 
 Crossing lines and rays around a point have no up or down, so the drawing
 is turned (in steps of 15°) to the angle that draws the rays longest with
@@ -151,7 +167,15 @@ showing.
   an angle arc, the right-angle square or the π line removed, the radius
   and diameter cues swapped, the missing side or angle (`?`) moved, a ray
   turned by 10° with its label kept, and the diagonal removed or drawn
-  along a side (geometry).
+  along a side (geometry); in a geometry hint step, a value, a term, a
+  number or a check off by one, a highlight removed from a label the step
+  reads, and a label highlighted that the step does not read.
+- **Hint style.** `app/test/hint_style_test.dart` checks every algebra and
+  geometry hint: at most 15 words a sentence in English, at most 300
+  characters a step in every language, at most one calculation a step,
+  the shape (what is asked, the idea, the working, the answer with its
+  check), and that the longest hint of each family fits 320x568 at text
+  scale 2.
 - **Textbook rows.** `app/test/algebra_known_answers_test.dart` holds
   equations with the answers printed for them in Illustrative Mathematics
   (see [attributions.md](attributions.md)). The oracle must accept each

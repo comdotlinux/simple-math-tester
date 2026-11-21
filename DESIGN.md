@@ -163,7 +163,10 @@ pad key, stronger on correct, wrong and a milestone, all behind the haptics swit
 chime on correct, a soft low pair on wrong, an arpeggio on a level-up and a chord on
 the daily goal (one clip per check; the level-up wins), all behind the Sound switch.
 Hints are progressive: Hint shows one step, Next step
-shows another, and only the last step states the answer. Next skips and records
+shows another, and only the last step states the answer. Algebra and geometry
+hints say what is asked, the idea and why, the working in small steps, then the
+answer and its check; above the newest geometry step the figure highlights the parts that
+step uses as an accent band. Next skips and records
 Skipped when nothing was checked. Sprint: 60 seconds, hints and Next off, any valid
 check moves to the next problem; the result card shows score beside the personal
 best. Results: useful empty state, then correct/incorrect/skipped rows.

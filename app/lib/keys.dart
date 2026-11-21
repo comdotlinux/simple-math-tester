@@ -89,6 +89,7 @@ const padDecimalKey = Key('pad-decimal');
 Key padDigitKey(String digit) => Key('pad-digit-$digit');
 Key operationToggleKey(Enum type) => Key('operation-toggle-${type.name}');
 const solutionStepsKey = Key('solution-steps');
+const hintFigureKey = Key('hint-figure');
 
 // Header values.
 const hudStreakKey = Key('hud-streak');

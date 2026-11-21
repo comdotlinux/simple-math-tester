@@ -68,6 +68,17 @@ int _pairs(OperationType type, int level) {
 /// The condition line's text form, which an equation in n² may end with.
 const _positive = ', n > 0';
 
+/// The moves of an equation hint's second step, the idea.
+const _ideas = {
+  EquationMove.addAndTakeAway,
+  EquationMove.swapTakeAway,
+  EquationMove.multiplyAndDivide,
+  EquationMove.swapDivide,
+  EquationMove.squared,
+  EquationMove.squareRoot,
+  EquationMove.balance,
+};
+
 /// [p]'s question with [hundredths] in place of the unknown, bracketed where
 /// it multiplies and is below zero (`3 × (−2) + 9 = 3`); a condition line is
 /// left out.
@@ -228,6 +239,18 @@ void main() {
           int? square;
           for (final (i, step) in hint.indexed) {
             final last = i == hint.length - 1;
+            // What is asked comes first, then the idea; neither has a
+            // calculation.
+            if ((step.move == EquationMove.ask) != (i == 0) ||
+                _ideas.contains(step.move) != (i == 1)) {
+              fail(step);
+            }
+            if (i < 2) {
+              if (step.valueHundredths != null || step.sign.isNotEmpty) {
+                fail(step);
+              }
+              continue;
+            }
             if (step.move == EquationMove.whichRoot ||
                 step.move == EquationMove.whichPositiveRoot) {
               // A square the question shows or the undo before left; the
@@ -260,8 +283,8 @@ void main() {
               continue;
             }
             if (step.move == EquationMove.belowZero) {
-              // First, and only when the answer is below zero.
-              if (i != 0 || p.resultHundredths >= 0) fail(step);
+              // Right after the idea, and only when the answer is below zero.
+              if (i != 2 || p.resultHundredths >= 0) fail(step);
               continue;
             }
             if (step.move == EquationMove.means) {
@@ -325,7 +348,7 @@ void main() {
               last.check != _substitute(p, p.resultHundredths) ||
               check(left, parseHundredths(right)! / 100) != Verdict.ok ||
               (p.resultHundredths < 0) !=
-                  (hint.first.move == EquationMove.belowZero)) {
+                  (hint[2].move == EquationMove.belowZero)) {
             failures.add('${p.question}: ${last.calculation}, ${last.check}');
           }
         }

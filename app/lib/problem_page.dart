@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'figure_view.dart';
+import 'hint_steps.dart';
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -1749,7 +1750,6 @@ class _Hints extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final revealed = model.revealedSteps;
 
@@ -1768,50 +1768,15 @@ class _Hints extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(l.workItOut, style: textTheme.titleLarge),
-                    for (var index = 0; index < revealed; index++) ...[
-                      const SizedBox(height: 14),
-                      Semantics(
-                        container: true,
-                        liveRegion: index == revealed - 1,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          spacing: 12,
-                          children: [
-                            Container(
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: tokens.primary,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: tokens.outline,
-                                  width: AppTokens.outlineWidth,
-                                ),
-                              ),
-                              child: Text(
-                                '${index + 1}.',
-                                style: textTheme.bodyMedium?.copyWith(
-                                  color: tokens.onPrimary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 4),
-                                child: Text(
-                                  model.steps[index](l),
-                                  style: textTheme.bodyLarge,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 14),
+                    HintSteps(
+                      steps: model.steps,
+                      shown: revealed,
+                      figure: switch (model.current) {
+                        FigureProblem(:final figure) => figure,
+                        _ => null,
+                      },
+                    ),
                   ],
                 ),
               ),

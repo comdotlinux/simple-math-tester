@@ -87,7 +87,7 @@ Docs to read for an area:
 |---|---|
 | `operations.dart` | `OperationType` (add, subtract, multiply, divide, algebra, geometry), sealed `Problem` and sealed `ProblemSource`, algebra families and level tables |
 | `geometry.dart`, `figure.dart`, `figure_view.dart` | Geometry families, the figure model and to-scale layout, the painter |
-| `solution_steps.dart` | Hints for every kind, as structured steps |
+| `solution_steps.dart`, `hint_steps.dart` | Hints for every kind, as structured steps (`EquationStep`, `FigureStep` with the `FigureParts` it highlights); the hint-step view |
 | `hundredths.dart` | Parsing and formatting answers as whole hundredths |
 | `math_tester_model.dart`, `rules.dart` | Game state, draws, levels, tiers, sprint |
 | `report.dart`, `report_dialog.dart` | The one request: `ReportClient` (HTTP to `/api/report`), the flag, the report dialog and the grown-up check |
@@ -151,6 +151,7 @@ Tagging, promoting and pushing the listing reach real users. Do them only when t
 ## 7. Invariants that are easy to break
 
 - **Maths is checked by code, never by a model.** Each question comes from a pure build over a finite range. An independent oracle (`app/test/oracle.dart`, `app/test/geometry_oracle.dart`) reads only what the child sees and checks every question and every hint step in `exhaustive_test.dart` and `geometry_test.dart`. A new family needs its count added, mutation tests that must fail, and hint recomputation. Never weaken an oracle check to make a test pass.
+- **Hints of algebra and geometry keep one shape:** what is asked, the idea and why, one small calculation a step, then the answer and its check; sentences of at most 15 English words. A geometry step's `FigureParts` are the parts its calculation reads; `hint_style_test.dart` and the geometry hint tests check both, so a new family's hint is written in that shape.
 - **Answers are whole hundredths.** No floating point in an answer or a comparison (`3.14 * 3 * 3` is `28.259999999999998` in doubles).
 - **Variant and family names are saved with each attempt.** Never rename one. Saved progress stays schema 2; new data is an additive field; entries that do not decode are kept and written back unchanged.
 - **Textbook rows** (`*_known_answers_test.dart`) take the expected value from the printed answer only. Never compute or recall one. Sources allowed: Illustrative Mathematics and Open Up Resources 6-8 (CC BY 4.0), with attribution.
