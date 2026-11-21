@@ -356,6 +356,14 @@ const _familiesWithoutRow = {
   'anMinusB',
   'nDividedByAPlusB',
   'anPlusBNegativeN',
+  // Squares and roots (issue #155): no textbook page has been searched for
+  // them yet.
+  'missingSquare',
+  'missingSquareRoot',
+  'aSquared',
+  'squareRootOfC',
+  'nSquared',
+  'anSquared',
 };
 
 void main() {
