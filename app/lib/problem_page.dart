@@ -616,6 +616,8 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
+        // A condition line ("n is positive") makes the pinned question two.
+        final pinnedLines = model.current.shown(l).split('\n').length;
         return TextFieldTapRegion(
           child: Flex(
             direction: side ? Axis.horizontal : Axis.vertical,
@@ -632,7 +634,10 @@ class _ProblemPageState extends State<ProblemPage> {
                       if (compact &&
                           _questionPinned &&
                           area.maxHeight >=
-                              scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48)
+                              scaler.scale(22) * 1.25 * pinnedLines +
+                                  2 * 6 +
+                                  2 +
+                                  48)
                         Positioned(
                           top: 0,
                           left: 0,
