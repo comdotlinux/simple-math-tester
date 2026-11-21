@@ -135,6 +135,29 @@ void main() {
     }
   });
 
+  testWidgets('geometry shows the minus and decimal keys: its level 5 has '
+      'decimal answers', (tester) async {
+    expect(OperationType.geometry.signedDecimalAnswers, isTrue);
+    tester.view.physicalSize = const Size(1000, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = MathTesterModel(
+      progress: Progress(
+        tier: Tier.easy,
+        selectedOperations: {OperationType.geometry},
+      ),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(value: model, child: const MathTesterApp()),
+    );
+    await tester.pumpAndSettle();
+    expect(model.signedDecimalInput, isTrue);
+    expect(find.byKey(padMinusKey), findsOneWidget);
+    expect(find.byKey(padDecimalKey), findsOneWidget);
+  });
+
   testWidgets('the two keys join the third row; the pad keeps its rows', (
     tester,
   ) async {

@@ -19,11 +19,12 @@ final _languages = [
     lookupAppLocalizations(locale),
 ];
 
-/// The whole numbers [problem] shows: for arithmetic, its two operands; a
-/// minus sign straight before a number makes it negative (`3(n + 5) = −6`).
-Set<int> shownNumbers(Problem problem) => {
-  for (final match in RegExp(r'−?\d+').allMatches(problem.question))
-    int.parse(match[0]!.replaceFirst('−', '-')),
+/// The numbers [problem] shows: for arithmetic, its two operands; a minus
+/// sign straight before a number makes it negative (`3(n + 5) = −6`), and a
+/// figure shows decimals (π = 3.14).
+Set<num> shownNumbers(Problem problem) => {
+  for (final match in RegExp(r'−?\d+(?:\.\d+)?').allMatches(problem.question))
+    num.parse(match[0]!.replaceFirst('−', '-')),
 };
 
 /// Criterion 6: at least 2 steps, and no step before the last contains the
@@ -56,10 +57,11 @@ void expectStepsHideResult(
     // A result the question shows is already on screen (10000 − 5000).
     final shown = shownNumbers(problem).contains(problem.result);
     for (final l in _languages) {
-      // An equation's answer as the language writes it, not part of a
-      // longer number: 2 is not in −2 or 2,5.
+      // An equation's or figure's answer as the language writes it, not
+      // part of a longer number: 2 is not in −2 or 2,5, 3.14 not in 13.14.
       final token = switch (problem) {
-        EquationProblem(:final resultHundredths) => RegExp(
+        EquationProblem(:final resultHundredths) ||
+        FigureProblem(:final resultHundredths) => RegExp(
           '(?<![\\d.,−])'
           '${RegExp.escape(formatHundredths(resultHundredths, l.localeName))}'
           '(?![\\d]|[.,]\\d)',

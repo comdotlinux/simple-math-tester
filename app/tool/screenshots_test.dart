@@ -645,6 +645,58 @@ void main() {
             await shoot(tester, '$tag-14c-geometry-answers-${layout.name}');
           }
         });
+
+        testWidgets('geometry levels 3 to 5 screenshots $tag', (tester) async {
+          language = code;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          FigureProblem figure(String variant, List<int> params, int level) =>
+              geometry.build(
+                OperationType.geometry,
+                variant,
+                params,
+                level: level,
+              )!;
+          // One problem of each family of levels 3 to 5.
+          final families = [
+            figure('squareSideFromPerimeter', [7], 3),
+            figure('squareSideFromArea', [6], 3),
+            figure('rectangleSideFromPerimeter', [9, 4], 3),
+            figure('rectangleSideFromArea', [3, 8], 3),
+            figure('triangleAngle', [50, 60], 4),
+            figure('triangleAngle', [20, 125], 4),
+            figure('straightAngle', [35], 4),
+            figure('rightAngle', [10], 4),
+            figure('rightTriangleArea', [7, 5], 5),
+            figure('lShapePerimeter', [10, 7, 4, 3], 5),
+            figure('lShapeArea', [8, 6, 3, 2], 5),
+            figure('halvesRectanglePerimeter', [5, 12], 5),
+            figure('halvesRectangleArea', [7, 4], 5),
+            figure('circleCircumference', [18], 5),
+            figure('circleArea', [5], 5),
+          ];
+          for (final scale in [1.0, 2.0]) {
+            for (final problem in families) {
+              final name =
+                  '$tag-15-geometry-${problem.variant}-'
+                  '${problem.params.join('x')}-x$scale';
+              final practice = await launch(
+                tester,
+                size,
+                brightness,
+                problem: problem,
+                scale: scale,
+              );
+              practice.toggleOperation(OperationType.geometry);
+              await shoot(tester, name);
+              // A wrong answer opens the first hint; the second follows.
+              await check(tester, '1');
+              practice.revealStep();
+              await tester.pumpAndSettle();
+              await tester.ensureVisible(find.byKey(revealStepButtonKey));
+              await shoot(tester, '$name-hints');
+            }
+          }
+        });
       }
     }
   }
