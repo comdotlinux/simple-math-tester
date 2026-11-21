@@ -94,13 +94,20 @@ states the answer.
   printed answer and reject the answer + 1, and at least one row per level
   is also built by the app's own generator. The rows cover a few forms per
   level, not the whole range; some (such as 3e + 10.50 = 30) test the
-  oracle only, because the app does not ask them.
+  oracle only, because the app does not ask them. Nine forms have no row,
+  because none of the public pages read so far prints an answer for them
+  in the app's form and ranges: □ − a = b, □ × a = c, c ÷ □ = a,
+  □ ÷ a = b, n − a = b, n ÷ a = b, an − b = c, n ÷ a + b = c and
+  an + b = c with n below zero.
   `app/test/geometry_known_answers_test.dart` does the same for figure
-  questions printed there (units dropped): the app builds each of them at
-  levels 2, 4 and 5, except one circle given by its diameter, which only
-  the oracle reads. The pages have no usable rows for levels 1 and 3, so
-  those rest on the oracle and on figures worked by hand in
-  `app/test/geometry_test.dart`, one or more per family.
+  questions printed there (units dropped): the app builds them at levels
+  2 to 5; a circle given by its diameter, a square with a side of 15, an
+  L-shape cut at the bottom right and a missing side in halves are read
+  by the oracle only. Level 1 (perimeters) and the families the test
+  lists (a missing side from an area, the angle in a triangle, L-shapes,
+  rectangles in halves, the circumference) have no built row. Geometry
+  families without a row rest on the oracle and on figures worked by hand
+  in `app/test/geometry_test.dart`, one or more per family.
 - **Whole hundredths, no floating point.** Answers are whole numbers of
   hundredths (2.5 is 250). The app parses what the child types into
   hundredths and compares whole numbers. Circles use π = 3.14, shown on the
