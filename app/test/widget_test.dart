@@ -2765,6 +2765,9 @@ void main() {
           ),
           findsOneWidget,
         );
+        // The sheet scrolls; the kinds above push the hint down.
+        await tester.ensureVisible(find.byKey(openVibrationSettingsKey));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(openVibrationSettingsKey));
         await tester.pumpAndSettle();
         expect(calls.last, 'openVibrationSettings');
