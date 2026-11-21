@@ -17,7 +17,10 @@ import 'package:simple_math_tester/figure.dart';
 /// opposite ones), a triangle all three, a right triangle its two legs
 /// next to the right-angle mark, an L-shape two of the three edges along
 /// each direction, a circle its radius or diameter; an angle figure all
-/// its angles but the asked one. Anything else is not solvable.
+/// its angles but the asked one. Two crossing lines show one angle and a
+/// `?` on another one. For a length (Pythagoras' theorem) a right triangle
+/// shows two sides and a `?` on the third, a rectangle two adjacent sides
+/// and a `?` on its drawn diagonal. Anything else is not solvable.
 class OracleFailure implements Exception {
   OracleFailure(this.message);
 
@@ -61,7 +64,7 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
     FigurePrompt.sideFromPerimeter ||
     FigurePrompt.circumference => thick && !layout.shaded,
     FigurePrompt.area || FigurePrompt.sideFromArea => !thick && layout.shaded,
-    FigurePrompt.angle => !thick && !layout.shaded,
+    FigurePrompt.angle || FigurePrompt.length => !thick && !layout.shaded,
   };
   if (!cueOk) throw OracleFailure('the cue does not show the $prompt');
 
@@ -78,9 +81,17 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   if ((layout.pi != null) != isCircle || (layout.circle != null) != isCircle) {
     throw OracleFailure('π or a circle drawn with a $shape');
   }
-  final isRays =
-      shape == FigureShape.straightAngle || shape == FigureShape.rightAngle;
+  final isRays = switch (shape) {
+    FigureShape.straightAngle ||
+    FigureShape.rightAngle ||
+    FigureShape.crossingLines ||
+    FigureShape.aroundPoint => true,
+    _ => false,
+  };
   if (layout.rays != isRays) throw OracleFailure('rays drawn with a $shape');
+  if (layout.diagonal != null && shape != FigureShape.rectangle) {
+    throw OracleFailure('a diagonal in a $shape');
+  }
   if (layout.grid &&
       shape != FigureShape.square &&
       shape != FigureShape.rectangle) {
@@ -90,7 +101,13 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   return switch (shape) {
     FigureShape.circle => _solveCircle(prompt, layout),
     FigureShape.straightAngle ||
-    FigureShape.rightAngle => _solveRays(shape, prompt, layout),
+    FigureShape.rightAngle ||
+    FigureShape.crossingLines ||
+    FigureShape.aroundPoint => _solveRays(shape, prompt, layout),
+    FigureShape.rectangle when layout.diagonal != null => _solveDiagonal(
+      prompt,
+      layout,
+    ),
     FigureShape.lShape => _solveLShape(prompt, layout),
     FigureShape.rightTriangle => _solveRightTriangle(prompt, layout),
     FigureShape.triangle when prompt == FigurePrompt.angle =>
@@ -113,7 +130,9 @@ int _solvePolygon(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   if (count != expectedCorners) {
     throw OracleFailure('a $shape with $count corners');
   }
-  if (prompt == FigurePrompt.angle || prompt == FigurePrompt.circumference) {
+  if (prompt == FigurePrompt.angle ||
+      prompt == FigurePrompt.circumference ||
+      prompt == FigurePrompt.length) {
     throw OracleFailure('a $shape with the prompt $prompt');
   }
   if (layout.marks.isNotEmpty) throw OracleFailure('marks on a $shape');
@@ -199,12 +218,13 @@ int _solvePolygon(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   return solved;
 }
 
-/// Half the product of the two legs next to the right-angle mark.
+/// Half the product of the two legs next to the right-angle mark; or for
+/// a length, the side marked `?` by Pythagoras' theorem.
 int _solveRightTriangle(FigurePrompt prompt, FigureLayout layout) {
   final corners = layout.vertices;
   if (corners.length != 3) throw OracleFailure('a right triangle corners');
-  if (prompt != FigurePrompt.area) {
-    throw OracleFailure('a right triangle asks for its area');
+  if (prompt != FigurePrompt.area && prompt != FigurePrompt.length) {
+    throw OracleFailure('a right triangle asks for its area or a length');
   }
   if (layout.marks.length != 1) {
     throw OracleFailure('a right triangle needs one right-angle mark');
@@ -219,7 +239,17 @@ int _solveRightTriangle(FigurePrompt prompt, FigureLayout layout) {
     throw OracleFailure('the marked corner is not a right angle');
   }
   final byEdge = _sideLabels(layout.labels, corners);
-  // The legs are the edge into the marked corner and the edge out of it.
+  // The legs are the edge into the marked corner and the edge out of it,
+  // the longest side the edge across from it.
+  if (prompt == FigurePrompt.length) {
+    return _pythagoras(
+      byEdge,
+      corners,
+      legs: (prev, corner),
+      longest: next,
+      longestEnds: (corners[next], corners[prev]),
+    );
+  }
   if (byEdge.length != 2 ||
       !byEdge.containsKey(prev) ||
       !byEdge.containsKey(corner) ||
@@ -235,6 +265,84 @@ int _solveRightTriangle(FigurePrompt prompt, FigureLayout layout) {
   ];
   _sameScale(scales);
   return _exact(legIn * legOut, 200);
+}
+
+/// The side marked `?` from the two others by Pythagoras' theorem: the
+/// longest side times itself is the two legs times themselves added. In
+/// whole hundredths, so a length whose square is not a square number fails.
+/// Every edge in [byEdge] (labels by edge, see [_sideLabels]) must be drawn
+/// to one scale; the longest side runs between [longestEnds].
+int _pythagoras(
+  Map<int, int?> byEdge,
+  List<Offset> corners, {
+  required (int, int) legs,
+  required int longest,
+  required (Offset, Offset) longestEnds,
+}) {
+  final edges = [legs.$1, legs.$2, longest];
+  if (byEdge.length != 3 || !edges.every(byEdge.containsKey)) {
+    throw OracleFailure('Pythagoras needs the two legs and the longest side');
+  }
+  final asked = [
+    for (final e in edges)
+      if (byEdge[e] == null) e,
+  ];
+  if (asked.length != 1) throw OracleFailure('${asked.length} sides asked');
+  final (a, b, c) = (byEdge[legs.$1], byEdge[legs.$2], byEdge[longest]);
+  final int solved;
+  if (c == null) {
+    solved = _squareRoot(a! * a + b! * b);
+  } else {
+    final leg = a ?? b!;
+    final rest = c * c - leg * leg;
+    if (rest <= 0) throw OracleFailure('a leg as long as the longest side');
+    solved = _squareRoot(rest);
+  }
+  final lengths = {for (final e in edges) e: byEdge[e] ?? solved};
+  final count = corners.length;
+  _sameScale([
+    for (final e in [legs.$1, legs.$2])
+      (corners[(e + 1) % count] - corners[e]).distance * 100 / lengths[e]!,
+    (longestEnds.$2 - longestEnds.$1).distance * 100 / lengths[longest]!,
+  ]);
+  return solved;
+}
+
+/// A rectangle with a drawn diagonal marked `?` and two adjacent sides
+/// labelled: the diagonal is the longest side of the right triangles it
+/// cuts the rectangle into.
+int _solveDiagonal(FigurePrompt prompt, FigureLayout layout) {
+  final corners = layout.vertices;
+  if (corners.length != 4) throw OracleFailure('a rectangle has 4 corners');
+  if (prompt != FigurePrompt.length) {
+    throw OracleFailure('a diagonal with the prompt $prompt');
+  }
+  if (layout.marks.isNotEmpty || layout.grid) {
+    throw OracleFailure('marks or a grid with a diagonal');
+  }
+  _rightAngles(corners);
+  final (p, q) = layout.diagonal!;
+  final (from, to) = (_cornerAt(p, corners), _cornerAt(q, corners));
+  if ((from - to).abs() != 2) {
+    throw OracleFailure('the diagonal does not join opposite corners');
+  }
+  // The diagonal is edge 4 to the label reader.
+  final byEdge = _sideLabels(layout.labels, corners, (p, q));
+  if (!byEdge.containsKey(4) || byEdge[4] != null) {
+    throw OracleFailure('the diagonal is not marked ?');
+  }
+  final sides = byEdge.keys.where((e) => e != 4).toList()..sort();
+  if (sides.length != 2 || (sides[0] - sides[1]).abs() % 2 != 1) {
+    throw OracleFailure('a diagonal needs 2 labels on adjacent sides');
+  }
+  // Four right angles, so the unlabelled sides equal the ones across.
+  return _pythagoras(
+    byEdge,
+    corners,
+    legs: (sides[0], sides[1]),
+    longest: 4,
+    longestEnds: (p, q),
+  );
 }
 
 /// The edges of an L-shape run along two directions; along each, the
@@ -360,7 +468,9 @@ int _solveTriangleAngles(FigureLayout layout) {
 }
 
 /// Rays from one point: on a straight line the angles add up to 180°, in
-/// a corner marked as a right angle to 90°.
+/// a corner marked as a right angle to 90°, around the point to 360°. Two
+/// crossing lines make two pairs of equal angles opposite each other, and
+/// neighbours add up to 180°.
 int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
   if (prompt != FigurePrompt.angle) {
     throw OracleFailure('rays with the prompt $prompt');
@@ -376,7 +486,10 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
 
   final order = [for (var i = 1; i < corners.length; i++) i]
     ..sort((a, b) => direction(corners[a]).compareTo(direction(corners[b])));
-  // The gaps between neighbouring rays; the largest is the outside.
+  // The gaps between neighbouring rays; the largest is the outside, unless
+  // the rays go all the way round.
+  final round =
+      shape == FigureShape.crossingLines || shape == FigureShape.aroundPoint;
   final gaps = [
     for (var i = 0; i < order.length; i++)
       (
@@ -390,10 +503,10 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
       ),
   ];
   final sizes = [for (final gap in gaps) gap.size];
-  final outside = gaps[sizes.indexOf(sizes.reduce(max))];
+  final outside = round ? null : gaps[sizes.indexOf(sizes.reduce(max))];
   final wedges = [
     for (final gap in gaps)
-      if (gap.from != outside.from) gap,
+      if (gap.from != outside?.from) gap,
   ];
   final whole = wedges.fold(0.0, (s, w) => s + w.size);
   final rightMarks = layout.marks.where((m) => m.right).toList();
@@ -403,6 +516,19 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
       throw OracleFailure('the outer rays are not a straight line');
     }
     total = 180;
+  } else if (round) {
+    if (rightMarks.isNotEmpty) throw OracleFailure('a right-angle mark');
+    // Two lines: each ray continues straight through the point, so every
+    // angle and the next one make 180°.
+    if (shape == FigureShape.crossingLines &&
+        (wedges.length != 4 ||
+            [
+              for (var i = 0; i < 4; i++)
+                wedges[i].size + wedges[(i + 1) % 4].size,
+            ].any((pair) => (pair - 180).abs() > angleTolerance))) {
+      throw OracleFailure('the rays are not two straight lines');
+    }
+    total = 360;
   } else {
     if ((whole - 90).abs() > angleTolerance || rightMarks.length != 1) {
       throw OracleFailure('the outer rays are not a marked right angle');
@@ -410,7 +536,7 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
     _checkMark(
       rightMarks.single,
       o,
-      corners[outside.to],
+      corners[outside!.to],
       corners[outside.from],
       right: true,
     );
@@ -453,7 +579,41 @@ int _solveRays(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
       throw OracleFailure('no arc spans angle $i');
     }
   }
-  return _solveAngles(byWedge, [for (final w in wedges) w.size], total);
+  final measured = [for (final w in wedges) w.size];
+  if (shape == FigureShape.crossingLines) {
+    return _solveCrossing(byWedge, measured);
+  }
+  return _solveAngles(byWedge, measured, total);
+}
+
+/// Two crossing lines with one angle given and one asked, decided by where
+/// the `?` is drawn: two wedges on from the given angle it is the
+/// vertically opposite angle (equal), one wedge on a neighbour (on one
+/// straight line with it, so 180° minus it).
+int _solveCrossing(Map<int, int?> labels, List<double> measured) {
+  final known = [
+    for (final MapEntry(:key, :value) in labels.entries)
+      if (value != null) key,
+  ];
+  final asked = [
+    for (final MapEntry(:key, :value) in labels.entries)
+      if (value == null) key,
+  ];
+  if (known.length != 1 || asked.length != 1) {
+    throw OracleFailure('crossing lines need one angle and one ?');
+  }
+  final (k, j) = (known.single, asked.single);
+  final value = labels[k]!;
+  if ((measured[k] - value).abs() > angleTolerance) {
+    throw OracleFailure('angle $value° is drawn as ${measured[k]}°');
+  }
+  final opposite = (j - k) % 4 == 2;
+  final solved = opposite ? value : 180 - value;
+  if (solved <= 0) throw OracleFailure('the asked angle is $solved°');
+  if ((measured[j] - solved).abs() > angleTolerance) {
+    throw OracleFailure('the asked angle $solved° is drawn as ${measured[j]}°');
+  }
+  return solved * 100;
 }
 
 /// The asked angle from the others and the [total], in hundredths; every
@@ -531,8 +691,13 @@ int _solveCircle(FigurePrompt prompt, FigureLayout layout) {
 
 /// Each label at the edge it stands beside: its centre lies across from
 /// that edge (not beyond either end), it is the nearest such edge, and
-/// clearly nearer than any other; one label per edge. A `?` is null.
-Map<int, int?> _sideLabels(List<PlacedLabel> labels, List<Offset> corners) {
+/// clearly nearer than any other; one label per edge. A `?` is null. A
+/// drawn [diagonal] counts as one more edge, numbered after the others.
+Map<int, int?> _sideLabels(
+  List<PlacedLabel> labels,
+  List<Offset> corners, [
+  (Offset, Offset)? diagonal,
+]) {
   final count = corners.length;
   final byEdge = <int, int?>{};
   for (final label in labels) {
@@ -541,6 +706,7 @@ Map<int, int?> _sideLabels(List<PlacedLabel> labels, List<Offset> corners) {
     final distances = <int, double>{
       for (var i = 0; i < count; i++)
         i: ?_alongside(center, corners[i], corners[(i + 1) % count]),
+      if (diagonal case (final p, final q)) count: ?_alongside(center, p, q),
     };
     final sorted = distances.values.toList()..sort();
     if (sorted.isEmpty || sorted.length > 1 && sorted[0] >= .9 * sorted[1]) {

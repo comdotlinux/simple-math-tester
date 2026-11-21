@@ -273,7 +273,8 @@ const _levelsWithoutRow = {1};
 
 /// Families with no built row: issue #148 found no printed answer for
 /// them that the family draws exactly (L-shape and halves rows are read by
-/// the oracle alone, see [_oracleOnly]).
+/// the oracle alone, see [_oracleOnly]). The theorem families of #165
+/// (crossing lines, angles around a point, Pythagoras) have no row yet.
 const _familiesWithoutRow = {
   GeometryFamily.squarePerimeter,
   GeometryFamily.rectanglePerimeter,
@@ -286,6 +287,11 @@ const _familiesWithoutRow = {
   GeometryFamily.halvesRectanglePerimeter,
   GeometryFamily.halvesRectangleArea,
   GeometryFamily.circleCircumference,
+  GeometryFamily.verticallyOppositeAngles,
+  GeometryFamily.anglesAroundPoint,
+  GeometryFamily.pythagorasHypotenuse,
+  GeometryFamily.pythagorasLeg,
+  GeometryFamily.rectangleDiagonal,
 };
 
 void main() {

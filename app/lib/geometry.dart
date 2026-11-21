@@ -22,7 +22,9 @@ typedef FigureQuestion = ({Figure figure, int answer});
 /// Labels shown: a square one side, a rectangle two adjacent sides (the
 /// unseen sides equal the opposite ones), a triangle all three sides, a
 /// right triangle its two legs, an L-shape two of its three horizontal and
-/// two of its three vertical edges, a circle its radius or diameter.
+/// two of its three vertical edges, a circle its radius or diameter. A
+/// Pythagoras triangle shows two of its sides and a `?` on the third; a
+/// rectangle with a diagonal two adjacent sides and a `?` on the diagonal.
 enum GeometryFamily {
   squarePerimeter(1, _squareSpace, _squarePerimeter),
   rectanglePerimeter(1, _rectangleSpace, _rectanglePerimeter),
@@ -41,7 +43,12 @@ enum GeometryFamily {
   halvesRectanglePerimeter(5, _halvesSpace, _halvesRectanglePerimeter),
   halvesRectangleArea(5, _halvesSpace, _halvesRectangleArea),
   circleCircumference(5, _diameterSpace, _circleCircumference),
-  circleArea(5, _radiusSpace, _circleArea);
+  circleArea(5, _radiusSpace, _circleArea),
+  verticallyOppositeAngles(4, _crossingSpace, _verticallyOppositeAngles),
+  anglesAroundPoint(4, _aroundSpace, _anglesAroundPoint),
+  pythagorasHypotenuse(5, _tripleLegSpace, _pythagorasHypotenuse),
+  pythagorasLeg(5, _tripleLegSpace, _pythagorasLeg),
+  rectangleDiagonal(5, _diagonalSpace, _rectangleDiagonal);
 
   const GeometryFamily(this.level, this._space, this.build);
 
@@ -162,6 +169,53 @@ final _radii = [
   for (var r = 1; r <= 10; r++) [r],
 ];
 
+/// Whole-number right triangles with sides up to 20, as (leg, leg,
+/// longest side). The "sides at most 12" rule does not hold for these.
+const _triples = [
+  (3, 4, 5),
+  (6, 8, 10),
+  (5, 12, 13),
+  (9, 12, 15),
+  (8, 15, 17),
+  (12, 16, 20),
+];
+
+/// The two legs of each triple, in both orders.
+final _tripleLegs = [
+  for (final (a, b, _) in _triples) ...[
+    [a, b],
+    [b, a],
+  ],
+];
+
+/// Rectangles with the legs of a triple as sides, except 5 wide and 12
+/// tall: on the compact card at text scale 2 its `?` leaves less than
+/// 16 px of the diagonal showing.
+final _diagonals = [
+  for (final sides in _tripleLegs)
+    if (sides[0] != 5 || sides[1] != 12) sides,
+];
+
+/// The longest side of the triple with legs [a] and [b].
+int _longest(int a, int b) =>
+    _triples.firstWhere((t) => {t.$1, t.$2}.containsAll({a, b})).$3;
+
+/// Two crossing lines: the given angle 20° to 160°, and whether the asked
+/// angle is its neighbour (1) or the one opposite it (0).
+final _crossing = [
+  for (var a = 20; a <= 160; a++)
+    for (final neighbour in [0, 1]) [a, neighbour],
+];
+
+/// Three angles around a point, each 20° to 170° in steps of 5°; the
+/// first two are given. (Four rays leave rays shorter than 16 px on the
+/// compact card at text scale 2, so there are none.)
+final _around = [
+  for (var a = 20; a <= 170; a += 5)
+    for (var b = 20; b <= 170; b += 5)
+      if (360 - a - b case final c when c >= 20 && c <= 170) [a, b],
+];
+
 List<List<int>> _squareSpace() => _squares;
 List<List<int>> _rectangleSpace() => _rectangles;
 List<List<int>> _triangleSpace() => _triangles;
@@ -174,6 +228,10 @@ List<List<int>> _lShapeSpace() => _lShapes;
 List<List<int>> _halvesSpace() => _halves;
 List<List<int>> _diameterSpace() => _diameters;
 List<List<int>> _radiusSpace() => _radii;
+List<List<int>> _tripleLegSpace() => _tripleLegs;
+List<List<int>> _diagonalSpace() => _diagonals;
+List<List<int>> _crossingSpace() => _crossing;
+List<List<int>> _aroundSpace() => _around;
 
 /// A rectangle with its top-left corner at the origin; edge 1 is the
 /// right side, edge 2 the bottom.
@@ -523,5 +581,116 @@ FigureQuestion _circleArea(List<int> params) {
       pi: piHundredths,
     ),
     answer: piHundredths * r * r,
+  );
+}
+
+/// Two straight lines crossing at the origin, one along the x axis, the
+/// other at a°. The angle a is given; the one opposite it or its neighbour
+/// is asked.
+FigureQuestion _verticallyOppositeAngles(List<int> params) {
+  _require(_inSpace(_crossing, params), params);
+  final [a, neighbour] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.crossingLines,
+      vertices: [
+        Offset.zero,
+        _direction(0),
+        _direction(a),
+        _direction(180),
+        _direction(180 + a),
+      ],
+      labels: const [],
+      angles: [AngleLabel(1, a), AngleLabel(neighbour == 1 ? 2 : 3, null)],
+      prompt: FigurePrompt.angle,
+    ),
+    answer: (neighbour == 1 ? 180 - a : a) * 100,
+  );
+}
+
+/// Rays from the origin at 0° and after each given angle; the last angle,
+/// back to the first ray, is asked.
+FigureQuestion _anglesAroundPoint(List<int> params) {
+  _require(_inSpace(_around, params), params);
+  var turned = 0;
+  final directions = [
+    _direction(0),
+    for (final a in params) _direction(turned += a),
+  ];
+  return (
+    figure: Figure(
+      shape: FigureShape.aroundPoint,
+      vertices: [Offset.zero, ...directions],
+      labels: const [],
+      angles: [
+        for (final (i, a) in params.indexed) AngleLabel(i + 1, a),
+        AngleLabel(params.length + 1, null),
+      ],
+      prompt: FigurePrompt.angle,
+    ),
+    answer: (360 - turned) * 100,
+  );
+}
+
+/// A right triangle drawn like [_rightTriangleArea]: legs a (bottom) and
+/// b (left), the right angle at the bottom-left corner.
+List<Offset> _rightCorners(int a, int b) => [
+  Offset.zero,
+  Offset(0, -b.toDouble()),
+  Offset(a.toDouble(), 0),
+];
+
+/// Legs a (bottom) and b (left) given, the longest side asked.
+FigureQuestion _pythagorasHypotenuse(List<int> params) {
+  _require(_inSpace(_tripleLegs, params), params);
+  final [a, b] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.rightTriangle,
+      vertices: _rightCorners(a, b),
+      labels: [
+        SideLabel(2, a * 100),
+        SideLabel(0, b * 100),
+        const SideLabel(1, null),
+      ],
+      prompt: FigurePrompt.length,
+    ),
+    answer: _longest(a, b) * 100,
+  );
+}
+
+/// The bottom leg a and the longest side given, the left leg b asked.
+FigureQuestion _pythagorasLeg(List<int> params) {
+  _require(_inSpace(_tripleLegs, params), params);
+  final [a, b] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.rightTriangle,
+      vertices: _rightCorners(a, b),
+      labels: [
+        SideLabel(2, a * 100),
+        const SideLabel(0, null),
+        SideLabel(1, _longest(a, b) * 100),
+      ],
+      prompt: FigurePrompt.length,
+    ),
+    answer: b * 100,
+  );
+}
+
+/// A rectangle with its bottom and right sides labelled and its diagonal
+/// from the top-left to the bottom-right corner asked.
+FigureQuestion _rectangleDiagonal(List<int> params) {
+  _require(_inSpace(_diagonals, params), params);
+  final [width, height] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.rectangle,
+      vertices: _box(width, height),
+      labels: [SideLabel(2, width * 100), SideLabel(1, height * 100)],
+      prompt: FigurePrompt.length,
+      diagonal: true,
+    ),
+    answer: _longest(width, height) * 100,
   );
 }

@@ -77,11 +77,34 @@ language's decimal separator.
 | 1 | The perimeter of a square, a rectangle or a triangle | Sides 1 to 12, a rectangle's longer side at most 4 times the shorter; triangles with whole sides 2 to 12 and every angle at least 20° | Rectangle 5 by 3: 16 | 276 |
 | 2 | The area of a rectangle, with a unit grid on it | Sides 1 to 10, the longer at most 4 times the shorter | Rectangle 5 by 3: 15 | 84 |
 | 3 | A missing side (a `?` on the side) of a square or rectangle, from its perimeter or area | As level 1 | Perimeter 16, one side 5: 3 | 240 |
-| 4 | A missing angle, with an arc at every angle and a square in a right angle: in a triangle, on a straight line, in a right angle | Every angle whole and at least 20° (at least 10° in a right angle) | Triangle with 50° and 60°: 70 | 7593 |
-| 5 | The area of a right triangle; the perimeter and area of an L-shape and of rectangles with sides in halves; a circle's circumference (from its diameter) and area (from its radius), with "Use π = 3.14" shown | Legs 1 to 12; L-shapes with outer sides 4 to 12; halves 0.5 to 12; diameter 1 to 20, radius 1 to 10 | Legs 6 and 4: 12; 2.5 by 1.5: 3.75; diameter 6: 18.84 | 1568 |
+| 4 | A missing angle, with an arc at every angle and a square in a right angle: in a triangle, on a straight line, in a right angle; two crossing lines with one angle given and the opposite angle or a neighbour asked; three angles around a point | Every angle whole and at least 20° (at least 10° in a right angle); crossing lines 20° to 160°; around a point 20° to 170° in steps of 5° | Triangle with 50° and 60°: 70; crossing at 50°: opposite 50, neighbour 130; around a point 100° and 150°: 110 | 8371 |
+| 5 | The area of a right triangle; the perimeter and area of an L-shape and of rectangles with sides in halves; a circle's circumference (from its diameter) and area (from its radius), with "Use π = 3.14" shown; Pythagoras: the longest side or a leg of a right triangle, and the diagonal of a rectangle (drawn, with a `?` on its middle) | Legs 1 to 12; L-shapes with outer sides 4 to 12; halves 0.5 to 12; diameter 1 to 20, radius 1 to 10; Pythagoras: the whole-number triangles 3-4-5, 6-8-10, 5-12-13, 9-12-15, 8-15-17 and 12-16-20, both leg orders (sides up to 20, so not "at most 12"), the rectangle 5 wide and 12 tall left out | Legs 6 and 4: 12; 2.5 by 1.5: 3.75; diameter 6: 18.84; legs 3 and 4: 5; 6 by 8: diagonal 10 | 1603 |
+
+Families (the variant names saved with each answer) by level: 1
+`squarePerimeter`, `rectanglePerimeter`, `trianglePerimeter`; 2
+`rectangleArea`; 3 `squareSideFromPerimeter`, `squareSideFromArea`,
+`rectangleSideFromPerimeter`, `rectangleSideFromArea`; 4 `triangleAngle`
+(7381), `straightAngle` (141), `rightAngle` (71),
+`verticallyOppositeAngles` (282), `anglesAroundPoint` (496); 5
+`rightTriangleArea`, `lShapePerimeter`, `lShapeArea`,
+`halvesRectanglePerimeter`, `halvesRectangleArea`, `circleCircumference`,
+`circleArea`, `pythagorasHypotenuse` (12), `pythagorasLeg` (12),
+`rectangleDiagonal` (11).
 
 Hints name the sides or angles, then the calculation; only the last step
-states the answer.
+states the answer. A theorem hint first names the theorem and says in a
+sentence why it holds ("Vertically opposite angles are equal", "Angles
+around a point add up to 360°", "Pythagoras' theorem"), then works in
+small steps; for Pythagoras each side times itself, the sum or the
+difference, then which number times itself makes it.
+
+Crossing lines and rays around a point have no up or down, so the drawing
+is turned (in steps of 15°) to the angle that draws the rays longest with
+the labels apart. Four rays around a point are left out: on the compact
+card at text scale 2 their four labels leave rays shorter than 16 px in
+about half the cases. The rectangle 5 wide and 12 tall is left out of the
+diagonal family: there its `?` leaves less than 16 px of the diagonal
+showing.
 
 ## How correctness is checked
 
@@ -106,11 +129,18 @@ states the answer.
   nearest edge or angle, every drawn edge matches one common scale within
   0.5%, right angles are right, the grid squares are evenly spaced and their
   count is the area, and the oracle solves the figure from the labels.
+  For two crossing lines it checks that the rays make two straight lines
+  and decides from where the `?` is drawn whether it is opposite the given
+  angle (equal) or beside it (180° minus). For Pythagoras it finds the legs
+  and the longest side from the right-angle mark (or, in a rectangle, that
+  the marked line joins opposite corners), computes the missing side in
+  whole numbers (the square of the longest side is the squares of the legs
+  added) and rejects a result that is not a whole number.
 - **Exhaustive runs.** Algebra: 484, 380, 938, 6127 and 6020 problems
   (levels 1 to 5), each through the oracle, and the oracle recomputes every
-  hint step of every problem. Geometry: 9761 problems, each laid out on 6
-  canvas sizes at text scale 1 and 2, 117132 oracle checks in all (3312,
-  1008, 2880, 91116 and 18816 for levels 1 to 5). Layout rules are checked
+  hint step of every problem. Geometry: 10574 problems, each laid out on 6
+  canvas sizes at text scale 1 and 2, 126888 oracle checks in all (3312,
+  1008, 2880, 100452 and 19236 for levels 1 to 5). Layout rules are checked
   for every figure too: label text at least 12 px, labels inside the canvas
   and apart from each other, readable colours in every palette.
 - **Mutation tests.** The oracles must reject wrong versions: an answer + 1,
@@ -118,8 +148,10 @@ states the answer.
   calculation off by 1, the exponent or the root sign removed, a radicand
   + 1, the condition line removed (two solutions) (algebra); an answer + 1, a label changed, moved or
   hidden, the figure stretched by 20%, the prompts swapped, a grid square,
-  an angle arc or the π line removed, the radius and diameter cues swapped,
-  and the missing side moved (geometry).
+  an angle arc, the right-angle square or the π line removed, the radius
+  and diameter cues swapped, the missing side or angle (`?`) moved, a ray
+  turned by 10° with its label kept, and the diagonal removed or drawn
+  along a side (geometry).
 - **Textbook rows.** `app/test/algebra_known_answers_test.dart` holds
   equations with the answers printed for them in Illustrative Mathematics
   (see [attributions.md](attributions.md)). The oracle must accept each
@@ -137,7 +169,8 @@ states the answer.
   L-shape cut at the bottom right and a missing side in halves are read
   by the oracle only. Level 1 (perimeters) and the families the test
   lists (a missing side from an area, the angle in a triangle, L-shapes,
-  rectangles in halves, the circumference) have no built row. Geometry
+  rectangles in halves, the circumference, and the theorem families:
+  crossing lines, angles around a point, Pythagoras) have no built row. Geometry
   families without a row rest on the oracle and on figures worked by hand
   in `app/test/geometry_test.dart`, one or more per family.
 - **Whole hundredths, no floating point.** Answers are whole numbers of

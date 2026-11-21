@@ -250,5 +250,22 @@
   "stepLShapeArea": "Die Seiten ohne Zahl: {first} und {second}. Also {calculation} = {area}.",
   "stepRectangleArea": "Die Fläche eines Rechtecks ist eine Seite mal die andere.",
   "stepCircumference": "Der Umfang ist π mal der Durchmesser. Nimm π = {pi}.",
-  "stepCircleArea": "Die Fläche eines Kreises ist π × Radius × Radius. Nimm π = {pi}."
+  "stepCircleArea": "Die Fläche eines Kreises ist π × Radius × Radius. Nimm π = {pi}.",
+  "figureRightTriangleSides": "Right triangle, legs {a} and {b}, longest side {c}.",
+  "figureRectangleDiagonal": "Rectangle, sides {width} and {height}, diagonal ?.",
+  "figureCrossingOpposite": "Two crossing lines, one angle {angle}; ? is the angle opposite it.",
+  "figureCrossingNeighbour": "Two crossing lines, one angle {angle}; ? is the angle next to it.",
+  "figureAroundPoint": "Around a point, angles {a} and {b}.",
+  "figureLength": "Length?",
+  "stepPythagoras": "Pythagoras' theorem: in a right triangle, the longest side times itself equals the two other sides times themselves, added. The square on the longest side holds exactly as much as the squares on the two other sides together.",
+  "stepDiagonalTriangles": "The diagonal cuts the rectangle into two right triangles, and it is their longest side.",
+  "stepPythagorasSquares": "{a} × {a} = {aa} and {b} × {b} = {bb}.",
+  "stepPythagorasAdd": "Add them: {aa} + {bb} = {sum}.",
+  "stepPythagorasTakeAway": "Take away the other side's: {cc} − {bb} = {rest}.",
+  "stepPythagorasRoot": "Which number times itself makes {square}? {side} × {side} = {square}, so the side marked ? is {side}.",
+  "stepVerticallyOpposite": "Vertically opposite angles are equal: each of them and the angle between them make a straight line, 180°.",
+  "stepCrossingBetween": "The angle between them: {whole} − {angle} = {between}.",
+  "stepCrossingNeighbour": "Angles on a straight line add up to 180°: an angle and the one next to it lie along one of the lines.",
+  "stepAroundPoint": "Angles around a point add up to 360°: together they make one full turn.",
+  "stepAddKnownAngles": "Add the angles you know: {calculation} = {sum}."
 }

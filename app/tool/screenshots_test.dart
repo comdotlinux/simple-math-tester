@@ -17,6 +17,7 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
+import 'package:simple_math_tester/solution_steps.dart';
 
 /// Writes PNGs of every screen in both themes for review. A tool, not part of
 /// the test suite (`flutter test` only runs `test/`); run it by hand:
@@ -749,6 +750,51 @@ void main() {
               // A wrong answer opens the first hint; the second follows.
               await check(tester, '1');
               practice.revealStep();
+              await tester.pumpAndSettle();
+              await tester.ensureVisible(find.byKey(revealStepButtonKey));
+              await shoot(tester, '$name-hints');
+            }
+          }
+        });
+
+        testWidgets('geometry theorems screenshots $tag', (tester) async {
+          language = code;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          FigureProblem figure(String variant, List<int> params, int level) =>
+              geometry.build(
+                OperationType.geometry,
+                variant,
+                params,
+                level: level,
+              )!;
+          // One problem of each theorem family, both kinds of crossing.
+          final families = [
+            figure('verticallyOppositeAngles', [50, 0], 4),
+            figure('verticallyOppositeAngles', [130, 1], 4),
+            figure('anglesAroundPoint', [100, 150], 4),
+            figure('pythagorasHypotenuse', [8, 15], 5),
+            figure('pythagorasLeg', [12, 5], 5),
+            figure('rectangleDiagonal', [12, 5], 5),
+          ];
+          for (final scale in [1.0, 2.0]) {
+            for (final problem in families) {
+              final name =
+                  '$tag-16-geometry-${problem.variant}-'
+                  '${problem.params.join('x')}-x$scale';
+              final practice = await launch(
+                tester,
+                size,
+                brightness,
+                problem: problem,
+                scale: scale,
+              );
+              practice.toggleOperation(OperationType.geometry);
+              await shoot(tester, name);
+              // A wrong answer opens the first hint; the rest follow.
+              await check(tester, '1');
+              for (var i = 1; i < solutionSteps(problem).length; i++) {
+                practice.revealStep();
+              }
               await tester.pumpAndSettle();
               await tester.ensureVisible(find.byKey(revealStepButtonKey));
               await shoot(tester, '$name-hints');
