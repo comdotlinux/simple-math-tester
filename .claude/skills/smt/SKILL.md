@@ -62,6 +62,7 @@ Merge rule: merge when every pull request check is green. For a visual change, s
 |---|---|
 | `app/` | The Flutter app |
 | `functions/api/impressum.js` | Cloudflare Pages function for the Impressum |
+| `functions/api/report.js`, `functions/report-allowlist.json` | Pages function that turns a report code from the app into a GitHub issue; its family and language allow-list (README, "Reports from the app") |
 | `tool/` | Node tools: `translate.mjs`, `translate_listing.mjs`, `browser_check.mjs`, their tests |
 | `play/listing/` | Store texts per language, `en-US.json` is the source |
 | `docs/play-store/` | Store screenshots |
@@ -78,6 +79,7 @@ Docs to read for an area:
 | Play Console, release, promotion, listing | `docs/play-store.md` |
 | Third-party material | `docs/attributions.md` |
 | Journeys (integration tests) | `app/integration_test/README.md` |
+| Impressum and report functions, their secrets | `README.md` |
 
 `app/lib/`, by job:
 
@@ -117,7 +119,7 @@ Publish the branch early. CI is the source of truth; run quick local checks alon
 
 | Workflow | Runs on | Does |
 |---|---|---|
-| `flutter-checks.yml` | pull requests, pushes to `main`, manual | Analyze, test, web build (the required check "Analyze, test and build web"), Linux and Chrome journeys, offline web check, Impressum test. Deploys the web build on `main`. Android APK, iOS build, Android emulators and iOS simulator run only on manual runs. |
+| `flutter-checks.yml` | pull requests, pushes to `main`, manual | Analyze, test, web build (the required check "Analyze, test and build web"), Linux and Chrome journeys, offline web check, Pages function tests. Deploys the web build on `main`. Android APK, iOS build, Android emulators and iOS simulator run only on manual runs. |
 | `translate.yml` | pushes to `main` that change `app_en.arb`, `play/listing/en-US.json` or the two translate tools, manual | Translates new and changed strings and the store listing, opens or updates one pull request from `translations/auto`, starts the Flutter checks on that branch itself |
 | `play-bundle.yml` | `v*` tags, manual | Builds and signs the bundle, checks permissions, signer and 16 KB pages. A tag run uploads to the Play internal track and creates the GitHub release. A manual run uploads nothing. |
 | `play-promote.yml` | manual | Moves a version from internal to closed testing or production, and writes release notes |
