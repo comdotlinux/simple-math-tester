@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'hundredths.dart';
 import 'solution_steps.dart';
 
 num _add(int lhs, int rhs) => lhs + rhs;
@@ -72,6 +73,9 @@ enum OperationType {
 
   /// The hint steps of [problem], a problem of this kind.
   List<SolutionStep> steps(Problem problem) => source.steps(problem);
+
+  /// Whether an answer of this kind can be negative or decimal.
+  bool get signedDecimalAnswers => source.signedDecimalAnswers;
 }
 
 /// The four arithmetic kinds. Only they are on by default (also for a saved
@@ -94,6 +98,12 @@ sealed class ProblemSource<P extends Problem> {
   P generate(OperationType kind, Random random, int level);
 
   List<SolutionStep> steps(P problem);
+
+  /// Whether an answer can be negative or decimal, at any level. Such a
+  /// kind gets the pad's minus and decimal keys whenever it is selected, so
+  /// the pad keeps its shape between questions. The four arithmetic kinds
+  /// answer with whole numbers of 0 or more.
+  bool get signedDecimalAnswers;
 }
 
 /// Two operands drawn from a level table and combined by one calculation.
@@ -110,6 +120,9 @@ class ArithmeticSource extends ProblemSource<ArithmeticProblem> {
 
   @override
   int get highestLevel => levels.length;
+
+  @override
+  bool get signedDecimalAnswers => false;
 
   /// Subtraction puts the larger operand first and division is built as
   /// divisor times quotient, so every answer is a whole number of 0 or more.
@@ -251,6 +264,12 @@ const _blank = EquationProblem.blank;
 class AlgebraSource extends ProblemSource<EquationProblem> {
   const AlgebraSource(this.levels, this.families, this._steps);
 
+  /// Every answer of the levels so far is a whole number of 0 or more.
+  /// The level with negative and decimal answers switches this on, for
+  /// the whole kind, so the pad does not change shape between levels.
+  @override
+  bool get signedDecimalAnswers => false;
+
   /// The families of each level with the range of each param; index 0 is
   /// level 1.
   final List<List<(String, List<Range>)>> levels;
@@ -276,7 +295,7 @@ class AlgebraSource extends ProblemSource<EquationProblem> {
       List.unmodifiable(params),
       List.unmodifiable(tokens),
       kind,
-      answer,
+      answer * 100,
       level: level,
     );
   }
@@ -361,14 +380,18 @@ class ArithmeticProblem extends Problem {
 /// [params]. The pair is what is saved; [tokens] and the result follow from
 /// them.
 class EquationProblem extends Problem {
-  const EquationProblem(
+  EquationProblem(
     this.variant,
     this.params,
     this.tokens,
-    super.kind,
-    super.result, {
+    OperationType kind,
+    this.resultHundredths, {
     super.level,
-  });
+  }) : super(kind, numberOfHundredths(resultHundredths));
+
+  /// The answer as a whole number of hundredths, which decides whether an
+  /// answer is right; [result] is the same number for display and saving.
+  final int resultHundredths;
 
   /// The unknown in [tokens] and [question]. No bundled font has this
   /// glyph, so the screen draws a box in its place and screen readers say
@@ -393,12 +416,25 @@ class Attempt {
     required this.answeredAt,
     this.hintsUsed = 0,
     this.sprint = false,
+    this._answerHundredths,
   });
 
   final Problem problem;
 
   /// Null means the problem was skipped.
   final num? firstAnswer;
+
+  final int? _answerHundredths;
+
+  /// [firstAnswer] as a whole number of hundredths, for an equation: as the
+  /// check parsed it from the typed text, or else read from the number's
+  /// text (an entry saved by an older build), never by double arithmetic.
+  int? get answerHundredths =>
+      _answerHundredths ??
+      switch (firstAnswer) {
+        final answer? => parseHundredths(formatNumber(answer)),
+        null => null,
+      };
   final int elapsedMs;
   final DateTime answeredAt;
   final int hintsUsed;
@@ -406,5 +442,9 @@ class Attempt {
 
   bool get skipped => firstAnswer == null;
 
-  bool get correct => firstAnswer == problem.result;
+  bool get correct => switch (problem) {
+    ArithmeticProblem() => firstAnswer == problem.result,
+    EquationProblem(:final resultHundredths) =>
+      answerHundredths == resultHundredths,
+  };
 }

@@ -434,6 +434,14 @@
   "@padDelete": {
     "description": "Screen reader label of the backspace key on the number pad."
   },
+  "padMinus": "Minus",
+  "@padMinus": {
+    "description": "Screen reader label of the number pad key that adds or removes a minus sign before the answer, for a negative number."
+  },
+  "padDecimalPoint": "Decimal point",
+  "@padDecimalPoint": {
+    "description": "Screen reader label of the number pad key that types the decimal separator (a point or a comma, as the language writes decimals)."
+  },
   "sprintSecondsLeft": "{seconds} s left",
   "@sprintSecondsLeft": {
     "description": "Countdown during a timed round, very short; 's' is the seconds abbreviation.",

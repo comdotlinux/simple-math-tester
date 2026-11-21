@@ -71,6 +71,8 @@
   "sprintButton": "Sprint de {seconds} segundos",
   "mathQuestion": "Pergunta de matemática: {question}",
   "padDelete": "Apagar",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} s restantes",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{Resta 1 segundo} other{Restam {seconds} segundos}}",
   "score": "Pontuação: {score}",

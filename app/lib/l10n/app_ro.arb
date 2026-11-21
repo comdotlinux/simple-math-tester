@@ -71,6 +71,8 @@
   "sprintButton": "Sprint de {seconds} s",
   "mathQuestion": "Exercițiu de matematică: {question}",
   "padDelete": "Șterge",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} s rămase",
   "sprintSecondsLeftSemantics": "Timp rămas: {seconds, plural, =1{1 secundă} few{{seconds} secunde} other{{seconds} de secunde}}",
   "score": "Scor: {score}",

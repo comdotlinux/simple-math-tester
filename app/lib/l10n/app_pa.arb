@@ -71,6 +71,8 @@
   "sprintButton": "{seconds} ਸਕਿੰਟ ਦਾ ਸਪ੍ਰਿੰਟ",
   "mathQuestion": "ਗਣਿਤ ਦਾ ਸਵਾਲ: {question}",
   "padDelete": "ਮਿਟਾਓ",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} ਸ ਬਾਕੀ",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{1 ਸਕਿੰਟ ਬਾਕੀ} other{{seconds} ਸਕਿੰਟ ਬਾਕੀ}}",
   "score": "ਸਕੋਰ: {score}",

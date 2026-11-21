@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart' show ThemeMode;
 
 import 'app_theme.dart' show AppPalette;
+import 'hundredths.dart';
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
@@ -420,9 +421,11 @@ class Progress {
   static Map<String, Object?> _encodeAttempt(Attempt attempt) => {
     ...switch (attempt.problem) {
       ArithmeticProblem(:final lhs, :final rhs) => {'lhs': lhs, 'rhs': rhs},
+      // The answer also as whole hundredths, exact where it is a decimal.
       EquationProblem(:final variant, :final params) => {
         'variant': variant,
         'params': params,
+        'firstAnswerHundredths': ?attempt.answerHundredths,
       },
     },
     'kind': attempt.problem.kind.name,
@@ -462,9 +465,13 @@ class Progress {
       },
     };
     if (problem == null || problem.result != result) return null;
+    final hundredths = _field<int>(json, 'firstAnswerHundredths');
     return Attempt(
       problem,
-      firstAnswer: _field<num>(json, 'firstAnswer'),
+      firstAnswer: hundredths == null
+          ? _field<num>(json, 'firstAnswer')
+          : numberOfHundredths(hundredths),
+      answerHundredths: problem is EquationProblem ? hundredths : null,
       elapsedMs: _field<int>(json, 'elapsedMs') ?? 0,
       hintsUsed: _field<int>(json, 'hintsUsed') ?? 0,
       answeredAt: answeredAt.toLocal(),

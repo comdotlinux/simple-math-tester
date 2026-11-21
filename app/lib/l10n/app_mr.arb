@@ -71,6 +71,8 @@
   "sprintButton": "{seconds} सेकंद स्प्रिंट",
   "mathQuestion": "गणिताचा प्रश्न: {question}",
   "padDelete": "खोड",
+  "padMinus": "Minus",
+  "padDecimalPoint": "Decimal point",
   "sprintSecondsLeft": "{seconds} से. बाकी",
   "sprintSecondsLeftSemantics": "{seconds, plural, =1{1 सेकंद बाकी} other{{seconds} सेकंद बाकी}}",
   "score": "स्कोअर: {score}",
