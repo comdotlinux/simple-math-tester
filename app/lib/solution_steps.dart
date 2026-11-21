@@ -1,5 +1,7 @@
 import 'dart:math' show sqrt;
 
+import 'package:flutter/foundation.dart' show immutable;
+
 import 'figure.dart';
 import 'hundredths.dart';
 import 'l10n/app_localizations.dart';
@@ -229,6 +231,23 @@ List<SolutionStep> divisionSteps(ArithmeticProblem problem) {
 
 /// What one step of an equation hint does; it picks the step's sentence.
 enum EquationMove {
+  /// The first step: what the question asks, the number in the blank or
+  /// the number n stands for.
+  ask,
+
+  /// The second step, the idea the working uses: adding and taking away
+  /// undo each other ([addAndTakeAway]), the part taken away and the part
+  /// left can swap ([swapTakeAway]), the same two for multiplying and
+  /// dividing, what squared and a square root mean, and from level 3 that
+  /// doing the same to both sides keeps them equal ([balance]).
+  addAndTakeAway,
+  swapTakeAway,
+  multiplyAndDivide,
+  swapDivide,
+  squared,
+  squareRoot,
+  balance,
+
   /// `a + □ = c` or `□ + a = c`: take a away from c.
   undoAdd,
 
@@ -307,8 +326,9 @@ class EquationStep {
 
   final EquationMove move;
 
-  /// Whole numbers; [EquationMove.means] and [EquationMove.belowZero] have
-  /// no calculation and leave these at 0 and ''.
+  /// Whole numbers; [EquationMove.ask], the ideas, [EquationMove.means] and
+  /// [EquationMove.belowZero] have no calculation and leave these at 0 and
+  /// ''.
   final int left;
   final String sign;
   final int right;
@@ -331,8 +351,9 @@ class EquationStep {
   String get calculation => '${signedText(left)} $sign ${signedText(right)}';
 }
 
-/// The hint of an equation as data. With the blank (levels 1 and 2) the
-/// first step names the operation around the blank and the calculation that
+/// The hint of an equation as data. It starts with what the question asks
+/// and the idea the working uses. With the blank (levels 1 and 2) the next
+/// step names the operation around the blank and the calculation that
 /// undoes it, using only numbers the question shows; the last does that
 /// calculation, states the answer and puts it back in place of the blank.
 ///
@@ -342,6 +363,25 @@ class EquationStep {
 /// before the last is done at once and shows the equation it leaves; the
 /// last undo is named, then done in the answer step.
 List<EquationStep> equationHint(EquationProblem problem) {
+  final work = _equationWork(problem);
+  final idea = switch (problem.variant) {
+    'missingSquare' || 'aSquared' || 'nSquared' => EquationMove.squared,
+    'missingSquareRoot' || 'squareRootOfC' => EquationMove.squareRoot,
+    _ => switch (work.first.move) {
+      EquationMove.undoAdd ||
+      EquationMove.undoSubtract => EquationMove.addAndTakeAway,
+      EquationMove.takenAway => EquationMove.swapTakeAway,
+      EquationMove.undoMultiply ||
+      EquationMove.undoDivide => EquationMove.multiplyAndDivide,
+      EquationMove.dividedBy => EquationMove.swapDivide,
+      _ => EquationMove.balance,
+    },
+  };
+  return [const EquationStep(EquationMove.ask), EquationStep(idea), ...work];
+}
+
+/// The steps of [equationHint] after the question and the idea.
+List<EquationStep> _equationWork(EquationProblem problem) {
   final answer = problem.resultHundredths;
   // Squares and roots: what a² means, or which number times itself makes c;
   // an² = c divides by a first.
@@ -597,6 +637,14 @@ SolutionStep _equationSentence(EquationStep step, {required bool letter}) {
     _ => l.stepEquationMultiplyBoth(right),
   };
   return switch (step.move) {
+    EquationMove.ask => (l) => letter ? l.hintAskLetter : l.hintAskBlank,
+    EquationMove.addAndTakeAway => (l) => l.hintIdeaAddAndTakeAway,
+    EquationMove.swapTakeAway => (l) => l.hintIdeaSwapTakeAway,
+    EquationMove.multiplyAndDivide => (l) => l.hintIdeaMultiplyAndDivide,
+    EquationMove.swapDivide => (l) => l.hintIdeaSwapDivide,
+    EquationMove.squared => (l) => l.hintIdeaSquared,
+    EquationMove.squareRoot => (l) => l.hintIdeaSquareRoot,
+    EquationMove.balance => (l) => l.hintIdeaBalance,
     EquationMove.undoAdd => (l) => l.stepEquationUndoAdd(right, left),
     EquationMove.takenAway => (l) => l.stepEquationTakenAway(left, right),
     EquationMove.undoSubtract => (l) => l.stepEquationUndoSubtract(right, left),
@@ -675,232 +723,697 @@ List<int> _placeParts(int value) {
   return (value ~/ place, '$place'.length - 1);
 }
 
-/// The hint of a figure question, read from what the figure shows (its
-/// labels, the given total and π), never from its family: name what the
-/// rule adds or multiplies, then calculate. Numbers are in hundredths and
-/// written in the language's own way. The answer appears only in the last
-/// step.
-List<SolutionStep> figureSteps(Figure figure) {
-  String n(AppLocalizations l, int hundredths) =>
-      formatHundredths(hundredths, l.localeName);
-  final values = [for (final label in figure.labels) label.hundredths];
+/// What one step of a figure hint says; it picks the step's sentence.
+enum FigureMove {
+  /// The first step: what the question asks.
+  askPerimeter,
+  askArea,
+  askSideFromPerimeter,
+  askSideFromArea,
+  askAngle,
+  askCircumference,
+  askLength,
+
+  /// The second step: the rule the working uses, and why.
+  squareSides,
+  rectangleSides,
+  perimeterAdds,
+  gridArea,
+  rectangleArea,
+  halfPerimeter,
+  squareArea,
+  triangleAngles,
+  straightAngle,
+  rightAngle,
+  rightTriangle,
+  lShapePerimeter,
+  lShapeArea,
+  circumference,
+  circleArea,
+  verticallyOpposite,
+  aroundPoint,
+  pythagoras,
+  diagonalTriangles,
+
+  /// The working: a number read from the figure, or one small calculation.
+  everySide,
+  oppositeTop,
+  oppositeLeft,
+  threeSides,
+  oneRow,
+  rows,
+  shareFour,
+  whichSquare,
+  halfOf,
+  undoTimes,
+  takeFirstAngle,
+  knownAngle,
+  knownPart,
+  legsRectangle,
+  lBottom,
+  lStep,
+  wholeRectangle,
+  cutCorner,
+  twoSides,
+  diameter,
+  radius,
+  radiusSquared,
+  halveThenTakeAway,
+  betweenAngle,
+  addKnownAngles,
+  squareSide,
+  addSquares,
+  takeSquare,
+
+  /// The last step: the calculation whose value is the answer, and the
+  /// check. [rootSide] and [rootLength] multiply the answer by itself to
+  /// make the square the step before names, so their value is that square.
+  perimeterIs,
+  areaIs,
+  sideIs,
+  rootSide,
+  rootLength,
+  angleIs,
+  circumferenceIs,
+}
+
+/// How the last step of a figure hint checks the answer.
+enum FigureCheck {
+  /// [FigureStep.check] is a calculation with the answer in it whose value
+  /// is a number the figure shows.
+  calculation,
+
+  /// The sides added, one for every side of the shape: as many as the
+  /// last calculation has terms.
+  sides,
+
+  /// The answer is a bit more than [FigureStep.check], with 3 for π.
+  aBitMore,
+
+  /// Count the grid squares one by one.
+  countSquares,
+}
+
+/// One step of a figure hint as data, before a sentence wraps it, so tests
+/// can recompute it: the [move] it makes, the [numbers] it reads from the
+/// figure, the calculation `terms[0] signs[0] terms[1] …` and its value, all
+/// in hundredths, the [parts] of the figure it uses, and for the last step
+/// how it checks the answer.
+@immutable
+class FigureStep {
+  const FigureStep(
+    this.move, {
+    this.numbers = const [],
+    this.terms = const [],
+    this.signs = const [],
+    this.valueHundredths,
+    this.checkKind,
+    this.check,
+    this.parts = const FigureParts(),
+  });
+
+  final FigureMove move;
+  final List<int> numbers;
+  final List<int> terms;
+  final List<String> signs;
+  final int? valueHundredths;
+  final FigureCheck? checkKind;
+
+  /// [FigureCheck.calculation] and [FigureCheck.aBitMore]: `left = right`
+  /// in English text form (`.` before decimals).
+  final String? check;
+  final FigureParts parts;
+
+  /// The calculation in English text form, or null for a step without one.
+  String? get calculation => terms.isEmpty ? null : _terms(terms, signs, 'en');
+}
+
+String _terms(List<int> terms, List<String> signs, String localeName) => [
+  formatHundredths(terms.first, localeName),
+  for (final (i, sign) in signs.indexed) ...[
+    sign,
+    formatHundredths(terms[i + 1], localeName),
+  ],
+].join(' ');
+
+/// The hint of a figure question as data, read from what the figure shows
+/// (its labels, the given total and π), never from its family: what is
+/// asked, the rule, the working one number or calculation at a time, then
+/// the answer and its check. The answer appears only in the last step.
+List<FigureStep> figureHint(Figure figure) {
   final byEdge = {
     for (final label in figure.labels) label.edge: label.hundredths,
   };
+  final every = {for (var i = 0; i < figure.vertices.length; i++) i};
   final total = figure.total;
+  const outline = FigureParts(outline: true);
+  const inside = FigureParts(inside: true);
+  FigureStep sum(FigureMove move, List<int> terms, FigureParts parts) =>
+      FigureStep(
+        move,
+        terms: terms,
+        signs: [for (var i = 1; i < terms.length; i++) '+'],
+        valueHundredths: terms.reduce((a, b) => a + b),
+        checkKind: FigureCheck.sides,
+        parts: parts,
+      );
+  String en(int hundredths) => formatHundredths(hundredths, 'en');
+
   switch (figure.prompt) {
-    case FigurePrompt.angle when figure.shape == FigureShape.crossingLines:
-      final [given, asked] = figure.angles;
-      final a = given.degrees!;
-      if ((asked.corner - given.corner) % 4 == 2) {
+    case FigurePrompt.angle:
+      final known = [
+        for (final angle in figure.angles)
+          if (angle.degrees != null) angle,
+      ];
+      final asked = figure.angles.firstWhere((a) => a.degrees == null).corner;
+      final sizes = [for (final angle in known) angle.degrees!];
+      if (figure.shape == FigureShape.triangle) {
+        final [first, second] = known;
+        final rest = 180 - sizes[0] - sizes[1];
         return [
-          (l) => l.stepVerticallyOpposite,
-          (l) => l.stepCrossingBetween('180', '$a', '${180 - a}'),
-          (l) => l.stepSoResult('180', '−', '${180 - a}', '$a'),
+          FigureStep(FigureMove.askAngle, parts: FigureParts(angles: {asked})),
+          FigureStep(
+            FigureMove.triangleAngles,
+            numbers: const [18000],
+            parts: FigureParts(
+              angles: {for (final a in figure.angles) a.corner},
+            ),
+          ),
+          FigureStep(
+            FigureMove.takeFirstAngle,
+            terms: [18000, sizes[0] * 100],
+            signs: const ['−'],
+            valueHundredths: (180 - sizes[0]) * 100,
+            parts: FigureParts(angles: {first.corner}),
+          ),
+          FigureStep(
+            FigureMove.angleIs,
+            terms: [(180 - sizes[0]) * 100, sizes[1] * 100],
+            signs: const ['−'],
+            valueHundredths: rest * 100,
+            checkKind: FigureCheck.calculation,
+            check: '${sizes[0]} + ${sizes[1]} + $rest = 180',
+            parts: FigureParts(angles: {second.corner, asked}),
+          ),
         ];
       }
+      final ask = FigureStep(
+        FigureMove.askAngle,
+        parts: FigureParts(angles: {asked}),
+      );
+      if (figure.shape == FigureShape.aroundPoint) {
+        final sum = sizes.reduce((a, b) => a + b);
+        return [
+          ask,
+          FigureStep(
+            FigureMove.aroundPoint,
+            numbers: const [36000],
+            parts: FigureParts(
+              angles: {for (final a in figure.angles) a.corner},
+            ),
+          ),
+          FigureStep(
+            FigureMove.addKnownAngles,
+            terms: [for (final size in sizes) size * 100],
+            signs: [for (var i = 1; i < sizes.length; i++) '+'],
+            valueHundredths: sum * 100,
+            parts: FigureParts(angles: {for (final a in known) a.corner}),
+          ),
+          FigureStep(
+            FigureMove.angleIs,
+            terms: [36000, sum * 100],
+            signs: const ['−'],
+            valueHundredths: (360 - sum) * 100,
+            checkKind: FigureCheck.calculation,
+            check: '${[...sizes, 360 - sum].join(' + ')} = 360',
+            parts: FigureParts(angles: {asked}),
+          ),
+        ];
+      }
+      final given = known.single.corner;
+      final count = figure.vertices.length;
+      if (figure.shape == FigureShape.crossingLines &&
+          asked == nextRay(nextRay(given, count), count)) {
+        // Opposite angles: the angle between them, which has no mark, lies
+        // between the rays to the two corners after the given one's (edge
+        // i is the ray to corner i + 1).
+        final a = sizes.single;
+        final next = nextRay(given, count);
+        final between = FigureParts(edges: {next - 1, asked - 1});
+        return [
+          ask,
+          FigureStep(
+            FigureMove.verticallyOpposite,
+            numbers: const [18000],
+            parts: FigureParts(angles: {given, asked}),
+          ),
+          FigureStep(
+            FigureMove.betweenAngle,
+            terms: [18000, a * 100],
+            signs: const ['−'],
+            valueHundredths: (180 - a) * 100,
+            parts: FigureParts(angles: {given}, edges: between.edges),
+          ),
+          FigureStep(
+            FigureMove.angleIs,
+            terms: [18000, (180 - a) * 100],
+            signs: const ['−'],
+            valueHundredths: a * 100,
+            checkKind: FigureCheck.calculation,
+            check: '${180 - a} + $a = 180',
+            parts: FigureParts(angles: {asked}, edges: between.edges),
+          ),
+        ];
+      }
+      // Rays: the asked angle is the rest of a straight line or a corner;
+      // also an angle next to the given one where two lines cross.
+      final right = figure.shape == FigureShape.rightAngle;
+      final whole = right ? 90 : 180;
+      final rest = whole - sizes.single;
+      final both = FigureParts(
+        angles: {known.single.corner, asked},
+        rightAngle: right,
+      );
       return [
-        (l) => l.stepCrossingNeighbour,
-        (l) => l.stepSoResult('180', '−', '$a', '${180 - a}'),
-      ];
-    case FigurePrompt.angle when figure.shape == FigureShape.aroundPoint:
-      final known = [for (final angle in figure.angles) ?angle.degrees];
-      final sum = known.reduce((a, b) => a + b);
-      return [
-        (l) => l.stepAroundPoint,
-        (l) => l.stepAddKnownAngles(known.join(' + '), '$sum'),
-        (l) => l.stepSoResult('360', '−', '$sum', '${360 - sum}'),
-      ];
-    case FigurePrompt.angle:
-      final known = [for (final angle in figure.angles) ?angle.degrees];
-      final whole = figure.shape == FigureShape.rightAngle ? 90 : 180;
-      final rest = whole - known.reduce((a, b) => a + b);
-      final SolutionStep rule = switch (figure.shape) {
-        FigureShape.straightAngle => (l) => l.stepStraightAngle,
-        FigureShape.rightAngle => (l) => l.stepRightAngle,
-        _ => (l) => l.stepTriangleAngles,
-      };
-      return [
-        rule,
-        (l) => l.stepSoResult(
-          [whole, ...known.take(known.length - 1)].join(' − '),
-          '−',
-          '${known.last}',
-          '$rest',
+        FigureStep(FigureMove.askAngle, parts: FigureParts(angles: {asked})),
+        FigureStep(
+          right ? FigureMove.rightAngle : FigureMove.straightAngle,
+          numbers: [whole * 100],
+          parts: both,
+        ),
+        FigureStep(
+          right ? FigureMove.knownPart : FigureMove.knownAngle,
+          numbers: [sizes.single * 100],
+          parts: both,
+        ),
+        FigureStep(
+          FigureMove.angleIs,
+          terms: [whole * 100, sizes.single * 100],
+          signs: const ['−'],
+          valueHundredths: rest * 100,
+          checkKind: FigureCheck.calculation,
+          check: '${sizes.single} + $rest = $whole',
+          parts: both,
         ),
       ];
     case FigurePrompt.sideFromPerimeter:
+      final asked = byEdge.keys.firstWhere((edge) => byEdge[edge] == null);
+      final ask = FigureStep(
+        FigureMove.askSideFromPerimeter,
+        parts: FigureParts(outline: true, edges: {asked}),
+      );
       if (figure.shape == FigureShape.square) {
+        final side = total! ~/ 4;
         return [
-          (l) => l.stepSquareSideFromPerimeter,
-          (l) => l.stepSoResult(n(l, total!), '÷', '4', n(l, total ~/ 4)),
+          ask,
+          FigureStep(FigureMove.squareSides, parts: FigureParts(edges: every)),
+          FigureStep(FigureMove.shareFour, numbers: [total], parts: outline),
+          FigureStep(
+            FigureMove.sideIs,
+            terms: [total, 400],
+            signs: const ['÷'],
+            valueHundredths: side,
+            checkKind: FigureCheck.calculation,
+            check:
+                '${[for (var i = 0; i < 4; i++) en(side)].join(' + ')} '
+                '= ${en(total)}',
+            parts: FigureParts(edges: {asked}),
+          ),
         ];
       }
-      final known = values.nonNulls.single;
+      // A rectangle: the known side and the asked one meet at a corner.
+      final known = byEdge.keys.firstWhere((edge) => byEdge[edge] != null);
+      final width = byEdge[known]!;
+      final half = total! ~/ 2;
+      final height = half - width;
+      // Halving shows a 2, which would give away an answer of 2: then the
+      // working only names the two calculations and the last does both.
+      final early = height == 200;
       return [
-        (l) => l.stepHalfPerimeter,
-        (l) => l.stepSoResult(
-          '${n(l, total!)} ÷ 2',
-          '−',
-          n(l, known),
-          n(l, total ~/ 2 - known),
+        ask,
+        FigureStep(
+          FigureMove.halfPerimeter,
+          parts: FigureParts(edges: {known, asked}),
+        ),
+        if (early)
+          const FigureStep(FigureMove.halveThenTakeAway, parts: outline)
+        else
+          FigureStep(
+            FigureMove.halfOf,
+            terms: [total, 200],
+            signs: const ['÷'],
+            valueHundredths: half,
+            parts: outline,
+          ),
+        FigureStep(
+          FigureMove.sideIs,
+          terms: early ? [total, 200, width] : [half, width],
+          signs: early ? const ['÷', '−'] : const ['−'],
+          valueHundredths: height,
+          checkKind: FigureCheck.calculation,
+          check:
+              '${[en(width), en(height), en(width), en(height)].join(' + ')} '
+              '= ${en(total)}',
+          parts: FigureParts(edges: {known, asked}),
         ),
       ];
     case FigurePrompt.sideFromArea:
+      final asked = byEdge.keys.firstWhere((edge) => byEdge[edge] == null);
+      final ask = FigureStep(
+        FigureMove.askSideFromArea,
+        parts: FigureParts(inside: true, edges: {asked}),
+      );
       if (figure.shape == FigureShape.square) {
         final side = sqrt(total! * 100).round();
         return [
-          (l) => l.stepSquareSideFromArea(n(l, total)),
-          (l) => l.stepSquareRoot(n(l, side), n(l, total)),
+          ask,
+          const FigureStep(FigureMove.squareArea, parts: inside),
+          FigureStep(FigureMove.whichSquare, numbers: [total], parts: inside),
+          FigureStep(
+            FigureMove.rootSide,
+            terms: [side, side],
+            signs: const ['×'],
+            valueHundredths: total,
+            parts: FigureParts(edges: {asked}),
+          ),
         ];
       }
-      final known = values.nonNulls.single;
-      final other = total! * 100 ~/ known;
+      final known = byEdge.keys.firstWhere((edge) => byEdge[edge] != null);
+      final width = byEdge[known]!;
+      final height = total! * 100 ~/ width;
+      final sides = FigureParts(edges: {known, asked});
       return [
-        (l) => l.stepRectangleSideFromArea(n(l, known), n(l, total)),
-        (l) => l.stepSoResult(n(l, total), '÷', n(l, known), n(l, other)),
+        ask,
+        FigureStep(FigureMove.rectangleArea, parts: sides),
+        FigureStep(
+          FigureMove.undoTimes,
+          numbers: [width, total],
+          parts: FigureParts(edges: {known, asked}, inside: true),
+        ),
+        FigureStep(
+          FigureMove.sideIs,
+          terms: [total, width],
+          signs: const ['÷'],
+          valueHundredths: height,
+          checkKind: FigureCheck.calculation,
+          check: '${en(width)} × ${en(height)} = ${en(total)}',
+          parts: sides,
+        ),
       ];
     case FigurePrompt.circumference:
+      // shortcut: only a drawn diameter, as every circumference family
+      // has; a radius needs a step that doubles it.
       final pi = figure.pi!;
-      final radius = figure.vertices.contains(figure.centre);
-      final d = radius ? 2 * values[0]! : values[0]!;
+      final d = byEdge[0]!;
       return [
-        (l) => l.stepCircumference(n(l, pi)),
-        (l) => l.stepSoResult(n(l, pi), '×', n(l, d), n(l, pi * d ~/ 100)),
+        const FigureStep(FigureMove.askCircumference, parts: outline),
+        FigureStep(FigureMove.circumference, numbers: [pi], parts: outline),
+        FigureStep(
+          FigureMove.diameter,
+          numbers: [d],
+          parts: const FigureParts(edges: {0}),
+        ),
+        FigureStep(
+          FigureMove.circumferenceIs,
+          terms: [pi, d],
+          signs: const ['×'],
+          valueHundredths: pi * d ~/ 100,
+          checkKind: FigureCheck.aBitMore,
+          check: '3 × ${en(d)} = ${en(3 * d)}',
+          parts: const FigureParts(edges: {0}, outline: true),
+        ),
       ];
     case FigurePrompt.length:
-      return _pythagorasSteps(figure, n);
+      return _pythagorasHint(figure, byEdge);
     case FigurePrompt.area || FigurePrompt.perimeter:
       break;
   }
 
-  if (figure.shape == FigureShape.circle) {
-    final pi = figure.pi!;
-    final radius = figure.vertices.contains(figure.centre);
-    final r = radius ? values[0]! : values[0]! ~/ 2;
-    return [
-      (l) => l.stepCircleArea(n(l, pi)),
-      (l) => l.stepSoResult(
-        '${n(l, pi)} × ${n(l, r)}',
-        '×',
-        n(l, r),
-        n(l, pi * r * r ~/ 10000),
-      ),
-    ];
-  }
-  if (figure.shape == FigureShape.rightTriangle) {
-    // Edge 0 is the left leg, edge 2 the bottom one.
-    final (a, b) = (byEdge[2]!, byEdge[0]!);
-    return [
-      (l) => l.stepRightTriangleArea(n(l, a), n(l, b)),
-      (l) => l.stepSoResult(
-        '${n(l, a)} × ${n(l, b)}',
-        '÷',
-        '2',
-        n(l, a * b ~/ 200),
-      ),
-    ];
-  }
-  if (figure.shape == FigureShape.lShape) {
-    // Labelled: the top (edge 0), the inner horizontal edge (2), the right
-    // edge (3) and the left one (5). The bottom is the top and the inner
-    // edge together; the inner vertical edge is the left one less the
-    // right one.
-    final (top, inner, right, left) = (
-      byEdge[0]!,
-      byEdge[2]!,
-      byEdge[3]!,
-      byEdge[5]!,
-    );
-    final (bottom, step) = (top + inner, left - right);
-    String first(AppLocalizations l) =>
-        '${n(l, top)} + ${n(l, inner)} = ${n(l, bottom)}';
-    String second(AppLocalizations l) =>
-        '${n(l, left)} − ${n(l, right)} = ${n(l, step)}';
-    if (figure.prompt == FigurePrompt.perimeter) {
-      final all = [top, step, inner, right, bottom, left];
-      return [
-        (l) => l.stepLShapeSides(first(l), second(l)),
-        (l) => l.stepPerimeterSum(
-          all.map((side) => n(l, side)).join(' + '),
-          n(l, all.reduce((a, b) => a + b)),
-        ),
-      ];
+  if (figure.prompt == FigurePrompt.perimeter) {
+    final ask = const FigureStep(FigureMove.askPerimeter, parts: outline);
+    final all = FigureParts(edges: every);
+    switch (figure.shape) {
+      case FigureShape.square:
+        final side = byEdge.values.single!;
+        return [
+          ask,
+          FigureStep(FigureMove.squareSides, parts: all),
+          FigureStep(FigureMove.everySide, numbers: [side], parts: all),
+          sum(FigureMove.perimeterIs, [side, side, side, side], all),
+        ];
+      case FigureShape.rectangle:
+        // Labelled: the bottom (edge 2) and the right side (edge 1).
+        final (width, height) = (byEdge[2]!, byEdge[1]!);
+        return [
+          ask,
+          const FigureStep(
+            FigureMove.rectangleSides,
+            parts: FigureParts(edges: {0, 3}),
+          ),
+          FigureStep(
+            FigureMove.oppositeTop,
+            numbers: [width],
+            parts: const FigureParts(edges: {2, 0}),
+          ),
+          FigureStep(
+            FigureMove.oppositeLeft,
+            numbers: [height],
+            parts: const FigureParts(edges: {1, 3}),
+          ),
+          sum(FigureMove.perimeterIs, [width, height, width, height], all),
+        ];
+      case FigureShape.lShape:
+        final (:top, :inner, :right, :left, :bottom, :step) = _lShape(byEdge);
+        return [
+          ask,
+          const FigureStep(
+            FigureMove.lShapePerimeter,
+            parts: FigureParts(edges: {4, 1}),
+          ),
+          ..._lShapeSides(top, inner, right, left),
+          sum(FigureMove.perimeterIs, [
+            top,
+            step,
+            inner,
+            right,
+            bottom,
+            left,
+          ], all),
+        ];
+      default:
+        final sides = [for (final edge in every) byEdge[edge]!];
+        return [
+          ask,
+          FigureStep(FigureMove.perimeterAdds, parts: all),
+          FigureStep(FigureMove.threeSides, numbers: sides, parts: all),
+          sum(FigureMove.perimeterIs, sides, all),
+        ];
     }
-    return [
-      (l) => l.stepLShapeCutOut,
-      (l) => l.stepLShapeArea(
-        first(l),
-        second(l),
-        '${n(l, bottom)} × ${n(l, left)} − ${n(l, inner)} × ${n(l, step)}',
-        n(l, (bottom * left - inner * step) ~/ 100),
-      ),
-    ];
   }
 
-  final sides = values.cast<int>();
-  if (figure.prompt == FigurePrompt.area) {
-    // The first label is the bottom edge, the second the right one.
-    final [width, height] = sides;
-    if (!figure.grid) {
+  const ask = FigureStep(FigureMove.askArea, parts: inside);
+  FigureStep areaIs(
+    List<int> terms,
+    List<String> signs,
+    FigureParts parts, {
+    required FigureCheck checkKind,
+    String? check,
+    int? value,
+  }) {
+    // Left to right; a calculation that needs × before − gives its [value].
+    var result = terms.first;
+    for (final (i, sign) in signs.indexed) {
+      result = switch (sign) {
+        '×' => result * terms[i + 1] ~/ 100,
+        '÷' => result * 100 ~/ terms[i + 1],
+        _ => result - terms[i + 1],
+      };
+    }
+    return FigureStep(
+      FigureMove.areaIs,
+      terms: terms,
+      signs: signs,
+      valueHundredths: value ?? result,
+      checkKind: checkKind,
+      check: check,
+      parts: parts,
+    );
+  }
+
+  switch (figure.shape) {
+    case FigureShape.circle:
+      // shortcut: only a drawn radius, as the circle area family has.
+      final pi = figure.pi!;
+      final r = byEdge[0]!;
+      final square = r * r ~/ 100;
+      const line = FigureParts(edges: {0});
       return [
-        (l) => l.stepRectangleArea,
-        (l) => l.stepSoResult(
-          n(l, width),
-          '×',
-          n(l, height),
-          n(l, width * height ~/ 100),
+        ask,
+        FigureStep(FigureMove.circleArea, numbers: [pi], parts: inside),
+        FigureStep(FigureMove.radius, numbers: [r], parts: line),
+        FigureStep(
+          FigureMove.radiusSquared,
+          terms: [r, r],
+          signs: const ['×'],
+          valueHundredths: square,
+          parts: line,
+        ),
+        areaIs(
+          [pi, square],
+          ['×'],
+          inside,
+          checkKind: FigureCheck.aBitMore,
+          check: '3 × ${en(square)} = ${en(3 * square)}',
         ),
       ];
-    }
-    // With the grid: columns along the bottom, rows along the right side.
-    final (columns, rows) = (width ~/ 100, height ~/ 100);
-    return [
-      (l) => l.stepAreaRows('$rows', '$columns'),
-      (l) => l.stepSoResult('$rows', '×', '$columns', '${rows * columns}'),
-    ];
+    case FigureShape.rightTriangle:
+      // Edge 0 is the left leg, edge 2 the bottom one.
+      final (a, b) = (byEdge[2]!, byEdge[0]!);
+      final whole = a * b ~/ 100;
+      final half = whole ~/ 2;
+      return [
+        ask,
+        const FigureStep(
+          FigureMove.rightTriangle,
+          parts: FigureParts(inside: true, rightAngle: true),
+        ),
+        FigureStep(
+          FigureMove.legsRectangle,
+          numbers: [a, b],
+          terms: [a, b],
+          signs: const ['×'],
+          valueHundredths: whole,
+          parts: const FigureParts(edges: {2, 0}, rightAngle: true),
+        ),
+        areaIs(
+          [whole, 200],
+          ['÷'],
+          inside,
+          checkKind: FigureCheck.calculation,
+          check: '${en(half)} + ${en(half)} = ${en(whole)}',
+        ),
+      ];
+    case FigureShape.lShape:
+      final (:top, :inner, :right, :left, :bottom, :step) = _lShape(byEdge);
+      final whole = bottom * left ~/ 100;
+      final corner = inner * step ~/ 100;
+      final area = whole - corner;
+      // A corner as large as the answer would show it early: then the
+      // last step takes the corner away in one go.
+      final early = corner == area;
+      return [
+        ask,
+        const FigureStep(FigureMove.lShapeArea, parts: inside),
+        ..._lShapeSides(top, inner, right, left),
+        FigureStep(
+          FigureMove.wholeRectangle,
+          terms: [bottom, left],
+          signs: const ['×'],
+          valueHundredths: whole,
+          parts: const FigureParts(edges: {4, 5}),
+        ),
+        if (!early)
+          FigureStep(
+            FigureMove.cutCorner,
+            terms: [inner, step],
+            signs: const ['×'],
+            valueHundredths: corner,
+            parts: const FigureParts(edges: {2, 1}),
+          ),
+        areaIs(
+          early ? [whole, inner, step] : [whole, corner],
+          early ? ['−', '×'] : ['−'],
+          early ? const FigureParts(edges: {2, 1}, inside: true) : inside,
+          checkKind: FigureCheck.calculation,
+          check: '${en(area)} + ${en(corner)} = ${en(whole)}',
+          value: area,
+        ),
+      ];
+    default:
+      // A rectangle: the first label is the bottom edge, the second the
+      // right one.
+      final [(edge: wEdge, :width), (edge: hEdge, width: height)] = [
+        for (final label in figure.labels)
+          (edge: label.edge, width: label.hundredths!),
+      ];
+      final sides = FigureParts(edges: {wEdge, hEdge});
+      if (!figure.grid) {
+        return [
+          ask,
+          FigureStep(FigureMove.rectangleArea, parts: sides),
+          FigureStep(
+            FigureMove.twoSides,
+            numbers: [width, height],
+            parts: sides,
+          ),
+          areaIs(
+            [width, height],
+            ['×'],
+            inside,
+            checkKind: FigureCheck.calculation,
+            check:
+                '${en(height)} × ${en(width)} = ${en(width * height ~/ 100)}',
+          ),
+        ];
+      }
+      // With the grid: columns along the bottom, rows along the right side.
+      final rows = height ~/ 100;
+      return [
+        ask,
+        const FigureStep(FigureMove.gridArea, parts: inside),
+        FigureStep(
+          FigureMove.oneRow,
+          numbers: [width],
+          parts: FigureParts(edges: {wEdge}, rows: const {0}),
+        ),
+        FigureStep(
+          FigureMove.rows,
+          numbers: [height],
+          parts: FigureParts(
+            edges: {hEdge},
+            rows: {for (var row = 0; row < rows; row++) row},
+          ),
+        ),
+        areaIs(
+          [height, width],
+          ['×'],
+          inside,
+          checkKind: FigureCheck.countSquares,
+        ),
+      ];
   }
-  final all = switch (figure.shape) {
-    FigureShape.square => [for (var i = 0; i < 4; i++) sides[0]],
-    FigureShape.rectangle => [...sides, ...sides],
-    _ => sides,
-  };
-  final SolutionStep first = switch (figure.shape) {
-    FigureShape.square => (l) => l.stepSquareSides(n(l, sides[0])),
-    FigureShape.rectangle => (l) => l.stepRectangleSides(
-      n(l, sides[0]),
-      n(l, sides[1]),
-    ),
-    _ => (l) => l.stepTriangleSides(
-      n(l, sides[0]),
-      n(l, sides[1]),
-      n(l, sides[2]),
-    ),
-  };
-  return [
-    first,
-    (l) => l.stepPerimeterSum(
-      all.map((side) => n(l, side)).join(' + '),
-      n(l, all.reduce((a, b) => a + b)),
-    ),
-  ];
 }
 
-/// Pythagoras' theorem for the side or diagonal marked `?`: the squares of
-/// the two shorter sides add up to the square of the longest side. A right
-/// triangle's legs are edges 2 and 0 and its longest side edge 1; a
-/// rectangle's diagonal is the longest side of the two halves it cuts.
-List<SolutionStep> _pythagorasSteps(
-  Figure figure,
-  String Function(AppLocalizations l, int hundredths) n,
+/// An L-shape's labelled edges, the top (edge 0), the inner horizontal
+/// edge (2), the right edge (3) and the left one (5), and the two without a
+/// number: the bottom (4) is the top and the inner edge together; the inner
+/// vertical edge (1) is the left one less the right one.
+({int top, int inner, int right, int left, int bottom, int step}) _lShape(
+  Map<int, int?> byEdge,
 ) {
-  final byEdge = {
-    for (final label in figure.labels) label.edge: label.hundredths,
-  };
-  final (a, b, c) = figure.diagonal
-      ? (figure.labels[0].hundredths, figure.labels[1].hundredths, null)
-      : (byEdge[2], byEdge[0], byEdge[1]);
-  // Squares of hundredths are ten-thousandths; back to hundredths.
+  final (top, inner, right, left) = (
+    byEdge[0]!,
+    byEdge[2]!,
+    byEdge[3]!,
+    byEdge[5]!,
+  );
+  return (
+    top: top,
+    inner: inner,
+    right: right,
+    left: left,
+    bottom: top + inner,
+    step: left - right,
+  );
+}
+
+/// Pythagoras' theorem for the length marked `?`, read from the labels: a
+/// right triangle's legs are edges 2 and 0 and its longest side edge 1; a
+/// rectangle's diagonal is the longest side of the two right triangles it
+/// cuts, whose legs are the labelled sides. Each side is squared on its
+/// own, then the squares are added (or the smaller taken from the bigger),
+/// and the last step finds the number that times itself makes the result.
+List<FigureStep> _pythagorasHint(Figure figure, Map<int, int?> byEdge) {
   int square(int side) => side * side ~/ 100;
   // The side whose square is [area], in whole steps: no floating point.
   int root(int area) {
@@ -911,40 +1424,192 @@ List<SolutionStep> _pythagorasSteps(
     return side;
   }
 
-  final List<SolutionStep> working;
-  if (c == null) {
-    final sum = square(a!) + square(b!);
-    working = [
-      (l) => l.stepPythagorasSquares(
-        n(l, a),
-        n(l, square(a)),
-        n(l, b),
-        n(l, square(b)),
-      ),
-      (l) => l.stepPythagorasAdd(n(l, square(a)), n(l, square(b)), n(l, sum)),
-      (l) => l.stepPythagorasRoot(n(l, sum), n(l, root(sum))),
-    ];
-  } else {
-    final leg = a ?? b!;
-    final rest = square(c) - square(leg);
-    working = [
-      (l) => l.stepPythagorasSquares(
-        n(l, c),
-        n(l, square(c)),
-        n(l, leg),
-        n(l, square(leg)),
-      ),
-      (l) => l.stepPythagorasTakeAway(
-        n(l, square(c)),
-        n(l, square(leg)),
-        n(l, rest),
-      ),
-      (l) => l.stepPythagorasRoot(n(l, rest), n(l, root(rest))),
-    ];
-  }
+  FigureStep squared(int edge) => FigureStep(
+    FigureMove.squareSide,
+    numbers: [byEdge[edge]!],
+    terms: [byEdge[edge]!, byEdge[edge]!],
+    signs: const ['×'],
+    valueHundredths: square(byEdge[edge]!),
+    parts: FigureParts(edges: {edge}),
+  );
+  final diagonal = figure.diagonal;
+  final asked = diagonal
+      ? null
+      : byEdge.keys.firstWhere((edge) => byEdge[edge] == null);
+  final target = FigureParts(edges: {?asked}, diagonal: diagonal);
+  // The two labelled sides: the legs, or the longest side first.
+  final [first, second] = diagonal
+      ? [for (final label in figure.labels) label.edge]
+      : asked == 1
+      ? [2, 0]
+      : [1, asked == 0 ? 2 : 0];
+  final (a, b) = (square(byEdge[first]!), square(byEdge[second]!));
+  final add = asked == 1 || diagonal;
+  final result = add ? a + b : a - b;
+  final length = root(result);
   return [
-    if (figure.diagonal) (l) => l.stepDiagonalTriangles,
-    (l) => l.stepPythagoras,
-    ...working,
+    FigureStep(FigureMove.askLength, parts: target),
+    if (diagonal) ...[
+      FigureStep(
+        FigureMove.diagonalTriangles,
+        parts: const FigureParts(diagonal: true),
+      ),
+      FigureStep(
+        FigureMove.pythagoras,
+        parts: FigureParts(edges: {first, second}, diagonal: true),
+      ),
+    ] else
+      const FigureStep(
+        FigureMove.pythagoras,
+        parts: FigureParts(edges: {0, 1, 2}, rightAngle: true),
+      ),
+    squared(first),
+    squared(second),
+    FigureStep(
+      add ? FigureMove.addSquares : FigureMove.takeSquare,
+      terms: [a, b],
+      signs: [add ? '+' : '−'],
+      valueHundredths: result,
+      parts: FigureParts(edges: {first, second}),
+    ),
+    FigureStep(FigureMove.whichSquare, numbers: [result], parts: target),
+    FigureStep(
+      FigureMove.rootLength,
+      terms: [length, length],
+      signs: const ['×'],
+      valueHundredths: result,
+      parts: target,
+    ),
   ];
 }
+
+/// The two working steps that find an L-shape's sides without a number.
+List<FigureStep> _lShapeSides(int top, int inner, int right, int left) => [
+  FigureStep(
+    FigureMove.lBottom,
+    terms: [top, inner],
+    signs: const ['+'],
+    valueHundredths: top + inner,
+    parts: const FigureParts(edges: {0, 2, 4}),
+  ),
+  FigureStep(
+    FigureMove.lStep,
+    terms: [left, right],
+    signs: const ['−'],
+    valueHundredths: left - right,
+    parts: const FigureParts(edges: {5, 3, 1}),
+  ),
+];
+
+/// The sentences of [figureHint]; each only wraps its step's numbers, and
+/// numbers are written in the language's own way.
+List<SolutionStep> figureSteps(Figure figure) => [
+  for (final step in figureHint(figure)) _figureSentence(step),
+];
+
+SolutionStep _figureSentence(FigureStep step) => (l) {
+  String n(int hundredths) => formatHundredths(hundredths, l.localeName);
+  final numbers = [for (final number in step.numbers) n(number)];
+  final value = switch (step.valueHundredths) {
+    final value? => n(value),
+    null => '',
+  };
+  final calculation = step.terms.isEmpty
+      ? ''
+      : _terms(step.terms, step.signs, l.localeName);
+  String check() => step.check!.replaceAll('.', decimalSeparator(l.localeName));
+  final sentence = switch (step.move) {
+    FigureMove.askPerimeter => l.hintAskPerimeter,
+    FigureMove.askArea => l.hintAskArea,
+    FigureMove.askSideFromPerimeter => l.hintAskSideFromPerimeter,
+    FigureMove.askSideFromArea => l.hintAskSideFromArea,
+    FigureMove.askAngle => l.hintAskAngle,
+    FigureMove.askCircumference => l.hintAskCircumference,
+    FigureMove.squareSides => l.hintIdeaSquareSides,
+    FigureMove.rectangleSides => l.hintIdeaRectangleSides,
+    FigureMove.perimeterAdds => l.hintIdeaPerimeterAdds,
+    FigureMove.gridArea => l.hintIdeaGridArea,
+    FigureMove.rectangleArea => l.hintIdeaRectangleArea,
+    FigureMove.halfPerimeter => l.hintIdeaHalfPerimeter,
+    FigureMove.squareArea => l.hintIdeaSquareArea,
+    FigureMove.triangleAngles => l.hintIdeaTriangleAngles(numbers.single),
+    FigureMove.straightAngle => l.hintIdeaStraightAngle(numbers.single),
+    FigureMove.rightAngle => l.hintIdeaRightAngle(numbers.single),
+    FigureMove.rightTriangle => l.hintIdeaRightTriangle,
+    FigureMove.lShapePerimeter => l.hintIdeaLShapePerimeter,
+    FigureMove.lShapeArea => l.hintIdeaLShapeArea,
+    FigureMove.circumference => l.hintIdeaCircumference(numbers.single),
+    FigureMove.circleArea => l.hintIdeaCircleArea(numbers.single),
+    FigureMove.everySide => l.hintEverySide(numbers.single),
+    FigureMove.oppositeTop => l.hintOppositeTop(numbers.single),
+    FigureMove.oppositeLeft => l.hintOppositeLeft(numbers.single),
+    FigureMove.threeSides => l.hintThreeSides(
+      numbers[0],
+      numbers[1],
+      numbers[2],
+    ),
+    FigureMove.oneRow => l.hintOneRow(numbers.single),
+    FigureMove.rows => l.hintRows(numbers.single),
+    FigureMove.shareFour => l.hintShareFour(numbers.single),
+    FigureMove.whichSquare => l.hintWhichSquare(numbers.single),
+    FigureMove.halfOf => l.hintHalfOf(calculation, value),
+    FigureMove.undoTimes => l.hintUndoTimes(numbers[0], numbers[1]),
+    FigureMove.takeFirstAngle => l.hintTakeFirstAngle(calculation, value),
+    FigureMove.knownAngle => l.hintKnownAngle(numbers.single),
+    FigureMove.knownPart => l.hintKnownPart(numbers.single),
+    FigureMove.legsRectangle => l.hintLegsRectangle(
+      numbers[0],
+      numbers[1],
+      calculation,
+      value,
+    ),
+    FigureMove.lBottom => l.hintLBottom(calculation, value),
+    FigureMove.lStep => l.hintLStep(calculation, value),
+    FigureMove.wholeRectangle => l.hintWholeRectangle(calculation, value),
+    FigureMove.cutCorner => l.hintCutCorner(calculation, value),
+    FigureMove.twoSides => l.hintTwoSides(numbers[0], numbers[1]),
+    FigureMove.diameter => l.hintDiameter(numbers.single),
+    FigureMove.radius => l.hintRadius(numbers.single),
+    FigureMove.radiusSquared => l.hintRadiusSquared(calculation, value),
+    FigureMove.perimeterIs => l.hintPerimeterIs(calculation, value),
+    FigureMove.areaIs => l.hintAreaIs(calculation, value),
+    FigureMove.sideIs => l.hintSideIs(calculation, value),
+    FigureMove.rootSide => l.hintRootSide(
+      calculation,
+      value,
+      n(step.terms.first),
+    ),
+    FigureMove.angleIs => l.hintAngleIs(calculation, value),
+    FigureMove.circumferenceIs => l.hintCircumferenceIs(calculation, value),
+    FigureMove.askLength => l.hintAskLength,
+    FigureMove.halveThenTakeAway => l.hintHalveThenTakeAway,
+    FigureMove.pythagoras => l.hintIdeaPythagoras,
+    FigureMove.diagonalTriangles => l.hintIdeaDiagonal,
+    FigureMove.verticallyOpposite => l.hintIdeaVerticallyOpposite(
+      numbers.single,
+    ),
+    FigureMove.aroundPoint => l.hintIdeaAroundPoint(numbers.single),
+    FigureMove.betweenAngle => l.hintBetweenAngle(calculation, value),
+    FigureMove.addKnownAngles => l.hintAddKnownAngles(calculation, value),
+    FigureMove.squareSide => l.hintSquareSide(
+      numbers.single,
+      calculation,
+      value,
+    ),
+    FigureMove.addSquares => l.hintAddSquares(calculation, value),
+    FigureMove.takeSquare => l.hintTakeSquare(calculation, value),
+    FigureMove.rootLength => l.hintRootLength(
+      calculation,
+      value,
+      n(step.terms.first),
+    ),
+  };
+  final checked = switch (step.checkKind) {
+    FigureCheck.calculation => l.hintCheck(check()),
+    FigureCheck.sides => l.hintCheckSides('${step.terms.length}'),
+    FigureCheck.aBitMore => l.hintCheckABitMore(check()),
+    FigureCheck.countSquares => l.hintCheckCountSquares,
+    null => null,
+  };
+  return checked == null ? sentence : '$sentence $checked';
+};

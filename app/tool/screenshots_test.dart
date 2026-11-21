@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
+import 'package:simple_math_tester/geometry.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/legal.dart';
@@ -791,6 +792,85 @@ void main() {
             await tester.pumpAndSettle();
             scrollAnswers(tester, 400);
             await shoot(tester, '$tag-14c-geometry-answers-${layout.name}');
+          }
+        });
+
+        testWidgets('hint screenshots $tag', (tester) async {
+          language = code;
+          final algebra = OperationType.algebra.source as AlgebraSource;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          // One problem of every algebra and geometry family, answered
+          // wrong. Algebra: every step at once; geometry: one shot per
+          // step, as each step highlights its own parts of the figure.
+          final problems = <Problem>[
+            for (final (variant, params, level) in [
+              ('missingSecondAddend', [3, 4], 1),
+              ('missingFirstAddend', [6, 2], 1),
+              ('missingSubtrahend', [5, 4], 1),
+              ('missingMinuend', [7, 8], 1),
+              ('missingFirstFactor', [4, 5], 2),
+              ('missingSecondFactor', [4, 5], 2),
+              ('missingDivisor', [6, 3], 2),
+              ('missingDividend', [3, 6], 2),
+              ('missingSquare', [7], 2),
+              ('missingSquareRoot', [7], 2),
+              ('nPlusA', [5, 7], 3),
+              ('nMinusA', [5, 7], 3),
+              ('aTimesN', [3, 5], 3),
+              ('nDividedByA', [4, 3], 3),
+              ('aSquared', [12], 3),
+              ('squareRootOfC', [17], 4),
+              ('anPlusB', [2, 3, 4], 4),
+              ('anMinusB', [4, 5, 5], 4),
+              ('aBracketNMinusB', [3, 2, -4], 5),
+              ('aBracketNPlusB', [3, 2, 2], 5),
+              ('nDividedByAPlusB', [4, 3, -2], 5),
+              ('anPlusBNegativeN', [3, 9, -2], 5),
+              ('anTenths', [4, 25], 5),
+              ('nSquared', [7], 5),
+              ('anSquared', [2, 5], 5),
+            ])
+              algebra.build(
+                OperationType.algebra,
+                variant,
+                params,
+                level: level,
+              )!,
+            for (final family in GeometryFamily.values)
+              geometry.build(
+                OperationType.geometry,
+                family.name,
+                family.space[family.space.length ~/ 2],
+                level: family.level,
+              )!,
+          ];
+          for (final problem in problems) {
+            final (variant, params) = switch (problem) {
+              EquationProblem(:final variant, :final params) ||
+              FigureProblem(:final variant, :final params) => (variant, params),
+              _ => throw ArgumentError.value(problem),
+            };
+            final name = '$tag-16-hints-$variant-${params.join('x')}';
+            final model = await launch(
+              tester,
+              size,
+              brightness,
+              problem: problem,
+            );
+            model.toggleOperation(problem.kind);
+            await check(tester, problem.result == 1 ? '2' : '1');
+            Future<void> shootStep() async {
+              await tester.pumpAndSettle();
+              await tester.ensureVisible(find.byKey(revealStepButtonKey));
+              await shoot(tester, '$name-step-${model.revealedSteps}');
+            }
+
+            if (problem is FigureProblem) await shootStep();
+            while (model.canRevealStep) {
+              model.revealStep();
+              if (problem is FigureProblem) await shootStep();
+            }
+            if (problem is! FigureProblem) await shootStep();
           }
         });
 

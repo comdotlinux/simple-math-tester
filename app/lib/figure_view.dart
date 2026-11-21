@@ -13,23 +13,34 @@ typedef FigureColors = ({
   Color shade,
   Color grid,
   Color card,
+  Color highlight,
+  Color highlightEdge,
 });
 
 /// The colours a figure is drawn with, all theme roles: labels in ink on
 /// the card, the outline in the outline colour, the area shaded with muted
-/// ink and its grid in the card colour over it.
+/// ink and its grid in the card colour over it. A part a hint step uses is
+/// highlighted in the accent colour edged with the colour drawn on the
+/// accent, like the app's buttons.
 FigureColors figureColors(AppTokens tokens) => (
   label: tokens.ink,
   line: tokens.outline,
   shade: tokens.inkMuted,
   grid: tokens.surfaceRaised,
   card: tokens.surfaceRaised,
+  highlight: tokens.primary,
+  highlightEdge: tokens.onPrimary,
 );
 
 /// Angle marks, a circle's radius or diameter and its centre: in the
 /// outline colour on the card, in the grid colour on a shaded inside.
 Color markColor(FigureColors colors, {required bool shaded}) =>
     shaded ? colors.grid : colors.line;
+
+/// A highlighted line: an accent core this wide inside an edge of
+/// [highlightEdgeWidth] on each side, wider than the thick outline.
+const highlightCore = 7.0;
+const highlightEdgeWidth = 3.0;
 
 /// The drawn size of [text] in [style] under [scaler].
 Size measureLabel(String text, TextStyle style, TextScaler scaler) {
@@ -43,19 +54,58 @@ Size measureLabel(String text, TextStyle style, TextScaler scaler) {
   return size;
 }
 
+/// What a [FigurePainter] highlights, as indices into a [FigureLayout]:
+/// edges, labels, angle marks and grid rows, the outline and the inside.
+typedef FigureHighlight = ({
+  Set<int> edges,
+  Set<int> labels,
+  Set<int> marks,
+  Set<int> rows,
+  bool outline,
+  bool inside,
+  bool diagonal,
+});
+
+/// [parts] of [figure] as indices into its layout: labels are the side
+/// labels, a diagonal's `?`, then the angle labels; marks are the angle
+/// arcs, then a right-angle square.
+FigureHighlight highlightOf(Figure figure, FigureParts parts) => (
+  edges: parts.edges,
+  labels: {
+    for (final (i, label) in figure.labels.indexed)
+      if (parts.edges.contains(label.edge)) i,
+    if (parts.diagonal && figure.diagonal) figure.labels.length,
+    for (final (i, angle) in figure.angles.indexed)
+      if (parts.angles.contains(angle.corner))
+        figure.labels.length + (figure.diagonal ? 1 : 0) + i,
+  },
+  marks: {
+    for (final (i, angle) in figure.angles.indexed)
+      if (parts.angles.contains(angle.corner)) i,
+    if (parts.rightAngle) figure.angles.length,
+  },
+  rows: parts.rows,
+  outline: parts.outline,
+  inside: parts.inside,
+  diagonal: parts.diagonal,
+);
+
 /// [figure] drawn to scale over the available width, [height] tall, with
-/// its labels in the theme's label style under the system text scale.
+/// its labels in the theme's label style under the system text scale, and
+/// the [highlight] parts a hint step uses in the accent colour.
 class FigureView extends StatelessWidget {
   const FigureView({
     super.key,
     required this.figure,
     required this.height,
     required this.semanticsLabel,
+    this.highlight,
   });
 
   final Figure figure;
   final double height;
   final String semanticsLabel;
+  final FigureParts? highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +113,7 @@ class FigureView extends StatelessWidget {
     final scaler = MediaQuery.textScalerOf(context);
     final colors = figureColors(context.tokens);
     final localeName = AppLocalizations.of(context).localeName;
+    final parts = highlight;
     return Semantics(
       label: semanticsLabel,
       image: true,
@@ -78,7 +129,13 @@ class FigureView extends StatelessWidget {
             );
             return CustomPaint(
               size: Size(constraints.maxWidth, height),
-              painter: FigurePainter(layout, colors, style, scaler),
+              painter: FigurePainter(
+                layout,
+                colors,
+                style,
+                scaler,
+                parts == null ? null : highlightOf(figure, parts),
+              ),
             );
           },
         ),
@@ -87,14 +144,21 @@ class FigureView extends StatelessWidget {
   }
 }
 
-/// Draws exactly what a [FigureLayout] says.
+/// Draws exactly what a [FigureLayout] says, and the [highlight] over it.
 class FigurePainter extends CustomPainter {
-  FigurePainter(this.layout, this.colors, this.style, this.scaler);
+  FigurePainter(
+    this.layout,
+    this.colors,
+    this.style,
+    this.scaler, [
+    this.highlight,
+  ]);
 
   final FigureLayout layout;
   final FigureColors colors;
   final TextStyle style;
   final TextScaler scaler;
+  final FigureHighlight? highlight;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -116,15 +180,21 @@ class FigurePainter extends CustomPainter {
         ..moveTo(from.dx, from.dy)
         ..lineTo(to.dx, to.dy);
     }
-    if (layout.shaded) {
+    final lit = highlight;
+    if (lit != null && lit.inside) {
+      canvas.drawPath(outline, Paint()..color = colors.highlight);
+    } else if (layout.shaded) {
       canvas.drawPath(outline, Paint()..color = colors.shade);
     }
+    // On a highlighted inside the grid takes the edge colour, which reads
+    // on the accent.
     final grid = Paint()
-      ..color = colors.grid
+      ..color = lit != null && lit.inside ? colors.highlightEdge : colors.grid
       ..strokeWidth = 2;
     for (final (from, to) in layout.gridLines) {
       canvas.drawLine(from, to, grid);
     }
+    if (lit != null && lit.rows.isNotEmpty) _paintRows(canvas, lit.rows);
     canvas.drawPath(
       outline,
       Paint()
@@ -134,16 +204,42 @@ class FigurePainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round,
     );
+    if (lit != null) {
+      final band = Path();
+      if (lit.outline) band.addPath(outline, Offset.zero);
+      final corners = layout.vertices;
+      for (final edge in lit.edges) {
+        final (from, to) = layout.rays
+            ? (corners[0], corners[edge + 1])
+            : (corners[edge], corners[(edge + 1) % corners.length]);
+        band
+          ..moveTo(from.dx, from.dy)
+          ..lineTo(to.dx, to.dy);
+      }
+      if (layout.diagonal case (final from, final to) when lit.diagonal) {
+        band
+          ..moveTo(from.dx, from.dy)
+          ..lineTo(to.dx, to.dy);
+      }
+      _paintBand(canvas, band);
+    }
     final marks = Paint()
       ..color = markColor(colors, shaded: layout.shaded)
       ..style = PaintingStyle.stroke
       ..strokeWidth = thinStroke;
     if (circle != null) {
-      canvas
-        ..drawLine(layout.vertices[0], layout.vertices[1], marks)
-        ..drawCircle(circle.center, thinStroke, Paint()..color = marks.color);
+      // A highlighted radius or diameter is already drawn as a band.
+      if (!(lit?.edges.contains(0) ?? false)) {
+        canvas.drawLine(layout.vertices[0], layout.vertices[1], marks);
+      }
+      canvas.drawCircle(
+        circle.center,
+        thinStroke,
+        Paint()..color = marks.color,
+      );
     }
-    for (final mark in layout.marks) {
+    for (final (i, mark) in layout.marks.indexed) {
+      final Path path;
       if (mark.right) {
         final along = Offset.fromDirection(mark.from, mark.radius);
         final across = Offset.fromDirection(
@@ -151,35 +247,49 @@ class FigurePainter extends CustomPainter {
           mark.radius,
         );
         final c = mark.centre;
-        canvas.drawPath(
-          Path()
-            ..moveTo((c + along).dx, (c + along).dy)
-            ..lineTo((c + along + across).dx, (c + along + across).dy)
-            ..lineTo((c + across).dx, (c + across).dy),
-          marks,
-        );
+        path = Path()
+          ..moveTo((c + along).dx, (c + along).dy)
+          ..lineTo((c + along + across).dx, (c + along + across).dy)
+          ..lineTo((c + across).dx, (c + across).dy);
       } else {
-        canvas.drawArc(
-          Rect.fromCircle(center: mark.centre, radius: mark.radius),
-          mark.from,
-          mark.sweep,
-          false,
-          marks,
-        );
+        path = Path()
+          ..addArc(
+            Rect.fromCircle(center: mark.centre, radius: mark.radius),
+            mark.from,
+            mark.sweep,
+          );
+      }
+      if (lit != null && lit.marks.contains(i)) {
+        _paintBand(canvas, path, core: thinStroke);
+      } else {
+        canvas.drawPath(path, marks);
       }
     }
     // Each label on a patch of the card, so it reads also on a shaded
-    // inside; the boxes never touch an outline.
-    final patch = Paint()..color = colors.card;
-    for (final label in layout.labels) {
+    // inside; the boxes never touch an outline. A highlighted label stands
+    // on an accent patch with an edge, in the colour drawn on the accent.
+    for (final (i, label) in layout.labels.indexed) {
+      final on = lit != null && lit.labels.contains(i);
+      final box = RRect.fromRectAndRadius(label.box, const Radius.circular(4));
       canvas.drawRRect(
-        RRect.fromRectAndRadius(label.box, const Radius.circular(4)),
-        patch,
+        box,
+        Paint()..color = on ? colors.highlight : colors.card,
       );
+      if (on) {
+        canvas.drawRRect(
+          box,
+          Paint()
+            ..color = colors.highlightEdge
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      }
       final painter = TextPainter(
         text: TextSpan(
           text: label.text,
-          style: style.copyWith(color: colors.label),
+          style: style.copyWith(
+            color: on ? colors.highlightEdge : colors.label,
+          ),
         ),
         textDirection: TextDirection.ltr,
         textScaler: scaler,
@@ -192,10 +302,63 @@ class FigurePainter extends CustomPainter {
     }
   }
 
+  /// [path] as an accent band edged on both sides.
+  void _paintBand(Canvas canvas, Path path, {double core = highlightCore}) {
+    Paint stroke(Color color, double width) => Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+    canvas
+      ..drawPath(
+        path,
+        stroke(colors.highlightEdge, core + 2 * highlightEdgeWidth),
+      )
+      ..drawPath(path, stroke(colors.highlight, core));
+  }
+
+  /// Grid [rows] from the top filled with the accent, their squares edged.
+  void _paintRows(Canvas canvas, Set<int> rows) {
+    final xs = layout.vertices.map((v) => v.dx);
+    final ys = layout.vertices.map((v) => v.dy);
+    final left = xs.reduce((a, b) => a < b ? a : b);
+    final right = xs.reduce((a, b) => a > b ? a : b);
+    final top = ys.reduce((a, b) => a < b ? a : b);
+    final bottom = ys.reduce((a, b) => a > b ? a : b);
+    // The inner lines across are the horizontal ones; the rest go down.
+    final across = layout.gridLines.where((l) => l.$1.dy == l.$2.dy).length;
+    final down = layout.gridLines.where((l) => l.$1.dx == l.$2.dx);
+    final height = (bottom - top) / (across + 1);
+    final edge = Paint()
+      ..color = colors.highlightEdge
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    for (final row in rows) {
+      final band = Rect.fromLTRB(
+        left,
+        top + row * height,
+        right,
+        top + (row + 1) * height,
+      );
+      canvas
+        ..drawRect(band, Paint()..color = colors.highlight)
+        ..drawRect(band, edge);
+      for (final (from, _) in down) {
+        canvas.drawLine(
+          Offset(from.dx, band.top),
+          Offset(from.dx, band.bottom),
+          edge,
+        );
+      }
+    }
+  }
+
   @override
   bool shouldRepaint(FigurePainter oldDelegate) =>
       oldDelegate.layout != layout ||
       oldDelegate.colors != colors ||
       oldDelegate.style != style ||
-      oldDelegate.scaler != scaler;
+      oldDelegate.scaler != scaler ||
+      oldDelegate.highlight != highlight;
 }

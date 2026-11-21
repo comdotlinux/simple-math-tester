@@ -179,6 +179,55 @@ class Figure {
   );
 }
 
+/// The parts of a [Figure] one hint step uses, which the figure beside the
+/// step highlights: [edges] by index (edge i runs from corner i to the next;
+/// on rays edge i is the ray to corner i + 1; a circle's edge 0 is its
+/// radius or diameter), [angles] by their [AngleLabel.corner], grid [rows]
+/// from the top, the [rightAngle] mark, the [outline], the shaded [inside]
+/// and a rectangle's [diagonal].
+@immutable
+class FigureParts {
+  const FigureParts({
+    this.edges = const {},
+    this.angles = const {},
+    this.rows = const {},
+    this.rightAngle = false,
+    this.outline = false,
+    this.inside = false,
+    this.diagonal = false,
+  });
+
+  final Set<int> edges;
+  final Set<int> angles;
+  final Set<int> rows;
+  final bool rightAngle;
+  final bool outline;
+  final bool inside;
+  final bool diagonal;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FigureParts &&
+      setEquals(other.edges, edges) &&
+      setEquals(other.angles, angles) &&
+      setEquals(other.rows, rows) &&
+      other.rightAngle == rightAngle &&
+      other.outline == outline &&
+      other.inside == inside &&
+      other.diagonal == diagonal;
+
+  @override
+  int get hashCode => Object.hash(
+    Object.hashAllUnordered(edges),
+    Object.hashAllUnordered(angles),
+    Object.hashAllUnordered(rows),
+    rightAngle,
+    outline,
+    inside,
+    diagonal,
+  );
+}
+
 /// A label's text and the box it is drawn in, in canvas pixels.
 @immutable
 class PlacedLabel {

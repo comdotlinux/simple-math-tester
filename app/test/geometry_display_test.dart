@@ -173,11 +173,24 @@ void main() {
     expect(model.answerCorrect, isFalse);
     expect(
       find.text(
-        'The two sides without a number are as long as the sides opposite '
-        'them: 5 and 3.',
+        'We need the distance all the way around the shape. This is called '
+        'the perimeter.',
       ),
       findsOneWidget,
     );
+    // The figure stands above the step, its whole outline highlighted.
+    expect(find.byKey(hintFigureKey), findsOneWidget);
+    final painter =
+        tester
+                .widget<CustomPaint>(
+                  find.descendant(
+                    of: find.byKey(hintFigureKey),
+                    matching: find.byType(CustomPaint),
+                  ),
+                )
+                .painter!
+            as FigurePainter;
+    expect(painter.highlight?.outline, isTrue);
     expect(tester.takeException(), isNull);
   });
 

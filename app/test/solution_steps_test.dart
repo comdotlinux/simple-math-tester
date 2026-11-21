@@ -305,43 +305,46 @@ void main() {
     final source = OperationType.algebra.source as AlgebraSource;
     EquationProblem equation(String variant, int a, int b) =>
         source.build(OperationType.algebra, variant, [a, b])!;
+    // The steps after what is asked and the idea, which the test 'every
+    // equation hint starts with what is asked' covers.
+    List<String> work(Problem problem) => steps(problem).skip(2).toList();
 
     test('name what to undo, then state the answer and put it back', () {
-      expect(steps(equation('missingSecondAddend', 3, 4)), [
+      expect(work(equation('missingSecondAddend', 3, 4)), [
         'Adding 3 and the blank makes 7. To undo the adding, take 3 away '
             'from 7.',
         '7 − 3 = 4, so the blank is 4. Check: 3 + 4 = 7',
       ]);
-      expect(steps(equation('missingFirstAddend', 3, 4)), [
+      expect(work(equation('missingFirstAddend', 3, 4)), [
         'Adding 3 and the blank makes 7. To undo the adding, take 3 away '
             'from 7.',
         '7 − 3 = 4, so the blank is 4. Check: 4 + 3 = 7',
       ]);
-      expect(steps(equation('missingSubtrahend', 3, 4)), [
+      expect(work(equation('missingSubtrahend', 3, 4)), [
         'Taking the blank away from 7 leaves 3. To find the blank, take 3 '
             'away from 7.',
         '7 − 3 = 4, so the blank is 4. Check: 7 − 4 = 3',
       ]);
-      expect(steps(equation('missingMinuend', 3, 4)), [
+      expect(work(equation('missingMinuend', 3, 4)), [
         'Taking 3 away from the blank leaves 4. To undo the taking away, add '
             '3 back to 4.',
         '4 + 3 = 7, so the blank is 7. Check: 7 − 3 = 4',
       ]);
-      expect(steps(equation('missingFirstFactor', 4, 5)), [
+      expect(work(equation('missingFirstFactor', 4, 5)), [
         'Multiplying 4 and the blank makes 20. To undo the multiplying, '
             'divide 20 by 4.',
         '20 ÷ 4 = 5, so the blank is 5. Check: 5 × 4 = 20',
       ]);
-      expect(steps(equation('missingSecondFactor', 4, 5)), [
+      expect(work(equation('missingSecondFactor', 4, 5)), [
         'Multiplying 4 and the blank makes 20. To undo the multiplying, '
             'divide 20 by 4.',
         '20 ÷ 4 = 5, so the blank is 5. Check: 4 × 5 = 20',
       ]);
-      expect(steps(equation('missingDivisor', 6, 3)), [
+      expect(work(equation('missingDivisor', 6, 3)), [
         'Dividing 18 by the blank gives 6. To find the blank, divide 18 by 6.',
         '18 ÷ 6 = 3, so the blank is 3. Check: 18 ÷ 3 = 6',
       ]);
-      expect(steps(equation('missingDividend', 3, 6)), [
+      expect(work(equation('missingDividend', 3, 6)), [
         'Dividing the blank by 3 gives 6. To undo the dividing, multiply 6 '
             'by 3.',
         '6 × 3 = 18, so the blank is 18. Check: 18 ÷ 3 = 6',
@@ -379,36 +382,92 @@ void main() {
     EquationProblem letter(String variant, List<int> params) =>
         source.build(OperationType.algebra, variant, params)!;
     const belowZero =
-        'The answer is less than zero this time, so it is written with a '
-        'minus sign (−) in front.';
+        'This time the answer is less than zero. It is written with a minus '
+        'sign (−) in front.';
+
+    test('every equation hint starts with what is asked, then the idea', () {
+      const blank = 'We need the number that goes in the blank.';
+      const letterN = 'We need the number that n stands for.';
+      const addAndTakeAway =
+          'Adding and taking away undo each other. Taking away is also '
+          'called subtracting.';
+      const multiplyAndDivide = 'Multiplying and dividing undo each other.';
+      const squared =
+          'A small ² after a number means the number times itself. We call '
+          'it squared.';
+      const balance =
+          'The two sides of = are equal, like a balance. Do the same to both '
+          'sides, one step at a time.';
+      for (final (variant, params, start) in [
+        ('missingSecondAddend', [3, 4], [blank, addAndTakeAway]),
+        ('missingMinuend', [3, 4], [blank, addAndTakeAway]),
+        (
+          'missingSubtrahend',
+          [3, 4],
+          [
+            blank,
+            'In a take away, the part taken away and the part left can swap '
+                'places.',
+          ],
+        ),
+        ('missingFirstFactor', [4, 5], [blank, multiplyAndDivide]),
+        ('missingDividend', [3, 6], [blank, multiplyAndDivide]),
+        (
+          'missingDivisor',
+          [6, 3],
+          [
+            blank,
+            'In a division, the number you divide by and the result can swap '
+                'places.',
+          ],
+        ),
+        ('missingSquare', [7], [blank, squared]),
+        (
+          'missingSquareRoot',
+          [7],
+          [
+            blank,
+            'The square root √ undoes squaring. Squaring means a number times '
+                'itself.',
+          ],
+        ),
+        ('aSquared', [12], [letterN, squared]),
+        ('nSquared', [7], [letterN, squared]),
+        ('nPlusA', [5, 7], [letterN, balance]),
+        ('anSquared', [2, 5], [letterN, balance]),
+        ('aBracketNMinusB', [3, 2, -4], [letterN, balance]),
+      ]) {
+        expect(steps(letter(variant, params)).take(2), start, reason: variant);
+      }
+    });
 
     test('level 3 names the undo for both sides, then does it', () {
-      expect(steps(letter('nPlusA', [5, 7])), [
+      expect(work(letter('nPlusA', [5, 7])), [
         'To undo + 5, take 5 away from both sides.',
         '12 − 5 = 7, so n = 7. Check: 7 + 5 = 12',
       ]);
-      expect(steps(letter('nMinusA', [5, 7])), [
+      expect(work(letter('nMinusA', [5, 7])), [
         'To undo − 5, add 5 to both sides.',
         '7 + 5 = 12, so n = 12. Check: 12 − 5 = 7',
       ]);
-      expect(steps(letter('aTimesN', [3, 5])), [
+      expect(work(letter('aTimesN', [3, 5])), [
         'To undo × 3, divide both sides by 3.',
         '15 ÷ 3 = 5, so n = 5. Check: 3 × 5 = 15',
       ]);
-      expect(steps(letter('nDividedByA', [4, 3])), [
+      expect(work(letter('nDividedByA', [4, 3])), [
         'To undo ÷ 4, multiply both sides by 4.',
         '3 × 4 = 12, so n = 12. Check: 12 ÷ 4 = 3',
       ]);
     });
 
     test('level 4 says what 2n means, then undoes one step at a time', () {
-      expect(steps(letter('anPlusB', [2, 3, 4])), [
+      expect(work(letter('anPlusB', [2, 3, 4])), [
         '2n means 2 × n.',
         'To undo + 3, take 3 away from both sides. 11 − 3 = 8, so 2n = 8.',
         'To undo × 2, divide both sides by 2.',
         '8 ÷ 2 = 4, so n = 4. Check: 2 × 4 + 3 = 11',
       ]);
-      expect(steps(letter('anMinusB', [4, 5, 5])), [
+      expect(work(letter('anMinusB', [4, 5, 5])), [
         '4n means 4 × n.',
         'To undo − 5, add 5 to both sides. 15 + 5 = 20, so 4n = 20.',
         'To undo × 4, divide both sides by 4.',
@@ -417,26 +476,26 @@ void main() {
     });
 
     test('level 5 explains the minus sign of an answer below zero first', () {
-      expect(steps(letter('aBracketNMinusB', [3, 2, -4])), [
+      expect(work(letter('aBracketNMinusB', [3, 2, -4])), [
         belowZero,
         '3(n − 2) means 3 × (n − 2).',
         'To undo × 3, divide both sides by 3. −18 ÷ 3 = −6, so n − 2 = −6.',
         'To undo − 2, add 2 to both sides.',
         '−6 + 2 = −4, so n = −4. Check: 3(−4 − 2) = −18',
       ]);
-      expect(steps(letter('aBracketNPlusB', [3, 2, 2])), [
+      expect(work(letter('aBracketNPlusB', [3, 2, 2])), [
         '3(n + 2) means 3 × (n + 2).',
         'To undo × 3, divide both sides by 3. 12 ÷ 3 = 4, so n + 2 = 4.',
         'To undo + 2, take 2 away from both sides.',
         '4 − 2 = 2, so n = 2. Check: 3(2 + 2) = 12',
       ]);
-      expect(steps(letter('nDividedByAPlusB', [4, 3, -2])), [
+      expect(work(letter('nDividedByAPlusB', [4, 3, -2])), [
         belowZero,
         'To undo + 3, take 3 away from both sides. 1 − 3 = −2, so n ÷ 4 = −2.',
         'To undo ÷ 4, multiply both sides by 4.',
         '−2 × 4 = −8, so n = −8. Check: −8 ÷ 4 + 3 = 1',
       ]);
-      expect(steps(letter('anPlusBNegativeN', [3, 9, -2])), [
+      expect(work(letter('anPlusBNegativeN', [3, 9, -2])), [
         belowZero,
         '3n means 3 × n.',
         'To undo + 9, take 9 away from both sides. 3 − 9 = −6, so 3n = −6.',
@@ -447,30 +506,30 @@ void main() {
 
     test('a square says what it means; a root asks which number times '
         'itself makes the square; an² = c divides first', () {
-      expect(steps(letter('missingSquare', [7])), [
+      expect(work(letter('missingSquare', [7])), [
         '7² means 7 × 7.',
         '7 × 7 = 49, so the blank is 49. Check: 7² = 49',
       ]);
-      expect(steps(letter('missingSquareRoot', [7])), [
+      expect(work(letter('missingSquareRoot', [7])), [
         '√49 asks: which number times itself makes 49?',
         '7 × 7 = 49, so the blank is 7. Check: √49 = 7',
       ]);
-      expect(steps(letter('aSquared', [12])), [
+      expect(work(letter('aSquared', [12])), [
         '12² means 12 × 12.',
         '12 × 12 = 144, so n = 144. Check: 12² = 144',
       ]);
-      expect(steps(letter('squareRootOfC', [17])), [
+      expect(work(letter('squareRootOfC', [17])), [
         '√289 asks: which number times itself makes 289?',
         '17 × 17 = 289, so n = 17. Check: √289 = 17',
       ]);
       const positive =
           'n² means n × n, and n is positive. Which number above zero '
           'times itself makes';
-      expect(steps(letter('nSquared', [7])), [
+      expect(work(letter('nSquared', [7])), [
         '$positive 49?',
         '7 × 7 = 49, so n = 7. Check: 7² = 49',
       ]);
-      expect(steps(letter('anSquared', [2, 5])), [
+      expect(work(letter('anSquared', [2, 5])), [
         '2n² means 2 × n².',
         'To undo × 2, divide both sides by 2. 50 ÷ 2 = 25, so n² = 25.',
         '$positive 25?',
@@ -479,7 +538,7 @@ void main() {
     });
 
     test('level 5 tenths use the language decimal separator', () {
-      expect(steps(letter('anTenths', [4, 25])), [
+      expect(work(letter('anTenths', [4, 25])), [
         '4n means 4 × n.',
         'To undo × 4, divide both sides by 4.',
         '10 ÷ 4 = 2.5, so n = 2.5. Check: 4 × 2.5 = 10',
