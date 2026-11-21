@@ -123,6 +123,80 @@ const _rows =
         asked: FigurePrompt.area,
         answer: 28.26,
       ),
+      (
+        id: 'G24',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 4, Unit 5, Lesson 16',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-4/unit-5/lesson-16/lesson.html',
+        printed:
+            'A square from two 12-inch pipe cleaners (perimeter 24). Side?',
+        given: [24],
+        asked: FigurePrompt.sideFromPerimeter,
+        answer: 6,
+      ),
+      (
+        id: 'G25',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 4, Unit 5, Lesson 16',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-4/unit-5/lesson-16/lesson.html',
+        printed: 'A square from one 12-inch pipe cleaner (perimeter 12). Side?',
+        given: [12],
+        asked: FigurePrompt.sideFromPerimeter,
+        answer: 3,
+      ),
+      (
+        id: 'G26',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 4, Unit 5, Lesson 16',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-4/unit-5/lesson-16/lesson.html',
+        printed: 'A square with a perimeter of 60 inches. Side?',
+        given: [60],
+        asked: FigurePrompt.sideFromPerimeter,
+        answer: 15,
+      ),
+      (
+        id: 'G27',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 3, Unit 7, Lesson 11',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-3/unit-7/lesson-11/lesson.html',
+        printed:
+            'A rectangle with a perimeter of 30, two sides 10. The others?',
+        given: [10, 30],
+        asked: FigurePrompt.sideFromPerimeter,
+        answer: 5,
+      ),
+      (
+        id: 'G28',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 8, Unit 1, Lesson 14',
+        url: 'https://im.kendallhunt.com/MS/students/3/1/14/index.html',
+        printed: 'Angle 5 is 70°; angle 8 is supplementary to it. Angle 8?',
+        given: [70],
+        asked: FigurePrompt.angle,
+        answer: 110,
+      ),
+      (
+        id: 'G12',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 3, Unit 2, Lesson 13',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-3/unit-2/lesson-13/lesson.html',
+        printed:
+            'Patio, all right angles: bottom 3 ft, right side rises 2 ft, '
+            'goes right 6 ft, up 4 ft, top 9 ft, left side 6 ft. Area?',
+        given: [3, 2, 6, 4, 9, 6],
+        asked: FigurePrompt.area,
+        answer: 42,
+      ),
+      (
+        id: 'G29',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 6, Unit 4, Family materials',
+        url: 'https://im.kendallhunt.com/MS/families/1/4/index.html',
+        printed: 'A rectangular room 2½ m wide with an area of 11¼ m². Length?',
+        given: [2.5, 11.25],
+        asked: FigurePrompt.sideFromArea,
+        answer: 4.5,
+      ),
     ];
 
 /// The rows an app family builds exactly, within its parameter space: the
@@ -132,15 +206,21 @@ const _built = <(String, GeometryFamily, List<int>)>[
   ('G08', GeometryFamily.rectangleArea, [4, 3]),
   ('G10', GeometryFamily.rectangleArea, [6, 3]),
   ('G11', GeometryFamily.rectangleArea, [5, 3]),
+  ('G24', GeometryFamily.squareSideFromPerimeter, [6]),
+  ('G25', GeometryFamily.squareSideFromPerimeter, [3]),
+  ('G27', GeometryFamily.rectangleSideFromPerimeter, [10, 5]),
   ('G01', GeometryFamily.straightAngle, [117]),
+  ('G28', GeometryFamily.straightAngle, [70]),
   ('G03', GeometryFamily.rightAngle, [62]),
   ('G05', GeometryFamily.rightTriangleArea, [3, 8]),
   ('G20', GeometryFamily.circleArea, [10]),
 ];
 
-/// G22 gives a diameter and asks the area; no family draws that (circle
-/// areas show a radius), so only the oracle reads it, from the circle the
-/// circumference family draws with a diameter of 6.
+/// Rows no family draws, read by the oracle alone. G22 gives a diameter
+/// and asks the area (circle areas show a radius); it is the circle the
+/// circumference family draws with a diameter of 6. G26's side 15 is
+/// longer than 12. G12 is an L-shape cut at the bottom right with all six
+/// sides labelled. G29 asks a missing side in halves.
 final _oracleOnly = {
   'G22': Figure(
     shape: FigureShape.circle,
@@ -150,12 +230,63 @@ final _oracleOnly = {
     centre: Offset.zero,
     pi: piHundredths,
   ),
+  'G26': const Figure(
+    shape: FigureShape.square,
+    vertices: [Offset.zero, Offset(15, 0), Offset(15, 15), Offset(0, 15)],
+    labels: [SideLabel(2, null)],
+    prompt: FigurePrompt.sideFromPerimeter,
+    total: 6000,
+  ),
+  'G12': const Figure(
+    shape: FigureShape.lShape,
+    vertices: [
+      Offset.zero,
+      Offset(9, 0),
+      Offset(9, 4),
+      Offset(3, 4),
+      Offset(3, 6),
+      Offset(0, 6),
+    ],
+    labels: [
+      SideLabel(0, 900),
+      SideLabel(1, 400),
+      SideLabel(2, 600),
+      SideLabel(3, 200),
+      SideLabel(4, 300),
+      SideLabel(5, 600),
+    ],
+    prompt: FigurePrompt.area,
+  ),
+  'G29': const Figure(
+    shape: FigureShape.rectangle,
+    vertices: [Offset.zero, Offset(2.5, 0), Offset(2.5, 4.5), Offset(0, 4.5)],
+    labels: [SideLabel(2, 250), SideLabel(1, null)],
+    prompt: FigurePrompt.sideFromArea,
+    total: 1125,
+  ),
 };
 
-/// Levels 1 and 3 ask perimeters and missing sides of squares and
-/// rectangles; the pages' rows for those are a rhombus, a parallelogram
-/// or print no answer.
-const _levelsWithoutRow = {1, 3};
+/// Level 1 asks perimeters of squares, rectangles and triangles; the
+/// pages' rows for those are a rhombus, a parallelogram, a triangle whose
+/// sides are only tick marks, or print no answer.
+const _levelsWithoutRow = {1};
+
+/// Families with no built row: issue #148 found no printed answer for
+/// them that the family draws exactly (L-shape and halves rows are read by
+/// the oracle alone, see [_oracleOnly]).
+const _familiesWithoutRow = {
+  GeometryFamily.squarePerimeter,
+  GeometryFamily.rectanglePerimeter,
+  GeometryFamily.trianglePerimeter,
+  GeometryFamily.squareSideFromArea,
+  GeometryFamily.rectangleSideFromArea,
+  GeometryFamily.triangleAngle,
+  GeometryFamily.lShapePerimeter,
+  GeometryFamily.lShapeArea,
+  GeometryFamily.halvesRectanglePerimeter,
+  GeometryFamily.halvesRectangleArea,
+  GeometryFamily.circleCircumference,
+};
 
 void main() {
   const kind = OperationType.geometry;
@@ -169,11 +300,13 @@ void main() {
 
   int hundredths(num printed) => (printed * 100).round();
 
-  /// The numbers the figure shows, in hundredths: side labels and angles.
+  /// The numbers the figure shows, in hundredths: side labels, angles and
+  /// the given perimeter or area.
   List<int> shown(Figure figure) => [
     for (final label in figure.labels) ?label.hundredths,
     for (final angle in figure.angles)
       if (angle.degrees case final value?) value * 100,
+    ?figure.total,
   ]..sort();
 
   void oracleAgrees(Figure figure, num answer) {
@@ -201,10 +334,17 @@ void main() {
 
   test('levels with a built row, and the levels without one', () {
     final levels = _built.map((b) => b.$2.level).toSet();
-    expect(levels, {2, 4, 5});
+    expect(levels, {2, 3, 4, 5});
     expect(
       {for (var l = 1; l <= maxGeometryLevel; l++) l}.difference(levels),
       _levelsWithoutRow,
+    );
+  });
+
+  test('families with a built row, and the families without one', () {
+    expect(
+      GeometryFamily.values.toSet().difference(_built.map((b) => b.$2).toSet()),
+      _familiesWithoutRow,
     );
   });
 
@@ -238,7 +378,10 @@ void main() {
     _oracleOnly.forEach((id, figure) {
       final row = _rows.firstWhere((row) => row.id == id);
       test('${row.id}: "${row.printed}" is ${row.answer}', () {
-        expect(shown(figure), [for (final g in row.given) hundredths(g)]);
+        expect(
+          shown(figure),
+          [for (final g in row.given) hundredths(g)]..sort(),
+        );
         expect(figure.prompt, row.asked);
         oracleAgrees(figure, row.answer);
       });

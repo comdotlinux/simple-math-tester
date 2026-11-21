@@ -222,6 +222,105 @@ const _rows =
         question: '13.68 + n = 16.05',
         answer: 2.37,
       ),
+      (
+        id: 'A33',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 8, Unit 4, Lesson 1',
+        url: 'https://im.kendallhunt.com/MS/students/3/4/1/index.html',
+        printed: '2x + 4 = 18',
+        question: '2n + 4 = 18',
+        answer: 7,
+      ),
+      (
+        id: 'A34',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 1, Unit 2, Lesson 21',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-1/unit-2/lesson-21/lesson.html',
+        printed: '4 + □ = 5',
+        question: '4 + n = 5',
+        answer: 1,
+      ),
+      (
+        id: 'A35',
+        source: 'IM K–5 Math',
+        lesson: 'Grade 1, Unit 2, Lesson 21',
+        url: 'https://im.kendallhunt.com/k5/teachers/grade-1/unit-2/lesson-21/lesson.html',
+        printed: '5 - □ = 4',
+        question: '5 − n = 4',
+        answer: 1,
+      ),
+      (
+        id: 'A36',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 5, Lesson 11',
+        url: 'https://im.kendallhunt.com/MS/students/2/5/11/index.html',
+        printed: 'x ÷ -2 = 5',
+        question: 'n ÷ −2 = 5',
+        answer: -10,
+      ),
+      (
+        id: 'A37',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 5, Lesson 15',
+        url: 'https://im.kendallhunt.com/MS/students/2/5/15/index.html',
+        printed: 'x + 8 = -5',
+        question: 'n + 8 = −5',
+        answer: -13,
+      ),
+      (
+        id: 'A38',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 5, Lesson 16',
+        url: 'https://im.kendallhunt.com/MS/students/2/5/16/index.html',
+        printed: '-3 + x = -17',
+        question: '−3 + n = −17',
+        answer: -14,
+      ),
+      (
+        id: 'A39',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 6, Lesson 4',
+        url: 'https://im.kendallhunt.com/MS/students/2/6/4/index.html',
+        printed: '34 + 10x = 144',
+        question: '34 + 10n = 144',
+        answer: 11,
+      ),
+      (
+        id: 'A40',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 6, Lesson 5',
+        url: 'https://im.kendallhunt.com/MS/students/2/6/5/index.html',
+        printed: '10(x + 2) = 140',
+        question: '10(n + 2) = 140',
+        answer: 12,
+      ),
+      (
+        id: 'A41',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 6, Lesson 5',
+        url: 'https://im.kendallhunt.com/MS/students/2/6/5/index.html',
+        printed: '2(y + 10) = 140',
+        question: '2(n + 10) = 140',
+        answer: 60,
+      ),
+      (
+        id: 'A42',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 6, Lesson 12',
+        url: 'https://im.kendallhunt.com/MS/students/2/6/12/index.html',
+        printed: '1.25p - 10 = 152.50',
+        question: '1.25n − 10 = 152.50',
+        answer: 130,
+      ),
+      (
+        id: 'A43',
+        source: 'IM 6–8 Math',
+        lesson: 'Grade 7, Unit 7, Lesson 5',
+        url: 'https://im.kendallhunt.com/MS/students/2/7/5/index.html',
+        printed: '3x + 90 = 144',
+        question: '3n + 90 = 144',
+        answer: 18,
+      ),
     ];
 
 /// The rows an app family builds exactly, within the level's ranges: the
@@ -229,17 +328,35 @@ const _rows =
 /// equation. Levels 1 and 2 show the unknown as the box.
 const _built = <(String, int, String, List<int>)>[
   ('A01', 1, 'missingSecondAddend', [2, 8]),
+  ('A34', 1, 'missingSecondAddend', [4, 1]),
   ('A07', 1, 'missingSubtrahend', [10, 2]),
+  ('A35', 1, 'missingSubtrahend', [4, 1]),
   ('A08', 1, 'missingFirstAddend', [1, 7]),
   ('A10', 2, 'missingSecondFactor', [3, 7]),
   ('A09', 3, 'nPlusA', [3, 18]),
   ('A10', 3, 'aTimesN', [3, 7]),
   ('A16', 4, 'anPlusB', [3, 6, 4]),
+  ('A33', 4, 'anPlusB', [2, 4, 7]),
   ('A19', 5, 'aBracketNPlusB', [3, 2, 4]),
   ('A20', 5, 'aBracketNMinusB', [2, 5, 2]),
   ('A21', 5, 'aBracketNPlusB', [2, 5, 0]),
   ('A31', 5, 'anTenths', [2, 55]),
 ];
+
+/// None of the public pages read so far (issue #148 searched IM 6–8 and
+/// K–5 for them) prints an answer for these forms in the app's notation
+/// and ranges; they rest on the oracle and the exhaustive runs alone.
+const _familiesWithoutRow = {
+  'missingMinuend',
+  'missingFirstFactor',
+  'missingDivisor',
+  'missingDividend',
+  'nMinusA',
+  'nDividedByA',
+  'anMinusB',
+  'nDividedByAPlusB',
+  'anPlusBNegativeN',
+};
 
 void main() {
   const kind = OperationType.algebra;
@@ -255,6 +372,17 @@ void main() {
     expect(_built.map((b) => b.$2).toSet(), {
       for (var l = 1; l <= kind.highestLevel; l++) l,
     });
+  });
+
+  test('families with a built row, and the families without one', () {
+    final families = {
+      for (final level in source.levels)
+        for (final (variant, _) in level) variant,
+    };
+    expect(
+      families.difference(_built.map((b) => b.$3).toSet()),
+      _familiesWithoutRow,
+    );
   });
 
   group('the oracle alone', () {
