@@ -226,7 +226,7 @@ const _rows =
 
 /// The rows an app family builds exactly, within the level's ranges: the
 /// row, the level, the variant and the params read off the printed
-/// equation. Levels 1 and 2 show the unknown as the box.
+/// equation. Levels 1 and 2 show the unknown as the blank.
 const _built = <(String, int, String, List<int>)>[
   ('A01', 1, 'missingSecondAddend', [2, 8]),
   ('A07', 1, 'missingSubtrahend', [10, 2]),

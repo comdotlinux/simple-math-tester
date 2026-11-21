@@ -31,7 +31,7 @@ was read from.
 
 The rows are used only to test that the app's questions and answers agree
 with the textbook; they are not shipped in the app. Changes were made: the
-equations are rewritten in the app's notation (the letter n or a box for the
+equations are rewritten in the app's notation (the letter n or a blank for the
 unknown, and the signs −, × and ÷), and figure questions are rebuilt as
 the app's figures, without units. The Illustrative Mathematics name and
 logo are not covered by the licence, and neither Illustrative Mathematics

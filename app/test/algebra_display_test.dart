@@ -13,9 +13,9 @@ import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/question_text.dart';
 import 'package:simple_math_tester/rules.dart';
 
-/// Equations on screen: the blank is a drawn box, never the glyph U+25A1,
-/// which no bundled font has (the web engine would fetch a font for it), and
-/// screen readers hear "blank".
+/// Equations on screen: the blank is a drawn line on the baseline, never the
+/// glyph U+25A1, which no bundled font has (the web engine would fetch a font
+/// for it), nor typed underscores, and screen readers hear "blank".
 void main() {
   setUpAll(() async {
     final manifest =
@@ -84,19 +84,21 @@ void main() {
     return model;
   }
 
-  /// No text drawn with a font holds the glyph, and no label says it.
+  /// No text drawn with a font holds the glyph or an underscore, and no
+  /// label says either.
   void expectNoGlyph(WidgetTester tester) {
     final texts = find.byType(RichText).evaluate().toList();
     expect(texts, isNotEmpty);
     for (final element in texts) {
       final text = (element.widget as RichText).text.toPlainText();
       expect(text, isNot(contains('□')));
+      expect(text, isNot(contains('_')));
     }
-    expect(find.bySemanticsLabel(RegExp('□')), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('[□_]')), findsNothing);
   }
 
-  /// The [RichText] under [finder] draws `3 + `, a box, ` = 7`.
-  void expectBox(WidgetTester tester, Finder finder) {
+  /// The [RichText] under [finder] draws `3 + `, a blank, ` = 7`.
+  void expectBlank(WidgetTester tester, Finder finder) {
     final texts = [
       for (final element
           in find
@@ -106,12 +108,12 @@ void main() {
     ].where((text) => text.toPlainText().contains('\ufffc'));
     expect(texts, hasLength(1));
     expect(texts.single.toPlainText(), startsWith('3 + \ufffc = 7'));
-    var boxes = 0;
+    var blanks = 0;
     texts.single.visitChildren((span) {
-      if (span is WidgetSpan) boxes++;
+      if (span is WidgetSpan) blanks++;
       return true;
     });
-    expect(boxes, greaterThanOrEqualTo(1));
+    expect(blanks, greaterThanOrEqualTo(1));
   }
 
   testWidgets('the problem page draws the blank and reads it as "blank"', (
@@ -119,7 +121,7 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     await launch(tester);
-    expectBox(tester, find.byKey(questionOnProblemsPageKey));
+    expectBlank(tester, find.byKey(questionOnProblemsPageKey));
     expect(
       find.bySemanticsLabel('Math question: 3 + blank = 7'),
       findsOneWidget,
@@ -128,6 +130,81 @@ void main() {
     expect(tester.takeException(), isNull);
     semantics.dispose();
   });
+
+  testWidgets('the blank is a line on the baseline that scales with the '
+      'text', (tester) async {
+    final found = <double, (Rect, double)>{};
+    for (final scale in [1.0, 2.0]) {
+      const style = TextStyle(fontSize: 40, color: Color(0xFF000000));
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Center(
+              child: Builder(
+                builder: (context) =>
+                    Text.rich(mathSpan(context, '10 − □ = 4', style)),
+              ),
+            ),
+          ),
+        ),
+      );
+      final text = find.byType(RichText);
+      Widget? blank;
+      tester.widget<RichText>(text).text.visitChildren((span) {
+        if (span is WidgetSpan) blank = span.child;
+        return blank == null;
+      });
+      // The baseline: the top of the text plus the ascent of its digits.
+      final digits = TextPainter(
+        text: const TextSpan(text: '10', style: style),
+        textDirection: TextDirection.ltr,
+        textScaler: TextScaler.linear(scale),
+      )..layout();
+      addTearDown(digits.dispose);
+      found[scale] = (
+        tester.getRect(find.byWidget(blank!)),
+        tester.getTopLeft(text).dy +
+            digits.computeDistanceToActualBaseline(TextBaseline.alphabetic),
+      );
+    }
+    for (final (rect, baseline) in found.values) {
+      // On the baseline and long and thin: unlike a minus sign, which is
+      // short and at mid height.
+      expect(rect.bottom, moreOrLessEquals(baseline, epsilon: 0.5));
+      expect(rect.width, greaterThan(rect.height * 8));
+    }
+    final (one, _) = found[1.0]!;
+    final (two, _) = found[2.0]!;
+    expect(two.width, moreOrLessEquals(one.width * 2, epsilon: 0.5));
+    expect(two.height, moreOrLessEquals(one.height * 2, epsilon: 0.5));
+  });
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets('the question card draws the blank at 320 x 568, text scale '
+        '$scale, without overflow', (tester) async {
+      await launch(tester, size: const Size(320, 568), scale: scale);
+      final card = find.byKey(questionOnProblemsPageKey);
+      expectBlank(tester, card);
+      final blank = find.descendant(
+        of: card,
+        matching: find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString() == '_Blank',
+        ),
+      );
+      // Inside the question's text, and the text inside the screen's width.
+      final rect = tester.getRect(blank);
+      final text = tester.getRect(card);
+      expect(rect.width, greaterThan(0));
+      expect(text.inflate(0.5).contains(rect.topLeft), isTrue);
+      expect(text.inflate(0.5).contains(rect.bottomRight), isTrue);
+      expect(text.left, greaterThanOrEqualTo(0));
+      expect(text.right, lessThanOrEqualTo(320));
+      expectNoGlyph(tester);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('the pinned question band draws the blank', (tester) async {
     final model = await launch(tester, size: const Size(320, 568));
@@ -145,7 +222,7 @@ void main() {
       await tester.pumpAndSettle();
     }
     expect(pinned, findsOneWidget);
-    expectBox(tester, pinned);
+    expectBlank(tester, pinned);
     expectNoGlyph(tester);
     expect(tester.takeException(), isNull);
   });
@@ -163,7 +240,7 @@ void main() {
       model.setCurrentPage(1);
       await tester.pumpAndSettle();
       final row = find.byKey(historyRowKey(0));
-      expectBox(tester, row);
+      expectBlank(tester, row);
       // Merged into the row's node, which may sit above the keyed widget.
       expect(find.bySemanticsLabel(RegExp('3 \\+ blank = 7')), findsOneWidget);
       expectNoGlyph(tester);
@@ -186,7 +263,7 @@ void main() {
               .evaluate())
         (element.widget as RichText).text.toPlainText(),
     ].singleWhere((text) => text.startsWith('3 + '));
-    // The box and the arrow are drawn: 3 + [box] = 7 [arrow] 4.
+    // The blank and the arrow are drawn: 3 + [blank] = 7 [arrow] 4.
     expect(line, startsWith('3 + ￼ = 7￼4'));
     expect(line, isNot(contains('= 4')));
     expect(

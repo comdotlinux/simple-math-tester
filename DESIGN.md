@@ -21,7 +21,7 @@ Make answering and reviewing math feel clear and rewarding, and bring a child ba
 because they are getting better. Four operations, chosen by the player. Five
 difficulty levels per operation, starting at Easy, Medium, Hard or Harder and
 adapting to accuracy. Algebra (missing-number equations, the blank drawn as a
-box) is off until the player switches it on, starts at level 1 whatever the
+line on the baseline, `6 + __ = 8`) is off until the player switches it on, starts at level 1 whatever the
 tier, and sprints draw only the arithmetic operations. Geometry follows the same
 rules: a figure drawn to scale in place of the question text, with a short prompt
 ("Perimeter?", "Area?") and language-free cues (thick outline for the perimeter,
