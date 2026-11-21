@@ -13,8 +13,9 @@ import '../support/helpers.dart';
 void settingsJourneys() {
   group('settings', () {
     testWidgets(
-      'the gear opens the settings sheet and a tap outside closes it, '
-      'focusing Start; Start focuses the answer',
+      'the menu opens the settings sheet and a tap outside closes it, '
+      'focusing Start; Start focuses the answer; a kind changed in the menu '
+      'during practice shows after End',
       (tester) async {
         await startWith(tester, Progress(tier: Tier.easy));
 
@@ -55,6 +56,27 @@ void settingsJourneys() {
           isTrue,
           reason: 'the answer comes first',
         );
+
+        // The menu stays during practice; a drag down on the list closes it.
+        await tapKey(tester, settingsButtonKey);
+        final sheet = find.byKey(settingsSheetKey);
+        await tapVisible(
+          tester,
+          find.descendant(
+            of: sheet,
+            matching: operationToggle(OperationType.algebra),
+          ),
+        );
+        expect(modelOf(tester).practising, isTrue);
+        await tester.drag(sheet, Offset(0, tester.getSize(sheet).height));
+        await tester.pumpAndSettle();
+        expect(sheet, findsNothing);
+        await pressEnd(tester);
+        expect(
+          modelOf(tester).selectedOperations,
+          contains(OperationType.algebra),
+        );
+        expect(operationToggle(OperationType.algebra), findsOneWidget);
       },
     );
 

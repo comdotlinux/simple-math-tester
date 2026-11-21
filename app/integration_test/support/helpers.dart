@@ -208,6 +208,8 @@ Future<void> openHistory(WidgetTester tester) async {
 Future<void> returnToPractice(WidgetTester tester) =>
     tapKey(tester, practiceNavKey);
 
+/// The menu is also open during practice (#179); these journeys change
+/// settings before Start, so End comes first.
 Future<void> openSettings(WidgetTester tester) async {
   if (practising(tester)) await pressEnd(tester);
   await tapKey(tester, settingsButtonKey);
