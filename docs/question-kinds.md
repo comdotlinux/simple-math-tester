@@ -269,3 +269,38 @@ Each algebra or geometry answer is saved with its variant name (such as
 would make old answers unreadable. An entry whose variant this build does
 not know, whose parameters do not fit, or whose stored result differs from
 what its parameters build is kept and saved back unchanged, not dropped.
+
+Every answer of any kind also saves its hint use. `hintsUsed`, saved from
+the start, is the number of hint steps seen before the first check.
+`hintOpened` (a hint was opened on the question, before or after the first
+check) and `answerShown` (its last step, the answer, showed) are additive:
+written only when true, so an answer without a hint keeps the bytes older
+builds wrote, and an entry without them reads as false. An entry with
+`hintsUsed` above 0 counts as a hint opened even without `hintOpened`, so
+answers saved before these fields still count right. An older build reads
+the entry and drops the two fields when it saves again (it keeps no unknown
+fields of an answer it can read); `hintsUsed` survives. Sprint answers
+never have a hint.
+
+### Hint use: the nudge and the totals
+
+The definitions behind the nudge to try first and the hint totals on My
+answers (`hintNudgeDue` and `hintTotals` in `app/lib/rules.dart`):
+
+- **Answer:** a saved practice attempt with a valid first check. A skip is
+  no answer, and a sprint answer never has a hint, so neither counts. The
+  saved history keeps the last 200 attempts, so the totals cover those.
+- **Hint used:** a hint was opened on the question, before or after its
+  first check (`hintOpened`, or `hintsUsed` above 0).
+- **Correct without a hint:** the first valid check was right, and no hint
+  step showed before it (`hintsUsed` is 0), the same rule that halves the
+  XP. A hint opened after a right answer does not take it away.
+- **Nudge:** when the player asks for a hint that is not open yet, the
+  last 10 answers are read from the saved history, without the current
+  question's own attempt. If a hint was used on more than 5 of them, the
+  nudge shows first, at most once per question; with fewer than 10 answers
+  it never shows. Nothing new is counted or saved for it.
+- **Totals** show on My answers once a hint was used on an answer. A kind
+  shows its lines from its first answer; the line on right answers shows
+  from the first right answer, so nothing is divided by zero. Percentages
+  are whole numbers, rounded half up.

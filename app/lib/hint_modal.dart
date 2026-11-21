@@ -20,6 +20,126 @@ import 'slab.dart';
 Future<void> showHintModal(BuildContext context) =>
     showDialog<void>(context: context, builder: (_) => const _HintModal());
 
+/// The gentle nudge before a hint, after many hints in a row
+/// ([MathTesterModel.takeHintNudge]): the same card over the dimmed page,
+/// with "I will try" (the main button, focused) and "Show the hint anyway".
+/// True for the hint; "I will try", the dimmed area, Back and Escape give
+/// false. Its title names the window and its message is read out on open.
+Future<bool> showHintNudge(BuildContext context) async =>
+    await showDialog<bool>(context: context, builder: (_) => const _Nudge()) ??
+    false;
+
+class _Nudge extends StatelessWidget {
+  const _Nudge();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final phone = MediaQuery.sizeOf(context).width < 600;
+    return Align(
+      alignment: phone ? Alignment.bottomCenter : Alignment.center,
+      child: Padding(
+        padding: phone
+            ? const EdgeInsets.fromLTRB(8, 8, 8, 8 + 5)
+            : const EdgeInsets.fromLTRB(24, 24, 24, 24 + 5),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: phone ? double.infinity : 480),
+          child: Semantics(
+            scopesRoute: true,
+            namesRoute: true,
+            explicitChildNodes: true,
+            label: l.hintNudgeTitle,
+            child: Slab(
+              child: Card(
+                key: hintNudgeKey,
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // The words scroll when large text on a short screen
+                    // leaves no room; the buttons stay in view.
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          spacing: 12,
+                          children: [
+                            Row(
+                              spacing: 10,
+                              children: [
+                                Icon(
+                                  Icons.lightbulb_outline,
+                                  color: tokens.ink,
+                                ),
+                                Expanded(
+                                  child: Semantics(
+                                    header: true,
+                                    child: Text(
+                                      l.hintNudgeTitle,
+                                      style: textTheme.titleLarge,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Semantics(
+                              liveRegion: true,
+                              child: Text(
+                                l.hintNudgeMessage,
+                                style: textTheme.bodyLarge,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      child: OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        spacing: 12,
+                        overflowSpacing: 12,
+                        overflowAlignment: OverflowBarAlignment.end,
+                        // Stacked, the main button goes on top.
+                        overflowDirection: VerticalDirection.up,
+                        children: [
+                          Slab(
+                            pressable: true,
+                            radius: AppTokens.radiusControl,
+                            child: OutlinedButton(
+                              key: hintNudgeAnywayKey,
+                              onPressed: () => Navigator.pop(context, true),
+                              child: Text(l.hintNudgeShowAnyway),
+                            ),
+                          ),
+                          Slab(
+                            pressable: true,
+                            radius: AppTokens.radiusControl,
+                            child: FilledButton(
+                              key: hintNudgeTryKey,
+                              autofocus: true,
+                              onPressed: () => Navigator.pop(context, false),
+                              child: Text(l.hintNudgeTry),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HintModal extends StatefulWidget {
   const _HintModal();
 

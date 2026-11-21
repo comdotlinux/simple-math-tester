@@ -758,9 +758,15 @@ class Attempt {
   final bool sprint;
 
   /// Whether the player opened the question's hint, and whether its last
-  /// step, the answer, showed; in memory only, not saved yet.
+  /// step, the answer, showed. Saved only when true; an entry saved without
+  /// them (before they were saved, or rewritten by such a build) reads false.
   final bool hintOpened;
   final bool answerShown;
+
+  /// Whether a hint was opened on the question, before or after its first
+  /// check. [hintsUsed], saved from the start, also tells it for an entry
+  /// saved before [hintOpened] was.
+  bool get usedHint => hintOpened || hintsUsed > 0;
 
   bool get skipped => firstAnswer == null;
 

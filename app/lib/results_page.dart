@@ -149,7 +149,8 @@ class _ResultsPageState extends State<ResultsPage> {
                         SizedBox(height: compact ? 12 : 24),
                         if (history.isEmpty)
                           _emptyState(context)
-                        else
+                        else ...[
+                          _HintStats(history: history, dense: compact),
                           // Offstage: laid out, never painted, heard or found.
                           Offstage(
                             child: Column(
@@ -166,6 +167,7 @@ class _ResultsPageState extends State<ResultsPage> {
                               ],
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -841,6 +843,89 @@ class _Stats extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hint use over all answers, then per kind with answers ([hintTotals]),
+/// on its own card above the stats, once a hint was used on an answer. Not
+/// in the pinned header, which cuts its bottom off as the page scrolls.
+class _HintStats extends StatelessWidget {
+  const _HintStats({required this.history, required this.dense});
+
+  final List<Attempt> history;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final all = hintTotals(history);
+    if (all.hinted == 0) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    final lineStyle = dense ? textTheme.bodySmall : textTheme.bodyMedium;
+    List<Widget> lines(
+      ({int answered, int hinted, int correct, int correctWithoutHint}) t,
+    ) => [
+      Text(
+        l.hintStatsUsed(
+          t.answered,
+          t.hinted,
+          (100 * t.hinted / t.answered).round(),
+        ),
+        style: lineStyle,
+      ),
+      if (t.correct > 0)
+        Text(
+          l.hintStatsWithout(
+            t.correct,
+            t.correctWithoutHint,
+            (100 * t.correctWithoutHint / t.correct).round(),
+          ),
+          style: lineStyle,
+        ),
+    ];
+    return Padding(
+      padding: EdgeInsets.only(bottom: dense ? 12 : 24),
+      child: Slab(
+        child: Card(
+          key: hintStatsKey,
+          child: Padding(
+            padding: EdgeInsets.all(dense ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: dense ? 2 : 4,
+              children: [
+                Text(
+                  l.hintStatsTitle,
+                  style: dense ? textTheme.titleMedium : textTheme.titleLarge,
+                ),
+                SizedBox(height: dense ? 4 : 8),
+                ...lines(all),
+                for (final type in OperationType.values)
+                  if (hintTotals(history.where((a) => a.problem.kind == type))
+                      case final kind when kind.answered > 0)
+                    Padding(
+                      key: hintStatsKindKey(type),
+                      padding: EdgeInsets.only(top: dense ? 4 : 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        spacing: dense ? 2 : 4,
+                        children: [
+                          Text(
+                            type.label(l),
+                            style: textTheme.labelLarge?.copyWith(
+                              color: context.tokens.inkMuted,
+                            ),
+                          ),
+                          ...lines(kind),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
           ),
         ),
       ),

@@ -112,6 +112,7 @@ class MathTesterModel extends ChangeNotifier {
   late int _revealed;
   late bool _hintOpened;
   late bool _answerShown;
+  late bool _nudged;
 
   /// The current question's attempt once recorded, so hint use after the
   /// first check reaches it too.
@@ -568,6 +569,17 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Asked before the hint opens: whether the nudge to try first shows
+  /// ([hintNudgeDue] over the saved history without this question's own
+  /// attempt). At most once per question, never in a sprint or for a hint
+  /// already opened; showing it opens nothing and records nothing.
+  bool takeHintNudge() {
+    if (inSprint || _hintOpened || _nudged) return false;
+    return _nudged = hintNudgeDue(
+      history.where((attempt) => !identical(attempt, _attempt)),
+    );
+  }
+
   /// The hint's "Next step" and "Show the answer" buttons.
   void revealStep() {
     if (inSprint || !canRevealStep) return;
@@ -742,6 +754,7 @@ class MathTesterModel extends ChangeNotifier {
     _revealed = 0;
     _hintOpened = false;
     _answerShown = false;
+    _nudged = false;
     _attempt = null;
   }
 

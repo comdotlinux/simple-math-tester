@@ -127,6 +127,49 @@ void historyJourneys() {
       expectRow(OperationType.divide.label(en), '100%', '4');
     });
 
+    testWidgets('the stats card shows how often a hint was used, per kind', (
+      tester,
+    ) async {
+      Attempt answer(OperationType kind, bool correct, {bool hint = false}) =>
+          Attempt(
+            ArithmeticProblem(6, 2, kind, kind == OperationType.plus ? 8 : 4),
+            firstAnswer: correct ? (kind == OperationType.plus ? 8 : 4) : 1,
+            elapsedMs: 3000,
+            answeredAt: DateTime(2026, 11, 21, 9),
+            hintsUsed: hint ? 1 : 0,
+            hintOpened: hint,
+          );
+      await startWith(
+        tester,
+        Progress(
+          tier: Tier.easy,
+          history: [
+            answer(OperationType.plus, true),
+            answer(OperationType.plus, true, hint: true),
+            answer(OperationType.plus, false),
+            answer(OperationType.minus, true),
+          ],
+        ),
+      );
+
+      await openHistory(tester);
+
+      final block = find.byKey(hintStatsKey);
+      await tester.ensureVisible(block);
+      await tester.pumpAndSettle();
+      Finder line(Finder within, String text) =>
+          find.descendant(of: within, matching: find.text(text));
+      expect(line(block, en.hintStatsUsed(4, 1, 25)), findsOneWidget);
+      expect(line(block, en.hintStatsWithout(3, 2, 67)), findsOneWidget);
+      final plus = find.byKey(hintStatsKindKey(OperationType.plus));
+      expect(line(plus, OperationType.plus.label(en)), findsOneWidget);
+      expect(line(plus, en.hintStatsUsed(3, 1, 33)), findsOneWidget);
+      expect(line(plus, en.hintStatsWithout(2, 1, 50)), findsOneWidget);
+      final minus = find.byKey(hintStatsKindKey(OperationType.minus));
+      expect(line(minus, en.hintStatsUsed(1, 0, 0)), findsOneWidget);
+      expect(line(minus, en.hintStatsWithout(1, 1, 100)), findsOneWidget);
+    });
+
     testWidgets('an incorrect row shows your answer and the expected one', (
       tester,
     ) async {

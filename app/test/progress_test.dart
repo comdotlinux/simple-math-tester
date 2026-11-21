@@ -1220,6 +1220,74 @@ void main() {
     }
   });
 
+  group('hint use of an attempt', () {
+    Attempt hinted({required bool opened, required bool shown}) => Attempt(
+      const ArithmeticProblem(7, 5, OperationType.plus, 12),
+      firstAnswer: 11,
+      elapsedMs: 10,
+      answeredAt: DateTime.utc(2026, 11, 21, 10),
+      hintOpened: opened,
+      answerShown: shown,
+    );
+
+    test('is saved only when true and round trips', () {
+      final progress = Progress(
+        history: [
+          hinted(opened: true, shown: true),
+          hinted(opened: true, shown: false),
+          hinted(opened: false, shown: false),
+        ],
+      );
+      final entries = progress.toJsonHistory().cast<Map<String, Object?>>();
+      expect(entries[0]['hintOpened'], isTrue);
+      expect(entries[0]['answerShown'], isTrue);
+      expect(entries[1].containsKey('answerShown'), isFalse);
+      // Without a hint the entry keeps the shape older builds wrote.
+      expect(entries[2].keys, [
+        'lhs',
+        'rhs',
+        'kind',
+        'result',
+        'level',
+        'firstAnswer',
+        'elapsedMs',
+        'hintsUsed',
+        'answeredAt',
+        'sprint',
+      ]);
+      final decoded = Progress.decode(progress.encode());
+      expect(
+        [for (final a in decoded.history) (a.hintOpened, a.answerShown)],
+        [(true, true), (true, false), (false, false)],
+      );
+      expect(decoded.encode(), progress.encode());
+    });
+
+    test('an entry saved without them decodes as no hint opened, and its '
+        'steps seen before the check still count as a hint', () {
+      final decoded = Progress.decode(
+        '{"history":['
+        '{"lhs":7,"rhs":5,"kind":"plus","result":12,"level":1,'
+        '"firstAnswer":12,"elapsedMs":10,"hintsUsed":0,'
+        '"answeredAt":"2026-11-21T10:00:00.000Z","sprint":false},'
+        '{"lhs":7,"rhs":5,"kind":"plus","result":12,"level":1,'
+        '"firstAnswer":12,"elapsedMs":10,"hintsUsed":2,'
+        '"answeredAt":"2026-11-21T10:00:00.000Z","sprint":false}]}',
+      );
+      final [plain, stepped] = decoded.history;
+      expect(
+        (plain.hintOpened, plain.answerShown, plain.usedHint),
+        (false, false, false),
+      );
+      expect((stepped.hintOpened, stepped.usedHint), (false, true));
+      // Written back, the entries keep their bytes.
+      expect(decoded.toJsonHistory().map((e) => (e! as Map).keys.length), [
+        10,
+        10,
+      ]);
+    });
+  });
+
   test('history and selection are unmodifiable', () {
     final progress = Progress(history: [attempt(1)]);
     expect(() => progress.history.add(attempt(2)), throwsUnsupportedError);

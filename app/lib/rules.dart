@@ -109,6 +109,54 @@ Attempt? historyEntry({
         hintOpened: hintOpened,
       );
 
+/// The nudge to try first looks at this many of the latest answers...
+const hintNudgeWindow = 10;
+
+/// ...and shows when a hint was opened on more than this many of them.
+const hintNudgeAbove = 5;
+
+/// Whether asking for a hint first gets the gentle nudge to try: a hint was
+/// opened on more than [hintNudgeAbove] of the last [hintNudgeWindow]
+/// answers in [history]. Answers are practice attempts with a valid first
+/// check: a skip is no answer and a sprint has no hints, so neither counts.
+/// With fewer than [hintNudgeWindow] answers there is no nudge.
+bool hintNudgeDue(Iterable<Attempt> history) {
+  final answers = [
+    for (final attempt in history)
+      if (!attempt.sprint && !attempt.skipped) attempt,
+  ];
+  return answers.length >= hintNudgeWindow &&
+      answers
+              .skip(answers.length - hintNudgeWindow)
+              .where((attempt) => attempt.usedHint)
+              .length >
+          hintNudgeAbove;
+}
+
+/// Hint use over [history], counted over the same answers as
+/// [hintNudgeDue]: how many there are, on how many a hint was opened, how
+/// many were right at the first check, and how many of those had no hint
+/// step shown before that check (as for the XP, [xpFor]).
+({int answered, int hinted, int correct, int correctWithoutHint}) hintTotals(
+  Iterable<Attempt> history,
+) {
+  var (answered, hinted, correct, correctWithoutHint) = (0, 0, 0, 0);
+  for (final attempt in history) {
+    if (attempt.sprint || attempt.skipped) continue;
+    answered++;
+    if (attempt.usedHint) hinted++;
+    if (!attempt.correct) continue;
+    correct++;
+    if (attempt.hintsUsed == 0) correctWithoutHint++;
+  }
+  return (
+    answered: answered,
+    hinted: hinted,
+    correct: correct,
+    correctWithoutHint: correctWithoutHint,
+  );
+}
+
 const dailyGoal = 10;
 const maxComboBonus = 10;
 const xpPerLevelStep = 100;
