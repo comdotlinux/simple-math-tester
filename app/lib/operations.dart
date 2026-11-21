@@ -500,9 +500,10 @@ class GeometrySource extends ProblemSource<FigureProblem> {
   @override
   int get highestLevel => maxGeometryLevel;
 
-  /// Every answer of levels 1 and 2 is a whole number of 0 or more.
+  /// Level 5 has decimal answers (circles, halves, half a rectangle); no
+  /// answer is negative.
   @override
-  bool get signedDecimalAnswers => false;
+  bool get signedDecimalAnswers => true;
 
   /// The problem the family named [variant] builds from [params], or null
   /// for a variant this build does not know or params that do not fit it.
@@ -525,7 +526,7 @@ class GeometrySource extends ProblemSource<FigureProblem> {
       List.unmodifiable(params),
       question.figure,
       kind,
-      question.answer * 100,
+      question.answer,
       level: level,
     );
   }
@@ -626,11 +627,15 @@ class FigureProblem extends Problem {
   final List<int> params;
   final Figure figure;
 
-  /// The labels only, free of language; screens show the localised
-  /// sentence instead (`ProblemLabel.shown` in labels.dart).
+  /// The labels and the given numbers only, free of language; screens show
+  /// the localised sentence instead (`ProblemLabel.shown` in labels.dart).
   @override
-  String get question =>
-      [for (final label in figure.labels) label.text].join(', ');
+  String get question => [
+    for (final label in figure.labels) label.text(),
+    for (final angle in figure.angles) angle.text,
+    if (figure.total case final total?) formatHundredths(total, 'en'),
+    if (figure.pi case final pi?) formatHundredths(pi, 'en'),
+  ].join(', ');
 }
 
 class Attempt {

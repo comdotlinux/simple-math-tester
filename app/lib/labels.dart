@@ -2,6 +2,7 @@ import 'dart:ui' show Locale;
 
 import 'app_theme.dart' show AppPalette;
 import 'figure.dart';
+import 'hundredths.dart';
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
@@ -38,24 +39,60 @@ extension ProblemLabel on Problem {
 
 /// The text form of [figure]: the shape, every label and what is asked,
 /// such as "Rectangle, sides 5 and 3. Perimeter?". Read from the labels
-/// themselves, so it says what the figure shows. Also the figure's
-/// semantics label and the line in the history.
+/// themselves, so it says what the figure shows; the asked angle is left
+/// to the prompt. Also the figure's semantics label and the line in the
+/// history.
 String figureSentence(AppLocalizations l, Figure figure) {
-  final sides = [for (final label in figure.labels) label.text];
+  final sides = [for (final label in figure.labels) label.text(l.localeName)];
+  final angles = [
+    for (final angle in figure.angles)
+      if (angle.degrees != null) angle.text,
+  ];
   final shape = switch (figure.shape) {
     FigureShape.square => l.figureSquare(sides[0]),
     FigureShape.rectangle => l.figureRectangle(sides[0], sides[1]),
+    FigureShape.triangle when angles.isNotEmpty => l.figureTriangleAngles(
+      angles[0],
+      angles[1],
+    ),
     FigureShape.triangle => l.figureTriangle(sides[0], sides[1], sides[2]),
+    FigureShape.rightTriangle => l.figureRightTriangle(sides[0], sides[1]),
+    FigureShape.lShape => l.figureLShape(
+      sides[0],
+      sides[1],
+      sides[2],
+      sides[3],
+    ),
+    FigureShape.straightAngle => l.figureStraightAngle(angles[0]),
+    FigureShape.rightAngle => l.figureRightAngle(angles[0]),
+    FigureShape.circle =>
+      figure.vertices.contains(figure.centre)
+          ? l.figureCircleRadius(sides[0])
+          : l.figureCircleDiameter(sides[0]),
   };
-  return l.figureQuestion(shape, figurePromptText(l, figure.prompt));
+  return l.figureQuestion(shape, figurePromptText(l, figure));
 }
 
-/// The short line under the figure, such as "Perimeter?".
-String figurePromptText(AppLocalizations l, FigurePrompt prompt) =>
-    switch (prompt) {
-      FigurePrompt.perimeter => l.figurePerimeter,
-      FigurePrompt.area => l.figureArea,
-    };
+/// The short line under the figure, such as "Perimeter?", with the given
+/// perimeter or area when a side is asked, and "Use π = 3.14." for a
+/// circle.
+String figurePromptText(AppLocalizations l, Figure figure) {
+  String number(int hundredths) => formatHundredths(hundredths, l.localeName);
+  final prompt = switch (figure.prompt) {
+    FigurePrompt.perimeter => l.figurePerimeter,
+    FigurePrompt.area => l.figureArea,
+    FigurePrompt.sideFromPerimeter => l.figureSideFromPerimeter(
+      number(figure.total!),
+    ),
+    FigurePrompt.sideFromArea => l.figureSideFromArea(number(figure.total!)),
+    FigurePrompt.angle => l.figureAngle,
+    FigurePrompt.circumference => l.figureCircumference,
+  };
+  return switch (figure.pi) {
+    final pi? => '$prompt ${l.figureUsePi(number(pi))}',
+    null => prompt,
+  };
+}
 
 extension TierLabel on Tier {
   String label(AppLocalizations l) => switch (this) {

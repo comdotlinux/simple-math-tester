@@ -1588,5 +1588,239 @@
         "type": "String"
       }
     }
+  },
+  "figureRightTriangle": "Right triangle, legs {a} and {b}.",
+  "@figureRightTriangle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with a right angle; its two shorter sides (legs) are labelled.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "figureLShape": "L-shape, sides {a}, {b}, {c} and {d}.",
+  "@figureLShape": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A shape like the letter L with four sides labelled.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      },
+      "d": {
+        "type": "String"
+      }
+    }
+  },
+  "figureTriangleAngles": "Triangle, angles {a} and {b}.",
+  "@figureTriangleAngles": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with two of its angles labelled, such as 50°.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "figureStraightAngle": "Straight line, one angle {angle}.",
+  "@figureStraightAngle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A straight line with a ray from one point, which makes two angles; one is labelled.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureRightAngle": "Right angle, one part {angle}.",
+  "@figureRightAngle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A right angle split in two by a ray; one part is labelled.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureCircleDiameter": "Circle, diameter {diameter}.",
+  "@figureCircleDiameter": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A circle with its diameter drawn and labelled.",
+    "placeholders": {
+      "diameter": {
+        "type": "String"
+      }
+    }
+  },
+  "figureCircleRadius": "Circle, radius {radius}.",
+  "@figureCircleRadius": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A circle with a radius drawn and labelled.",
+    "placeholders": {
+      "radius": {
+        "type": "String"
+      }
+    }
+  },
+  "figureSideFromPerimeter": "The perimeter is {perimeter}. Side?",
+  "@figureSideFromPerimeter": {
+    "description": "Short question under a drawn shape. Numbers come only from the placeholders; never write a number yourself. The length all around the shape is given; the side marked ? is asked. Keep the question mark; very short.",
+    "placeholders": {
+      "perimeter": {
+        "type": "String"
+      }
+    }
+  },
+  "figureSideFromArea": "The area is {area}. Side?",
+  "@figureSideFromArea": {
+    "description": "Short question under a drawn shape. Numbers come only from the placeholders; never write a number yourself. The surface of the shape is given; the side marked ? is asked. Keep the question mark; very short.",
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "figureAngle": "Angle?",
+  "@figureAngle": {
+    "description": "Short question under a drawn angle: how many degrees is the angle marked ?. Keep the question mark; very short."
+  },
+  "figureCircumference": "Circumference?",
+  "@figureCircumference": {
+    "description": "Short question under a drawn circle: how long is the way all around it? Keep the question mark; very short."
+  },
+  "figureUsePi": "Use π = {pi}.",
+  "@figureUsePi": {
+    "description": "Short question under a drawn shape. Numbers come only from the placeholders; never write a number yourself. Tells the child which value of pi to use; keep the symbol π and the = sign.",
+    "placeholders": {
+      "pi": {
+        "type": "String"
+      }
+    }
+  },
+  "stepHalfPerimeter": "Half the perimeter is two neighbouring sides.",
+  "@stepHalfPerimeter": {
+    "description": "Hint step that explains a geometry question to a child: the perimeter of a rectangle is twice one long side plus one short side. Never write a number yourself."
+  },
+  "stepRectangleSideFromArea": "The area is one side times the other: {side} × ? = {area}.",
+  "@stepRectangleSideFromArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The ? is the side asked.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "stepSquareSideFromPerimeter": "A square has four equal sides, so divide the perimeter by four.",
+  "@stepSquareSideFromPerimeter": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Write 'four' as a word."
+  },
+  "stepSquareSideFromArea": "The area of a square is side × side. Which number times itself makes {area}?",
+  "@stepSquareSideFromArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
+    "placeholders": {
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "stepSquareRoot": "{side} × {side} = {area}, so the side is {side}.",
+  "@stepSquareRoot": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "stepTriangleAngles": "The three angles of a triangle add up to 180°.",
+  "@stepTriangleAngles": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 180 and the ° sign."
+  },
+  "stepStraightAngle": "The angles on a straight line add up to 180°.",
+  "@stepStraightAngle": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 180 and the ° sign."
+  },
+  "stepRightAngle": "The square in the corner marks a right angle: 90°.",
+  "@stepRightAngle": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. Keep the number 90 and the ° sign."
+  },
+  "stepRightTriangleArea": "A right triangle is half of a rectangle with sides {a} and {b}.",
+  "@stepRightTriangleArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      }
+    }
+  },
+  "stepLShapeSides": "The sides without a number: {first} and {second}.",
+  "@stepLShapeSides": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. {first} and {second} are sums such as '5 + 3 = 8'.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
+  "stepLShapeCutOut": "Think of the whole rectangle, then take away the missing corner.",
+  "@stepLShapeCutOut": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. The shape is a rectangle with one corner cut away."
+  },
+  "stepLShapeArea": "The sides without a number: {first} and {second}. So {calculation} = {area}.",
+  "@stepLShapeArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. {first} and {second} are sums such as '5 + 3 = 8'; {calculation} is such as '8 × 6 − 3 × 4'.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "area": {
+        "type": "String"
+      }
+    }
+  },
+  "stepRectangleArea": "The area of a rectangle is one side times the other.",
+  "@stepRectangleArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. "
+  },
+  "stepCircumference": "The circumference is π times the diameter. Use π = {pi}.",
+  "@stepCircumference": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
+    "placeholders": {
+      "pi": {
+        "type": "String"
+      }
+    }
+  },
+  "stepCircleArea": "The area of a circle is π × radius × radius. Use π = {pi}.",
+  "@stepCircleArea": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ? ° π) and numbers stay exactly as given; never write a number yourself. ",
+    "placeholders": {
+      "pi": {
+        "type": "String"
+      }
+    }
   }
 }

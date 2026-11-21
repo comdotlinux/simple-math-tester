@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/figure.dart';
 import 'package:simple_math_tester/figure_view.dart';
+import 'package:simple_math_tester/hundredths.dart' show formatHundredths;
 import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/geometry.dart';
 import 'package:simple_math_tester/solution_steps.dart';
@@ -32,6 +33,107 @@ final every = [
   for (final family in GeometryFamily.values)
     for (final params in family.space) (family, params),
 ];
+
+/// The figure's edges as drawn: rays from the first corner, a circle's
+/// radius or diameter, or the closed outline.
+List<(Offset, Offset)> drawnEdges(FigureLayout drawn) {
+  final corners = drawn.vertices;
+  if (drawn.rays) {
+    return [for (final end in corners.skip(1)) (corners[0], end)];
+  }
+  if (drawn.circle != null) return [(corners[0], corners[1])];
+  return [
+    for (var i = 0; i < corners.length; i++)
+      (corners[i], corners[(i + 1) % corners.length]),
+  ];
+}
+
+/// [drawn] with some parts replaced, as a lying painter would draw it.
+FigureLayout redrawn(
+  FigureLayout drawn, {
+  List<PlacedLabel>? labels,
+  List<(Offset, Offset)>? gridLines,
+  List<AngleMark>? marks,
+  String? pi,
+  bool keepPi = true,
+  String? total,
+}) => FigureLayout(
+  vertices: drawn.vertices,
+  labels: labels ?? drawn.labels,
+  grid: drawn.grid,
+  gridLines: gridLines ?? drawn.gridLines,
+  strokeWidth: drawn.strokeWidth,
+  shaded: drawn.shaded,
+  marks: marks ?? drawn.marks,
+  rays: drawn.rays,
+  circle: drawn.circle,
+  total: total ?? drawn.total,
+  pi: keepPi ? pi ?? drawn.pi : null,
+);
+
+/// [figure] with some parts replaced, as a lying generator would build it.
+Figure copy(
+  Figure figure, {
+  List<Offset>? vertices,
+  List<SideLabel>? labels,
+  List<AngleLabel>? angles,
+  int? total,
+}) => Figure(
+  shape: figure.shape,
+  vertices: vertices ?? figure.vertices,
+  labels: labels ?? figure.labels,
+  prompt: figure.prompt,
+  grid: figure.grid,
+  angles: angles ?? figure.angles,
+  centre: figure.centre,
+  total: total ?? figure.total,
+  pi: figure.pi,
+);
+
+/// The value of a calculation such as "8 × 6 − 3 × 4", in exact
+/// hundredths: × and ÷ first, then + and − from left to right. Throws when
+/// a division or product is not a whole number of hundredths.
+int calculate(String calculation) {
+  final tokens = calculation.split(' ');
+  int number(String text) {
+    final [whole, ...decimals] = text.split('.');
+    return int.parse(whole) * 100 +
+        int.parse((decimals.isEmpty ? '' : decimals.single).padRight(2, '0'));
+  }
+
+  int exact(int a, int b) {
+    expect(a % b, 0, reason: '$calculation is not exact');
+    return a ~/ b;
+  }
+
+  final terms = <int>[number(tokens[0])];
+  final signs = <String>[];
+  for (var i = 1; i < tokens.length; i += 2) {
+    final value = number(tokens[i + 1]);
+    switch (tokens[i]) {
+      case '×':
+        terms.last = exact(terms.last * value, 100);
+      case '÷':
+        terms.last = exact(terms.last * 100, value);
+      case final sign:
+        signs.add(sign);
+        terms.add(value);
+    }
+  }
+  var result = terms[0];
+  for (final (i, sign) in signs.indexed) {
+    result += sign == '+' ? terms[i + 1] : -terms[i + 1];
+  }
+  return result;
+}
+
+final _calculation = RegExp(
+  r'(\d+(?:\.\d+)?(?: [+−×÷] \d+(?:\.\d+)?)+) = (\d+(?:\.\d+)?)',
+);
+
+/// A number as a whole token of [text], not part of a longer number.
+RegExp numberToken(String number) =>
+    RegExp('(?<![\\d.])${RegExp.escape(number)}(?![\\d]|\\.\\d)');
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -66,36 +168,75 @@ void main() {
       for (final (family, _) in every)
         if (family.level == level) family,
     ].length;
-    expect(GeometryFamily.squarePerimeter.space, hasLength(12));
-    expect(GeometryFamily.rectanglePerimeter.space, hasLength(108));
-    expect(GeometryFamily.trianglePerimeter.space, hasLength(156));
-    expect(GeometryFamily.rectangleArea.space, hasLength(84));
+    final sizes = {
+      for (final family in GeometryFamily.values)
+        family.name: family.space.length,
+    };
+    // ignore: avoid_print
+    print('geometry families: $sizes');
+    expect(sizes, {
+      'squarePerimeter': 12,
+      'rectanglePerimeter': 108,
+      'trianglePerimeter': 156,
+      'rectangleArea': 84,
+      'squareSideFromPerimeter': 12,
+      'squareSideFromArea': 12,
+      'rectangleSideFromPerimeter': 108,
+      'rectangleSideFromArea': 108,
+      'triangleAngle': 7381,
+      'straightAngle': 141,
+      'rightAngle': 71,
+      'rightTriangleArea': 98,
+      'lShapePerimeter': 396,
+      'lShapeArea': 396,
+      'halvesRectanglePerimeter': 324,
+      'halvesRectangleArea': 324,
+      'circleCircumference': 20,
+      'circleArea': 10,
+    });
     expect(count(1), 276);
     expect(count(2), 84);
+    expect(count(3), 240);
+    expect(count(4), 7593);
+    expect(count(5), 1568);
     expect(
       GeometryFamily.values.map((family) => family.level).reduce(max),
       maxGeometryLevel,
     );
   });
 
-  test('every problem of levels 1 and 2 passes the oracle in every size', () {
+  test('every problem of every level passes the oracle in every size', () {
     final watch = Stopwatch()..start();
-    var checks = 0;
+    final checks = <int, int>{};
+    final times = <int, int>{};
     for (final (family, params) in every) {
+      final started = watch.elapsedMicroseconds;
       final (:figure, :answer) = family.build(params);
       expect(figure.grid, family.level == 2, reason: '$family $params');
       for (final scale in scales) {
         for (final canvas in canvases) {
           final drawn = layoutFigure(figure, canvas, measures[scale]!);
           checkFigure(figure.shape, figure.prompt, drawn, answer);
-          checks++;
+          checks.update(family.level, (n) => n + 1, ifAbsent: () => 1);
         }
       }
+      times.update(
+        family.level,
+        (t) => t + watch.elapsedMicroseconds - started,
+        ifAbsent: () => watch.elapsedMicroseconds - started,
+      );
+    }
+    for (var level = 1; level <= maxGeometryLevel; level++) {
+      // ignore: avoid_print
+      print(
+        'geometry oracle level $level: ${checks[level]} checks in '
+        '${times[level]! ~/ 1000} ms',
+      );
     }
     // ignore: avoid_print
     print(
-      'geometry oracle: $checks checks of ${every.length} problems in '
-      '${watch.elapsedMilliseconds} ms',
+      'geometry oracle: ${checks.values.reduce((a, b) => a + b)} checks of '
+      '${every.length} problems in ${watch.elapsedMilliseconds} ms',
     );
   });
 
@@ -129,15 +270,99 @@ void main() {
     for (final family in [
       GeometryFamily.rectanglePerimeter,
       GeometryFamily.rectangleArea,
+      GeometryFamily.rectangleSideFromPerimeter,
+      GeometryFamily.rectangleSideFromArea,
     ]) {
       for (final [width, height] in family.space) {
         final (shorter, longer) = (min(width, height), max(width, height));
         expect(shorter, greaterThanOrEqualTo(1));
-        expect(longer, lessThanOrEqualTo(family.level == 1 ? 12 : 10));
+        expect(longer, lessThanOrEqualTo(family.level == 2 ? 10 : 12));
         expect(longer, lessThanOrEqualTo(4 * shorter));
-        if (family.level == 1) expect(width, isNot(height));
+        if (family.level != 2) expect(width, isNot(height));
       }
     }
+  });
+
+  test('every angle drawn is whole and at least 20°, in a right angle at '
+      'least 10°', () {
+    for (final family in [
+      GeometryFamily.triangleAngle,
+      GeometryFamily.straightAngle,
+      GeometryFamily.rightAngle,
+    ]) {
+      final least = family == GeometryFamily.rightAngle ? 10 : 20;
+      for (final params in family.space) {
+        final (:figure, :answer) = family.build(params);
+        final angles = [
+          for (final angle in figure.angles) angle.degrees ?? answer ~/ 100,
+        ];
+        expect(answer % 100, 0);
+        expect(angles.every((a) => a >= least), isTrue, reason: '$params');
+        expect(
+          angles.reduce((a, b) => a + b),
+          family == GeometryFamily.rightAngle ? 90 : 180,
+        );
+      }
+    }
+  });
+
+  test('right triangles: legs 1 to 12, every angle at least 20°, the '
+      'hypotenuse without a number', () {
+    for (final [a, b] in GeometryFamily.rightTriangleArea.space) {
+      expect([a, b].every((leg) => leg >= 1 && leg <= 12), isTrue);
+      expect(atan(min(a, b) / max(a, b)) * 180 / pi, greaterThanOrEqualTo(20));
+      final (:figure, :answer) = GeometryFamily.rightTriangleArea.build([a, b]);
+      expect(figure.labels.map((label) => label.edge), unorderedEquals([0, 2]));
+      expect(answer, a * b * 50);
+    }
+  });
+
+  test('L-shapes: outer sides 4 to 12, wider than tall, every edge at least '
+      'a quarter of the width', () {
+    for (final [width, height, cutWidth, cutHeight]
+        in GeometryFamily.lShapeArea.space) {
+      expect([width, height].every((s) => s >= 4 && s <= 12), isTrue);
+      expect(width, greaterThan(height));
+      final edges = [
+        width - cutWidth,
+        cutHeight,
+        cutWidth,
+        height - cutHeight,
+        width,
+        height,
+      ];
+      expect(
+        edges.every((e) => e >= 1 && 4 * e >= max(width, height)),
+        isTrue,
+        reason: '$edges',
+      );
+    }
+    expect(
+      GeometryFamily.lShapePerimeter.space,
+      GeometryFamily.lShapeArea.space,
+    );
+  });
+
+  test('halves: sides 0.5 to 12 in halves, at least one not whole, unequal, '
+      'the longer at most 4 times the shorter', () {
+    for (final [width, height] in GeometryFamily.halvesRectangleArea.space) {
+      expect([width, height].every((s) => s >= 1 && s <= 24), isTrue);
+      expect(width.isOdd || height.isOdd, isTrue);
+      expect(width, isNot(height));
+      expect(max(width, height), lessThanOrEqualTo(4 * min(width, height)));
+    }
+  });
+
+  test('circle answers are 314 × d and 314 × r × r hundredths, never '
+      'floating point', () {
+    for (final [d] in GeometryFamily.circleCircumference.space) {
+      expect(GeometryFamily.circleCircumference.build([d]).answer, 314 * d);
+    }
+    for (final [r] in GeometryFamily.circleArea.space) {
+      expect(GeometryFamily.circleArea.build([r]).answer, 314 * r * r);
+    }
+    // In doubles 3.14 * 3 * 3 is 28.259999999999998.
+    expect(GeometryFamily.circleArea.build([3]).answer, 2826);
   });
 
   test('build rejects parameters outside the space', () {
@@ -152,6 +377,27 @@ void main() {
       (GeometryFamily.rectangleArea, [11, 10]),
       (GeometryFamily.rectangleArea, [1, 5]),
       (GeometryFamily.rectangleArea, [3]),
+      (GeometryFamily.squareSideFromArea, [13]),
+      (GeometryFamily.rectangleSideFromPerimeter, [4, 4]),
+      (GeometryFamily.rectangleSideFromArea, [1, 5]),
+      (GeometryFamily.triangleAngle, [19, 60]),
+      (GeometryFamily.triangleAngle, [80, 81]),
+      (GeometryFamily.triangleAngle, [50]),
+      (GeometryFamily.straightAngle, [161]),
+      (GeometryFamily.rightAngle, [9]),
+      (GeometryFamily.rightAngle, [81]),
+      (GeometryFamily.rightTriangleArea, [1, 3]),
+      (GeometryFamily.rightTriangleArea, [13, 12]),
+      (GeometryFamily.lShapeArea, [12, 12, 1, 6]),
+      (GeometryFamily.lShapeArea, [3, 4, 1, 1]),
+      (GeometryFamily.lShapePerimeter, [8, 8, 8, 4]),
+      (GeometryFamily.halvesRectangleArea, [4, 6]),
+      (GeometryFamily.halvesRectangleArea, [1, 5]),
+      (GeometryFamily.halvesRectanglePerimeter, [25, 23]),
+      (GeometryFamily.circleCircumference, [0]),
+      (GeometryFamily.circleCircumference, [21]),
+      (GeometryFamily.circleArea, [11]),
+      (GeometryFamily.circleArea, [5, 5]),
     ]) {
       expect(
         () => family.build(params),
@@ -166,36 +412,41 @@ void main() {
     // square of side 7 perimeter 28; a 3-4-5 triangle perimeter 12 (its
     // smallest angle is about 37°, but the generator keeps the base
     // longest, so it is drawn as base 5, left 3, right 4).
-    final rectangle = GeometryFamily.rectanglePerimeter.build([5, 3]);
-    expect(rectangle.answer, 16);
-    checkFigure(
-      FigureShape.rectangle,
-      FigurePrompt.perimeter,
-      layout(rectangle.figure),
-      16,
-    );
-    final area = GeometryFamily.rectangleArea.build([5, 3]);
-    expect(area.answer, 15);
-    checkFigure(
-      FigureShape.rectangle,
-      FigurePrompt.area,
-      layout(area.figure),
-      15,
-    );
-    final square = GeometryFamily.squarePerimeter.build([7]);
-    checkFigure(
-      FigureShape.square,
-      FigurePrompt.perimeter,
-      layout(square.figure),
-      28,
-    );
-    final triangle = GeometryFamily.trianglePerimeter.build([5, 3, 4]);
-    checkFigure(
-      FigureShape.triangle,
-      FigurePrompt.perimeter,
-      layout(triangle.figure),
-      12,
-    );
+    void solves(GeometryFamily family, List<int> params, int hundredths) {
+      final (:figure, :answer) = family.build(params);
+      expect(answer, hundredths, reason: '$family $params');
+      expect(
+        checkFigure(figure.shape, figure.prompt, layout(figure), hundredths),
+        hundredths,
+      );
+    }
+
+    solves(GeometryFamily.rectanglePerimeter, [5, 3], 1600);
+    solves(GeometryFamily.rectangleArea, [5, 3], 1500);
+    solves(GeometryFamily.squarePerimeter, [7], 2800);
+    solves(GeometryFamily.trianglePerimeter, [5, 3, 4], 1200);
+    // A perimeter of 16 with one side 5: the other is 16 ÷ 2 − 5 = 3. An
+    // area of 15 with one side 5: 15 ÷ 5 = 3. A square of area 49: 7.
+    solves(GeometryFamily.rectangleSideFromPerimeter, [5, 3], 300);
+    solves(GeometryFamily.rectangleSideFromArea, [5, 3], 300);
+    solves(GeometryFamily.squareSideFromPerimeter, [7], 700);
+    solves(GeometryFamily.squareSideFromArea, [7], 700);
+    // 180 − 50 − 60 = 70; on a line 180 − 35 = 145; in a corner 90 − 30.
+    solves(GeometryFamily.triangleAngle, [50, 60], 7000);
+    solves(GeometryFamily.straightAngle, [35], 14500);
+    solves(GeometryFamily.rightAngle, [30], 6000);
+    // Legs 6 and 4: 6 × 4 ÷ 2 = 12; legs 3 and 5: 7.5.
+    solves(GeometryFamily.rightTriangleArea, [6, 4], 1200);
+    solves(GeometryFamily.rightTriangleArea, [3, 5], 750);
+    // An 8 by 6 L-shape missing a 3 by 2 corner: perimeter 28, area 42.
+    solves(GeometryFamily.lShapePerimeter, [8, 6, 3, 2], 2800);
+    solves(GeometryFamily.lShapeArea, [8, 6, 3, 2], 4200);
+    // 2.5 by 1.5: perimeter 8, area 3.75.
+    solves(GeometryFamily.halvesRectanglePerimeter, [5, 3], 800);
+    solves(GeometryFamily.halvesRectangleArea, [5, 3], 375);
+    // With π = 3.14: diameter 6 gives 18.84, radius 5 gives 78.5.
+    solves(GeometryFamily.circleCircumference, [6], 1884);
+    solves(GeometryFamily.circleArea, [5], 7850);
     expect(parseHundredths('2.5'), 250);
     expect(parseHundredths('12'), 1200);
     expect(parseHundredths('?'), isNull);
@@ -205,21 +456,18 @@ void main() {
     void mustFail(void Function() check, String why) =>
         expect(check, throwsA(isA<OracleFailure>()), reason: why);
 
-    Figure copy(
-      Figure figure, {
-      List<Offset>? vertices,
-      List<SideLabel>? labels,
-    }) => Figure(
-      shape: figure.shape,
-      vertices: vertices ?? figure.vertices,
-      labels: labels ?? figure.labels,
-      prompt: figure.prompt,
-      grid: figure.grid,
-    );
-
     test('answer + 1', () {
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
+        mustFail(
+          () => checkFigure(
+            figure.shape,
+            figure.prompt,
+            layout(figure),
+            answer + 100,
+          ),
+          '$family $params',
+        );
         mustFail(
           () => checkFigure(
             figure.shape,
@@ -232,12 +480,14 @@ void main() {
       }
     });
 
-    test('a label value changed', () {
+    test('a label value changed: a length by 1, an angle by 1°', () {
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
         for (var i = 0; i < figure.labels.length; i++) {
           final labels = [...figure.labels];
-          labels[i] = SideLabel(labels[i].edge, labels[i].hundredths! + 100);
+          final value = labels[i].hundredths;
+          if (value == null) continue;
+          labels[i] = SideLabel(labels[i].edge, value + 100);
           final changed = copy(figure, labels: labels);
           mustFail(
             () => checkFigure(
@@ -249,22 +499,51 @@ void main() {
             '$family $params label $i',
           );
         }
+        for (var i = 0; i < figure.angles.length; i++) {
+          final angles = [...figure.angles];
+          final value = angles[i].degrees;
+          if (value == null) continue;
+          angles[i] = AngleLabel(angles[i].corner, value + 1);
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              layout(copy(figure, angles: angles)),
+              answer,
+            ),
+            '$family $params angle $i',
+          );
+        }
       }
     });
 
-    test('a label moved to the next edge', () {
-      // On a square every edge has the same length, so a moved label still
-      // tells the truth; only rectangles and triangles can lie this way.
+    test('a label moved to the next edge or angle', () {
+      // On a square every edge has the same length, and a circle has one
+      // line, so a moved label still tells the truth there.
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
-        if (figure.shape == FigureShape.square) continue;
-        final count = figure.vertices.length;
-        final labels = [...figure.labels];
-        labels[0] = SideLabel(
-          (labels[0].edge + 1) % count,
-          labels[0].hundredths,
-        );
-        final moved = copy(figure, labels: labels);
+        if (figure.shape == FigureShape.square ||
+            figure.shape == FigureShape.circle) {
+          continue;
+        }
+        final Figure moved;
+        if (figure.labels.isEmpty) {
+          final angles = [...figure.angles];
+          final rays = figure.shape != FigureShape.triangle;
+          angles[0] = AngleLabel(
+            rays ? 3 - angles[0].corner : (angles[0].corner + 1) % 3,
+            angles[0].degrees,
+          );
+          moved = copy(figure, angles: angles);
+        } else {
+          final count = figure.vertices.length;
+          final labels = [...figure.labels];
+          labels[0] = SideLabel(
+            (labels[0].edge + 1) % count,
+            labels[0].hundredths,
+          );
+          moved = copy(figure, labels: labels);
+        }
         mustFail(
           () => checkFigure(figure.shape, figure.prompt, layout(moved), answer),
           '$family $params',
@@ -272,27 +551,31 @@ void main() {
       }
     });
 
-    test('a label box drawn at another edge', () {
+    test('a label box drawn at another edge or angle', () {
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
         if (figure.shape == FigureShape.square) continue;
         final drawn = layout(figure);
+        if (drawn.labels.length < 2) continue;
         // The first label's box swaps places with the second's.
         final labels = [...drawn.labels];
         labels[0] = PlacedLabel(labels[0].text, drawn.labels[1].box);
         labels[1] = PlacedLabel(labels[1].text, drawn.labels[0].box);
-        final swapped = FigureLayout(
-          vertices: drawn.vertices,
-          labels: labels,
-          grid: drawn.grid,
-          gridLines: drawn.gridLines,
-          strokeWidth: drawn.strokeWidth,
-          shaded: drawn.shaded,
-        );
-        // Swapping two equal numbers changes nothing a child can see.
-        if (labels[0].text == labels[1].text) continue;
+        // Swapping two equal numbers changes nothing a child can see, also
+        // when the ? stands for the same number.
+        String value(PlacedLabel label) => label.text != '?'
+            ? label.text
+            : figure.prompt == FigurePrompt.angle
+            ? '${answer ~/ 100}°'
+            : formatHundredths(answer, 'en');
+        if (value(labels[0]) == value(labels[1])) continue;
         mustFail(
-          () => checkFigure(figure.shape, figure.prompt, swapped, answer),
+          () => checkFigure(
+            figure.shape,
+            figure.prompt,
+            redrawn(drawn, labels: labels),
+            answer,
+          ),
           '$family $params',
         );
       }
@@ -301,7 +584,16 @@ void main() {
     test('the figure stretched by 20% in one direction', () {
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
+        // A circle has one length: any size of it is to scale.
+        if (figure.shape == FigureShape.circle) continue;
         for (final stretch in [const Offset(1.2, 1), const Offset(1, 1.2)]) {
+          // A ray nearly square to the line turns by less than a degree:
+          // no drawn angle changes by a whole degree.
+          if (family == GeometryFamily.straightAngle) {
+            final a = params[0] * pi / 180;
+            final turned = atan2(sin(a) * stretch.dy, cos(a) * stretch.dx);
+            if ((turned - a).abs() * 180 / pi < 1) continue;
+          }
           final stretched = copy(
             figure,
             vertices: [
@@ -322,16 +614,16 @@ void main() {
       }
     });
 
-    test('perimeter and area prompt keys swapped', () {
+    test('prompt keys swapped', () {
       for (final (family, params) in every) {
         final (:figure, :answer) = family.build(params);
-        final other = figure.prompt == FigurePrompt.area
-            ? FigurePrompt.perimeter
-            : FigurePrompt.area;
-        mustFail(
-          () => checkFigure(figure.shape, other, layout(figure), answer),
-          '$family $params',
-        );
+        for (final other in FigurePrompt.values) {
+          if (other == figure.prompt) continue;
+          mustFail(
+            () => checkFigure(figure.shape, other, layout(figure), answer),
+            '$family $params $other',
+          );
+        }
       }
     });
 
@@ -350,6 +642,40 @@ void main() {
             '$family $params label $i',
           );
         }
+        for (var i = 0; i < figure.angles.length; i++) {
+          final hidden = copy(figure, angles: [...figure.angles]..removeAt(i));
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              layout(hidden),
+              answer,
+            ),
+            '$family $params angle $i',
+          );
+        }
+      }
+    });
+
+    test('hiding one needed L-shape label fails the label solver', () {
+      for (final family in [
+        GeometryFamily.lShapePerimeter,
+        GeometryFamily.lShapeArea,
+      ]) {
+        for (final params in family.space) {
+          final figure = family.build(params).figure;
+          expect(figure.labels, hasLength(4));
+          for (var i = 0; i < 4; i++) {
+            final hidden = copy(
+              figure,
+              labels: [...figure.labels]..removeAt(i),
+            );
+            mustFail(
+              () => solveFigure(figure.shape, figure.prompt, layout(hidden)),
+              '$family $params label $i',
+            );
+          }
+        }
       }
     });
 
@@ -359,18 +685,129 @@ void main() {
         final drawn = layout(figure);
         // A single unit square has no inner line to remove.
         if (drawn.gridLines.isEmpty) continue;
-        final fewer = FigureLayout(
-          vertices: drawn.vertices,
-          labels: drawn.labels,
-          grid: drawn.grid,
-          gridLines: drawn.gridLines.sublist(1),
-          strokeWidth: drawn.strokeWidth,
-          shaded: drawn.shaded,
-        );
         mustFail(
-          () => checkFigure(figure.shape, figure.prompt, fewer, answer),
+          () => checkFigure(
+            figure.shape,
+            figure.prompt,
+            redrawn(drawn, gridLines: drawn.gridLines.sublist(1)),
+            answer,
+          ),
           '$params',
         );
+      }
+    });
+
+    test('an angle arc or the right-angle square removed', () {
+      for (final (family, params) in every) {
+        final (:figure, :answer) = family.build(params);
+        final drawn = layout(figure);
+        for (var i = 0; i < drawn.marks.length; i++) {
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              redrawn(drawn, marks: [...drawn.marks]..removeAt(i)),
+              answer,
+            ),
+            '$family $params mark $i',
+          );
+        }
+      }
+    });
+
+    test('the radius and diameter cues swapped', () {
+      for (final family in [
+        GeometryFamily.circleCircumference,
+        GeometryFamily.circleArea,
+      ]) {
+        for (final params in family.space) {
+          final (:figure, :answer) = family.build(params);
+          final radius = figure.vertices.contains(figure.centre);
+          final r = (figure.vertices[1] - figure.centre!).distance;
+          final swapped = copy(
+            figure,
+            vertices: radius
+                ? [Offset(-r, 0), Offset(r, 0)]
+                : [Offset.zero, Offset(r, 0)],
+          );
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              layout(swapped),
+              answer,
+            ),
+            '$family $params',
+          );
+        }
+      }
+    });
+
+    test('the π line removed or changed', () {
+      for (final family in [
+        GeometryFamily.circleCircumference,
+        GeometryFamily.circleArea,
+      ]) {
+        for (final params in family.space) {
+          final (:figure, :answer) = family.build(params);
+          final drawn = layout(figure);
+          expect(drawn.pi, '3.14');
+          for (final mutant in [
+            redrawn(drawn, keepPi: false),
+            redrawn(drawn, pi: '3'),
+            redrawn(drawn, pi: '3.15'),
+          ]) {
+            mustFail(
+              () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+              '$family $params ${mutant.pi}',
+            );
+          }
+        }
+      }
+    });
+
+    test('the missing side ? moved, or the given total changed', () {
+      for (final family in [
+        GeometryFamily.squareSideFromPerimeter,
+        GeometryFamily.squareSideFromArea,
+        GeometryFamily.rectangleSideFromPerimeter,
+        GeometryFamily.rectangleSideFromArea,
+      ]) {
+        for (final params in family.space) {
+          final (:figure, :answer) = family.build(params);
+          final asked = figure.labels.indexWhere((l) => l.hundredths == null);
+          final mutants = [
+            copy(figure, total: figure.total! + 100),
+            // A rectangle's ? onto the labelled side or the side across
+            // from it; a square's sides are all equal.
+            if (figure.shape == FigureShape.rectangle)
+              for (final edge in [0, 2])
+                copy(
+                  figure,
+                  labels: [...figure.labels]..[asked] = SideLabel(edge, null),
+                ),
+          ];
+          for (final mutant in mutants) {
+            mustFail(
+              () => checkFigure(
+                figure.shape,
+                figure.prompt,
+                layout(mutant),
+                answer,
+              ),
+              '$family $params',
+            );
+          }
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              redrawn(layout(figure), total: '0'),
+              answer,
+            ),
+            '$family $params total 0',
+          );
+        }
       }
     });
   });
@@ -378,6 +815,7 @@ void main() {
   test('labels are at least 12 px, inside the canvas, apart from each other '
       'and off every corner and edge, at text scale 1 and 2, in phone and '
       'compact sizes', () {
+    final watch = Stopwatch()..start();
     var shortestEdge = double.infinity;
     var smallestSquare = double.infinity;
     for (final scale in scales) {
@@ -392,10 +830,7 @@ void main() {
           final drawn = layoutFigure(figure, canvas, measures[scale]!);
           final where = '$family $params $canvas x$scale';
           final corners = drawn.vertices;
-          final edges = [
-            for (var i = 0; i < corners.length; i++)
-              (corners[i], corners[(i + 1) % corners.length]),
-          ];
+          final edges = drawnEdges(drawn);
           for (final (a, b) in edges) {
             shortestEdge = min(shortestEdge, (b - a).distance);
           }
@@ -434,10 +869,24 @@ void main() {
             final inner = label.box.deflate(.5);
             for (final (a, b) in edges) {
               for (var t = 0.0; t <= 1; t += 1 / 64) {
+                if (inner.contains(Offset.lerp(a, b, t)!)) {
+                  fail('$where: ${label.text} covers the outline');
+                }
+              }
+            }
+            // Inside a circle, clear of its outline.
+            if (drawn.circle case final circle?) {
+              final room = circle.width / 2 - drawn.strokeWidth / 2;
+              for (final corner in [
+                label.box.topLeft,
+                label.box.topRight,
+                label.box.bottomLeft,
+                label.box.bottomRight,
+              ]) {
                 expect(
-                  inner.contains(Offset.lerp(a, b, t)!),
-                  isFalse,
-                  reason: '$where: ${label.text} covers the outline',
+                  (corner - circle.center).distance,
+                  lessThanOrEqualTo(room),
+                  reason: '$where: ${label.text} crosses the circle',
                 );
               }
             }
@@ -449,15 +898,18 @@ void main() {
     // grid square is still a square to count.
     expect(shortestEdge, greaterThanOrEqualTo(16));
     expect(smallestSquare, greaterThanOrEqualTo(8));
+    // ignore: avoid_print
+    print('geometry layout rules: ${watch.elapsedMilliseconds} ms');
   });
 
-  test('the label, outline, shading and grid colours are readable in '
+  test('the label, outline, shading, grid and mark colours are readable in '
       'every colour theme', () {
     for (final palette in AppPalette.values) {
       for (final brightness in Brightness.values) {
         final colors = figureColors(AppTokens.of(palette, brightness));
         final where = '${palette.name} ${brightness.name}';
-        // Numbers and the ? are text on the card.
+        // Numbers and the ? are text on the card; inside a shaded circle
+        // they stand on a patch of the card.
         expect(
           contrast(colors.label, colors.card),
           greaterThanOrEqualTo(4.5),
@@ -479,107 +931,251 @@ void main() {
           greaterThanOrEqualTo(3),
           reason: where,
         );
+        // Angle arcs, the right-angle square, a circle's radius or
+        // diameter and its centre, on the card and on a shaded inside.
+        expect(
+          contrast(markColor(colors, shaded: false), colors.card),
+          greaterThanOrEqualTo(3),
+          reason: where,
+        );
+        expect(
+          contrast(markColor(colors, shaded: true), colors.shade),
+          greaterThanOrEqualTo(3),
+          reason: where,
+        );
       }
     }
     // The cues differ in shape too, never by colour alone.
     expect(thickStroke, greaterThanOrEqualTo(2 * thinStroke));
   });
 
-  test('the sentence names the shape, every label and the question', () {
+  test('the sentence names the shape, every number shown and the question', () {
     for (final (family, params) in every) {
       final figure = family.build(params).figure;
       final sentence = figureSentence(en, figure);
-      final numbers = RegExp(r'\d+').allMatches(sentence).map((m) => m[0]);
+      final numbers = RegExp(r'\d+(?:\.\d+)?')
+          .allMatches(sentence)
+          .map((m) => m[0]);
       expect(numbers, [
-        for (final label in figure.labels) label.text,
+        for (final label in figure.labels)
+          if (label.hundredths != null) label.text(),
+        for (final angle in figure.angles) ?angle.degrees?.toString(),
+        if (figure.total case final total?) formatHundredths(total, 'en'),
+        if (figure.pi != null) '3.14',
       ], reason: sentence);
       expect(
         sentence,
-        endsWith(figure.prompt == FigurePrompt.area ? 'Area?' : 'Perimeter?'),
+        endsWith(switch (figure.prompt) {
+          FigurePrompt.area when figure.pi != null => 'Area? Use π = 3.14.',
+          FigurePrompt.area => 'Area?',
+          FigurePrompt.perimeter => 'Perimeter?',
+          FigurePrompt.sideFromPerimeter ||
+          FigurePrompt.sideFromArea => 'Side?',
+          FigurePrompt.angle => 'Angle?',
+          FigurePrompt.circumference => 'Circumference? Use π = 3.14.',
+        }),
+        reason: sentence,
       );
     }
+    String sentence(GeometryFamily family, List<int> params) =>
+        figureSentence(en, family.build(params).figure);
     expect(
-      figureSentence(
-        en,
-        GeometryFamily.rectanglePerimeter.build([5, 3]).figure,
-      ),
+      sentence(GeometryFamily.rectanglePerimeter, [5, 3]),
       'Rectangle, sides 5 and 3. Perimeter?',
     );
     expect(
-      figureSentence(en, GeometryFamily.squarePerimeter.build([7]).figure),
+      sentence(GeometryFamily.squarePerimeter, [7]),
       'Square, side 7. Perimeter?',
     );
     expect(
-      figureSentence(
-        en,
-        GeometryFamily.trianglePerimeter.build([5, 3, 4]).figure,
-      ),
+      sentence(GeometryFamily.trianglePerimeter, [5, 3, 4]),
       'Triangle, sides 3, 4 and 5. Perimeter?',
     );
     expect(
-      figureSentence(en, GeometryFamily.rectangleArea.build([4, 2]).figure),
+      sentence(GeometryFamily.rectangleArea, [4, 2]),
       'Rectangle, sides 4 and 2. Area?',
+    );
+    expect(
+      sentence(GeometryFamily.rectangleSideFromPerimeter, [5, 3]),
+      'Rectangle, sides 5 and ?. The perimeter is 16. Side?',
+    );
+    expect(
+      sentence(GeometryFamily.squareSideFromArea, [7]),
+      'Square, side ?. The area is 49. Side?',
+    );
+    expect(
+      sentence(GeometryFamily.triangleAngle, [50, 60]),
+      'Triangle, angles 50° and 60°. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.straightAngle, [35]),
+      'Straight line, one angle 35°. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.rightAngle, [30]),
+      'Right angle, one part 30°. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.rightTriangleArea, [6, 4]),
+      'Right triangle, legs 4 and 6. Area?',
+    );
+    expect(
+      sentence(GeometryFamily.lShapeArea, [8, 6, 3, 2]),
+      'L-shape, sides 5, 3, 4 and 6. Area?',
+    );
+    expect(
+      sentence(GeometryFamily.halvesRectangleArea, [5, 3]),
+      'Rectangle, sides 2.5 and 1.5. Area?',
+    );
+    expect(
+      sentence(GeometryFamily.circleCircumference, [6]),
+      'Circle, diameter 6. Circumference? Use π = 3.14.',
+    );
+    expect(
+      sentence(GeometryFamily.circleArea, [5]),
+      'Circle, radius 5. Area? Use π = 3.14.',
     );
   });
 
-  test('hints: at least two steps, the sum written out, the answer only in '
-      'the last step unless the figure shows it', () {
+  test('hints: at least two steps, every calculation right, the answer only '
+      'in the last step unless the figure shows it', () {
     for (final (family, params) in every) {
       final (:figure, :answer) = family.build(params);
       final steps = [for (final step in figureSteps(figure)) step(en)];
       final where = '$family $params: $steps';
       expect(steps.length, greaterThanOrEqualTo(2), reason: where);
-      final shown = {for (final label in figure.labels) label.text};
+      final answerText = formatHundredths(answer, 'en');
+      final shown = {
+        for (final label in figure.labels) label.text(),
+        for (final angle in figure.angles) ?angle.degrees?.toString(),
+        if (figure.total case final total?) formatHundredths(total, 'en'),
+        if (figure.pi case final pi?) formatHundredths(pi, 'en'),
+      };
       for (final step in steps.take(steps.length - 1)) {
-        if (shown.contains('$answer')) continue;
-        expect(
-          step,
-          isNot(matches(RegExp('(?<!\\d)$answer(?!\\d)'))),
-          reason: where,
-        );
+        if (shown.contains(answerText)) continue;
+        expect(step, isNot(contains(numberToken(answerText))), reason: where);
       }
-      // The last step is a calculation that adds up and ends in the answer.
-      final last = RegExp(r'([\d +×]+) = (\d+)').firstMatch(steps.last)!;
-      final terms = last[1]!.trim();
-      final value = terms.contains('×')
-          ? terms
-                .split('×')
-                .map((t) => int.parse(t.trim()))
-                .reduce((a, b) => a * b)
-          : terms
-                .split('+')
-                .map((t) => int.parse(t.trim()))
-                .reduce((a, b) => a + b);
-      expect(value, answer, reason: where);
-      expect(int.parse(last[2]!), answer, reason: where);
+      // Every calculation in every step adds up, in exact hundredths.
+      for (final step in steps) {
+        for (final match in _calculation.allMatches(step)) {
+          expect(
+            calculate(match[1]!),
+            calculate(match[2]!),
+            reason: '$where: ${match[0]}',
+          );
+        }
+      }
+      // The last step's last calculation ends in the answer; for a square
+      // from its area it is side × side = area, then the side.
+      final last = _calculation.allMatches(steps.last).last;
+      if (family == GeometryFamily.squareSideFromArea) {
+        expect(last[1], '$answerText × $answerText', reason: where);
+        expect(steps.last, endsWith('is $answerText.'), reason: where);
+      } else {
+        expect(last[2], answerText, reason: where);
+      }
     }
-    expect(
-      [
-        for (final step in figureSteps(
-          GeometryFamily.rectanglePerimeter.build([5, 3]).figure,
-        ))
-          step(en),
-      ],
-      [
-        'The two sides without a number are as long as the sides opposite '
-            'them: 5 and 3.',
-        'Add all the sides: 5 + 3 + 5 + 3 = 16.',
-      ],
+    List<String> hint(GeometryFamily family, List<int> params) => [
+      for (final step in figureSteps(family.build(params).figure)) step(en),
+    ];
+    expect(hint(GeometryFamily.rectanglePerimeter, [5, 3]), [
+      'The two sides without a number are as long as the sides opposite '
+          'them: 5 and 3.',
+      'Add all the sides: 5 + 3 + 5 + 3 = 16.',
+    ]);
+    expect(hint(GeometryFamily.rectangleArea, [4, 2]), [
+      'Count the squares: 2 rows of 4 squares each.',
+      'So 2 × 4 = 8.',
+    ]);
+    expect(hint(GeometryFamily.rectangleSideFromPerimeter, [5, 3]), [
+      'Half the perimeter is two neighbouring sides.',
+      'So 16 ÷ 2 − 5 = 3.',
+    ]);
+    expect(hint(GeometryFamily.rectangleSideFromArea, [5, 3]), [
+      'The area is one side times the other: 5 × ? = 15.',
+      'So 15 ÷ 5 = 3.',
+    ]);
+    expect(hint(GeometryFamily.squareSideFromPerimeter, [7]), [
+      'A square has four equal sides, so divide the perimeter by four.',
+      'So 28 ÷ 4 = 7.',
+    ]);
+    expect(hint(GeometryFamily.squareSideFromArea, [7]), [
+      'The area of a square is side × side. Which number times itself '
+          'makes 49?',
+      '7 × 7 = 49, so the side is 7.',
+    ]);
+    expect(hint(GeometryFamily.triangleAngle, [50, 60]), [
+      'The three angles of a triangle add up to 180°.',
+      'So 180 − 50 − 60 = 70.',
+    ]);
+    expect(hint(GeometryFamily.straightAngle, [35]), [
+      'The angles on a straight line add up to 180°.',
+      'So 180 − 35 = 145.',
+    ]);
+    expect(hint(GeometryFamily.rightAngle, [30]), [
+      'The square in the corner marks a right angle: 90°.',
+      'So 90 − 30 = 60.',
+    ]);
+    expect(hint(GeometryFamily.rightTriangleArea, [3, 5]), [
+      'A right triangle is half of a rectangle with sides 3 and 5.',
+      'So 3 × 5 ÷ 2 = 7.5.',
+    ]);
+    expect(hint(GeometryFamily.lShapePerimeter, [8, 6, 3, 2]), [
+      'The sides without a number: 5 + 3 = 8 and 6 − 4 = 2.',
+      'Add all the sides: 5 + 2 + 3 + 4 + 8 + 6 = 28.',
+    ]);
+    expect(hint(GeometryFamily.lShapeArea, [8, 6, 3, 2]), [
+      'Think of the whole rectangle, then take away the missing corner.',
+      'The sides without a number: 5 + 3 = 8 and 6 − 4 = 2. So 8 × 6 − 3 × 2 '
+          '= 42.',
+    ]);
+    expect(hint(GeometryFamily.halvesRectangleArea, [5, 3]), [
+      'The area of a rectangle is one side times the other.',
+      'So 2.5 × 1.5 = 3.75.',
+    ]);
+    expect(hint(GeometryFamily.circleCircumference, [6]), [
+      'The circumference is π times the diameter. Use π = 3.14.',
+      'So 3.14 × 6 = 18.84.',
+    ]);
+    expect(hint(GeometryFamily.circleArea, [5]), [
+      'The area of a circle is π × radius × radius. Use π = 3.14.',
+      'So 3.14 × 5 × 5 = 78.5.',
+    ]);
+  });
+
+  test('a hint calculation off by one hundredth fails the recomputation', () {
+    expect(calculate('3.14 × 6'), 1884);
+    expect(calculate('8 × 6 − 3 × 2'), 4200);
+    expect(calculate('180 − 50 − 60'), 7000);
+    expect(calculate('3 × 5 ÷ 2'), 750);
+    expect(calculate('3.14 × 5 × 5'), isNot(calculate('78.51')));
+  });
+
+  test('numbers in labels, the prompt and hints use the language\'s decimal '
+      'separator', () {
+    final figure = GeometryFamily.halvesRectangleArea.build([5, 3]).figure;
+    expect(figure.labels.first.text('de'), '2,5');
+    final drawn = layoutFigure(
+      GeometryFamily.circleArea.build([5]).figure,
+      const Size(340, 210),
+      measures[1.0]!,
+      localeName: 'de',
     );
+    expect(drawn.pi, '3,14');
     expect(
-      [
-        for (final step in figureSteps(
-          GeometryFamily.rectangleArea.build([4, 2]).figure,
-        ))
-          step(en),
-      ],
-      ['Count the squares: 2 rows of 4 squares each.', 'So 2 × 4 = 8.'],
+      layoutFigure(
+        figure,
+        const Size(340, 210),
+        measures[1.0]!,
+        localeName: 'de',
+      ).labels.map((label) => label.text),
+      ['2,5', '1,5'],
     );
   });
 
   test('draws stay in their level and reach every family of it', () {
     final random = Random(7);
-    for (final level in [1, 2]) {
+    for (var level = 1; level <= maxGeometryLevel; level++) {
       final seen = <GeometryFamily>{};
       for (var i = 0; i < 300; i++) {
         final (family, params) = drawGeometry(random, level);
@@ -595,10 +1191,19 @@ void main() {
   });
 
   test('figures have value equality', () {
-    final a = GeometryFamily.rectangleArea.build([4, 2]).figure;
-    final b = GeometryFamily.rectangleArea.build([4, 2]).figure;
-    expect(a, b);
-    expect(a.hashCode, b.hashCode);
-    expect(a, isNot(GeometryFamily.rectangleArea.build([2, 4]).figure));
+    for (final (family, a, b) in [
+      (GeometryFamily.rectangleArea, [4, 2], [2, 4]),
+      (GeometryFamily.triangleAngle, [50, 60], [60, 50]),
+      (GeometryFamily.circleArea, [5], [4]),
+      (GeometryFamily.rectangleSideFromArea, [5, 3], [5, 4]),
+    ]) {
+      expect(family.build(a).figure, family.build(a).figure);
+      expect(family.build(a).figure.hashCode, family.build(a).figure.hashCode);
+      expect(family.build(a).figure, isNot(family.build(b).figure));
+    }
+    expect(
+      GeometryFamily.circleArea.build([5]).figure,
+      isNot(copy(GeometryFamily.circleArea.build([5]).figure, total: 1)),
+    );
   });
 }

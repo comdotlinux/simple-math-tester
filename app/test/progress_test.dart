@@ -979,17 +979,17 @@ void main() {
       answeredAt: DateTime.utc(2026, 11, 21, 11).toLocal(),
     );
 
-    test('starts at level 1 with tier harder and is capped at level 2', () {
+    test('starts at level 1 with tier harder and is capped at level 5', () {
       expect(
         Progress(tier: Tier.harder).difficulty[OperationType.geometry]!.level,
         1,
       );
-      expect(OperationType.geometry.highestLevel, 2);
+      expect(OperationType.geometry.highestLevel, 5);
       expect(
-        Progress.decode('{"operations":{"geometry":{"level":5,"answered":3}}}')
+        Progress.decode('{"operations":{"geometry":{"level":9,"answered":3}}}')
             .difficulty[OperationType.geometry]!
             .level,
-        2,
+        5,
       );
       expect(
         Progress().selectedOperations,
@@ -1058,9 +1058,67 @@ void main() {
       );
     });
 
+    // One problem of each family of levels 3 to 5; the variant names are
+    // saved, so they are fixed here.
+    for (final (variant, params, level, result) in [
+      ('squareSideFromPerimeter', [7], 3, 7),
+      ('squareSideFromArea', [7], 3, 7),
+      ('rectangleSideFromPerimeter', [5, 3], 3, 3),
+      ('rectangleSideFromArea', [5, 3], 3, 3),
+      ('triangleAngle', [50, 60], 4, 70),
+      ('straightAngle', [35], 4, 145),
+      ('rightAngle', [30], 4, 60),
+      ('rightTriangleArea', [3, 5], 5, 7.5),
+      ('lShapePerimeter', [8, 6, 3, 2], 5, 28),
+      ('lShapeArea', [8, 6, 3, 2], 5, 42),
+      ('halvesRectanglePerimeter', [5, 3], 5, 8),
+      ('halvesRectangleArea', [5, 3], 5, 3.75),
+      ('circleCircumference', [6], 5, 18.84),
+      ('circleArea', [5], 5, 78.5),
+    ]) {
+      test('a $variant attempt round-trips with its decimal answer', () {
+        final problem = (OperationType.geometry.source as GeometrySource).build(
+          OperationType.geometry,
+          variant,
+          params,
+          level: level,
+        )!;
+        expect(problem.result, result);
+        final answered = Attempt(
+          problem,
+          firstAnswer: result,
+          answerHundredths: parseHundredths('$result'),
+          elapsedMs: 3000,
+          answeredAt: DateTime.utc(2026, 11, 21, 12).toLocal(),
+        );
+        expect(answered.correct, isTrue);
+        final progress = Progress(history: [answered]);
+        final saved = progress.toJsonHistory().single as Map;
+        expect(
+          [saved['variant'], saved['params'], saved['result'], saved['level']],
+          [variant, params, result, level],
+        );
+        final decoded = Progress.decode(progress.encode());
+        final again = decoded.history.single;
+        expect((again.problem as FigureProblem).figure, problem.figure);
+        expect(again.correct, isTrue);
+        expect(decoded.encode(), progress.encode());
+      });
+    }
+
     for (final (name, fields, result) in [
-      ('an unknown variant', '"variant":"circleArea","params":[5,3]', 16),
+      ('an unknown variant', '"variant":"hexagonArea","params":[5,3]', 16),
       ('no variant', '"params":[5,3]', 16),
+      (
+        'params outside a new family',
+        '"variant":"circleArea","params":[11]',
+        379.94,
+      ),
+      (
+        'an angle outside its family',
+        '"variant":"triangleAngle","params":[10,60]',
+        110,
+      ),
       (
         'params outside the family',
         '"variant":"rectanglePerimeter","params":[5,5]',

@@ -1,3 +1,5 @@
+import 'dart:math' show sqrt;
+
 import 'figure.dart';
 import 'hundredths.dart';
 import 'l10n/app_localizations.dart';
@@ -604,37 +606,189 @@ List<int> _placeParts(int value) {
   return (value ~/ place, '$place'.length - 1);
 }
 
-/// The hint of a figure question, read from its labels: name every side
-/// the perimeter adds, then add them; for an area, count the rows of unit
-/// squares, then multiply. The answer appears only in the last step.
+/// The hint of a figure question, read from what the figure shows (its
+/// labels, the given total and π), never from its family: name what the
+/// rule adds or multiplies, then calculate. Numbers are in hundredths and
+/// written in the language's own way. The answer appears only in the last
+/// step.
 List<SolutionStep> figureSteps(Figure figure) {
-  final sides = [for (final label in figure.labels) label.text];
-  final values = [for (final label in figure.labels) label.hundredths! ~/ 100];
+  String n(AppLocalizations l, int hundredths) =>
+      formatHundredths(hundredths, l.localeName);
+  final values = [for (final label in figure.labels) label.hundredths];
+  final byEdge = {
+    for (final label in figure.labels) label.edge: label.hundredths,
+  };
+  final total = figure.total;
+  switch (figure.prompt) {
+    case FigurePrompt.angle:
+      final known = [for (final angle in figure.angles) ?angle.degrees];
+      final whole = figure.shape == FigureShape.rightAngle ? 90 : 180;
+      final rest = whole - known.reduce((a, b) => a + b);
+      final SolutionStep rule = switch (figure.shape) {
+        FigureShape.straightAngle => (l) => l.stepStraightAngle,
+        FigureShape.rightAngle => (l) => l.stepRightAngle,
+        _ => (l) => l.stepTriangleAngles,
+      };
+      return [
+        rule,
+        (l) => l.stepSoResult(
+          [whole, ...known.take(known.length - 1)].join(' − '),
+          '−',
+          '${known.last}',
+          '$rest',
+        ),
+      ];
+    case FigurePrompt.sideFromPerimeter:
+      if (figure.shape == FigureShape.square) {
+        return [
+          (l) => l.stepSquareSideFromPerimeter,
+          (l) => l.stepSoResult(n(l, total!), '÷', '4', n(l, total ~/ 4)),
+        ];
+      }
+      final known = values.nonNulls.single;
+      return [
+        (l) => l.stepHalfPerimeter,
+        (l) => l.stepSoResult(
+          '${n(l, total!)} ÷ 2',
+          '−',
+          n(l, known),
+          n(l, total ~/ 2 - known),
+        ),
+      ];
+    case FigurePrompt.sideFromArea:
+      if (figure.shape == FigureShape.square) {
+        final side = sqrt(total! * 100).round();
+        return [
+          (l) => l.stepSquareSideFromArea(n(l, total)),
+          (l) => l.stepSquareRoot(n(l, side), n(l, total)),
+        ];
+      }
+      final known = values.nonNulls.single;
+      final other = total! * 100 ~/ known;
+      return [
+        (l) => l.stepRectangleSideFromArea(n(l, known), n(l, total)),
+        (l) => l.stepSoResult(n(l, total), '÷', n(l, known), n(l, other)),
+      ];
+    case FigurePrompt.circumference:
+      final pi = figure.pi!;
+      final radius = figure.vertices.contains(figure.centre);
+      final d = radius ? 2 * values[0]! : values[0]!;
+      return [
+        (l) => l.stepCircumference(n(l, pi)),
+        (l) => l.stepSoResult(n(l, pi), '×', n(l, d), n(l, pi * d ~/ 100)),
+      ];
+    case FigurePrompt.area || FigurePrompt.perimeter:
+      break;
+  }
+
+  if (figure.shape == FigureShape.circle) {
+    final pi = figure.pi!;
+    final radius = figure.vertices.contains(figure.centre);
+    final r = radius ? values[0]! : values[0]! ~/ 2;
+    return [
+      (l) => l.stepCircleArea(n(l, pi)),
+      (l) => l.stepSoResult(
+        '${n(l, pi)} × ${n(l, r)}',
+        '×',
+        n(l, r),
+        n(l, pi * r * r ~/ 10000),
+      ),
+    ];
+  }
+  if (figure.shape == FigureShape.rightTriangle) {
+    // Edge 0 is the left leg, edge 2 the bottom one.
+    final (a, b) = (byEdge[2]!, byEdge[0]!);
+    return [
+      (l) => l.stepRightTriangleArea(n(l, a), n(l, b)),
+      (l) => l.stepSoResult(
+        '${n(l, a)} × ${n(l, b)}',
+        '÷',
+        '2',
+        n(l, a * b ~/ 200),
+      ),
+    ];
+  }
+  if (figure.shape == FigureShape.lShape) {
+    // Labelled: the top (edge 0), the inner horizontal edge (2), the right
+    // edge (3) and the left one (5). The bottom is the top and the inner
+    // edge together; the inner vertical edge is the left one less the
+    // right one.
+    final (top, inner, right, left) = (
+      byEdge[0]!,
+      byEdge[2]!,
+      byEdge[3]!,
+      byEdge[5]!,
+    );
+    final (bottom, step) = (top + inner, left - right);
+    String first(AppLocalizations l) =>
+        '${n(l, top)} + ${n(l, inner)} = ${n(l, bottom)}';
+    String second(AppLocalizations l) =>
+        '${n(l, left)} − ${n(l, right)} = ${n(l, step)}';
+    if (figure.prompt == FigurePrompt.perimeter) {
+      final all = [top, step, inner, right, bottom, left];
+      return [
+        (l) => l.stepLShapeSides(first(l), second(l)),
+        (l) => l.stepPerimeterSum(
+          all.map((side) => n(l, side)).join(' + '),
+          n(l, all.reduce((a, b) => a + b)),
+        ),
+      ];
+    }
+    return [
+      (l) => l.stepLShapeCutOut,
+      (l) => l.stepLShapeArea(
+        first(l),
+        second(l),
+        '${n(l, bottom)} × ${n(l, left)} − ${n(l, inner)} × ${n(l, step)}',
+        n(l, (bottom * left - inner * step) ~/ 100),
+      ),
+    ];
+  }
+
+  final sides = values.cast<int>();
   if (figure.prompt == FigurePrompt.area) {
-    // The first label is the bottom edge (columns), the second the right one.
-    final [columns, rows] = values;
+    // The first label is the bottom edge, the second the right one.
+    final [width, height] = sides;
+    if (!figure.grid) {
+      return [
+        (l) => l.stepRectangleArea,
+        (l) => l.stepSoResult(
+          n(l, width),
+          '×',
+          n(l, height),
+          n(l, width * height ~/ 100),
+        ),
+      ];
+    }
+    // With the grid: columns along the bottom, rows along the right side.
+    final (columns, rows) = (width ~/ 100, height ~/ 100);
     return [
       (l) => l.stepAreaRows('$rows', '$columns'),
       (l) => l.stepSoResult('$rows', '×', '$columns', '${rows * columns}'),
     ];
   }
   final all = switch (figure.shape) {
-    FigureShape.square => [for (var i = 0; i < 4; i++) values[0]],
-    FigureShape.rectangle => [...values, ...values],
-    FigureShape.triangle => values,
+    FigureShape.square => [for (var i = 0; i < 4; i++) sides[0]],
+    FigureShape.rectangle => [...sides, ...sides],
+    _ => sides,
   };
   final SolutionStep first = switch (figure.shape) {
-    FigureShape.square => (l) => l.stepSquareSides(sides[0]),
-    FigureShape.rectangle => (l) => l.stepRectangleSides(sides[0], sides[1]),
-    FigureShape.triangle => (l) => l.stepTriangleSides(
-      sides[0],
-      sides[1],
-      sides[2],
+    FigureShape.square => (l) => l.stepSquareSides(n(l, sides[0])),
+    FigureShape.rectangle => (l) => l.stepRectangleSides(
+      n(l, sides[0]),
+      n(l, sides[1]),
+    ),
+    _ => (l) => l.stepTriangleSides(
+      n(l, sides[0]),
+      n(l, sides[1]),
+      n(l, sides[2]),
     ),
   };
   return [
     first,
-    (l) =>
-        l.stepPerimeterSum(all.join(' + '), '${all.reduce((a, b) => a + b)}'),
+    (l) => l.stepPerimeterSum(
+      all.map((side) => n(l, side)).join(' + '),
+      n(l, all.reduce((a, b) => a + b)),
+    ),
   ];
 }

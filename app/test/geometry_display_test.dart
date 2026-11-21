@@ -42,18 +42,21 @@ void main() {
     LayoutMode layout = LayoutMode.comfortable,
     double scale = 1,
     List<Attempt> history = const [],
+    FigureProblem? problem,
+    String? language,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(
-      initialProblem: rectangle,
+      initialProblem: problem ?? rectangle,
       progress: Progress(
         tier: Tier.easy,
         selectedOperations: {OperationType.geometry},
         history: history,
         layoutMode: layout,
+        language: language,
       ),
     );
     addTearDown(model.dispose);
@@ -107,6 +110,60 @@ void main() {
       semantics.dispose();
     });
   }
+
+  final circle = source.build(OperationType.geometry, 'circleArea', [
+    5,
+  ], level: 5)!;
+  for (final (size, scale, layout) in [
+    (const Size(412, 900), 1.0, LayoutMode.comfortable),
+    (const Size(360, 640), 2.0, LayoutMode.comfortable),
+    (const Size(320, 568), 2.0, LayoutMode.compact),
+  ]) {
+    testWidgets('a circle shows "Use π = 3.14" and takes a decimal answer, '
+        '$size x$scale ${layout.name}', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final model = await launch(
+        tester,
+        size: size,
+        scale: scale,
+        layout: layout,
+        problem: circle,
+      );
+      final question = find.byKey(questionOnProblemsPageKey);
+      expect(
+        find.descendant(
+          of: question,
+          matching: find.text('Area? Use π = 3.14.'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          'Math question: Circle, radius 5. Area? Use π = 3.14.',
+        ),
+        findsOneWidget,
+      );
+      model.setDraftInput('78.5');
+      model.submitAnswer();
+      await tester.pumpAndSettle();
+      expect(model.answerCorrect, isTrue);
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    });
+  }
+
+  testWidgets('in German the prompt writes 3,14 and 78,5 is right', (
+    tester,
+  ) async {
+    final model = await launch(tester, problem: circle, language: 'de');
+    expect(find.textContaining('π = 3,14'), findsOneWidget);
+    expect(find.textContaining('3.14'), findsNothing);
+    model.setDraftInput('78,5');
+    model.submitAnswer();
+    await tester.pumpAndSettle();
+    expect(model.answerCorrect, isTrue);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('a wrong answer opens the first hint', (tester) async {
     final model = await launch(tester);

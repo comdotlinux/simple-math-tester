@@ -760,7 +760,7 @@ class _QuestionCard extends StatelessWidget {
                     SizedBox(height: compact ? 2 : 8),
                     ExcludeSemantics(
                       child: Text(
-                        figurePromptText(l, figure.prompt),
+                        figurePromptText(l, figure),
                         textAlign: TextAlign.center,
                         style: compact
                             ? textTheme.titleLarge

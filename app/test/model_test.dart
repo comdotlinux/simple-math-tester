@@ -546,7 +546,7 @@ void main() {
     });
 
     test(
-      'geometry starts at level 1 whatever the tier and stops at level 2',
+      'geometry starts at level 1 whatever the tier and stops at level 5',
       () {
         final model = seeded(
           progress: Progress(
@@ -555,12 +555,17 @@ void main() {
           ),
         );
         expect(model.current.level, 1);
-        for (var i = 0; i < 9; i++) {
+        for (var i = 0; i < 3; i++) {
           answer(model, right: true);
         }
         expect(model.difficulty[OperationType.geometry]!.level, 2);
         expect(model.current.level, 2);
         expect((model.current as FigureProblem).figure.grid, isTrue);
+        for (var i = 0; i < 15; i++) {
+          answer(model, right: true);
+        }
+        expect(model.difficulty[OperationType.geometry]!.level, 5);
+        expect(model.current.level, 5);
       },
     );
 
