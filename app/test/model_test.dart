@@ -521,7 +521,8 @@ void main() {
       }
     });
 
-    test('algebra stays at its highest level, whatever the tier', () {
+    test('algebra starts at level 1 and stops at its highest level, whatever '
+        'the tier', () {
       final model = seeded(
         progress: Progress(
           tier: Tier.harder,
@@ -529,11 +530,12 @@ void main() {
         ),
       );
       expect(model.current.level, 1);
-      for (var i = 0; i < 9; i++) {
+      // Up a level after every 3 right answers, never above level 2.
+      for (var i = 1; i <= 9; i++) {
         answer(model, right: true);
-        expect(model.current.level, 1);
+        expect(model.current.level, min(1 + i ~/ 3, 2), reason: 'answer $i');
       }
-      expect(model.difficulty[OperationType.algebra]!.level, 1);
+      expect(model.difficulty[OperationType.algebra]!.level, 2);
       expect(model.difficulty[OperationType.algebra]!.correct, 9);
     });
   });

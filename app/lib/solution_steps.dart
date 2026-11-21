@@ -223,43 +223,138 @@ List<SolutionStep> divisionSteps(ArithmeticProblem problem) {
   ];
 }
 
-/// An equation: the first step names the operation to undo, the last does
-/// it, states the answer and puts it back in place of the blank.
-List<SolutionStep> equationSteps(EquationProblem problem) {
-  final answer = formatNumber(problem.result);
-  final checked = problem.tokens
-      .map((token) => token == EquationProblem.blank ? answer : token)
-      .join(' ');
-  // Undoing the one operation around the blank: [whole] sign [part].
-  final (SolutionStep undo, int whole, String sign, int part) = switch ((
-    problem.variant,
-    problem.params,
-  )) {
+/// What one step of an equation hint does; it picks the step's sentence.
+enum EquationMove {
+  /// `a + □ = c` or `□ + a = c`: take a away from c.
+  undoAdd,
+
+  /// `c − □ = a`: take a away from c.
+  takenAway,
+
+  /// `□ − a = b`: add a back to b.
+  undoSubtract,
+
+  /// `□ × a = c` or `a × □ = c`: divide c by a.
+  undoMultiply,
+
+  /// `c ÷ □ = a`: divide c by a.
+  dividedBy,
+
+  /// `□ ÷ a = b`: multiply b by a.
+  undoDivide,
+
+  /// The last step: the calculation with its value, which is the answer,
+  /// and the check.
+  answer,
+}
+
+/// One step of an equation hint as data, before a sentence wraps it, so
+/// tests can recompute it: the [move] it makes and the calculation it shows,
+/// `left sign right` in the question's signs. Only the last step
+/// ([EquationMove.answer]) has the calculation's [value], which is the
+/// answer, and the [check]: the question with the answer in place of the
+/// blank.
+class EquationStep {
+  const EquationStep(
+    this.move,
+    this.left,
+    this.sign,
+    this.right, {
+    this.value,
+    this.check,
+  });
+
+  final EquationMove move;
+  final int left;
+  final String sign;
+  final int right;
+  final int? value;
+  final String? check;
+
+  String get calculation => '$left $sign $right';
+}
+
+/// The hint of an equation as data: the first step names the operation
+/// around the blank and the calculation that undoes it, using only numbers
+/// the question shows; the last does that calculation, states the answer
+/// and puts it back in place of the blank.
+List<EquationStep> equationHint(EquationProblem problem) {
+  final answer = problem.result.toInt();
+  final (move, left, sign, right) = switch ((problem.variant, problem.params)) {
     ('missingSecondAddend' || 'missingFirstAddend', [final a, final b]) => (
-      (l) => l.stepEquationUndoAdd('$a', '${a + b}'),
+      EquationMove.undoAdd,
       a + b,
       '−',
       a,
     ),
     ('missingSubtrahend', [final a, final b]) => (
-      (l) => l.stepEquationTakenAway('${a + b}', '$a'),
+      EquationMove.takenAway,
       a + b,
       '−',
       a,
     ),
     ('missingMinuend', [final a, final b]) => (
-      (l) => l.stepEquationUndoSubtract('$a', '$b'),
+      EquationMove.undoSubtract,
       b,
       '+',
+      a,
+    ),
+    ('missingFirstFactor' || 'missingSecondFactor', [final a, final b]) => (
+      EquationMove.undoMultiply,
+      a * b,
+      '÷',
+      a,
+    ),
+    ('missingDivisor', [final a, final b]) => (
+      EquationMove.dividedBy,
+      a * b,
+      '÷',
+      a,
+    ),
+    ('missingDividend', [final a, final b]) => (
+      EquationMove.undoDivide,
+      b,
+      '×',
       a,
     ),
     _ => throw ArgumentError.value(problem.variant, 'variant'),
   };
   return [
-    undo,
-    (l) =>
-        l.stepEquationBlankIs('$whole $sign $part = $answer', answer, checked),
+    EquationStep(move, left, sign, right),
+    EquationStep(
+      EquationMove.answer,
+      left,
+      sign,
+      right,
+      value: answer,
+      check: problem.tokens
+          .map((token) => token == EquationProblem.blank ? '$answer' : token)
+          .join(' '),
+    ),
   ];
+}
+
+/// The sentences of [equationHint]; each only wraps its step's numbers.
+List<SolutionStep> equationSteps(EquationProblem problem) => [
+  for (final step in equationHint(problem)) _equationSentence(step),
+];
+
+SolutionStep _equationSentence(EquationStep step) {
+  final left = '${step.left}';
+  final right = '${step.right}';
+  return switch (step.move) {
+    EquationMove.undoAdd => (l) => l.stepEquationUndoAdd(right, left),
+    EquationMove.takenAway => (l) => l.stepEquationTakenAway(left, right),
+    EquationMove.undoSubtract => (l) => l.stepEquationUndoSubtract(right, left),
+    EquationMove.undoMultiply => (l) => l.stepEquationUndoMultiply(right, left),
+    EquationMove.dividedBy => (l) => l.stepEquationDividedBy(left, right),
+    EquationMove.undoDivide => (l) => l.stepEquationUndoDivide(right, left),
+    EquationMove.answer => (l) => l.stepEquationBlankIs(
+      '${step.calculation} = ${step.value}',
+      '${step.value}',
+      step.check!,
+    ),
+  };
 }
 
 const _placeNames = {10, 100, 1000, 10000};

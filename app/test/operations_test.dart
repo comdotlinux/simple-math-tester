@@ -129,8 +129,8 @@ void main() {
     const kind = OperationType.algebra;
     final source = kind.source as AlgebraSource;
 
-    test('has level 1 only so far; arithmetic has 5', () {
-      expect(kind.highestLevel, 1);
+    test('has levels 1 and 2 so far; arithmetic has 5', () {
+      expect(kind.highestLevel, 2);
       for (final type in arithmeticKinds) {
         expect(type.highestLevel, maxLevel);
       }
@@ -166,6 +166,36 @@ void main() {
       });
     });
 
+    test('level 2 is 360 different missing-factor problems in four families '
+        'of 90', () {
+      final problems = source.problems(kind, 2).toList();
+      expect(problems, hasLength(360));
+      expect(problems.map((p) => p.question).toSet(), hasLength(360));
+      final byVariant = <String, int>{};
+      for (final p in problems) {
+        byVariant[p.variant] = (byVariant[p.variant] ?? 0) + 1;
+        expect([p.kind, p.level], [kind, 2]);
+        final [a, b] = p.params;
+        expect(a, inInclusiveRange(2, 10));
+        expect(b, inInclusiveRange(1, 10));
+        // Every number shown and the answer are whole and at least 1; the
+        // largest is the product of the other two.
+        final numbers = [
+          for (final token in p.tokens) ?int.tryParse(token),
+          p.result.toInt(),
+        ]..sort();
+        expect(numbers.first, greaterThanOrEqualTo(1));
+        expect(numbers[0] * numbers[1], numbers[2], reason: p.question);
+        expect(p.tokens.where((t) => t == EquationProblem.blank), hasLength(1));
+      }
+      expect(byVariant, {
+        'missingFirstFactor': 90,
+        'missingSecondFactor': 90,
+        'missingDivisor': 90,
+        'missingDividend': 90,
+      });
+    });
+
     test('each family builds its form', () {
       String question(String variant) =>
           source.build(kind, variant, [3, 4])!.question;
@@ -175,6 +205,12 @@ void main() {
       expect(question('missingMinuend'), '□ − 3 = 4');
       expect(source.build(kind, 'missingMinuend', [3, 4])!.result, 7);
       expect(source.build(kind, 'missingSubtrahend', [3, 4])!.result, 4);
+      expect(question('missingFirstFactor'), '□ × 3 = 12');
+      expect(question('missingSecondFactor'), '3 × □ = 12');
+      expect(question('missingDivisor'), '12 ÷ □ = 3');
+      expect(question('missingDividend'), '□ ÷ 3 = 4');
+      expect(source.build(kind, 'missingDivisor', [3, 4])!.result, 4);
+      expect(source.build(kind, 'missingDividend', [3, 4])!.result, 12);
     });
 
     test('an unknown variant or params that do not fit build nothing', () {
@@ -182,19 +218,27 @@ void main() {
       expect(source.build(kind, 'missingMinuend', [3]), isNull);
       expect(source.build(kind, 'missingMinuend', [3, 4, 5]), isNull);
       expect(source.build(kind, 'missingMinuend', [-1, 4]), isNull);
+      // A factor or divisor of 0 would give no answer or every answer.
+      expect(source.build(kind, 'missingFirstFactor', [0, 4]), isNull);
+      expect(source.build(kind, 'missingSecondFactor', [0, 4]), isNull);
+      expect(source.build(kind, 'missingDivisor', [3, 0]), isNull);
+      expect(source.build(kind, 'missingDivisor', [0, 4]), isNull);
+      expect(source.build(kind, 'missingDividend', [0, 4]), isNull);
     });
 
     test('generate draws every family, only problems of the level', () {
-      final all = {for (final p in source.problems(kind, 1)) p.question};
-      final random = Random(7);
-      final variants = <String>{};
-      for (var i = 0; i < 2000; i++) {
-        final problem = kind.generate(random, 1) as EquationProblem;
-        expect(all, contains(problem.question));
-        expect(problem.level, 1);
-        variants.add(problem.variant);
+      for (var level = 1; level <= kind.highestLevel; level++) {
+        final all = {for (final p in source.problems(kind, level)) p.question};
+        final random = Random(7);
+        final variants = <String>{};
+        for (var i = 0; i < 2000; i++) {
+          final problem = kind.generate(random, level) as EquationProblem;
+          expect(all, contains(problem.question));
+          expect(problem.level, level);
+          variants.add(problem.variant);
+        }
+        expect(variants, hasLength(source.levels[level - 1].length));
       }
-      expect(variants, hasLength(4));
     });
   });
 }

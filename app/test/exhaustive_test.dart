@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/operations.dart';
+import 'package:simple_math_tester/solution_steps.dart';
 
 import 'oracle.dart';
 
@@ -110,7 +111,7 @@ void main() {
     const kind = OperationType.algebra;
     final source = kind.source as AlgebraSource;
     // The plan's count of each level's problems.
-    const counts = {1: 484};
+    const counts = {1: 484, 2: 360};
 
     for (var level = 1; level <= kind.highestLevel; level++) {
       test('level $level: every problem has its answer as the one solution, '
@@ -152,6 +153,52 @@ void main() {
             Verdict.wrongRoot,
             reason: mutant.join(' '),
           );
+        }
+      });
+
+      test('level $level: the oracle recomputes every hint step', () {
+        final failures = <String>[];
+        for (final p in source.problems(kind, level)) {
+          final hint = equationHint(p);
+          final shown = {for (final token in p.tokens) ?int.tryParse(token)};
+          for (final step in hint) {
+            // Each calculation undoes the operation around the blank with
+            // numbers the question shows, so its value is the answer.
+            if (check(step.calculation, p.result) != Verdict.ok ||
+                !shown.containsAll([step.left, step.right])) {
+              failures.add('${p.question}: ${step.calculation}');
+            }
+          }
+          // Only the last step states the answer and puts it back.
+          final last = hint.last;
+          final [left, right] = last.check!.split(' = ');
+          if (hint.length < 2 ||
+              last.move != EquationMove.answer ||
+              last.value != p.result ||
+              last.check != p.question.replaceAll(box, '${p.result}') ||
+              check(left, int.parse(right)) != Verdict.ok ||
+              hint
+                  .take(hint.length - 1)
+                  .any((step) => step.value != null || step.check != null)) {
+            failures.add('${p.question}: ${last.calculation}, ${last.check}');
+          }
+        }
+        expect(failures, isEmpty);
+      });
+
+      test('level $level: a hint calculation or check off by 1 fails', () {
+        for (final p in source.problems(kind, level)) {
+          final last = equationHint(p).last;
+          final calculation = '${last.left} ${last.sign} ${last.right + 1}';
+          expect(
+            check(calculation, p.result),
+            Verdict.wrongResult,
+            reason: calculation,
+          );
+          final [left, right] = p.question
+              .replaceAll(box, '${p.result + 1}')
+              .split(' = ');
+          expect(check(left, int.parse(right)), Verdict.wrongResult);
         }
       });
     }

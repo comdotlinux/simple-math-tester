@@ -1189,6 +1189,42 @@
       }
     }
   },
+  "stepEquationUndoMultiply": "Multiplying {factor} and the blank makes {product}. To undo the multiplying, divide {product} by {factor}.",
+  "@stepEquationUndoMultiply": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "factor": {
+        "type": "String"
+      },
+      "product": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationDividedBy": "Dividing {whole} by the blank gives {quotient}. To find the blank, divide {whole} by {quotient}.",
+  "@stepEquationDividedBy": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "whole": {
+        "type": "String"
+      },
+      "quotient": {
+        "type": "String"
+      }
+    }
+  },
+  "stepEquationUndoDivide": "Dividing the blank by {divisor} gives {quotient}. To undo the dividing, multiply {quotient} by {divisor}.",
+  "@stepEquationUndoDivide": {
+    "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. ",
+    "placeholders": {
+      "divisor": {
+        "type": "String"
+      },
+      "quotient": {
+        "type": "String"
+      }
+    }
+  },
   "stepEquationBlankIs": "{calculation}, so the blank is {answer}. Check: {check}",
   "@stepEquationBlankIs": {
     "description": "Hint step for an equation with one missing number, drawn as an empty box (the blank). Math symbols (+ − × ÷ =) and numbers stay exactly as given. {calculation} is math like '7 − 3 = 4'; {check} is the equation with the answer in place of the blank, like '3 + 4 = 7'.",

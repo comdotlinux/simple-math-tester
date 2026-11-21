@@ -482,6 +482,20 @@ void main() {
           await tester.ensureVisible(find.byKey(revealStepButtonKey));
           await shoot(tester, '$tag-13b-algebra-wrong-hints');
 
+          final level2 = await launch(
+            tester,
+            size,
+            brightness,
+            problem: equation('missingDivisor', 6, 3),
+          );
+          level2.toggleOperation(OperationType.algebra);
+          await shoot(tester, '$tag-13d-algebra-level-2-practice');
+          await check(tester, '4');
+          level2.revealStep();
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await shoot(tester, '$tag-13e-algebra-level-2-hints');
+
           Attempt solved(EquationProblem problem, int? answer) => Attempt(
             problem,
             firstAnswer: answer,

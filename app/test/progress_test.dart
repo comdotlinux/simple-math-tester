@@ -716,12 +716,12 @@ void main() {
     });
 
     test('its level is clamped to the highest level it has', () {
-      expect(OperationType.algebra.highestLevel, 1);
+      expect(OperationType.algebra.highestLevel, 2);
       expect(
         Progress.decode('{"operations":{"algebra":{"level":4,"answered":3}}}')
             .difficulty[OperationType.algebra]!
             .level,
-        1,
+        2,
       );
     });
 
