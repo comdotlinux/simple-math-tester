@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_math_tester/figure_view.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -126,23 +127,50 @@ void operationsJourneys() {
       expect(model.history.last.problem.kind, OperationType.algebra);
     });
 
+    testWidgets('with only Geometry on, a figure question is answered', (
+      tester,
+    ) async {
+      await startWith(
+        tester,
+        Progress(tier: Tier.easy, selectedOperations: {OperationType.plus}),
+      );
+      final model = modelOf(tester);
+
+      await tapVisible(tester, operationToggle(OperationType.geometry));
+      await tapVisible(tester, operationToggle(OperationType.plus));
+      await nextQuestion(tester);
+
+      expect(model.current.kind, OperationType.geometry);
+      // A drawn figure stands where the question text would be.
+      expect(
+        find.descendant(
+          of: find.byKey(questionOnProblemsPageKey),
+          matching: find.byType(FigureView),
+        ),
+        findsOneWidget,
+      );
+      await submit(tester, model.current.result);
+      expect(model.history.last.correct, isTrue);
+      expect(model.history.last.problem.kind, OperationType.geometry);
+    });
+
     testWidgets('the new-kind card switches Algebra on once and stays away '
-        'after Algebra is off again and the app restarts', (tester) async {
+        'after Algebra is off again and the app restarts; Geometry then has '
+        'its own card', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
       final model = modelOf(tester);
       final card = find.byKey(newKindCardKey);
       // The title names the kind; the wording is the behaviour.
-      expect(
-        find.descendant(
-          of: card,
-          matching: find.text(en.newKindTitle(OperationType.algebra.label(en))),
-        ),
-        findsOneWidget,
+      Finder titled(OperationType kind) => find.descendant(
+        of: card,
+        matching: find.text(en.newKindTitle(kind.label(en))),
       );
+      expect(titled(OperationType.algebra), findsOneWidget);
 
       await tapVisible(tester, card);
       expect(model.selectedOperations, contains(OperationType.algebra));
-      expect(card, findsNothing);
+      expect(titled(OperationType.algebra), findsNothing);
+      expect(titled(OperationType.geometry), findsOneWidget);
 
       await tapVisible(tester, operationToggle(OperationType.algebra));
       await restartWhenSaved(
@@ -152,7 +180,8 @@ void operationsJourneys() {
             !p.selectedOperations.contains(OperationType.algebra),
       );
       expect(modelOf(tester).selectedOperations, arithmeticKinds);
-      expect(card, findsNothing);
+      expect(titled(OperationType.algebra), findsNothing);
+      expect(titled(OperationType.geometry), findsOneWidget);
     });
   });
 }

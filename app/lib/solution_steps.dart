@@ -1,3 +1,4 @@
+import 'figure.dart';
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
 
@@ -399,4 +400,39 @@ List<int> _placeParts(int value) {
 (int, int) _digitAndZeros(int value) {
   final place = _highestPlace(value);
   return (value ~/ place, '$place'.length - 1);
+}
+
+/// The hint of a figure question, read from its labels: name every side
+/// the perimeter adds, then add them; for an area, count the rows of unit
+/// squares, then multiply. The answer appears only in the last step.
+List<SolutionStep> figureSteps(Figure figure) {
+  final sides = [for (final label in figure.labels) label.text];
+  final values = [for (final label in figure.labels) label.hundredths! ~/ 100];
+  if (figure.prompt == FigurePrompt.area) {
+    // The first label is the bottom edge (columns), the second the right one.
+    final [columns, rows] = values;
+    return [
+      (l) => l.stepAreaRows('$rows', '$columns'),
+      (l) => l.stepSoResult('$rows', '×', '$columns', '${rows * columns}'),
+    ];
+  }
+  final all = switch (figure.shape) {
+    FigureShape.square => [for (var i = 0; i < 4; i++) values[0]],
+    FigureShape.rectangle => [...values, ...values],
+    FigureShape.triangle => values,
+  };
+  final SolutionStep first = switch (figure.shape) {
+    FigureShape.square => (l) => l.stepSquareSides(sides[0]),
+    FigureShape.rectangle => (l) => l.stepRectangleSides(sides[0], sides[1]),
+    FigureShape.triangle => (l) => l.stepTriangleSides(
+      sides[0],
+      sides[1],
+      sides[2],
+    ),
+  };
+  return [
+    first,
+    (l) =>
+        l.stepPerimeterSum(all.join(' + '), '${all.reduce((a, b) => a + b)}'),
+  ];
 }

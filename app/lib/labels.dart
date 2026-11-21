@@ -1,6 +1,7 @@
 import 'dart:ui' show Locale;
 
 import 'app_theme.dart' show AppPalette;
+import 'figure.dart';
 import 'l10n/app_localizations.dart';
 import 'operations.dart';
 import 'rules.dart';
@@ -12,15 +13,43 @@ extension OperationLabel on OperationType {
     OperationType.multiply => l.operationMultiplication,
     OperationType.divide => l.operationDivision,
     OperationType.algebra => l.operationAlgebra,
+    OperationType.geometry => l.operationGeometry,
   };
 }
 
 extension ProblemLabel on Problem {
-  /// [Problem.question] for screen readers: the blank is a word, not a
-  /// "white square".
+  /// The question as text in the pinned band, the history and the review:
+  /// a figure is its sentence, others are [Problem.question].
+  String shown(AppLocalizations l) => switch (this) {
+    FigureProblem(:final figure) => figureSentence(l, figure),
+    _ => question,
+  };
+
+  /// [shown] for screen readers: the blank is a word, not a "white square".
   String spoken(AppLocalizations l) =>
-      question.replaceAll(EquationProblem.blank, l.blank);
+      shown(l).replaceAll(EquationProblem.blank, l.blank);
 }
+
+/// The text form of [figure]: the shape, every label and what is asked,
+/// such as "Rectangle, sides 5 and 3. Perimeter?". Read from the labels
+/// themselves, so it says what the figure shows. Also the figure's
+/// semantics label and the line in the history.
+String figureSentence(AppLocalizations l, Figure figure) {
+  final sides = [for (final label in figure.labels) label.text];
+  final shape = switch (figure.shape) {
+    FigureShape.square => l.figureSquare(sides[0]),
+    FigureShape.rectangle => l.figureRectangle(sides[0], sides[1]),
+    FigureShape.triangle => l.figureTriangle(sides[0], sides[1], sides[2]),
+  };
+  return l.figureQuestion(shape, figurePromptText(l, figure.prompt));
+}
+
+/// The short line under the figure, such as "Perimeter?".
+String figurePromptText(AppLocalizations l, FigurePrompt prompt) =>
+    switch (prompt) {
+      FigurePrompt.perimeter => l.figurePerimeter,
+      FigurePrompt.area => l.figureArea,
+    };
 
 extension TierLabel on Tier {
   String label(AppLocalizations l) => switch (this) {

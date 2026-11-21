@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'figure.dart';
+import 'geometry.dart';
 import 'hundredths.dart';
 import 'solution_steps.dart';
 
@@ -57,7 +59,11 @@ enum OperationType {
 
   /// Its sign is the letter n, not a drawn box, which would look like an
   /// empty check box on a toggle.
-  algebra('n', AlgebraSource(_algebraLevels, _equations, equationSteps));
+  algebra('n', AlgebraSource(_algebraLevels, _equations, equationSteps)),
+
+  /// Its sign is the increment sign ∆ (U+2206), a triangle that bundled
+  /// Roboto has, so the web build fetches no font for it.
+  geometry('∆', GeometrySource(figureSteps));
 
   final String displayString;
   final ProblemSource<Problem> source;
@@ -342,6 +348,56 @@ class AlgebraSource extends ProblemSource<EquationProblem> {
   List<SolutionStep> steps(EquationProblem problem) => _steps(problem);
 }
 
+/// Figures drawn to scale; each family is a pure build in geometry.dart.
+class GeometrySource extends ProblemSource<FigureProblem> {
+  const GeometrySource(this._steps);
+
+  final List<SolutionStep> Function(Figure figure) _steps;
+
+  /// Raised by adding families of the next level in geometry.dart.
+  @override
+  int get highestLevel => maxGeometryLevel;
+
+  /// Every answer of levels 1 and 2 is a whole number of 0 or more.
+  @override
+  bool get signedDecimalAnswers => false;
+
+  /// The problem the family named [variant] builds from [params], or null
+  /// for a variant this build does not know or params that do not fit it.
+  FigureProblem? build(
+    OperationType kind,
+    String variant,
+    List<int> params, {
+    int level = 1,
+  }) {
+    final family = GeometryFamily.values.asNameMap()[variant];
+    if (family == null) return null;
+    final FigureQuestion question;
+    try {
+      question = family.build(params);
+    } on ArgumentError {
+      return null;
+    }
+    return FigureProblem(
+      variant,
+      List.unmodifiable(params),
+      question.figure,
+      kind,
+      question.answer * 100,
+      level: level,
+    );
+  }
+
+  @override
+  FigureProblem generate(OperationType kind, Random random, int level) {
+    final (family, params) = drawGeometry(random, level);
+    return build(kind, family.name, params, level: level)!;
+  }
+
+  @override
+  List<SolutionStep> steps(FigureProblem problem) => _steps(problem.figure);
+}
+
 /// A whole number without a decimal part ("4", not "4.0"); others as is.
 String formatNumber(num value) =>
     value == value.toInt() ? value.toInt().toString() : value.toString();
@@ -408,6 +464,33 @@ class EquationProblem extends Problem {
   String get question => tokens.join(' ');
 }
 
+/// A figure question, made by the geometry family [variant] from [params].
+/// The pair is what is saved; [figure] and the result follow from them.
+class FigureProblem extends Problem {
+  FigureProblem(
+    this.variant,
+    this.params,
+    this.figure,
+    OperationType kind,
+    this.resultHundredths, {
+    super.level,
+  }) : super(kind, numberOfHundredths(resultHundredths));
+
+  /// The answer as a whole number of hundredths, which decides whether an
+  /// answer is right; [result] is the same number for display and saving.
+  final int resultHundredths;
+
+  final String variant;
+  final List<int> params;
+  final Figure figure;
+
+  /// The labels only, free of language; screens show the localised
+  /// sentence instead (`ProblemLabel.shown` in labels.dart).
+  @override
+  String get question =>
+      [for (final label in figure.labels) label.text].join(', ');
+}
+
 class Attempt {
   const Attempt(
     this.problem, {
@@ -444,7 +527,9 @@ class Attempt {
 
   bool get correct => switch (problem) {
     ArithmeticProblem() => firstAnswer == problem.result,
-    EquationProblem(:final resultHundredths) =>
-      answerHundredths == resultHundredths,
+    EquationProblem(:final resultHundredths) ||
+    FigureProblem(
+      :final resultHundredths,
+    ) => answerHundredths == resultHundredths,
   };
 }

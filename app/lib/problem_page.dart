@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'figure_view.dart';
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -740,20 +741,50 @@ class _QuestionCard extends StatelessWidget {
                   ),
                 ),
               ),
-            Padding(
-              padding: compact
-                  ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
-                  : const EdgeInsets.fromLTRB(20, 36, 20, 44),
-              child: compact
-                  // One line that shrinks to fit rather than wrapping.
-                  ? FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: question(
-                        textTheme.displayLarge?.copyWith(fontSize: 52),
+            if (problem case FigureProblem(:final figure))
+              // The figure where the question text would be, with the
+              // short prompt under it; the figure reads the whole sentence.
+              Padding(
+                padding: compact
+                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
+                    : const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Column(
+                  key: questionOnProblemsPageKey,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FigureView(
+                      figure: figure,
+                      height: figureHeight(compact: compact),
+                      semanticsLabel: l.mathQuestion(problem.spoken(l)),
+                    ),
+                    SizedBox(height: compact ? 2 : 8),
+                    ExcludeSemantics(
+                      child: Text(
+                        figurePromptText(l, figure.prompt),
+                        textAlign: TextAlign.center,
+                        style: compact
+                            ? textTheme.titleLarge
+                            : textTheme.headlineMedium,
                       ),
-                    )
-                  : question(textTheme.displayLarge),
-            ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: compact
+                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
+                    : const EdgeInsets.fromLTRB(20, 36, 20, 44),
+                child: compact
+                    // One line that shrinks to fit rather than wrapping.
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: question(
+                          textTheme.displayLarge?.copyWith(fontSize: 52),
+                        ),
+                      )
+                    : question(textTheme.displayLarge),
+              ),
           ],
         ),
       ),
@@ -786,7 +817,7 @@ class _PinnedQuestion extends StatelessWidget {
         child: Text.rich(
           mathSpan(
             context,
-            problem.question,
+            problem.shown(AppLocalizations.of(context)),
             Theme.of(context).textTheme.titleLarge,
           ),
           key: pinnedQuestionKey,

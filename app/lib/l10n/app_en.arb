@@ -1389,5 +1389,125 @@
   "privacyChanges": "If this policy changes, the new version is published in the app and on the web version's privacy page with a new date. For questions, write to the developer e-mail address shown on the app's Google Play listing.",
   "@privacyChanges": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
+  },
+  "operationGeometry": "Geometry",
+  "@operationGeometry": {
+    "description": "Name of the question kind with drawn shapes (perimeter, area). Button label, very short."
+  },
+  "figureSquare": "Square, side {side}.",
+  "@figureSquare": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A square with one side labelled {side}.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      }
+    }
+  },
+  "figureRectangle": "Rectangle, sides {width} and {height}.",
+  "@figureRectangle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A rectangle with two sides labelled.",
+    "placeholders": {
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "figureTriangle": "Triangle, sides {a}, {b} and {c}.",
+  "@figureTriangle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A triangle with its three sides labelled.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      }
+    }
+  },
+  "figurePerimeter": "Perimeter?",
+  "@figurePerimeter": {
+    "description": "Short question under a drawn shape: how long is the way all around it? Keep the question mark; very short."
+  },
+  "figureArea": "Area?",
+  "@figureArea": {
+    "description": "Short question under a drawn shape: how much surface does it cover? Keep the question mark; very short."
+  },
+  "figureQuestion": "{figure} {prompt}",
+  "@figureQuestion": {
+    "description": "Joins the shape description {figure} and the question {prompt}, such as 'Square, side 5. Perimeter?'. Change only the order or spacing if your language needs it.",
+    "placeholders": {
+      "figure": {
+        "type": "String"
+      },
+      "prompt": {
+        "type": "String"
+      }
+    }
+  },
+  "stepSquareSides": "A square has four equal sides, each {side} long.",
+  "@stepSquareSides": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. Write 'four' as a word.",
+    "placeholders": {
+      "side": {
+        "type": "String"
+      }
+    }
+  },
+  "stepRectangleSides": "The two sides without a number are as long as the sides opposite them: {width} and {height}.",
+  "@stepRectangleSides": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "width": {
+        "type": "String"
+      },
+      "height": {
+        "type": "String"
+      }
+    }
+  },
+  "stepTriangleSides": "The perimeter is the length all the way around: add the three sides {a}, {b} and {c}.",
+  "@stepTriangleSides": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      }
+    }
+  },
+  "stepPerimeterSum": "Add all the sides: {sides} = {perimeter}.",
+  "@stepPerimeterSum": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. {sides} is a sum such as '5 + 3 + 5 + 3'.",
+    "placeholders": {
+      "sides": {
+        "type": "String"
+      },
+      "perimeter": {
+        "type": "String"
+      }
+    }
+  },
+  "stepAreaRows": "Count the squares: {rows} rows of {columns} squares each.",
+  "@stepAreaRows": {
+    "description": "Hint step that explains a geometry question to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given; never write a number yourself. The squares are the unit grid drawn inside the rectangle.",
+    "placeholders": {
+      "rows": {
+        "type": "String"
+      },
+      "columns": {
+        "type": "String"
+      }
+    }
   }
 }

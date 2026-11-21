@@ -450,7 +450,8 @@ class Progress {
     ...switch (attempt.problem) {
       ArithmeticProblem(:final lhs, :final rhs) => {'lhs': lhs, 'rhs': rhs},
       // The answer also as whole hundredths, exact where it is a decimal.
-      EquationProblem(:final variant, :final params) => {
+      EquationProblem(:final variant, :final params) ||
+      FigureProblem(:final variant, :final params) => {
         'variant': variant,
         'params': params,
         'firstAnswerHundredths': ?attempt.answerHundredths,
@@ -491,6 +492,15 @@ class Progress {
           source.build(kind, variant, params.cast<int>(), level: level),
         _ => null,
       },
+      final GeometrySource source => switch ((
+        json['variant'],
+        json['params'],
+      )) {
+        (final String variant, final List<Object?> params)
+            when params.every((param) => param is int) =>
+          source.build(kind, variant, params.cast<int>(), level: level),
+        _ => null,
+      },
     };
     if (problem == null || problem.result != result) return null;
     final hundredths = _field<int>(json, 'firstAnswerHundredths');
@@ -499,7 +509,7 @@ class Progress {
       firstAnswer: hundredths == null
           ? _field<num>(json, 'firstAnswer')
           : numberOfHundredths(hundredths),
-      answerHundredths: problem is EquationProblem ? hundredths : null,
+      answerHundredths: problem is ArithmeticProblem ? null : hundredths,
       elapsedMs: _field<int>(json, 'elapsedMs') ?? 0,
       hintsUsed: _field<int>(json, 'hintsUsed') ?? 0,
       answeredAt: answeredAt.toLocal(),

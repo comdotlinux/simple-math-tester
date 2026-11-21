@@ -62,6 +62,12 @@ void main() {
   Progress saved(FakeStore store) =>
       Progress.decode(store.values[progressKey]!);
 
+  /// Algebra's card is gone; the next new kind, Geometry, has its own.
+  void expectNextCard() {
+    expect(find.text('New: Algebra'), findsNothing);
+    expect(find.text('New: Geometry'), findsOneWidget);
+  }
+
   testWidgets('tapping it switches Algebra on; it never shows again, even '
       'after Algebra is switched off and the app restarts', (tester) async {
     final store = FakeStore();
@@ -73,16 +79,16 @@ void main() {
     await tester.tap(card);
     await tester.pumpAndSettle();
     expect(model.selectedOperations, contains(OperationType.algebra));
-    expect(card, findsNothing);
+    expectNextCard();
 
     model.toggleOperation(OperationType.algebra);
     await tester.pumpAndSettle();
     expect(model.selectedOperations, arithmeticKinds);
-    expect(card, findsNothing);
+    expectNextCard();
     expect(saved(store).seenKinds, ['algebra']);
 
     await launch(tester, progress: saved(store));
-    expect(card, findsNothing);
+    expectNextCard();
   });
 
   testWidgets('closing it switches nothing on and hides it for good', (
@@ -93,12 +99,12 @@ void main() {
     await tester.ensureVisible(dismiss);
     await tester.tap(dismiss);
     await tester.pumpAndSettle();
-    expect(card, findsNothing);
+    expectNextCard();
     expect(model.selectedOperations, arithmeticKinds);
     expect(saved(store).seenKinds, ['algebra']);
 
     await launch(tester, progress: saved(store));
-    expect(card, findsNothing);
+    expectNextCard();
   });
 
   testWidgets('it waits for a tier, gives way to a sprint, and does not show '
@@ -122,7 +128,7 @@ void main() {
         selectedOperations: {...arithmeticKinds, OperationType.algebra},
       ),
     );
-    expect(card, findsNothing);
+    expectNextCard();
 
     await launch(
       tester,
@@ -133,7 +139,7 @@ void main() {
         },
       ),
     );
-    expect(card, findsNothing);
+    expectNextCard();
   });
 
   testWidgets('every kind outside arithmetic gets its own card from its '

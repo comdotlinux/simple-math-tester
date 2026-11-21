@@ -404,7 +404,8 @@ class MathTesterModel extends ChangeNotifier {
         final number? when number.isFinite => number,
         _ => null,
       },
-      EquationProblem() => switch (hundredths = parseHundredths(text)) {
+      EquationProblem() || FigureProblem() => switch (hundredths =
+          parseHundredths(text)) {
         final value? => numberOfHundredths(value),
         null => null,
       },
@@ -421,8 +422,8 @@ class MathTesterModel extends ChangeNotifier {
     final firstCheck = !_checked;
     final correct = switch (_current) {
       ArithmeticProblem(:final result) => input == result,
-      EquationProblem(:final resultHundredths) =>
-        hundredths == resultHundredths,
+      EquationProblem(:final resultHundredths) ||
+      FigureProblem(:final resultHundredths) => hundredths == resultHundredths,
     };
     final milestone = _record(input, hundredths);
     _lastCheck = (
@@ -608,11 +609,16 @@ class MathTesterModel extends ChangeNotifier {
     }
     final kind = kinds.elementAt(_random.nextInt(kinds.length));
     Problem problem;
-    // An equation never comes twice in a row; arithmetic keeps its draws.
+    // An equation or a figure never comes twice in a row; arithmetic keeps
+    // its draws.
     do {
       problem = kind.generate(_random, difficulty[kind]!.level);
-    } while (problem is EquationProblem &&
-        problem.question == previous?.question);
+    } while (switch ((problem, previous)) {
+      (EquationProblem(), _) => problem.question == previous?.question,
+      (FigureProblem(:final figure), FigureProblem(figure: final last)) =>
+        figure == last,
+      _ => false,
+    });
     return problem;
   }
 

@@ -22,7 +22,11 @@ because they are getting better. Four operations, chosen by the player. Five
 difficulty levels per operation, starting at Easy, Medium, Hard or Harder and
 adapting to accuracy. Algebra (missing-number equations, the blank drawn as a
 box) is off until the player switches it on, starts at level 1 whatever the
-tier, and sprints draw only the arithmetic operations. Combo, XP, player levels, a daily goal and a daily streak reward progress.
+tier, and sprints draw only the arithmetic operations. Geometry follows the same
+rules: a figure drawn to scale in place of the question text, with a short prompt
+("Perimeter?", "Area?") and language-free cues (thick outline for the perimeter,
+shaded inside with a unit grid for the area); history and screen readers get a
+sentence that names the shape, every label and the question. Combo, XP, player levels, a daily goal and a daily streak reward progress.
 Retry and skip behavior stay. Progress and the last 200 answers are saved on the
 device. No accounts, cloud features or leaderboards. Success means a child can
 enter, check, retry and move on without losing input or context, and sees progress

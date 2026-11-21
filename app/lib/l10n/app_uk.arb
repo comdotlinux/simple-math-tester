@@ -198,5 +198,17 @@
   "privacyChildrenHeading": "Діти",
   "privacyChildren": "Застосунок створено для дітей, і він не збирає жодних даних ні від кого, зокрема від дітей.",
   "privacyChangesHeading": "Зміни та контакти",
-  "privacyChanges": "Якщо ця політика зміниться, нова версія буде опублікована в застосунку та на сторінці приватності вебверсії з новою датою. З питаннями пиши на електронну адресу розробника, вказану на сторінці застосунку в Google Play."
+  "privacyChanges": "Якщо ця політика зміниться, нова версія буде опублікована в застосунку та на сторінці приватності вебверсії з новою датою. З питаннями пиши на електронну адресу розробника, вказану на сторінці застосунку в Google Play.",
+  "operationGeometry": "Geometry",
+  "figureSquare": "Square, side {side}.",
+  "figureRectangle": "Rectangle, sides {width} and {height}.",
+  "figureTriangle": "Triangle, sides {a}, {b} and {c}.",
+  "figurePerimeter": "Perimeter?",
+  "figureArea": "Area?",
+  "figureQuestion": "{figure} {prompt}",
+  "stepSquareSides": "A square has four equal sides, each {side} long.",
+  "stepRectangleSides": "The two sides without a number are as long as the sides opposite them: {width} and {height}.",
+  "stepTriangleSides": "The perimeter is the length all the way around: add the three sides {a}, {b} and {c}.",
+  "stepPerimeterSum": "Add all the sides: {sides} = {perimeter}.",
+  "stepAreaRows": "Count the squares: {rows} rows of {columns} squares each."
 }

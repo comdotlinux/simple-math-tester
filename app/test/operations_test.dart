@@ -76,7 +76,7 @@ void main() {
             case OperationType.divide:
               expect(rhs, inRange(first));
               expect(problem.result, inRange(second));
-            case OperationType.algebra:
+            case OperationType.algebra || OperationType.geometry:
               fail('not an arithmetic kind');
           }
         }
