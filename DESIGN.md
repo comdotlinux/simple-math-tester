@@ -75,7 +75,12 @@ Phones and tablets are first-class; desktop supports keyboard-first practice.
 Two destinations: **Practice** and **My answers**. Practice centers one problem and
 one answer field, with operation selection (at least one stays on) and the sprint
 mode; a header shows the daily streak, daily goal, XP with level, and combo.
-My answers shows stats and a chronological review of the last 200 answers. Settings
+My answers shows stats and a chronological review of the last 200 answers.
+Once a hint was used, a Hints card above the stats shows on how many answers
+a hint was used and how many of the right answers came without one, in total
+and per kind ([definitions](docs/question-kinds.md#hint-use-the-nudge-and-the-totals)).
+It scrolls with the page rather than sitting in the pinned stats header,
+which cuts its bottom off as the page scrolls. Settings
 (starting tier, sound, haptics, Impressum, privacy) is a secondary sheet, not a
 third destination. Keep the current question/draft when switching destinations.
 A new problem is drawn after a reload.
@@ -179,7 +184,14 @@ has its own button, Show the answer, offered only after a valid check. Close,
 the dimmed area, Back and Escape close it; the focus stays inside while it is
 open and returns to the answer field after; reopened, it shows the steps
 already opened. The quiet Hint button under the page opens it before a check,
-Show a hint after a wrong one. Algebra and geometry
+Show a hint after a wrong one. After a hint on more than 5 of the last 10
+answers, asking for one first shows a gentle nudge in the same card: "Have a
+go first", that working it out yourself helps you learn and that the hint
+is still there, with I will try (the main button; it puts the focus back
+in the field and opens nothing) and Show the hint anyway. It never blocks
+or scolds, shows at most once per question, never for a hint already open,
+in a sprint or before 10 answers; Back, Escape and the dimmed area count as
+I will try. Algebra and geometry
 hints say what is asked, the idea and why, the working in small steps, then the
 answer and its check; above the newest geometry step the figure highlights the parts that
 step uses as an accent band. A correct first check after a hint was opened

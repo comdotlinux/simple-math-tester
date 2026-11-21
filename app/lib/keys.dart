@@ -17,6 +17,10 @@ const hintButtonKey = Key('hint-button');
 const tryAgainButtonKey = Key('try-again-button');
 const revealStepButtonKey = Key('reveal-step-button');
 const hintCloseKey = Key('hint-close');
+// The nudge to try first, before the hint, with its two buttons.
+const hintNudgeKey = Key('hint-nudge');
+const hintNudgeTryKey = Key('hint-nudge-try');
+const hintNudgeAnywayKey = Key('hint-nudge-anyway');
 const settingsButtonKey = Key('settings-button');
 const settingsSheetKey = Key('settings-sheet');
 const currentTierNoteKey = Key('current-tier-note');
@@ -122,5 +126,9 @@ const bestSprintStatKey = Key('stat-best-sprint');
 const totalXpStatKey = Key('stat-total-xp');
 const playerLevelStatKey = Key('stat-player-level');
 const compactStatsKey = Key('compact-stats');
+
+/// The hint totals on the stats card: all answers, then each kind's.
+const hintStatsKey = Key('hint-stats');
+Key hintStatsKindKey(Enum type) => Key('hint-stats-${type.name}');
 const answersLoadingKey = Key('answers-loading');
 const answersEndKey = Key('answers-end');

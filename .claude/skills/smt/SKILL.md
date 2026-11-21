@@ -87,7 +87,7 @@ Docs to read for an area:
 |---|---|
 | `operations.dart` | `OperationType` (add, subtract, multiply, divide, algebra, geometry), sealed `Problem` and sealed `ProblemSource`, algebra families and level tables |
 | `geometry.dart`, `figure.dart`, `figure_view.dart` | Geometry families, the figure model and to-scale layout, the painter |
-| `solution_steps.dart`, `hint_steps.dart`, `hint_modal.dart` | Hints for every kind, as structured steps (`EquationStep`, `FigureStep` with the `FigureParts` it highlights); the hint-step view; the in-app hint modal (after a wrong answer: Try again or Show a hint) |
+| `solution_steps.dart`, `hint_steps.dart`, `hint_modal.dart` | Hints for every kind, as structured steps (`EquationStep`, `FigureStep` with the `FigureParts` it highlights); the hint-step view; the in-app hint modal (after a wrong answer: Try again or Show a hint) and the nudge to try first after many hints |
 | `hundredths.dart` | Parsing and formatting answers as whole hundredths |
 | `math_tester_model.dart`, `rules.dart` | Game state, draws, levels, tiers, sprint |
 | `report.dart`, `report_dialog.dart` | The one request: `ReportClient` (HTTP to `/api/report`), the flag, the report dialog and the grown-up check |

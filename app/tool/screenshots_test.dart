@@ -582,6 +582,61 @@ void main() {
           await shoot(tester, '$tag-14-new-kind-card');
         });
 
+        testWidgets('hint nudge and totals screenshots $tag', (tester) async {
+          language = code;
+          // Twelve answers of three kinds, a hint on 7, 6 of the last 10.
+          const kinds = [
+            OperationType.plus,
+            OperationType.minus,
+            OperationType.multiply,
+          ];
+          Attempt entry(int i) {
+            final kind = kinds[i % 3];
+            final result = switch (kind) {
+              OperationType.plus => 8 + i,
+              OperationType.minus => 4 + i,
+              _ => 12 + 2 * i,
+            };
+            return Attempt(
+              ArithmeticProblem(6 + i, 2, kind, result),
+              firstAnswer: i % 4 == 3 ? 1 : result,
+              elapsedMs: 4000,
+              answeredAt: now.subtract(Duration(minutes: 12 - i)),
+              hintsUsed: i.isEven && i > 0 ? 1 : 0,
+              hintOpened: i.isEven && i > 0 || i == 11,
+            );
+          }
+
+          final history = [for (var i = 0; i < 12; i++) entry(i)];
+          final shots = [
+            (size, 1.0, tag),
+            if (size == const Size(360, 640))
+              (
+                const Size(320, 568),
+                2.0,
+                '${code == null ? '' : '$code-'}${brightness.name}-320x568-x2',
+              ),
+          ];
+          for (final (shotSize, scale, name) in shots) {
+            await launch(
+              tester,
+              shotSize,
+              brightness,
+              history: history,
+              scale: scale,
+            );
+            await check(tester, '70');
+            await openHint(tester);
+            await shoot(tester, '$name-17a-hint-nudge');
+            await tester.tap(find.byKey(hintNudgeTryKey));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(myAnswersNavKey));
+            await tester.pumpAndSettle();
+            await tester.ensureVisible(find.byKey(hintStatsKey));
+            await shoot(tester, '$name-17b-hint-totals');
+          }
+        });
+
         testWidgets('algebra screenshots $tag', (tester) async {
           language = code;
           final algebra = OperationType.algebra.source as AlgebraSource;

@@ -524,6 +524,9 @@ class Progress {
     'firstAnswer': attempt.firstAnswer,
     'elapsedMs': attempt.elapsedMs,
     'hintsUsed': attempt.hintsUsed,
+    // Left out while false, which keeps older documents' bytes.
+    if (attempt.hintOpened) 'hintOpened': true,
+    if (attempt.answerShown) 'answerShown': true,
     'answeredAt': attempt.answeredAt.toUtc().toIso8601String(),
     'sprint': attempt.sprint,
   };
@@ -575,6 +578,8 @@ class Progress {
       hintsUsed: _field<int>(json, 'hintsUsed') ?? 0,
       answeredAt: answeredAt.toLocal(),
       sprint: _field<bool>(json, 'sprint') ?? false,
+      hintOpened: _field<bool>(json, 'hintOpened') ?? false,
+      answerShown: _field<bool>(json, 'answerShown') ?? false,
     );
   }
 

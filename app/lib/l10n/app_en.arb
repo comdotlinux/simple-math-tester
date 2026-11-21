@@ -570,6 +570,56 @@
     "description": "Button in the hint window that shows the last solution step, which states the answer. Short."
   },
   "hintAnswerAfterCheck": "Check an answer first. Then you can see the answer.",
+  "hintNudgeTitle": "Have a go first",
+  "@hintNudgeTitle": {
+    "description": "Title of a small window that opens when a child who has used hints on many recent questions asks for another hint. The reader is a child of 7 to 12; the tone is warm and encouraging, never scolding. Short."
+  },
+  "hintNudgeMessage": "Try to solve it first. Working it out yourself helps you learn. The hint is still here if you need it.",
+  "@hintNudgeMessage": {
+    "description": "Text of the same window. The reader is a child of 7 to 12; warm and kind, never scolding: invite the child to try the question alone before opening the hint, and say the hint stays available. Short, simple sentences."
+  },
+  "hintNudgeTry": "I will try",
+  "@hintNudgeTry": {
+    "description": "Main button of the same window, said by the child: closes the window so the child can try the question alone. Warm, first person, short."
+  },
+  "hintNudgeShowAnyway": "Show the hint anyway",
+  "@hintNudgeShowAnyway": {
+    "description": "Second button of the same window: opens the hint after all. Neutral, not judging. Short."
+  },
+  "hintStatsTitle": "Hints",
+  "@hintStatsTitle": {
+    "description": "Heading of the part of the statistics card that shows how often the child opened a hint. Short."
+  },
+  "hintStatsUsed": "{count, plural, =1{Hint used on {hinted} of 1 question, {percent}%} other{Hint used on {hinted} of {count} questions, {percent}%}}",
+  "@hintStatsUsed": {
+    "description": "Statistics line for a child: on how many of the answered questions a hint was opened, and that share as a whole percentage. ICU plural on count; keep the structure and the placeholders.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "hinted": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "hintStatsWithout": "{correct, plural, =1{{without} of 1 correct answer without a hint, {percent}%} other{{without} of {correct} correct answers without a hint, {percent}%}}",
+  "@hintStatsWithout": {
+    "description": "Statistics line for a child: of the questions answered correctly, how many were solved without a hint, and that share as a whole percentage. ICU plural on correct; keep the structure and the placeholders.",
+    "placeholders": {
+      "correct": {
+        "type": "int"
+      },
+      "without": {
+        "type": "int"
+      },
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
   "@hintAnswerAfterCheck": {
     "description": "Note in the hint window, for children: the last step, which states the answer, opens only after the child has checked an answer."
   },

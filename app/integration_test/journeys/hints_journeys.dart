@@ -12,6 +12,18 @@ import '../support/helpers.dart';
 Finder _label(Key key, String label) =>
     find.descendant(of: find.byKey(key), matching: find.text(label));
 
+/// Ten saved answers, a hint opened on the first [hinted] of them.
+List<Attempt> _answers(int hinted) => [
+  for (var i = 0; i < 10; i++)
+    Attempt(
+      ArithmeticProblem(i, 1, OperationType.plus, i + 1),
+      firstAnswer: i + 1,
+      elapsedMs: 3000,
+      answeredAt: DateTime(2026, 11, 21, 9, i),
+      hintOpened: i < hinted,
+    ),
+];
+
 void hintsJourneys() {
   group('hints', () {
     testWidgets('a wrong answer offers Try again and Show a hint, no steps', (
@@ -105,6 +117,61 @@ void hintsJourneys() {
       expect(visibleSteps(tester), 2);
       expect(revealEnabled(tester), isFalse);
       expect(find.text(model.steps.last(en)), findsNothing);
+    });
+
+    testWidgets('after hints on 6 of the last 10 answers a gentle nudge comes '
+        'first: I will try keeps the question, Show the hint anyway opens it', (
+      tester,
+    ) async {
+      await startWith(tester, Progress(tier: Tier.easy, history: _answers(6)));
+      final model = modelOf(tester);
+      final question = model.current;
+
+      await tapKey(tester, hintButtonKey);
+      expect(find.byKey(hintNudgeKey), findsOneWidget);
+      expect(
+        find.text(
+          'Try to solve it first. Working it out yourself helps you learn. '
+          'The hint is still here if you need it.',
+        ),
+        findsOneWidget,
+      );
+      expect(_label(hintNudgeTryKey, 'I will try'), findsOneWidget);
+      expect(
+        _label(hintNudgeAnywayKey, 'Show the hint anyway'),
+        findsOneWidget,
+      );
+      await tapKey(tester, hintNudgeTryKey);
+      expect(find.byKey(hintNudgeKey), findsNothing);
+      expect(find.byKey(solutionStepsKey), findsNothing);
+      expect(model.hintOpened, isFalse);
+      expect(model.current, same(question));
+      expect(await answerFocused(tester), isTrue);
+
+      // Asked again on the same question, the hint opens at once.
+      await tapKey(tester, hintButtonKey);
+      expect(find.byKey(hintNudgeKey), findsNothing);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
+      await tapKey(tester, hintCloseKey);
+
+      // A wrong answer on the next question: the nudge again, then the hint.
+      await nextQuestion(tester);
+      await submit(tester, model.current.result + 1);
+      await tapKey(tester, hintButtonKey);
+      expect(find.byKey(hintNudgeKey), findsOneWidget);
+      await tapKey(tester, hintNudgeAnywayKey);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
+      expect(model.history.last.hintOpened, isTrue);
+      await tapKey(tester, hintCloseKey);
+      expect(await answerFocused(tester), isTrue);
+    });
+
+    testWidgets('after hints on 5 of the last 10 answers the hint opens at '
+        'once', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy, history: _answers(5)));
+      await tapKey(tester, hintButtonKey);
+      expect(find.byKey(hintNudgeKey), findsNothing);
+      expect(find.byKey(solutionStepsKey), findsOneWidget);
     });
 
     testWidgets('hints used before Next are saved with the skip', (

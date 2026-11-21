@@ -141,12 +141,16 @@ class _ProblemPageState extends State<ProblemPage> {
   }
 
   /// "Hint" and "Show a hint": the hint modal; closing it puts the focus
-  /// back on the answer.
-  void _showHint() {
-    _model.openHint();
-    showHintModal(context).whenComplete(() {
-      if (mounted) _focus.requestFocus();
-    });
+  /// back on the answer. After many hints the nudge to try first comes
+  /// before it; "I will try" opens nothing and puts the focus back.
+  Future<void> _showHint() async {
+    final hint = !_model.takeHintNudge() || await showHintNudge(context);
+    if (!mounted) return;
+    if (hint) {
+      _model.openHint();
+      await showHintModal(context);
+    }
+    if (mounted) _focus.requestFocus();
   }
 
   /// The keyboard button on the field: hides the pad and opens the system
