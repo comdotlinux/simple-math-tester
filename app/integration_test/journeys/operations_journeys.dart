@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/keys.dart';
+import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/rules.dart';
@@ -123,6 +124,35 @@ void operationsJourneys() {
       await submit(tester, model.current.result);
       expect(model.history.last.correct, isTrue);
       expect(model.history.last.problem.kind, OperationType.algebra);
+    });
+
+    testWidgets('the new-kind card switches Algebra on once and stays away '
+        'after Algebra is off again and the app restarts', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      final card = find.byKey(newKindCardKey);
+      // The title names the kind; the wording is the behaviour.
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text(en.newKindTitle(OperationType.algebra.label(en))),
+        ),
+        findsOneWidget,
+      );
+
+      await tapVisible(tester, card);
+      expect(model.selectedOperations, contains(OperationType.algebra));
+      expect(card, findsNothing);
+
+      await tapVisible(tester, operationToggle(OperationType.algebra));
+      await restartWhenSaved(
+        tester,
+        (p) =>
+            p.seenKinds.contains(OperationType.algebra.name) &&
+            !p.selectedOperations.contains(OperationType.algebra),
+      );
+      expect(modelOf(tester).selectedOperations, arithmeticKinds);
+      expect(card, findsNothing);
     });
   });
 }

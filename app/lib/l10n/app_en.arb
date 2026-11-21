@@ -725,6 +725,24 @@
   "@updateReminderLater": {
     "description": "Short message after the update reminder is closed: it comes back in about a month."
   },
+  "newKindTitle": "New: {kind}",
+  "@newKindTitle": {
+    "description": "Title of the one-time card under the header that names a new kind of question, such as 'New: Algebra'. Shown once per kind.",
+    "placeholders": {
+      "kind": {
+        "type": "String",
+        "example": "Algebra"
+      }
+    }
+  },
+  "newKindSubtitle": "Tap here to switch it on",
+  "@newKindSubtitle": {
+    "description": "Line under the new-kind card's title; tapping the card adds that kind to the practice questions."
+  },
+  "newKindDismiss": "No, thanks",
+  "@newKindDismiss": {
+    "description": "Tooltip of the close button that hides the new-kind card for good."
+  },
   "stepSoResult": "So {left} {op} {right} = {result}.",
   "@stepSoResult": {
     "description": "Hint step that explains a sum to a child. Math symbols (+ − × ÷ = ?) and numbers stay exactly as given. {op} is a math symbol.",

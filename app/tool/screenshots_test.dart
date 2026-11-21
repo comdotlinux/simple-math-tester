@@ -90,6 +90,8 @@ void main() {
     LayoutMode layout = LayoutMode.comfortable,
     List<Attempt> history = const [],
     AppPalette palette = AppPalette.sunny,
+    // Every new-kind card already seen, so only its own shot shows one.
+    bool newKindCard = false,
     Problem problem = const ArithmeticProblem(
       48,
       27,
@@ -113,6 +115,10 @@ void main() {
         history: history,
         palette: palette,
         language: language,
+        seenKinds: [
+          if (!newKindCard)
+            for (final kind in OperationType.values) kind.name,
+        ],
       ),
       clock: () => now,
       ticker: ticks == null ? null : () => ticks.stream,
@@ -461,6 +467,13 @@ void main() {
             await check(tester, '75');
             await shoot(tester, '$tag-10c-system-keyboard-correct');
           }
+        });
+
+        testWidgets('new kind card screenshots $tag', (tester) async {
+          language = code;
+          await launch(tester, size, brightness, newKindCard: true);
+          await tester.ensureVisible(find.byKey(newKindCardKey));
+          await shoot(tester, '$tag-14-new-kind-card');
         });
 
         testWidgets('algebra screenshots $tag', (tester) async {

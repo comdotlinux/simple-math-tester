@@ -38,6 +38,8 @@ const reportProblemTileKey = Key('report-problem-tile');
 const appVersionTileKey = Key('app-version-tile');
 const updateReminderKey = Key('update-reminder');
 const updateReminderDismissKey = Key('update-reminder-dismiss');
+const newKindCardKey = Key('new-kind-card');
+const newKindDismissKey = Key('new-kind-dismiss');
 const privacyPageKey = Key('privacy-page');
 const licencesPageKey = Key('licences-page');
 
