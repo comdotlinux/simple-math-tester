@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'labels.dart';
@@ -50,6 +51,26 @@ class _ResultsPageState extends State<ResultsPage> {
   static const _columnFlex = [55, 160, 250, 135];
 
   AppLocalizations get _l => AppLocalizations.of(context);
+
+  /// The right answer as shown: an equation's with the language's decimal
+  /// separator and a minus sign below zero.
+  String _expected(Attempt attempt) => switch (attempt.problem) {
+    EquationProblem(:final resultHundredths) => formatHundredths(
+      resultHundredths,
+      _l.localeName,
+    ),
+    final problem => formatNumber(problem.result),
+  };
+
+  /// The first answer of an answered [attempt], shown like [_expected].
+  String _entered(Attempt attempt) =>
+      switch ((attempt.problem, attempt.answerHundredths)) {
+        (EquationProblem(), final hundredths?) => formatHundredths(
+          hundredths,
+          _l.localeName,
+        ),
+        _ => formatNumber(attempt.firstAnswer!),
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -376,15 +397,15 @@ class _ResultsPageState extends State<ResultsPage> {
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
     final (status, color, onColor, icon) = _verdict(_l, tokens, attempt);
-    final expected = formatNumber(attempt.problem.result);
+    final expected = _expected(attempt);
     final entered = attempt.skipped
         ? _l.noAnswerEntered
-        : _l.yourAnswer(formatNumber(attempt.firstAnswer!));
+        : _l.yourAnswer(_entered(attempt));
     final said = attempt.skipped
         ? _l.saidNoAnswer
         : attempt.correct
         ? null
-        : _l.saidAnswer(formatNumber(attempt.firstAnswer!));
+        : _l.saidAnswer(_entered(attempt));
     final muted = textTheme.bodyMedium?.copyWith(color: tokens.inkMuted);
     final row = Slab(
       child: Card(
@@ -471,7 +492,7 @@ class _ResultsPageState extends State<ResultsPage> {
             : Tooltip(
                 message: attempt.skipped
                     ? _l.noAnswerEntered
-                    : _l.youSaid(formatNumber(attempt.firstAnswer!)),
+                    : _l.youSaid(_entered(attempt)),
                 child: row,
               ),
       ),
@@ -594,12 +615,10 @@ class _ResultsPageState extends State<ResultsPage> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        attempt.skipped
-            ? _l.noAnswerEntered
-            : _l.yourAnswer(formatNumber(attempt.firstAnswer!)),
+        attempt.skipped ? _l.noAnswerEntered : _l.yourAnswer(_entered(attempt)),
       ),
       const SizedBox(height: 4),
-      Text(_l.expectedAnswer(formatNumber(attempt.problem.result))),
+      Text(_l.expectedAnswer(_expected(attempt))),
     ],
   );
 }

@@ -152,8 +152,9 @@ class ArithmeticSource extends ProblemSource<ArithmeticProblem> {
 (int, int) _productFirst(int a, int b, Random random) => (a * b, a);
 
 /// What one family's pure build makes of its params: the question's tokens,
-/// with [EquationProblem.blank] for the unknown, and the answer; null when
-/// the params do not make a valid question of the family.
+/// with [EquationProblem.blank] or the letter n for the unknown, and the
+/// answer as a whole number of hundredths; null when the params do not make
+/// a valid question of the family.
 typedef EquationBuild = (List<String>, int)? Function(List<int> params);
 
 /// Each family by its variant name, which is saved with every attempt and
@@ -167,6 +168,17 @@ const Map<String, EquationBuild> _equations = {
   'missingSecondFactor': _missingSecondFactor,
   'missingDivisor': _missingDivisor,
   'missingDividend': _missingDividend,
+  'nPlusA': _nPlusA,
+  'nMinusA': _nMinusA,
+  'aTimesN': _aTimesN,
+  'nDividedByA': _nDividedByA,
+  'anPlusB': _anPlusB,
+  'anMinusB': _anMinusB,
+  'aBracketNMinusB': _aBracketNMinusB,
+  'aBracketNPlusB': _aBracketNPlusB,
+  'nDividedByAPlusB': _nDividedByAPlusB,
+  'anPlusBNegativeN': _anPlusBNegativeN,
+  'anTenths': _anTenths,
 };
 
 /// The families of each level, index 0 is level 1, with the range of each
@@ -184,6 +196,23 @@ const List<List<(String, List<Range>)>> _algebraLevels = [
     ('missingDivisor', [(2, 10), (1, 10)]),
     ('missingDividend', [(2, 10), (1, 10)]),
   ],
+  [
+    ('nPlusA', [(2, 12), (0, 20)]),
+    ('nMinusA', [(2, 12), (0, 20)]),
+    ('aTimesN', [(2, 12), (0, 20)]),
+    ('nDividedByA', [(2, 12), (0, 20)]),
+  ],
+  [
+    ('anPlusB', [(2, 9), (1, 20), (1, 20)]),
+    ('anMinusB', [(2, 9), (1, 20), (1, 20)]),
+  ],
+  [
+    ('aBracketNMinusB', [(2, 9), (1, 10), (-10, 10)]),
+    ('aBracketNPlusB', [(2, 9), (1, 10), (-10, 10)]),
+    ('nDividedByAPlusB', [(2, 9), (1, 10), (-10, 10)]),
+    ('anPlusBNegativeN', [(2, 9), (1, 10), (-10, -1)]),
+    ('anTenths', [(2, 9), (-100, 100)]),
+  ],
 ];
 
 const _blank = EquationProblem.blank;
@@ -195,7 +224,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingSecondAddend(List<int> params) => switch (params) {
   [final a, final b] when a >= 0 && b >= 0 => (
     ['$a', '+', _blank, '=', '${a + b}'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -204,7 +233,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingFirstAddend(List<int> params) => switch (params) {
   [final a, final b] when a >= 0 && b >= 0 => (
     [_blank, '+', '$a', '=', '${a + b}'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -213,7 +242,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingSubtrahend(List<int> params) => switch (params) {
   [final a, final b] when a >= 0 && b >= 0 => (
     ['${a + b}', '−', _blank, '=', '$a'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -222,7 +251,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingMinuend(List<int> params) => switch (params) {
   [final a, final b] when a >= 0 && b >= 0 => (
     [_blank, '−', '$a', '=', '$b'],
-    a + b,
+    (a + b) * 100,
   ),
   _ => null,
 };
@@ -234,7 +263,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingFirstFactor(List<int> params) => switch (params) {
   [final a, final b] when a > 0 && b >= 0 => (
     [_blank, '×', '$a', '=', '${a * b}'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -243,7 +272,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingSecondFactor(List<int> params) => switch (params) {
   [final a, final b] when a > 0 && b >= 0 => (
     ['$a', '×', _blank, '=', '${a * b}'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -252,7 +281,7 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingDivisor(List<int> params) => switch (params) {
   [final a, final b] when a > 0 && b > 0 => (
     ['${a * b}', '÷', _blank, '=', '$a'],
-    b,
+    b * 100,
   ),
   _ => null,
 };
@@ -261,8 +290,121 @@ const _blank = EquationProblem.blank;
 (List<String>, int)? _missingDividend(List<int> params) => switch (params) {
   [final a, final b] when a > 0 && b >= 0 => (
     [_blank, '÷', '$a', '=', '$b'],
-    a * b,
+    a * b * 100,
   ),
+  _ => null,
+};
+
+/// [value] as the question shows it: a number below zero with [minusSign].
+String signedText(int value) => value < 0 ? '$minusSign${-value}' : '$value';
+
+// Level 3: the unknown is the letter n, with an explicit ×. Params are a and
+// a small number 0 or more; the largest number is computed.
+
+/// n + a = n + a, answer n.
+(List<String>, int)? _nPlusA(List<int> params) => switch (params) {
+  [final a, final n] when a >= 0 && n >= 0 => (
+    ['n', '+', '$a', '=', '${n + a}'],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// n − a = b, answer a + b.
+(List<String>, int)? _nMinusA(List<int> params) => switch (params) {
+  [final a, final b] when a >= 0 && b >= 0 => (
+    ['n', '−', '$a', '=', '$b'],
+    (a + b) * 100,
+  ),
+  _ => null,
+};
+
+/// a × n = a × n, answer n; a is never 0.
+(List<String>, int)? _aTimesN(List<int> params) => switch (params) {
+  [final a, final n] when a > 0 && n >= 0 => (
+    ['$a', '×', 'n', '=', '${a * n}'],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// n ÷ a = b, answer a × b.
+(List<String>, int)? _nDividedByA(List<int> params) => switch (params) {
+  [final a, final b] when a > 0 && b >= 0 => (
+    ['n', '÷', '$a', '=', '$b'],
+    a * b * 100,
+  ),
+  _ => null,
+};
+
+// Level 4: an means a × n. Params a (2 or more), b (1 or more) and the
+// answer n (1 or more, so no hint step before the last shows it); every
+// number shown is 0 or more.
+
+/// an + b = c, answer n.
+(List<String>, int)? _anPlusB(List<int> params) => switch (params) {
+  [final a, final b, final n] when a >= 2 && b >= 1 && n >= 1 => (
+    ['${a}n', '+', '$b', '=', '${a * n + b}'],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// an − b = c with c at least 0, answer n.
+(List<String>, int)? _anMinusB(List<int> params) => switch (params) {
+  [final a, final b, final n] when a >= 2 && b >= 1 && n >= 1 && a * n >= b => (
+    ['${a}n', '−', '$b', '=', '${a * n - b}'],
+    n * 100,
+  ),
+  _ => null,
+};
+
+// Level 5: numbers below zero (shown with [minusSign]) and tenths. Params a
+// (2 or more) and b (1 or more) as before; the answer may be below zero.
+
+/// a(n − b) = c, answer n.
+(List<String>, int)? _aBracketNMinusB(List<int> params) => switch (params) {
+  [final a, final b, final n] when a >= 2 && b >= 1 => (
+    ['$a(n', '−', '$b)', '=', signedText(a * (n - b))],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// a(n + b) = c, answer n.
+(List<String>, int)? _aBracketNPlusB(List<int> params) => switch (params) {
+  [final a, final b, final n] when a >= 2 && b >= 1 => (
+    ['$a(n', '+', '$b)', '=', signedText(a * (n + b))],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// n ÷ a + b = k + b, answer a × k. The third param is the quotient k,
+/// never 0, so no hint step before the last shows the answer.
+(List<String>, int)? _nDividedByAPlusB(List<int> params) => switch (params) {
+  [final a, final b, final k] when a >= 2 && b >= 1 && k != 0 => (
+    ['n', '÷', '$a', '+', '$b', '=', signedText(k + b)],
+    a * k * 100,
+  ),
+  _ => null,
+};
+
+/// an + b = c with the answer n below zero.
+(List<String>, int)? _anPlusBNegativeN(List<int> params) => switch (params) {
+  [final a, final b, final n] when a >= 2 && b >= 1 && n < 0 => (
+    ['${a}n', '+', '$b', '=', signedText(a * n + b)],
+    n * 100,
+  ),
+  _ => null,
+};
+
+/// an = c with c whole and the answer n in tenths, never whole; the second
+/// param is n in tenths (25 is 2.5).
+(List<String>, int)? _anTenths(List<int> params) => switch (params) {
+  [final a, final tenths]
+      when a >= 2 && tenths % 10 != 0 && a * tenths % 10 == 0 =>
+    (['${a}n', '=', signedText(a * tenths ~/ 10)], tenths * 10),
   _ => null,
 };
 
@@ -270,11 +412,10 @@ const _blank = EquationProblem.blank;
 class AlgebraSource extends ProblemSource<EquationProblem> {
   const AlgebraSource(this.levels, this.families, this._steps);
 
-  /// Every answer of the levels so far is a whole number of 0 or more.
-  /// The level with negative and decimal answers switches this on, for
-  /// the whole kind, so the pad does not change shape between levels.
+  /// Level 5 has answers below zero and in tenths. The keys are on for the
+  /// whole kind, so the pad does not change shape between levels.
   @override
-  bool get signedDecimalAnswers => false;
+  bool get signedDecimalAnswers => true;
 
   /// The families of each level with the range of each param; index 0 is
   /// level 1.
@@ -301,7 +442,7 @@ class AlgebraSource extends ProblemSource<EquationProblem> {
       List.unmodifiable(params),
       List.unmodifiable(tokens),
       kind,
-      answer * 100,
+      answer,
       level: level,
     );
   }
@@ -329,12 +470,13 @@ class AlgebraSource extends ProblemSource<EquationProblem> {
   }
 
   /// A family drawn uniformly, then each param uniformly from its range;
-  /// params a family rejects are drawn again.
+  /// params the family rejects are drawn again within that family, so a
+  /// family that rejects many still comes as often as the others.
   @override
   EquationProblem generate(OperationType kind, Random random, int level) {
     final families = levels[level - 1];
+    final (variant, ranges) = families[random.nextInt(families.length)];
     while (true) {
-      final (variant, ranges) = families[random.nextInt(families.length)];
       final params = [
         for (final (low, high) in ranges) low + random.nextInt(high - low + 1),
       ];

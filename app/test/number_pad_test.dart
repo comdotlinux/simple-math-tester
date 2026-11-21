@@ -328,11 +328,13 @@ void main() {
     String fieldText(WidgetTester tester) =>
         tester.widget<TextField>(find.byType(TextField)).controller!.text;
 
-    testWidgets('algebra as it is today keeps today\'s pad', (tester) async {
+    testWidgets('algebra itself asks for the keys (level 5 answers go below '
+        'zero and into tenths)', (tester) async {
+      expect(OperationType.algebra.signedDecimalAnswers, isTrue);
       final model = await launch(tester, keys: false);
-      expect(model.signedDecimalInput, isFalse);
-      expect(find.byKey(padMinusKey), findsNothing);
-      expect(find.byKey(padDecimalKey), findsNothing);
+      expect(model.signedDecimalInput, isTrue);
+      expect(find.byKey(padMinusKey), findsOne);
+      expect(find.byKey(padDecimalKey), findsOne);
     });
 
     testWidgets('the pad keeps its keys and shape from question to question', (

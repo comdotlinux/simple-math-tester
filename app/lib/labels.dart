@@ -25,9 +25,15 @@ extension ProblemLabel on Problem {
     _ => question,
   };
 
-  /// [shown] for screen readers: the blank is a word, not a "white square".
-  String spoken(AppLocalizations l) =>
-      shown(l).replaceAll(EquationProblem.blank, l.blank);
+  /// [shown] for screen readers: the blank is a word, not a "white square",
+  /// and in an equation `2n` or `3(n − 2)` say their multiplication
+  /// (`2 × n`), so a number is not read into the letter.
+  String spoken(AppLocalizations l) {
+    final text = shown(l).replaceAll(EquationProblem.blank, l.blank);
+    return this is EquationProblem
+        ? text.replaceAllMapped(RegExp(r'(\d)(?=[n(])'), (m) => '${m[1]} × ')
+        : text;
+  }
 }
 
 /// The text form of [figure]: the shape, every label and what is asked,

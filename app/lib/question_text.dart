@@ -7,28 +7,40 @@ import 'operations.dart';
 
 /// [text] in [style], with a drawn box for each [EquationProblem.blank]: no
 /// bundled font has that glyph, and the web engine would fetch a font for
-/// it. Callers give the [Text.rich] a semantics label, because the box has
-/// no words.
+/// it. The letter n on its own (not in a word such as a figure's sentence),
+/// the unknown from level 3 on, is italic, as in a textbook. Callers give
+/// the [Text.rich] a semantics label, because the box has no words.
 TextSpan mathSpan(BuildContext context, String text, TextStyle? style) {
-  final parts = text.split(EquationProblem.blank);
-  if (parts.length == 1) return TextSpan(text: text, style: style);
+  final marks = RegExp(
+    '${EquationProblem.blank}|(?<!\\p{L})n(?!\\p{L})',
+    unicode: true,
+  ).allMatches(text);
+  if (marks.isEmpty) return TextSpan(text: text, style: style);
   final effective = DefaultTextStyle.of(context).style.merge(style);
-  return TextSpan(
-    style: style,
-    children: [
-      for (var i = 0; i < parts.length; i++) ...[
-        if (i > 0)
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: _BlankBox(
-              fontSize: effective.fontSize ?? 14,
-              color: effective.color ?? context.tokens.ink,
+  final children = <InlineSpan>[];
+  var start = 0;
+  for (final mark in marks) {
+    if (mark.start > start) {
+      children.add(TextSpan(text: text.substring(start, mark.start)));
+    }
+    children.add(
+      mark[0] == 'n'
+          ? const TextSpan(
+              text: 'n',
+              style: TextStyle(fontStyle: FontStyle.italic),
+            )
+          : WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: _BlankBox(
+                fontSize: effective.fontSize ?? 14,
+                color: effective.color ?? context.tokens.ink,
+              ),
             ),
-          ),
-        if (parts[i].isNotEmpty) TextSpan(text: parts[i]),
-      ],
-    ],
-  );
+    );
+    start = mark.end;
+  }
+  if (start < text.length) children.add(TextSpan(text: text.substring(start)));
+  return TextSpan(style: style, children: children);
 }
 
 /// An empty box about the size of a digit, outlined in the text colour.

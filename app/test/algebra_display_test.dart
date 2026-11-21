@@ -10,6 +10,7 @@ import 'package:simple_math_tester/math_tester_model.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/problem_page.dart' show togglesPerRow;
 import 'package:simple_math_tester/progress.dart';
+import 'package:simple_math_tester/question_text.dart';
 import 'package:simple_math_tester/rules.dart';
 
 /// Equations on screen: the blank is a drawn box, never the glyph U+25A1,
@@ -47,18 +48,22 @@ void main() {
     Size size = const Size(412, 900),
     LayoutMode layout = LayoutMode.comfortable,
     double scale = 1,
+    EquationProblem? problem,
+    List<Attempt>? attempts,
+    String? language,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final model = MathTesterModel(
-      initialProblem: equation,
+      initialProblem: problem ?? equation,
       progress: Progress(
         tier: Tier.easy,
         selectedOperations: {OperationType.algebra},
-        history: history,
+        history: attempts ?? history,
         layoutMode: layout,
+        language: language,
       ),
     );
     addTearDown(model.dispose);
@@ -188,6 +193,109 @@ void main() {
       find.descendant(of: row, matching: find.byIcon(Icons.arrow_forward)),
       findsOneWidget,
     );
+  });
+
+  testWidgets('from level 3 the letter n is italic and 2n is read as '
+      '2 × n', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final letter = source.build(OperationType.algebra, 'anPlusB', [
+      2,
+      3,
+      4,
+    ], level: 4)!;
+    await launch(tester, problem: letter);
+    final text = tester
+        .widgetList<RichText>(
+          find.descendant(
+            of: find.byKey(questionOnProblemsPageKey),
+            matching: find.byType(RichText),
+          ),
+        )
+        .map((widget) => widget.text)
+        .singleWhere((span) => span.toPlainText().contains('n'));
+    expect(text.toPlainText(), startsWith('2n + 3 = 11'));
+    final italic = <String>[];
+    text.visitChildren((span) {
+      if (span is TextSpan && span.style?.fontStyle == FontStyle.italic) {
+        italic.add(span.text!);
+      }
+      return true;
+    });
+    expect(italic, ['n']);
+    expect(
+      find.bySemanticsLabel('Math question: 2 × n + 3 = 11'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
+  });
+
+  testWidgets('only the letter n on its own is italic, not an n in a word', (
+    tester,
+  ) async {
+    final italic = <String, List<String>>{};
+    await tester.pumpWidget(
+      Builder(
+        builder: (context) {
+          for (final text in [
+            '3(n − 2) = 12',
+            'n ÷ 4 + 3 = 7',
+            'Rectangle, sides 5 and 3. Perimeter?',
+          ]) {
+            final found = italic[text] = [];
+            mathSpan(context, text, null).visitChildren((span) {
+              if (span is TextSpan &&
+                  span.style?.fontStyle == FontStyle.italic) {
+                found.add(span.text!);
+              }
+              return true;
+            });
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+    expect(italic, {
+      '3(n − 2) = 12': ['n'],
+      'n ÷ 4 + 3 = 7': ['n'],
+      'Rectangle, sides 5 and 3. Perimeter?': <String>[],
+    });
+  });
+
+  testWidgets('a history card shows tenths with the language separator and '
+      'a minus sign below zero', (tester) async {
+    final tenths = source.build(OperationType.algebra, 'anTenths', [
+      4,
+      -25,
+    ], level: 5)!;
+    final model = await launch(
+      tester,
+      problem: tenths,
+      language: 'de',
+      attempts: [
+        Attempt(
+          tenths,
+          firstAnswer: -2.4,
+          answerHundredths: -240,
+          elapsedMs: 4000,
+          answeredAt: DateTime(2026, 11, 21, 9),
+        ),
+      ],
+    );
+    model.setCurrentPage(1);
+    await tester.pumpAndSettle();
+    final row = find.byKey(historyRowKey(0));
+    expect(
+      find.descendant(of: row, matching: find.textContaining('−2,5')),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(of: row, matching: find.textContaining('−2,4')),
+      findsWidgets,
+    );
+    expect(find.textContaining('2.5'), findsNothing);
+    expect(find.textContaining('-2'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   group('selection toggles', () {

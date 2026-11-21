@@ -129,8 +129,8 @@ void main() {
     const kind = OperationType.algebra;
     final source = kind.source as AlgebraSource;
 
-    test('has levels 1 and 2 so far; arithmetic has 5', () {
-      expect(kind.highestLevel, 2);
+    test('has levels 1 to 5, as arithmetic does', () {
+      expect(kind.highestLevel, 5);
       for (final type in arithmeticKinds) {
         expect(type.highestLevel, maxLevel);
       }
@@ -196,6 +196,66 @@ void main() {
       });
     });
 
+    Map<String, int> countByVariant(int level) {
+      final counts = <String, int>{};
+      for (final p in source.problems(kind, level)) {
+        counts[p.variant] = (counts[p.variant] ?? 0) + 1;
+      }
+      return counts;
+    }
+
+    test('levels 3 to 5 have their families, ranges and counts', () {
+      // a 2..12 and the other number 0..20.
+      expect(countByVariant(3), {
+        'nPlusA': 231,
+        'nMinusA': 231,
+        'aTimesN': 231,
+        'nDividedByA': 231,
+      });
+      // a 2..9, b 1..20, n 1..20; an − b at least 0.
+      expect(countByVariant(4), {'anPlusB': 3200, 'anMinusB': 2911});
+      // a 2..9, b 1..10, n −10..10 (the quotient for ÷, never 0); tenths
+      // −10.0..10.0, never whole, with a whole right-hand side.
+      expect(countByVariant(5), {
+        'aBracketNMinusB': 1680,
+        'aBracketNPlusB': 1680,
+        'nDividedByAPlusB': 1600,
+        'anPlusBNegativeN': 800,
+        'anTenths': 160,
+      });
+      for (var level = 3; level <= 5; level++) {
+        for (final p in source.problems(kind, level)) {
+          expect([p.kind, p.level], [kind, level]);
+          expect(p.tokens, isNot(contains(EquationProblem.blank)));
+          expect('n'.allMatches(p.question), hasLength(1), reason: p.question);
+          for (final (i, (low, high))
+              in source.levels[level - 1]
+                  .firstWhere((family) => family.$1 == p.variant)
+                  .$2
+                  .indexed) {
+            expect(p.params[i], inInclusiveRange(low, high));
+          }
+        }
+      }
+    });
+
+    test('level 5 answers go below zero and into tenths', () {
+      final answers = {
+        for (final p in source.problems(kind, 5)) p.resultHundredths,
+      };
+      expect(answers.where((a) => a < 0), isNotEmpty);
+      expect(answers.where((a) => a % 100 != 0), isNotEmpty);
+      expect(answers.every((a) => a % 10 == 0), isTrue);
+      for (final p in source.problems(kind, 5)) {
+        switch (p.variant) {
+          case 'anPlusBNegativeN':
+            expect(p.resultHundredths, isNegative);
+          case 'anTenths':
+            expect(p.resultHundredths % 100, isNot(0));
+        }
+      }
+    });
+
     test('each family builds its form', () {
       String question(String variant) =>
           source.build(kind, variant, [3, 4])!.question;
@@ -211,6 +271,26 @@ void main() {
       expect(question('missingDividend'), '□ ÷ 3 = 4');
       expect(source.build(kind, 'missingDivisor', [3, 4])!.result, 4);
       expect(source.build(kind, 'missingDividend', [3, 4])!.result, 12);
+      String letter(String variant, List<int> params) =>
+          source.build(kind, variant, params)!.question;
+      expect(letter('nPlusA', [5, 7]), 'n + 5 = 12');
+      expect(letter('nMinusA', [5, 7]), 'n − 5 = 7');
+      expect(letter('aTimesN', [3, 5]), '3 × n = 15');
+      expect(letter('nDividedByA', [4, 3]), 'n ÷ 4 = 3');
+      expect(letter('anPlusB', [2, 3, 4]), '2n + 3 = 11');
+      expect(letter('anMinusB', [4, 5, 5]), '4n − 5 = 15');
+      expect(letter('aBracketNMinusB', [3, 2, 6]), '3(n − 2) = 12');
+      expect(letter('aBracketNMinusB', [3, 2, -4]), '3(n − 2) = −18');
+      expect(letter('aBracketNPlusB', [3, 2, 2]), '3(n + 2) = 12');
+      expect(letter('nDividedByAPlusB', [4, 3, 1]), 'n ÷ 4 + 3 = 4');
+      expect(letter('anPlusBNegativeN', [3, 9, -2]), '3n + 9 = 3');
+      expect(letter('anTenths', [4, 25]), '4n = 10');
+      expect(letter('anTenths', [5, -2]), '5n = −1');
+      expect(source.build(kind, 'nMinusA', [5, 7])!.result, 12);
+      expect(source.build(kind, 'nDividedByA', [4, 3])!.result, 12);
+      expect(source.build(kind, 'nDividedByAPlusB', [4, 3, 1])!.result, 4);
+      expect(source.build(kind, 'anTenths', [4, 25])!.resultHundredths, 250);
+      expect(source.build(kind, 'anTenths', [5, -2])!.resultHundredths, -20);
     });
 
     test('an unknown variant or params that do not fit build nothing', () {
@@ -224,6 +304,21 @@ void main() {
       expect(source.build(kind, 'missingDivisor', [3, 0]), isNull);
       expect(source.build(kind, 'missingDivisor', [0, 4]), isNull);
       expect(source.build(kind, 'missingDividend', [0, 4]), isNull);
+      // Levels 3 and 4 show no number below zero.
+      expect(source.build(kind, 'nPlusA', [-1, 4]), isNull);
+      expect(source.build(kind, 'nMinusA', [3, -4]), isNull);
+      expect(source.build(kind, 'aTimesN', [0, 4]), isNull);
+      expect(source.build(kind, 'nDividedByA', [0, 4]), isNull);
+      expect(source.build(kind, 'anPlusB', [2, 3, 0]), isNull);
+      expect(source.build(kind, 'anMinusB', [2, 5, 2]), isNull);
+      expect(source.build(kind, 'anMinusB', [1, 1, 4]), isNull);
+      // Level 5: n ÷ a with the quotient 0, a negative family with n at
+      // least 0, and tenths that are whole or give a decimal right side.
+      expect(source.build(kind, 'nDividedByAPlusB', [4, 3, 0]), isNull);
+      expect(source.build(kind, 'anPlusBNegativeN', [3, 9, 0]), isNull);
+      expect(source.build(kind, 'anTenths', [4, 20]), isNull);
+      expect(source.build(kind, 'anTenths', [3, 25]), isNull);
+      expect(source.build(kind, 'aBracketNPlusB', [1, 2, 3]), isNull);
     });
 
     test('generate draws every family, only problems of the level', () {
@@ -238,6 +333,23 @@ void main() {
           variants.add(problem.variant);
         }
         expect(variants, hasLength(source.levels[level - 1].length));
+      }
+    });
+
+    test('generate draws each family of a level equally often, also one that '
+        'rejects most params', () {
+      for (final level in [4, 5]) {
+        final families = source.levels[level - 1].length;
+        final random = Random(11);
+        const draws = 10000;
+        final counts = <String, int>{};
+        for (var i = 0; i < draws; i++) {
+          final problem = kind.generate(random, level) as EquationProblem;
+          counts[problem.variant] = (counts[problem.variant] ?? 0) + 1;
+        }
+        for (final count in counts.values) {
+          expect(count, closeTo(draws / families, draws / families * 0.1));
+        }
       }
     });
   });

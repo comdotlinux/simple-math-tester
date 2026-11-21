@@ -718,12 +718,12 @@ void main() {
     });
 
     test('its level is clamped to the highest level it has', () {
-      expect(OperationType.algebra.highestLevel, 2);
+      expect(OperationType.algebra.highestLevel, 5);
       expect(
-        Progress.decode('{"operations":{"algebra":{"level":4,"answered":3}}}')
+        Progress.decode('{"operations":{"algebra":{"level":9,"answered":3}}}')
             .difficulty[OperationType.algebra]!
             .level,
-        2,
+        5,
       );
     });
 
@@ -823,6 +823,59 @@ void main() {
       );
     });
 
+    test('level 5 params below zero and in tenths survive the round trip', () {
+      final source = OperationType.algebra.source as AlgebraSource;
+      final problems = [
+        source.build(OperationType.algebra, 'aBracketNMinusB', [
+          3,
+          2,
+          -4,
+        ], level: 5)!,
+        source.build(OperationType.algebra, 'anTenths', [4, -25], level: 5)!,
+      ];
+      final progress = Progress(
+        history: [
+          for (final problem in problems)
+            Attempt(
+              problem,
+              firstAnswer: problem.result,
+              answerHundredths: problem.resultHundredths,
+              elapsedMs: 10,
+              answeredAt: DateTime.utc(2026, 11, 21, 10).toLocal(),
+            ),
+        ],
+      );
+      final entries = progress.toJsonHistory();
+      expect(
+        [for (final entry in entries) (entry as Map)['params']],
+        [
+          [3, 2, -4],
+          [4, -25],
+        ],
+      );
+      expect(
+        [for (final entry in entries) (entry as Map)['result']],
+        [-4, -2.5],
+      );
+      final decoded = Progress.decode(progress.encode());
+      expect(
+        [for (final a in decoded.history) a.problem.question],
+        ['3(n − 2) = −18', '4n = −10'],
+      );
+      expect(
+        [
+          for (final a in decoded.history)
+            (a.problem as EquationProblem).resultHundredths,
+        ],
+        [-400, -250],
+      );
+      expect(
+        decoded.history.every((a) => a.correct && a.problem.level == 5),
+        isTrue,
+      );
+      expect(decoded.encode(), progress.encode());
+    });
+
     test('the saved hundredths win; an entry without them (an older build '
         'drops fields it does not know) is read from its number', () {
       Attempt decoded(String fields) => Progress.decode(
@@ -889,6 +942,8 @@ void main() {
       ('too few params', '"variant":"missingMinuend","params":[3]'),
       ('too many params', '"variant":"missingMinuend","params":[3,4,5]'),
       ('a negative param', '"variant":"missingMinuend","params":[-3,4]'),
+      ('a negative level 3 param', '"variant":"nPlusA","params":[-3,4]'),
+      ('whole tenths', '"variant":"anTenths","params":[4,20]'),
     ]) {
       test('an algebra entry with $name is kept as it is', () {
         expectKept(

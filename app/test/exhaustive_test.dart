@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:simple_math_tester/hundredths.dart';
 import 'package:simple_math_tester/operations.dart';
 import 'package:simple_math_tester/solution_steps.dart';
 
@@ -64,6 +65,18 @@ int _pairs(OperationType type, int level) {
   return (aMax - aMin + 1) * (bMax - bMin + 1);
 }
 
+/// [p]'s question with [hundredths] in place of the unknown, bracketed where
+/// it multiplies and is below zero (`3 × (−2) + 9 = 3`).
+String _substitute(EquationProblem p, int hundredths) {
+  final number = formatHundredths(hundredths, 'en');
+  return p.question.replaceAllMapped(
+    RegExp('(\\d)?n|$box'),
+    (m) => m[1] == null
+        ? number
+        : '${m[1]} × ${hundredths < 0 ? '($number)' : number}',
+  );
+}
+
 void main() {
   group('arithmetic through the oracle', () {
     final clock = Stopwatch();
@@ -110,43 +123,65 @@ void main() {
   group('algebra through the oracle', () {
     const kind = OperationType.algebra;
     final source = kind.source as AlgebraSource;
-    // The plan's count of each level's problems.
-    const counts = {1: 484, 2: 360};
+    // The count of each level's problems.
+    const counts = {1: 484, 2: 360, 3: 924, 4: 6111, 5: 5920};
+    final clock = Stopwatch();
+    setUpAll(clock.start);
+    tearDownAll(() {
+      // ignore: avoid_print
+      print('Exhaustive algebra: ${clock.elapsedMilliseconds} ms in total');
+    });
+
+    test('every level has a count', () {
+      expect(counts.keys, [for (var l = 1; l <= kind.highestLevel; l++) l]);
+    });
 
     for (var level = 1; level <= kind.highestLevel; level++) {
-      test('level $level: every problem has its answer as the one solution, '
-          'whole and at least 0', () {
-        final clock = Stopwatch()..start();
-        final problems = source.problems(kind, level).toList();
-        expect(problems, hasLength(counts[level]));
-        final failures = [
-          for (final problem in problems)
-            if (check(problem.question, problem.result) != Verdict.ok ||
-                problem.result < 0 ||
-                problem.result != problem.result.round() ||
-                RegExp(r'-|\.').hasMatch(problem.question))
-              '${problem.question} → ${problem.result}',
-        ];
-        expect(failures, isEmpty);
-        // ignore: avoid_print
-        print(
-          'algebra level $level: ${problems.length} problems enumerated in '
-          '${clock.elapsedMilliseconds} ms',
-        );
-      });
+      // Negative numbers and tenths first come at level 5.
+      final signedDecimal = level >= 5;
+      late final problems = source.problems(kind, level).toList();
+
+      test(
+        'level $level: every problem has its answer as the one solution'
+        '${signedDecimal ? ' in tenths at most' : ', whole and at least 0'}',
+        () {
+          final start = clock.elapsedMilliseconds;
+          expect(problems, hasLength(counts[level]));
+          expect(
+            problems.map((p) => p.question).toSet(),
+            hasLength(counts[level]),
+          );
+          final failures = [
+            for (final problem in problems)
+              if (check(problem.question, problem.result) != Verdict.ok ||
+                  problem.resultHundredths % 10 != 0 ||
+                  !signedDecimal &&
+                      (problem.resultHundredths < 0 ||
+                          problem.resultHundredths % 100 != 0 ||
+                          RegExp(r'−\d|-|\.').hasMatch(problem.question)))
+                '${problem.question} → ${problem.result}',
+          ];
+          expect(failures, isEmpty);
+          // ignore: avoid_print
+          print(
+            'algebra level $level: ${problems.length} problems enumerated in '
+            '${clock.elapsedMilliseconds - start} ms',
+          );
+        },
+      );
 
       test('level $level: an answer + 1 and a displayed right-hand side + 1 '
           'fail', () {
-        for (final p in source.problems(kind, level)) {
+        for (final p in problems) {
           expect(
             check(p.question, p.result + 1),
             Verdict.wrongRoot,
             reason: p.question,
           );
-          final right = int.parse(p.tokens.last);
+          final right = parseHundredths(p.tokens.last)! ~/ 100;
           final mutant = [
             ...p.tokens.take(p.tokens.length - 1),
-            '${right + 1}',
+            signedText(right + 1),
           ];
           expect(
             check(mutant.join(' '), p.result),
@@ -157,48 +192,123 @@ void main() {
       });
 
       test('level $level: the oracle recomputes every hint step', () {
+        final start = clock.elapsedMilliseconds;
         final failures = <String>[];
-        for (final p in source.problems(kind, level)) {
+        for (final p in problems) {
           final hint = equationHint(p);
-          final shown = {for (final token in p.tokens) ?int.tryParse(token)};
-          for (final step in hint) {
-            // Each calculation undoes the operation around the blank with
-            // numbers the question shows, so its value is the answer.
-            if (check(step.calculation, p.result) != Verdict.ok ||
-                !shown.containsAll([step.left, step.right])) {
-              failures.add('${p.question}: ${step.calculation}');
+          void fail(EquationStep step) => failures.add(
+            '${p.question}: ${step.move.name} ${step.calculation}',
+          );
+          final shown = {
+            for (final match in RegExp(r'−?\d+').allMatches(p.question))
+              int.parse(match[0]!.replaceFirst('−', '-')),
+          };
+          // The value of the last undo done, which the next one starts from.
+          int? previous;
+          for (final (i, step) in hint.indexed) {
+            final last = i == hint.length - 1;
+            if (step.move == EquationMove.belowZero) {
+              // First, and only when the answer is below zero.
+              if (i != 0 || p.resultHundredths >= 0) fail(step);
+              continue;
+            }
+            if (step.move == EquationMove.means) {
+              // The short form is in the question, and writing it out keeps
+              // the one solution.
+              final meaning = step.meaning!;
+              final shorthand = step.shorthand!;
+              if (!p.question.contains(shorthand) ||
+                  !meaning.contains('×') ||
+                  check(
+                        p.question.replaceFirst(shorthand, meaning),
+                        p.result,
+                      ) !=
+                      Verdict.ok) {
+                fail(step);
+              }
+              continue;
+            }
+            final value = step.valueHundredths;
+            // Numbers the question shows, or the value the step before left.
+            if (!shown.contains(step.right) ||
+                !(shown.contains(step.left) || step.left == previous) ||
+                (step.check != null) != last ||
+                (step.move == EquationMove.answer) != last ||
+                !signedDecimal && (step.left < 0 || (value ?? 0) < 0)) {
+              fail(step);
+            }
+            if (value == null) {
+              // Names the calculation the next step does.
+              final next = hint[i + 1];
+              if (next.valueHundredths == null ||
+                  next.calculation != step.calculation) {
+                fail(step);
+              }
+              continue;
+            }
+            if (check(step.calculation, value / 100) != Verdict.ok ||
+                !last && value == p.resultHundredths) {
+              fail(step);
+            }
+            if (!last) {
+              // Every undo before the last leaves the same one solution.
+              final equation = step.equation ?? '';
+              if (check(equation, p.result) != Verdict.ok ||
+                  !equation.endsWith(' = ${signedText(value ~/ 100)}')) {
+                fail(step);
+              }
+              previous = value ~/ 100;
             }
           }
-          // Only the last step states the answer and puts it back.
+          // The last step states the answer and puts it back.
           final last = hint.last;
           final [left, right] = last.check!.split(' = ');
           if (hint.length < 2 ||
               last.move != EquationMove.answer ||
-              last.value != p.result ||
-              last.check != p.question.replaceAll(box, '${p.result}') ||
-              check(left, int.parse(right)) != Verdict.ok ||
-              hint
-                  .take(hint.length - 1)
-                  .any((step) => step.value != null || step.check != null)) {
+              last.valueHundredths != p.resultHundredths ||
+              last.check != _substitute(p, p.resultHundredths) ||
+              check(left, parseHundredths(right)! / 100) != Verdict.ok ||
+              (p.resultHundredths < 0) !=
+                  (hint.first.move == EquationMove.belowZero)) {
             failures.add('${p.question}: ${last.calculation}, ${last.check}');
           }
         }
         expect(failures, isEmpty);
+        // ignore: avoid_print
+        print(
+          'algebra level $level: hints of ${problems.length} problems '
+          'recomputed in ${clock.elapsedMilliseconds - start} ms',
+        );
       });
 
       test('level $level: a hint calculation or check off by 1 fails', () {
-        for (final p in source.problems(kind, level)) {
-          final last = equationHint(p).last;
-          final calculation = '${last.left} ${last.sign} ${last.right + 1}';
+        for (final p in problems) {
+          for (final step in equationHint(p)) {
+            final value = step.valueHundredths;
+            if (value == null) continue;
+            final calculations = [
+              '${signedText(step.left + 1)} ${step.sign} ${step.right}',
+              // 0 × a and 0 ÷ a are 0 for every a.
+              if (step.left != 0 || step.sign == '+' || step.sign == '−')
+                '${signedText(step.left)} ${step.sign} ${step.right + 1}',
+            ];
+            for (final calculation in calculations) {
+              expect(
+                check(calculation, value / 100),
+                Verdict.wrongResult,
+                reason: calculation,
+              );
+            }
+          }
+          final [left, right] = _substitute(
+            p,
+            p.resultHundredths + 100,
+          ).split(' = ');
           expect(
-            check(calculation, p.result),
+            check(left, parseHundredths(right)! / 100),
             Verdict.wrongResult,
-            reason: calculation,
+            reason: '$left = $right',
           );
-          final [left, right] = p.question
-              .replaceAll(box, '${p.result + 1}')
-              .split(' = ');
-          expect(check(left, int.parse(right)), Verdict.wrongResult);
         }
       });
     }
