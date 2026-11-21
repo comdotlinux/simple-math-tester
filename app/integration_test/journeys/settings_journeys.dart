@@ -167,7 +167,6 @@ void settingsJourneys() {
       await openSettings(tester);
       await tapVisible(tester, find.byKey(hapticsSwitchKey));
       await closeSettings(tester);
-      await pressStart(tester);
       await tapVisible(tester, padKey('5'));
 
       expect(buzzes, [Haptic.key]);

@@ -456,12 +456,14 @@ class _ProblemPageState extends State<ProblemPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // End sits at the top, away from Check.
-                  // The menu stays, so the kinds can change during practice.
+                  // The menu stays, so the kinds can change during practice;
+                  // it sits at the other end from End, so neither is hit for
+                  // the other.
                   if (model.practising)
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      spacing: 8,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        menu,
                         Tooltip(
                           message: l.endPracticeLabel,
                           excludeFromSemantics: true,
@@ -480,7 +482,6 @@ class _ProblemPageState extends State<ProblemPage> {
                             ),
                           ),
                         ),
-                        menu,
                       ],
                     )
                   else
