@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart' show Key;
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/operations.dart';
@@ -73,8 +72,9 @@ void hintsJourneys() {
 
       await tapKey(tester, hintButtonKey);
       expect(visibleSteps(tester), model.steps.length);
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-      await tester.pumpAndSettle();
+      // Escape and the dimmed area are in test/hint_modal_test.dart; a
+      // simulated key does not reach the release web build.
+      await tapKey(tester, hintCloseKey);
       expect(find.byKey(solutionStepsKey), findsNothing);
       expect(await answerFocused(tester), isTrue);
 
