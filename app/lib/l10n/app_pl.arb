@@ -385,5 +385,21 @@
   "hintOppositeAngles": "The inside angles opposite the outside angle are {a}° and {b}°.",
   "hintExteriorMissing": "The outside angle {outside}° is {angle}° and the angle marked ? together.",
   "hintIsoscelesRest": "The two equal angles share what is left: {calculation} = {rest}.",
-  "hintOtherBase": "The other angle at the bottom is also {angle}°."
+  "hintOtherBase": "The other angle at the bottom is also {angle}°.",
+  "figureParallelCorresponding": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the corresponding angle at the other crossing.",
+  "figureParallelAlternate": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the alternate angle at the other crossing.",
+  "figureParallelCoInterior": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the co-interior angle at the other crossing.",
+  "figureSemicircle": "Triangle in a circle, one side a diameter and the third corner on the circle, angle {angle} at one end of the diameter; ? is the angle at the other end.",
+  "figureSimilar": "Two triangles of the same shape, equal angles marked alike; small one, sides {a} and {b}; big one, sides {c} and {d}.",
+  "hintIdeaCorresponding": "Corresponding angles are equal. They sit in the same place at each crossing. The arrows show the lines are parallel, so both crossings look the same.",
+  "hintIdeaAlternate": "Alternate angles are equal. They lie between the parallel lines, on opposite sides of the line across. Together they make a Z shape.",
+  "hintIdeaCoInterior": "Co-interior angles add up to {degrees}°. They lie between the parallel lines, on the same side of the line across. Together they make a C shape.",
+  "hintIdeaSemicircle": "An angle in a semicircle is always a right angle, {degrees}°. Its corner is on the circle. Its sides end at the two ends of a diameter.",
+  "hintIdeaSimilar": "Similar triangles have the same shape. Matching angles carry the same marks. Each side of the big one is the same number of times its partner.",
+  "hintNextOnLine": "The angle next to {angle}° on its straight line is {calculation} = {value}.",
+  "hintNextMatches": "The angle next to ? is also {next}°, by the same rule. So {calculation} = {value}, and the angle is {value}°.",
+  "hintCoInteriorPair": "The angle marked ? and the angle {angle}° are co-interior.",
+  "hintSemicircleRest": "The three angles of a triangle make {total}°. The other two angles make {calculation} = {value}.",
+  "hintScaleFactor": "Matching bottom sides: {calculation} = {value}. The big triangle is {value} times as big.",
+  "hintLengthIs": "{calculation} = {length}. So the length marked ? is {length}."
 }

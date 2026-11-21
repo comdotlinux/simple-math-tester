@@ -302,6 +302,8 @@ void main() {
     for (final (variant, params, level) in const [
       ('quadrilateralAngles', [80, 100, 70], 5),
       ('exteriorAngle', [50, 60, 0], 4),
+      ('parallelLines', [60, 3], 5),
+      ('similarTriangles', [8, 4, 7, 4], 5),
     ]) {
       testWidgets('a $variant figure at text 2 fits the page at '
           '${size.width.toInt()}x${size.height.toInt()}', (tester) async {

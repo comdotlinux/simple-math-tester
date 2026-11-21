@@ -2759,5 +2759,167 @@
         "type": "String"
       }
     }
+  },
+  "figureParallelCorresponding": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the corresponding angle at the other crossing.",
+  "@figureParallelCorresponding": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. Two parallel lines, each marked with a small arrow, and a third line that crosses both. One angle at one crossing is labelled, such as 50°; ? is an angle at the other crossing. Keep the ?. Corresponding angles sit in the same place at each crossing; use the school word.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureParallelAlternate": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the alternate angle at the other crossing.",
+  "@figureParallelAlternate": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. Two parallel lines, each marked with a small arrow, and a third line that crosses both. One angle at one crossing is labelled, such as 50°; ? is an angle at the other crossing. Keep the ?. Alternate angles lie between the parallel lines on opposite sides of the crossing line; use the school word.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureParallelCoInterior": "Two parallel lines (marked with arrows) and a line across them, angle {angle}; ? is the co-interior angle at the other crossing.",
+  "@figureParallelCoInterior": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. Two parallel lines, each marked with a small arrow, and a third line that crosses both. One angle at one crossing is labelled, such as 50°; ? is an angle at the other crossing. Keep the ?. Co-interior angles lie between the parallel lines on the same side of the crossing line; use the school word.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureSemicircle": "Triangle in a circle, one side a diameter and the third corner on the circle, angle {angle} at one end of the diameter; ? is the angle at the other end.",
+  "@figureSemicircle": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. A circle with a triangle inside it: one side of the triangle goes straight through the middle of the circle (a diameter), and the third corner lies on the circle. The angle at one end of the diameter is labelled, such as 35°. Keep the ?.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "figureSimilar": "Two triangles of the same shape, equal angles marked alike; small one, sides {a} and {b}; big one, sides {c} and {d}.",
+  "@figureSimilar": {
+    "description": "Geometry question read aloud and shown in the history. Numbers come only from the placeholders; never write a number yourself. Two triangles of the same shape but different sizes (similar triangles); equal angles carry the same arc marks. Each placeholder is a side length, or ? for the side asked. Keep the ?.",
+    "placeholders": {
+      "a": {
+        "type": "String"
+      },
+      "b": {
+        "type": "String"
+      },
+      "c": {
+        "type": "String"
+      },
+      "d": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaCorresponding": "Corresponding angles are equal. They sit in the same place at each crossing. The arrows show the lines are parallel, so both crossings look the same.",
+  "@hintIdeaCorresponding": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for two parallel lines and a line across them. Use the school word for corresponding angles. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaAlternate": "Alternate angles are equal. They lie between the parallel lines, on opposite sides of the line across. Together they make a Z shape.",
+  "@hintIdeaAlternate": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for two parallel lines and a line across them. Use the school word for alternate angles; the letter Z describes the shape the two angles make. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintIdeaCoInterior": "Co-interior angles add up to {degrees}°. They lie between the parallel lines, on the same side of the line across. Together they make a C shape.",
+  "@hintIdeaCoInterior": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for two parallel lines and a line across them. Use the school word for co-interior angles; the letter C describes the shape the two angles make. {degrees} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaSemicircle": "An angle in a semicircle is always a right angle, {degrees}°. Its corner is on the circle. Its sides end at the two ends of a diameter.",
+  "@hintIdeaSemicircle": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for a triangle in a circle with one side a diameter. {degrees} is 90. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "degrees": {
+        "type": "String"
+      }
+    }
+  },
+  "hintIdeaSimilar": "Similar triangles have the same shape. Matching angles carry the same marks. Each side of the big one is the same number of times its partner.",
+  "@hintIdeaSimilar": {
+    "description": "Hint step for a question about a drawn shape. Second step: the rule the working uses, and why, for two triangles of the same shape (similar triangles). Use the school word for similar. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself."
+  },
+  "hintNextOnLine": "The angle next to {angle}° on its straight line is {calculation} = {value}.",
+  "@hintNextOnLine": {
+    "description": "Hint step for a question about a drawn shape. Working step for two parallel lines and a line across them: the angle beside the given one on the same straight line. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "hintNextMatches": "The angle next to ? is also {next}°, by the same rule. So {calculation} = {value}, and the angle is {value}°.",
+  "@hintNextMatches": {
+    "description": "Hint step for a question about a drawn shape. Last step for two parallel lines and a line across them: the angle beside ? matches the angle beside the given one, so ? is the rest of its straight line. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "next": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "hintCoInteriorPair": "The angle marked ? and the angle {angle}° are co-interior.",
+  "@hintCoInteriorPair": {
+    "description": "Hint step for a question about a drawn shape. Working step for two parallel lines and a line across them: the given angle and ? are co-interior angles. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "angle": {
+        "type": "String"
+      }
+    }
+  },
+  "hintSemicircleRest": "The three angles of a triangle make {total}°. The other two angles make {calculation} = {value}.",
+  "@hintSemicircleRest": {
+    "description": "Hint step for a question about a drawn shape. Working step for a triangle in a circle: what the two angles at the ends of the diameter make together. {total} is 180. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "calculation": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "hintScaleFactor": "Matching bottom sides: {calculation} = {value}. The big triangle is {value} times as big.",
+  "@hintScaleFactor": {
+    "description": "Hint step for a question about a drawn shape. Working step for two similar triangles: how many times as long each side of the big one is. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "hintLengthIs": "{calculation} = {length}. So the length marked ? is {length}.",
+  "@hintLengthIs": {
+    "description": "Hint step for a question about a drawn shape. Last step: the calculation that gives the length marked ?. The reader is a child of about 7 to 12 who just got the question wrong: keep the tone calm and encouraging, the sentences short and the words everyday ones. Math symbols (+ − × ÷ = ? ° π √ ²) and the placeholders stay exactly as given; never write a number yourself.",
+    "placeholders": {
+      "calculation": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
   }
 }

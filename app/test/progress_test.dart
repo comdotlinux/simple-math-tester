@@ -1128,6 +1128,9 @@ void main() {
       ('isoscelesTriangle', [40, 0], 4, 70),
       ('isoscelesTriangle', [70, 1], 4, 40),
       ('quadrilateralAngles', [80, 100, 70], 5, 110),
+      ('parallelLines', [70, 3], 5, 110),
+      ('angleInSemicircle', [35], 5, 55),
+      ('similarTriangles', [5, 3, 4, 0], 5, 6),
     ]) {
       test('a $variant attempt round-trips with its decimal answer', () {
         final problem = (OperationType.geometry.source as GeometrySource).build(
@@ -1196,6 +1199,16 @@ void main() {
         'an outside angle over 160°',
         '"variant":"exteriorAngle","params":[100,70,0]',
         170,
+      ),
+      (
+        'parallel lines crossed at a narrow angle',
+        '"variant":"parallelLines","params":[40,0]',
+        40,
+      ),
+      (
+        'a ? on a small side as long as the factor',
+        '"variant":"similarTriangles","params":[4,2,3,1]',
+        2,
       ),
       (
         'params outside the family',

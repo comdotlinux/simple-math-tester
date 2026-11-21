@@ -24,24 +24,31 @@ final every = [
 ];
 
 /// The figure's edges as drawn: rays from the first corner, a circle's
-/// radius or diameter, or the closed outline and a side drawn on.
+/// radius or diameter, separate lines or triangles, or the closed outline
+/// and a side drawn on.
 List<(Offset, Offset)> drawnEdges(FigureLayout drawn) {
   final corners = drawn.vertices;
   if (drawn.rays) {
     return [for (final end in corners.skip(1)) (corners[0], end)];
   }
-  if (drawn.circle != null) return [(corners[0], corners[1])];
+  if (corners.length == 2) return [(corners[0], corners[1])];
   return [
-    for (var i = 0; i < corners.length; i++)
-      (corners[i], corners[(i + 1) % corners.length]),
+    for (var i = 0; i < edgeCount(corners.length, drawn.piece); i++)
+      switch (edgeEnds(i, corners.length, drawn.piece)) {
+        (final a, final b) => (corners[a], corners[b]),
+      },
     ?drawn.extension,
   ];
 }
 
-/// The corner of [angle] in [drawn]: the point of rays, the corner past
-/// the last for an outside angle, or its own corner.
+/// The corner of [angle] in [drawn]: the point of rays, a crossing of
+/// parallel lines, the corner past the last for an outside angle, or its
+/// own corner.
 Offset angleCorner(Figure figure, FigureLayout drawn, AngleLabel angle) {
   final corners = drawn.vertices;
+  if (figure.shape == FigureShape.parallelLines) {
+    return parallelAngle(corners, angle.corner).$1;
+  }
   return drawn.rays
       ? corners[0]
       : corners[min(angle.corner, corners.length - 1)];
@@ -60,7 +67,11 @@ double fromAngle(Figure figure, FigureLayout drawn, int i) {
   final corners = drawn.vertices;
   final count = corners.length;
   final v = angleCorner(figure, drawn, angle);
-  final arms = drawn.rays
+  final arms = figure.shape == FigureShape.parallelLines
+      ? switch (parallelAngle(corners, angle.corner)) {
+          (_, final a, final b) => [a, b],
+        }
+      : drawn.rays
       ? [corners[angle.corner], corners[nextRay(angle.corner, count)]]
       : angle.corner == count
       ? [drawn.extension!.$2, corners[count - 2]]
@@ -78,6 +89,14 @@ double fromAngle(Figure figure, FigureLayout drawn, int i) {
     for (final end in arms) toSegment(label.box, v, end),
   ].reduce(min);
 }
+
+/// The two strokes of each arrowhead [drawn] shows, as the painter draws
+/// them.
+List<(Offset, Offset)> arrowWings(FigureLayout drawn) => [
+  for (final (tail, tip) in drawn.arrows)
+    for (final side in const [-.5, .5])
+      (tail + Offset(tail.dy - tip.dy, tip.dx - tail.dx) * side, tip),
+];
 
 /// Whether the line from [a] to [b] meets [rect]: the part of the line
 /// between each pair of the rectangle's sides is cut off in turn.
@@ -145,6 +164,8 @@ FigureLayout redrawn(
   (Offset, Offset)? extension,
   bool keepExtension = true,
   List<(Offset, Offset)>? ticks,
+  List<(Offset, Offset)>? arrows,
+  Rect? circle,
 }) => FigureLayout(
   vertices: drawn.vertices,
   labels: labels ?? drawn.labels,
@@ -154,13 +175,33 @@ FigureLayout redrawn(
   shaded: drawn.shaded,
   marks: marks ?? drawn.marks,
   rays: drawn.rays,
-  circle: drawn.circle,
+  circle: circle ?? drawn.circle,
   total: total ?? drawn.total,
   pi: keepPi ? pi ?? drawn.pi : null,
   diagonal: keepDiagonal ? diagonal ?? drawn.diagonal : null,
   extension: keepExtension ? extension ?? drawn.extension : null,
   ticks: ticks ?? drawn.ticks,
+  piece: drawn.piece,
+  arrows: arrows ?? drawn.arrows,
 );
+
+/// Arcs at the corners of two triangles in [drawn], [counts] of them at
+/// each corner, spanning its angle, one line width and more apart.
+List<AngleMark> equalArcs(FigureLayout drawn, List<int> counts) {
+  final c = drawn.vertices;
+  return [
+    for (var k = 0; k < 6; k++)
+      for (var m = 0; m < counts[k]; m++)
+        () {
+          final start = k ~/ 3 * 3;
+          final (prev, next) = (c[start + (k + 2) % 3], c[start + (k + 1) % 3]);
+          final from = (prev - c[k]).direction;
+          final sweep =
+              ((next - c[k]).direction - from + 3 * pi) % (2 * pi) - pi;
+          return AngleMark(c[k], 8 + 4.0 * m, from, sweep);
+        }(),
+  ];
+}
 
 /// [figure] with some parts replaced, as a lying generator would build it.
 Figure copy(
@@ -172,6 +213,7 @@ Figure copy(
   bool? diagonal,
   Offset? extension,
   List<int>? ticks,
+  List<int>? arrows,
 }) => Figure(
   shape: figure.shape,
   vertices: vertices ?? figure.vertices,
@@ -185,6 +227,7 @@ Figure copy(
   diagonal: diagonal ?? figure.diagonal,
   extension: extension ?? figure.extension,
   ticks: ticks ?? figure.ticks,
+  arrows: arrows ?? figure.arrows,
 );
 
 /// The value of a calculation such as "8 × 6 − 3 × 4", in exact
@@ -260,6 +303,11 @@ const _ideas = {
   FigureMove.exteriorAngle,
   FigureMove.isosceles,
   FigureMove.quadrilateral,
+  FigureMove.corresponding,
+  FigureMove.alternate,
+  FigureMove.coInterior,
+  FigureMove.semicircle,
+  FigureMove.similar,
 };
 const _answers = {
   FigureMove.perimeterIs,
@@ -269,6 +317,8 @@ const _answers = {
   FigureMove.rootLength,
   FigureMove.angleIs,
   FigureMove.circumferenceIs,
+  FigureMove.nextMatches,
+  FigureMove.lengthIs,
 };
 const _roots = {FigureMove.rootSide, FigureMove.rootLength};
 
@@ -305,6 +355,8 @@ List<String> hintProblems(Figure figure, List<FigureStep> hint, int solved) {
       ? 1
       : rays
       ? count - 1
+      : figure.shape == FigureShape.parallelLines
+      ? count ~/ 2
       : count;
   final ys = figure.vertices.map((v) => v.dy);
   final rowCount = figure.grid ? (ys.reduce(max) - ys.reduce(min)).round() : 0;
@@ -552,12 +604,15 @@ void main() {
       'exteriorAngle': 14060,
       'isoscelesTriangle': 122,
       'quadrilateralAngles': 2135,
+      'parallelLines': 244,
+      'angleInSemicircle': 51,
+      'similarTriangles': 363,
     });
     expect(count(1), 276);
     expect(count(2), 84);
     expect(count(3), 240);
     expect(count(4), 22553);
-    expect(count(5), 3739);
+    expect(count(5), 4397);
     expect(
       GeometryFamily.values.map((family) => family.level).reduce(max),
       maxGeometryLevel,
@@ -875,6 +930,64 @@ void main() {
     }
   });
 
+  test('parallel lines: the angle at each crossing 60° to 120°; '
+      'corresponding and alternate angles equal, co-interior ones adding '
+      'up to 180°', () {
+    final space = GeometryFamily.parallelLines.space;
+    expect(
+      {for (final [theta, _] in space) theta},
+      {for (var theta = 60; theta <= 120; theta++) theta},
+    );
+    for (final [theta, form] in space) {
+      final (:figure, :answer) = GeometryFamily.parallelLines.build([
+        theta,
+        form,
+      ]);
+      final [given, asked] = figure.angles;
+      expect(asked.degrees, isNull);
+      // At the upper crossing, then the lower one.
+      expect([given.corner ~/ 4, asked.corner ~/ 4], [0, 1]);
+      expect(answer, switch (form) {
+        3 => (180 - given.degrees!) * 100,
+        _ => given.degrees! * 100,
+      });
+      expect(figure.arrows, [0, 1]);
+    }
+  });
+
+  test('angle in a semicircle: the given angle 20° to 70°, the asked one '
+      '90° minus it', () {
+    for (final [a] in GeometryFamily.angleInSemicircle.space) {
+      final (:figure, :answer) = GeometryFamily.angleInSemicircle.build([a]);
+      expect(a, inInclusiveRange(20, 70));
+      expect(answer, (90 - a) * 100);
+      // No label at the corner on the circle.
+      expect(figure.angles.map((angle) => angle.corner), [0, 2]);
+    }
+  });
+
+  test('similar triangles: whole sides up to 8 and 2 or 3 times as big, a '
+      'whole answer; a ? on the smaller one never as long as the factor', () {
+    final space = GeometryFamily.similarTriangles.space;
+    expect({for (final p in space) p[3]}, {for (var f = 0; f < 8; f++) f});
+    for (final [base, left, right, form] in space) {
+      final factor = 2 + (form >> 2);
+      final (:figure, :answer) = GeometryFamily.similarTriangles.build([
+        base,
+        left,
+        right,
+        form,
+      ]);
+      expect(base, lessThanOrEqualTo(8));
+      expect(base, lessThanOrEqualTo(2 * min(left, right)));
+      final side = [left, right][form >> 1 & 1];
+      expect(figure.labels[2].hundredths, base * factor * 100);
+      expect(answer, (form.isOdd ? side : side * factor) * 100);
+      if (form.isOdd) expect(side, isNot(factor));
+      expect(figure.labels.where((l) => l.hundredths == null), hasLength(1));
+    }
+  });
+
   test('build rejects parameters outside the space', () {
     for (final (family, params) in [
       (GeometryFamily.squarePerimeter, [0]),
@@ -937,6 +1050,19 @@ void main() {
       (GeometryFamily.quadrilateralAngles, [20, 70, 160]),
       (GeometryFamily.exteriorAngle, [20, 20, 0]),
       (GeometryFamily.exteriorAngle, [40, 25, 1]),
+      (GeometryFamily.parallelLines, [59, 0]),
+      (GeometryFamily.parallelLines, [121, 2]),
+      (GeometryFamily.parallelLines, [90, 4]),
+      (GeometryFamily.parallelLines, [90]),
+      (GeometryFamily.angleInSemicircle, [19]),
+      (GeometryFamily.angleInSemicircle, [71]),
+      (GeometryFamily.angleInSemicircle, [45, 0]),
+      (GeometryFamily.similarTriangles, [5, 3, 4, 8]),
+      (GeometryFamily.similarTriangles, [5, 3, 4, -1]),
+      (GeometryFamily.similarTriangles, [10, 6, 8, 0]),
+      (GeometryFamily.similarTriangles, [5, 2, 4, 0]),
+      (GeometryFamily.similarTriangles, [4, 2, 3, 1]),
+      (GeometryFamily.similarTriangles, [5, 3, 4]),
     ]) {
       expect(
         () => family.build(params),
@@ -1012,6 +1138,21 @@ void main() {
     // rectangle: 90.
     solves(GeometryFamily.quadrilateralAngles, [80, 100, 70], 11000);
     solves(GeometryFamily.quadrilateralAngles, [90, 90, 90], 9000);
+    // Parallel lines crossed at 70°: the corresponding and the alternate
+    // angle are 70, the angle in the same place below 110, the co-interior
+    // angle 180 − 70 = 110.
+    solves(GeometryFamily.parallelLines, [70, 0], 7000);
+    solves(GeometryFamily.parallelLines, [70, 1], 11000);
+    solves(GeometryFamily.parallelLines, [70, 2], 7000);
+    solves(GeometryFamily.parallelLines, [70, 3], 11000);
+    // On a diameter with 35° at one end: 90 − 35 = 55.
+    solves(GeometryFamily.angleInSemicircle, [35], 5500);
+    // A 3-4-5 triangle and one twice as big: the side matching 3 is 6;
+    // from 6, 8 and 10, the small side matching 6 is 3; three times as big,
+    // the side matching 4 is 12.
+    solves(GeometryFamily.similarTriangles, [5, 3, 4, 0], 600);
+    solves(GeometryFamily.similarTriangles, [5, 3, 4, 1], 300);
+    solves(GeometryFamily.similarTriangles, [5, 3, 4, 6], 1200);
     expect(parseHundredths('2.5'), 250);
     expect(parseHundredths('12'), 1200);
     expect(parseHundredths('?'), isNull);
@@ -1096,14 +1237,18 @@ void main() {
             params[0] == 90) {
           continue;
         }
-        // An isosceles triangle with a 60° angle has three equal angles.
-        if (family == GeometryFamily.isoscelesTriangle && params[0] == 60) {
+        // An isosceles triangle with a 60° angle has three equal angles;
+        // a line across parallel lines at 90° makes eight equal angles.
+        if (family == GeometryFamily.isoscelesTriangle && params[0] == 60 ||
+            family == GeometryFamily.parallelLines && params[0] == 90) {
           continue;
         }
         final Figure moved;
         if (figure.labels.isEmpty) {
           final angles = [...figure.angles];
-          final rays = figure.shape != FigureShape.triangle;
+          final rays =
+              figure.shape != FigureShape.triangle &&
+              figure.shape != FigureShape.semicircle;
           angles[0] = AngleLabel(
             rays ? 3 - angles[0].corner : (angles[0].corner + 1) % 3,
             angles[0].degrees,
@@ -1176,6 +1321,14 @@ void main() {
                 .every((v) => turn(v).abs() * 180 / pi < 1)) {
               continue;
             }
+          }
+          // A line nearly square to parallel lines turns by less than a
+          // degree.
+          if (figure.shape == FigureShape.parallelLines) {
+            final v = figure.vertices[4] - figure.vertices[5];
+            final d =
+                atan2(v.dy * stretch.dy, v.dx * stretch.dx) - atan2(v.dy, v.dx);
+            if (((d + 3 * pi) % (2 * pi) - pi).abs() * 180 / pi < 1) continue;
           }
           Offset stretchOf(Offset v) =>
               Offset(v.dx * stretch.dx, v.dy * stretch.dy);
@@ -1638,6 +1791,191 @@ void main() {
     });
   });
 
+  group('mutations of the parallel lines, semicircle and similar triangle '
+      'figures', () {
+    void mustFail(void Function() check, String why) =>
+        expect(check, throwsA(isA<OracleFailure>()), reason: why);
+    Offset turn(Offset v, Offset around, double by) {
+      final d = v - around;
+      return around +
+          Offset(
+            d.dx * cos(by) - d.dy * sin(by),
+            d.dx * sin(by) + d.dy * cos(by),
+          );
+    }
+
+    test('an arrow removed, moved to the line across or turned round, or '
+        'one parallel line turned by 3°', () {
+      for (final params in GeometryFamily.parallelLines.space) {
+        final (:figure, :answer) = GeometryFamily.parallelLines.build(params);
+        final drawn = layout(figure);
+        final c = figure.vertices;
+        final lower = parallelAngle(c, 4).$1;
+        final mutants = <FigureLayout>[
+          for (var i = 0; i < 2; i++)
+            redrawn(drawn, arrows: [...drawn.arrows]..removeAt(i)),
+          layout(copy(figure, arrows: const [0, 2])),
+          redrawn(
+            drawn,
+            arrows: [drawn.arrows[0], (drawn.arrows[1].$2, drawn.arrows[1].$1)],
+          ),
+          for (final by in const [3 * pi / 180, -3 * pi / 180])
+            layout(
+              copy(
+                figure,
+                vertices: [
+                  ...c.take(2),
+                  turn(c[2], lower, by),
+                  turn(c[3], lower, by),
+                  ...c.skip(4),
+                ],
+              ),
+            ),
+        ];
+        for (final mutant in mutants) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params ${mutant.arrows}',
+          );
+        }
+      }
+    });
+
+    test('the ? of parallel lines moved to another angle', () {
+      for (final params in GeometryFamily.parallelLines.space) {
+        final (:figure, :answer) = GeometryFamily.parallelLines.build(params);
+        final [given, asked] = figure.angles;
+        for (var corner = 0; corner < 8; corner++) {
+          if (corner == given.corner || corner == asked.corner) continue;
+          // At the other crossing an angle as big changes nothing a child
+          // sees; even places from the given angle are as big as it.
+          final there = (corner - given.corner).isEven
+              ? given.degrees!
+              : 180 - given.degrees!;
+          if (corner ~/ 4 != given.corner ~/ 4 && there * 100 == answer) {
+            continue;
+          }
+          mustFail(
+            () => checkFigure(
+              figure.shape,
+              figure.prompt,
+              layout(copy(figure, angles: [given, AngleLabel(corner, null)])),
+              answer,
+            ),
+            '$params ? at $corner',
+          );
+        }
+      }
+    });
+
+    test('the circle moved or grown, or a label on the corner on the '
+        'circle', () {
+      for (final params in GeometryFamily.angleInSemicircle.space) {
+        final (:figure, :answer) = GeometryFamily.angleInSemicircle.build(
+          params,
+        );
+        final drawn = layout(figure);
+        final circle = drawn.circle!;
+        final mutants = [
+          redrawn(drawn, circle: circle.shift(const Offset(8, 0))),
+          redrawn(drawn, circle: circle.shift(const Offset(0, 8))),
+          redrawn(drawn, circle: circle.inflate(circle.width * .05)),
+          layout(
+            copy(figure, angles: [figure.angles[0], const AngleLabel(1, null)]),
+          ),
+          layout(copy(figure, angles: [...figure.angles, AngleLabel(1, 90)])),
+        ];
+        for (final mutant in mutants) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params',
+          );
+        }
+      }
+    });
+
+    test('equal-angle marks swapped, the big triangle stretched by 20%, or '
+        'the ? moved to another side', () {
+      for (final params in GeometryFamily.similarTriangles.space) {
+        final (:figure, :answer) = GeometryFamily.similarTriangles.build(
+          params,
+        );
+        final drawn = layout(figure);
+        final c = figure.vertices;
+        final [base, left, right, _] = params;
+        final sides = [left, right, base];
+        final mutants = <FigureLayout>[
+          // The marks at two corners of the big triangle swap: they no
+          // longer match the small one's, unless those angles are equal
+          // (the sides across from them are).
+          for (final (i, j) in const [(0, 1), (1, 2), (0, 2)])
+            if (sides[(i + 1) % 3] != sides[(j + 1) % 3])
+              redrawn(
+                drawn,
+                marks: equalArcs(drawn, [
+                  1,
+                  2,
+                  3,
+                  for (var k = 0; k < 3; k++)
+                    k == i
+                        ? j + 1
+                        : k == j
+                        ? i + 1
+                        : k + 1,
+                ]),
+              ),
+          layout(
+            copy(
+              figure,
+              vertices: [
+                ...c.take(3),
+                for (final v in c.skip(3))
+                  Offset(c[3].dx + (v.dx - c[3].dx) * 1.2, v.dy),
+              ],
+            ),
+          ),
+        ];
+        // Drawn again as the layout draws them, the marks still read.
+        expect(
+          checkFigure(
+            figure.shape,
+            figure.prompt,
+            redrawn(drawn, marks: equalArcs(drawn, [1, 2, 3, 1, 2, 3])),
+            answer,
+          ),
+          answer,
+        );
+        // The ? onto another side of its triangle, with that side's
+        // partner given; a side as long changes nothing a child sees.
+        final asked = figure.labels.indexWhere((l) => l.hundredths == null);
+        final edge = figure.labels[asked].edge;
+        for (final other in [0, 1, 2]) {
+          final moved = edge ~/ 3 * 3 + other;
+          if (moved == edge || moved % 3 == 2) continue;
+          if (sides[other] == sides[edge % 3]) continue;
+          final labels = [
+            for (final label in figure.labels)
+              switch (label.edge) {
+                final e when e == edge => SideLabel(moved, null),
+                final e when e == (edge + 3) % 6 => SideLabel(
+                  (moved + 3) % 6,
+                  label.hundredths! ~/ sides[edge % 3] * sides[other],
+                ),
+                _ => label,
+              },
+          ];
+          mutants.add(layout(copy(figure, labels: labels)));
+        }
+        for (final mutant in mutants) {
+          mustFail(
+            () => checkFigure(figure.shape, figure.prompt, mutant, answer),
+            '$params',
+          );
+        }
+      }
+    });
+  });
+
   test('every problem of every level passes the oracle in every size, and '
       'its labels are at least 12 px, inside the canvas, apart from each '
       'other and off every corner and edge; each angle label next to its own '
@@ -1705,7 +2043,11 @@ void main() {
               );
             }
             final inner = label.box.deflate(.5);
-            for (final (a, b) in [...edges, ...drawn.ticks]) {
+            for (final (a, b) in [
+              ...edges,
+              ...drawn.ticks,
+              for (final wing in arrowWings(drawn)) wing,
+            ]) {
               if (meets(a, b, inner)) {
                 fail('$where: ${label.text} covers the outline');
               }
@@ -1732,21 +2074,31 @@ void main() {
                 fail('$where: ${label.text} covers the diagonal');
               }
             }
-            // Inside a circle, clear of its outline.
+            // Inside a circle, clear of its outline; next to a triangle in
+            // a circle, wholly inside or wholly outside it.
             if (drawn.circle case final circle?) {
               final room = circle.width / 2 - drawn.strokeWidth / 2;
-              for (final corner in [
-                label.box.topLeft,
-                label.box.topRight,
-                label.box.bottomLeft,
-                label.box.bottomRight,
-              ]) {
-                expect(
-                  (corner - circle.center).distance,
-                  lessThanOrEqualTo(room),
-                  reason: '$where: ${label.text} crosses the circle',
-                );
-              }
+              final box = label.box;
+              final farthest = [
+                box.topLeft,
+                box.topRight,
+                box.bottomLeft,
+                box.bottomRight,
+              ].map((corner) => (corner - circle.center).distance).reduce(max);
+              final nearest =
+                  (Offset(
+                            circle.center.dx.clamp(box.left, box.right),
+                            circle.center.dy.clamp(box.top, box.bottom),
+                          ) -
+                          circle.center)
+                      .distance;
+              expect(
+                farthest <= room ||
+                    corners.length > 2 &&
+                        nearest >= circle.width / 2 + drawn.strokeWidth / 2,
+                isTrue,
+                reason: '$where: ${label.text} crosses the circle',
+              );
             }
           }
           // Angle labels follow the side labels and a diagonal's ?; the
@@ -2059,6 +2411,32 @@ void main() {
       sentence(GeometryFamily.quadrilateralAngles, [80, 100, 70]),
       'Quadrilateral, angles 80°, 100° and 70°. Angle?',
     );
+    const parallel =
+        'Two parallel lines (marked with arrows) and a line across them, '
+        'angle 70°; ? is the';
+    expect(
+      sentence(GeometryFamily.parallelLines, [70, 0]),
+      '$parallel corresponding angle at the other crossing. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.parallelLines, [70, 2]),
+      '$parallel alternate angle at the other crossing. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.parallelLines, [70, 3]),
+      '$parallel co-interior angle at the other crossing. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.angleInSemicircle, [35]),
+      'Triangle in a circle, one side a diameter and the third corner on the '
+      'circle, angle 35° at one end of the diameter; ? is the angle at the '
+      'other end. Angle?',
+    );
+    expect(
+      sentence(GeometryFamily.similarTriangles, [5, 3, 4, 0]),
+      'Two triangles of the same shape, equal angles marked alike; small one, '
+      'sides 5 and 3; big one, sides 10 and ?. Length?',
+    );
   });
 
   test('hints: every step is data the test recomputes, its highlighted parts '
@@ -2349,6 +2727,42 @@ void main() {
       '360 − 250 = 110. So the angle is 110°. Check: 80 + 100 + 70 + 110 = '
           '360.',
     ]);
+    expect(hint(GeometryFamily.parallelLines, [70, 0]), [
+      'We need the size of the angle marked ?.',
+      'Corresponding angles are equal. They sit in the same place at each '
+          'crossing. The arrows show the lines are parallel, so both '
+          'crossings look the same.',
+      'The angle next to 70° on its straight line is 180 − 70 = 110.',
+      'The angle next to ? is also 110°, by the same rule. So 180 − 110 = '
+          '70, and the angle is 70°. Check: 110 + 70 = 180.',
+    ]);
+    expect(hint(GeometryFamily.parallelLines, [70, 3]).skip(1), [
+      'Co-interior angles add up to 180°. They lie between the parallel '
+          'lines, on the same side of the line across. Together they make a '
+          'C shape.',
+      'The angle marked ? and the angle 70° are co-interior.',
+      '180 − 70 = 110. So the angle is 110°. Check: 70 + 110 = 180.',
+    ]);
+    expect(hint(GeometryFamily.angleInSemicircle, [35]).skip(1), [
+      'An angle in a semicircle is always a right angle, 90°. Its corner is '
+          'on the circle. Its sides end at the two ends of a diameter.',
+      'The three angles of a triangle make 180°. The other two angles make '
+          '180 − 90 = 90.',
+      '90 − 35 = 55. So the angle is 55°. Check: 35 + 55 + 90 = 180.',
+    ]);
+    expect(hint(GeometryFamily.similarTriangles, [5, 3, 4, 0]), [
+      'We need the length marked ?.',
+      'Similar triangles have the same shape. Matching angles carry the same '
+          'marks. Each side of the big one is the same number of times its '
+          'partner.',
+      'Matching bottom sides: 10 ÷ 5 = 2. The big triangle is 2 times as '
+          'big.',
+      '3 × 2 = 6. So the length marked ? is 6. Check: 6 ÷ 3 = 2.',
+    ]);
+    expect(
+      hint(GeometryFamily.similarTriangles, [5, 3, 4, 1]).last,
+      '6 ÷ 2 = 3. So the length marked ? is 3. Check: 3 × 2 = 6.',
+    );
   });
 
   test('each hint step highlights the parts it names', () {
@@ -2399,6 +2813,20 @@ void main() {
     expect(
       parts(GeometryFamily.exteriorAngle, [50, 60, 1], 2),
       const FigureParts(angles: {3, 1}),
+    );
+    // The given angle next to its neighbour; both labelled bottom sides;
+    // the triangle's two sides at the corner on the circle.
+    expect(
+      parts(GeometryFamily.parallelLines, [70, 2], 2),
+      const FigureParts(angles: {2}),
+    );
+    expect(
+      parts(GeometryFamily.similarTriangles, [5, 3, 4, 0], 2),
+      const FigureParts(edges: {2, 5}),
+    );
+    expect(
+      parts(GeometryFamily.angleInSemicircle, [35], 1),
+      const FigureParts(edges: {0, 1}),
     );
   });
 
@@ -2460,6 +2888,9 @@ void main() {
       (GeometryFamily.exteriorAngle, [50, 60, 0], [50, 60, 1]),
       (GeometryFamily.isoscelesTriangle, [40, 0], [40, 1]),
       (GeometryFamily.quadrilateralAngles, [80, 100, 70], [80, 100, 80]),
+      (GeometryFamily.parallelLines, [70, 0], [70, 1]),
+      (GeometryFamily.angleInSemicircle, [35], [36]),
+      (GeometryFamily.similarTriangles, [5, 3, 4, 0], [5, 3, 4, 4]),
     ]) {
       expect(family.build(a).figure, family.build(a).figure);
       expect(family.build(a).figure.hashCode, family.build(a).figure.hashCode);
@@ -2476,5 +2907,8 @@ void main() {
     expect(isosceles, isNot(copy(isosceles, ticks: [0, 2])));
     final exterior = GeometryFamily.exteriorAngle.build([50, 60, 0]).figure;
     expect(exterior, isNot(copy(exterior, extension: Offset.zero)));
+    final parallel = GeometryFamily.parallelLines.build([70, 0]).figure;
+    expect(parallel, isNot(copy(parallel, arrows: [0, 2])));
+    expect(parallel.hashCode, isNot(copy(parallel, arrows: [0]).hashCode));
   });
 }

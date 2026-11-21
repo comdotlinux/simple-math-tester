@@ -12,6 +12,14 @@ import 'hundredths.dart';
 /// are rays from corner 0 to the other corners, in turning order. A
 /// [circle] stores the drawn radius or diameter as its two corners, and its
 /// [Figure.centre]. A [quadrilateral] is any convex four-sided shape.
+/// [parallelLines] are three separate lines, each from one corner to the
+/// next (corners 0 and 1, 2 and 3, 4 and 5): two parallel lines drawn left
+/// to right and a line across them from top to bottom (see
+/// [parallelAngle]). A [semicircle] is a triangle in a circle whose side
+/// from corner 0 to corner 2 is a diameter through [Figure.centre]; the
+/// angle at corner 1, on the circle, has no label. [similarTriangles] are
+/// two separate triangles, corners 0 to 2 and 3 to 5, corner i matching
+/// corner i + 3; their equal angles carry one, two and three arcs.
 enum FigureShape {
   square,
   rectangle,
@@ -24,6 +32,9 @@ enum FigureShape {
   crossingLines,
   aroundPoint,
   quadrilateral,
+  parallelLines,
+  semicircle,
+  similarTriangles,
 }
 
 /// What a figure asks for, and so which language-free cue it carries: a
@@ -75,7 +86,8 @@ class SideLabel {
 /// [corner] is the corner whose inside angle it is, and one past the last
 /// corner the outside angle at a [Figure.extension]; on rays it is the
 /// angle from the ray to corner [corner] to the ray to the next corner
-/// (after the last ray comes the first again, see [nextRay]).
+/// (after the last ray comes the first again, see [nextRay]); on
+/// [FigureShape.parallelLines] see [parallelAngle].
 @immutable
 class AngleLabel {
   const AngleLabel(this.corner, this.degrees);
@@ -104,6 +116,49 @@ class AngleLabel {
 /// among rays from corner 0 to the other [count] - 1 corners.
 int nextRay(int corner, int count) => corner % (count - 1) + 1;
 
+/// The corners pieces are drawn from: two for separate lines, three for
+/// separate triangles, or null for one outline (or rays) of all corners.
+int? pieceOf(FigureShape shape) => switch (shape) {
+  FigureShape.parallelLines => 2,
+  FigureShape.similarTriangles => 3,
+  _ => null,
+};
+
+/// The two corners edge [edge] joins among [count] corners drawn in pieces
+/// of [piece] corners (see [pieceOf]): a line of two corners is one edge,
+/// a closed piece has an edge from each corner to the next.
+(int, int) edgeEnds(int edge, int count, int? piece) {
+  final size = piece ?? count;
+  final perPiece = piece == 2 ? 1 : size;
+  final start = edge ~/ perPiece * size;
+  final i = edge % perPiece;
+  return (start + i, start + (i + 1) % size);
+}
+
+/// The number of edges of [count] corners drawn in pieces of [piece].
+int edgeCount(int count, int? piece) => piece == 2 ? count ~/ 2 : count;
+
+/// The angle [corner] of two parallel lines and a line across them (the
+/// corners of [FigureShape.parallelLines]): its point, where line
+/// [corner] ~/ 4 (0 the upper, 1 the lower) crosses the line across, and a
+/// point on each of its arms. Around that point, turning the other way to
+/// a clock on screen, the arms run right along the parallel line, up the
+/// line across, left, and down; angle [corner] % 4 lies between arm
+/// [corner] % 4 and the next one.
+(Offset, Offset, Offset) parallelAngle(List<Offset> corners, int corner) {
+  final line = corner ~/ 4;
+  final (left, right) = (corners[2 * line], corners[2 * line + 1]);
+  final (top, bottom) = (corners[4], corners[5]);
+  final d = right - left;
+  final e = bottom - top;
+  final t =
+      ((top - left).dx * e.dy - (top - left).dy * e.dx) /
+      (d.dx * e.dy - d.dy * e.dx);
+  final arms = [right, top, left, bottom];
+  final j = corner % 4;
+  return (left + d * t, arms[j], arms[(j + 1) % 4]);
+}
+
 /// The corner where two ticked [edges] of a shape with [count] corners
 /// meet: the top of an isosceles triangle.
 int tickedTop(List<int> edges, int count) {
@@ -131,6 +186,7 @@ class Figure {
     this.diagonal = false,
     this.extension,
     this.ticks = const [],
+    this.arrows = const [],
   });
 
   final FigureShape shape;
@@ -169,6 +225,9 @@ class Figure {
   /// The edges that carry a tick mark across their middle: equal sides.
   final List<int> ticks;
 
+  /// The edges that carry an arrow mark: parallel lines.
+  final List<int> arrows;
+
   @override
   bool operator ==(Object other) =>
       other is Figure &&
@@ -183,7 +242,8 @@ class Figure {
       other.pi == pi &&
       other.diagonal == diagonal &&
       other.extension == extension &&
-      listEquals(other.ticks, ticks);
+      listEquals(other.ticks, ticks) &&
+      listEquals(other.arrows, arrows);
 
   @override
   int get hashCode => Object.hash(
@@ -199,6 +259,7 @@ class Figure {
     diagonal,
     extension,
     Object.hashAll(ticks),
+    Object.hashAll(arrows),
   );
 }
 
@@ -299,6 +360,8 @@ class FigureLayout {
     this.diagonal,
     this.extension,
     this.ticks = const [],
+    this.piece,
+    this.arrows = const [],
   });
 
   /// The corners, scaled uniformly from the model, so the drawing is to
@@ -340,6 +403,14 @@ class FigureLayout {
 
   /// Tick marks, each a short line across the middle of an edge.
   final List<(Offset, Offset)> ticks;
+
+  /// How many corners each separately drawn piece has (see [pieceOf]), or
+  /// null for one outline of all corners.
+  final int? piece;
+
+  /// Arrow marks on parallel lines, each from its tail to its tip along
+  /// its line; the painter draws the arrowhead at the tip.
+  final List<(Offset, Offset)> arrows;
 }
 
 /// The outline widths: thick is the perimeter cue.
@@ -367,6 +438,12 @@ const nextToArc = 12.0;
 
 /// The length of a tick mark across an edge.
 const tickLength = 12.0;
+
+/// The length of an arrow mark along its line, and the radius of the
+/// smallest of the arcs that mark equal angles and the room between them.
+const arrowLength = 10.0;
+const equalArc = 12.0;
+const equalArcStep = 4.0;
 
 /// The arcs of rays at one point: each wider angle than an arc's own
 /// makes it larger by this share, so arcs that meet on a ray never join
@@ -564,13 +641,18 @@ bool _meets(Offset a, Offset b, Rect rect) {
     FigureShape.aroundPoint => true,
     _ => false,
   };
+  final piece = pieceOf(figure.shape);
+  final parallel = figure.shape == FigureShape.parallelLines;
   final centre = figure.centre;
   final radius = centre == null
       ? 0.0
       : model.map((v) => (v - centre).distance).reduce(max);
+  // The turning sense of the first piece; separate triangles are drawn
+  // turning the same way.
   var twiceArea = 0.0;
-  for (var i = 0; i < count; i++) {
-    final (a, b) = (model[i], model[(i + 1) % count]);
+  final sides = piece ?? count;
+  for (var i = 0; i < sides; i++) {
+    final (a, b) = (model[i], model[(i + 1) % sides]);
     twiceArea += a.dx * b.dy - b.dx * a.dy;
   }
   Offset unit(Offset o) => o / o.distance;
@@ -622,7 +704,8 @@ bool _meets(Offset a, Offset b, Rect rect) {
   final xs = model.map((v) => v.dx);
   final ys = model.map((v) => v.dy);
   for (final label in figure.labels) {
-    final (a, b) = (model[label.edge], model[(label.edge + 1) % count]);
+    final (from, to) = edgeEnds(label.edge, count, piece);
+    final (a, b) = (model[from], model[to]);
     final along = b - a;
     var normal = Offset(along.dy, -along.dx) / along.distance;
     // With y down a positive area means corners run clockwise on screen,
@@ -672,7 +755,11 @@ bool _meets(Offset a, Offset b, Rect rect) {
   // between rays or outside a side drawn on is open beyond its arms.
   final angles = [
     for (final angle in figure.angles)
-      if (rays)
+      if (parallel)
+        switch (parallelAngle(model, angle.corner)) {
+          (final v, final a, final b) => (v: v, a: a, b: b, open: true),
+        }
+      else if (rays)
         (
           v: model[0],
           a: model[angle.corner],
@@ -731,6 +818,8 @@ bool _meets(Offset a, Offset b, Rect rect) {
         (g.b - g.v).distance,
         for (final corner in model)
           if (corner != g.v) (corner - g.v).distance,
+        for (final h in angles)
+          if (h.v != g.v) (h.v - g.v).distance,
       ].reduce(min),
   ];
   final longArm = [
@@ -755,15 +844,6 @@ bool _meets(Offset a, Offset b, Rect rect) {
   final past = [
     for (final (i, b) in bisectors.indexed) reach(halves[i], b) + labelGap,
   ];
-  // An arc sized to the shorter arm; an outside angle's label stands far
-  // out in its wedge, so its arc reaches out to just before the label,
-  // within its lines.
-  double arcAt(int i, double s) {
-    final size = min(arcRadius, arcShare * shortArm[i] * s) * growth[i];
-    if (!angles[i].open || rays) return size;
-    return max(size, min(between[i] - past[i], .8 * shortArm[i] * s));
-  }
-
   // Between rays: the nearest point along the bisector where the box
   // clears both rays, between them or just past their ends.
   double clearOfRays(int i, double s) {
@@ -793,8 +873,22 @@ bool _meets(Offset a, Offset b, Rect rect) {
     return far;
   }
 
-  double insideAt(int i, double s) =>
-      max(rays ? clearOfRays(i, s) : between[i], arcAt(i, s) + past[i]);
+  // An arc sized to the shorter arm; an outside angle's label stands far
+  // out in its wedge, so its arc reaches out to just before the label,
+  // within its lines.
+  double arcAt(int i, double s) {
+    final size = min(arcRadius, arcShare * shortArm[i] * s) * growth[i];
+    if (!angles[i].open || rays) return size;
+    // Between parallel lines the arc also reaches out to its label, so the
+    // label is nearer it than the arc at the other crossing.
+    final reach = parallel ? clearOfRays(i, s) : between[i];
+    return max(size, min(reach - past[i], .8 * shortArm[i] * s));
+  }
+
+  double insideAt(int i, double s) => max(
+    rays || parallel ? clearOfRays(i, s) : between[i],
+    arcAt(i, s) + past[i],
+  );
 
   // Outside the corner, across from the inside bisector, so it touches no
   // edge of the convex shape; further out by what clears another label
@@ -820,8 +914,12 @@ bool _meets(Offset a, Offset b, Rect rect) {
   );
   // The lines drawn, in model units.
   final lines = [
-    for (var i = 0; i < (rays ? count - 1 : count); i++)
-      rays ? (model[0], model[i + 1]) : (model[i], model[(i + 1) % count]),
+    for (var i = 0; i < (rays ? count - 1 : edgeCount(count, piece)); i++)
+      rays
+          ? (model[0], model[i + 1])
+          : switch (edgeEnds(i, count, piece)) {
+              (final from, final to) => (model[from], model[to]),
+            },
     if (figure.extension case final end?) (model[count - 1], end),
     if (figure.diagonal) (model[0], model[2]),
   ];
@@ -1084,15 +1182,77 @@ bool _meets(Offset a, Offset b, Rect rect) {
       square(model[0], model[1], model[count - 1]),
     if (figure.shape == FigureShape.rightTriangle)
       square(model[0], model[count - 1], model[1]),
+    // Equal angles of similar triangles: corner i and i + 3 carry i + 1
+    // arcs, one line width and more apart, inside the smaller triangle.
+    if (figure.shape == FigureShape.similarTriangles)
+      for (var c = 0; c < count; c++)
+        for (var m = 0; m <= c % 3; m++)
+          () {
+            final start = c ~/ 3 * 3;
+            final (prev, next) = (
+              model[start + (c + 2) % 3],
+              model[start + (c + 1) % 3],
+            );
+            final v = model[c];
+            final r =
+                min(
+                  equalArc,
+                  .25 * min((prev - v).distance, (next - v).distance) * scale,
+                ) +
+                equalArcStep * m;
+            return AngleMark(
+              place(v),
+              r,
+              direction(prev - v),
+              turnAt(v, prev, next),
+            );
+          }(),
   ];
+
+  final labelBoxes = [
+    for (final (i, _) in texts.indexed)
+      pointBox(first + i, scale).shift(origin),
+    for (var i = 0; i < angles.length; i++)
+      angleBox(i, scale, inside).shift(origin),
+  ];
+  // An arrow mark on each parallel line, at the first place along it from
+  // the left that keeps clear of every label and of the angle arcs.
+  (Offset, Offset) arrowOn(int edge) {
+    final (from, to) = edgeEnds(edge, count, piece);
+    final (a, b) = (place(model[from]), place(model[to]));
+    final along = (b - a) / (b - a).distance;
+    (Offset, Offset) at(double t) {
+      final middle = Offset.lerp(a, b, t)!;
+      return (
+        middle - along * (arrowLength / 2),
+        middle + along * (arrowLength / 2),
+      );
+    }
+
+    bool free((Offset, Offset) arrow) {
+      final room = Rect.fromCenter(
+        center: (arrow.$1 + arrow.$2) / 2,
+        width: arrowLength + 2 * labelGap,
+        height: arrowLength + 2 * labelGap,
+      );
+      return labelBoxes.every((box) => !box.overlaps(room)) &&
+          angles.every(
+            (g) => (place(g.v) - room.center).distance > 2 * arcRadius,
+          );
+    }
+
+    for (var step = 2; step <= 18; step++) {
+      if (free(at(step / 20))) return at(step / 20);
+    }
+    return at(.5);
+  }
 
   final drawn = FigureLayout(
     vertices: [for (final v in model) place(v)],
     labels: [
-      for (final (i, text) in texts.indexed)
-        PlacedLabel(text, pointBox(first + i, scale).shift(origin)),
+      for (final (i, text) in texts.indexed) PlacedLabel(text, labelBoxes[i]),
       for (final (i, angle) in figure.angles.indexed)
-        PlacedLabel(angle.text, angleBox(i, scale, inside).shift(origin)),
+        PlacedLabel(angle.text, labelBoxes[texts.length + i]),
     ],
     grid: figure.grid,
     gridLines: gridLines,
@@ -1123,6 +1283,8 @@ bool _meets(Offset a, Offset b, Rect rect) {
           place(tick(edge).middle) + tick(edge).across * (tickLength / 2),
         ),
     ],
+    piece: piece,
+    arrows: [for (final edge in figure.arrows) arrowOn(edge)],
   );
   return (drawn: drawn, crowded: crowded);
 }

@@ -757,6 +757,11 @@ enum FigureMove {
   exteriorAngle,
   isosceles,
   quadrilateral,
+  corresponding,
+  alternate,
+  coInterior,
+  semicircle,
+  similar,
 
   /// The working: a number read from the figure, or one small calculation.
   everySide,
@@ -791,6 +796,10 @@ enum FigureMove {
   exteriorMissing,
   isoscelesRest,
   otherBase,
+  nextOnLine,
+  coInteriorPair,
+  semicircleRest,
+  scaleFactor,
 
   /// The last step: the calculation whose value is the answer, and the
   /// check. [rootSide] and [rootLength] multiply the answer by itself to
@@ -802,6 +811,11 @@ enum FigureMove {
   rootLength,
   angleIs,
   circumferenceIs,
+
+  /// The angle next to the asked one matches the one next to the given
+  /// one, so the asked angle is the rest of its straight line.
+  nextMatches,
+  lengthIs,
 }
 
 /// How the last step of a figure hint checks the answer.
@@ -898,6 +912,12 @@ List<FigureStep> figureHint(Figure figure) {
         return _exteriorHint(figure, asked);
       }
       if (figure.ticks.isNotEmpty) return _isoscelesHint(figure, asked);
+      if (figure.shape == FigureShape.parallelLines) {
+        return _parallelHint(known.single, asked);
+      }
+      if (figure.shape == FigureShape.semicircle) {
+        return _semicircleHint(known.single, asked);
+      }
       if (figure.shape == FigureShape.quadrilateral) {
         final sum = sizes.reduce((a, b) => a + b);
         return [
@@ -1184,6 +1204,9 @@ List<FigureStep> figureHint(Figure figure) {
         ),
       ];
     case FigurePrompt.length:
+      if (figure.shape == FigureShape.similarTriangles) {
+        return _similarHint(byEdge);
+      }
       return _pythagorasHint(figure, byEdge);
     case FigurePrompt.area || FigurePrompt.perimeter:
       break;
@@ -1672,6 +1695,142 @@ List<FigureStep> _isoscelesHint(Figure figure, int asked) {
   ];
 }
 
+/// Two parallel lines and a line across, one angle [given] at one crossing
+/// and the [asked] one at the other (corners as in [parallelAngle]).
+/// Corresponding and alternate angles are equal: the angle next to the
+/// given one on its straight line matches the angle next to the asked one,
+/// which is the rest of the asked one's straight line. Co-interior angles
+/// add up to 180°.
+List<FigureStep> _parallelHint(AngleLabel given, int asked) {
+  final g = given.degrees!;
+  final both = FigureParts(edges: const {0, 1}, angles: {given.corner, asked});
+  final ask = FigureStep(
+    FigureMove.askAngle,
+    parts: FigureParts(angles: {asked}),
+  );
+  if ((given.corner - asked).isOdd) {
+    return [
+      ask,
+      FigureStep(FigureMove.coInterior, numbers: const [18000], parts: both),
+      FigureStep(
+        FigureMove.coInteriorPair,
+        numbers: [g * 100],
+        parts: FigureParts(angles: {given.corner, asked}),
+      ),
+      FigureStep(
+        FigureMove.angleIs,
+        terms: [18000, g * 100],
+        signs: const ['−'],
+        valueHundredths: (180 - g) * 100,
+        checkKind: FigureCheck.calculation,
+        check: '$g + ${180 - g} = 180',
+        parts: FigureParts(angles: {given.corner, asked}),
+      ),
+    ];
+  }
+  final next = 180 - g;
+  return [
+    ask,
+    FigureStep(
+      given.corner % 4 == asked % 4
+          ? FigureMove.corresponding
+          : FigureMove.alternate,
+      parts: both,
+    ),
+    FigureStep(
+      FigureMove.nextOnLine,
+      numbers: [g * 100],
+      terms: [18000, g * 100],
+      signs: const ['−'],
+      valueHundredths: next * 100,
+      parts: FigureParts(angles: {given.corner}),
+    ),
+    FigureStep(
+      FigureMove.nextMatches,
+      numbers: [next * 100],
+      terms: [18000, next * 100],
+      signs: const ['−'],
+      valueHundredths: g * 100,
+      checkKind: FigureCheck.calculation,
+      check: '$next + $g = 180',
+      parts: FigureParts(angles: {asked}),
+    ),
+  ];
+}
+
+/// A triangle on a diameter with its third corner on the circle: the angle
+/// there is a right angle, so the other two make 90°.
+List<FigureStep> _semicircleHint(AngleLabel given, int asked) {
+  final a = given.degrees!;
+  return [
+    FigureStep(FigureMove.askAngle, parts: FigureParts(angles: {asked})),
+    const FigureStep(
+      FigureMove.semicircle,
+      numbers: [9000],
+      parts: FigureParts(edges: {0, 1}),
+    ),
+    const FigureStep(
+      FigureMove.semicircleRest,
+      numbers: [18000],
+      terms: [18000, 9000],
+      signs: ['−'],
+      valueHundredths: 9000,
+      parts: FigureParts(edges: {0, 1, 2}),
+    ),
+    FigureStep(
+      FigureMove.angleIs,
+      terms: [9000, a * 100],
+      signs: const ['−'],
+      valueHundredths: (90 - a) * 100,
+      checkKind: FigureCheck.calculation,
+      check: '$a + ${90 - a} + 90 = 180',
+      parts: FigureParts(angles: {given.corner, asked}),
+    ),
+  ];
+}
+
+/// Two similar triangles, corner i matching corner i + 3, so edge i
+/// matches edge i + 3: the labelled bottom sides give how many times the
+/// big one is as big, then the side marked `?` is its partner times that,
+/// or divided by it.
+List<FigureStep> _similarHint(Map<int, int?> byEdge) {
+  final asked = byEdge.keys.firstWhere((edge) => byEdge[edge] == null);
+  final partner = (asked + 3) % 6;
+  final (small, big) = (byEdge[2]!, byEdge[5]!);
+  final factor = big * 100 ~/ small;
+  final known = byEdge[partner]!;
+  final onBig = asked >= 3;
+  final answer = onBig ? known * factor ~/ 100 : known * 100 ~/ factor;
+  final pair = FigureParts(edges: {asked, partner});
+  return [
+    FigureStep(FigureMove.askLength, parts: FigureParts(edges: {asked})),
+    FigureStep(
+      FigureMove.similar,
+      parts: FigureParts(edges: {2, 5, asked, partner}),
+    ),
+    FigureStep(
+      FigureMove.scaleFactor,
+      terms: [big, small],
+      signs: const ['÷'],
+      valueHundredths: factor,
+      parts: const FigureParts(edges: {2, 5}),
+    ),
+    FigureStep(
+      FigureMove.lengthIs,
+      terms: [known, factor],
+      signs: [onBig ? '×' : '÷'],
+      valueHundredths: answer,
+      checkKind: FigureCheck.calculation,
+      check: onBig
+          ? '${_hundredthsEn(answer)} ÷ ${_hundredthsEn(known)} = '
+                '${_hundredthsEn(factor)}'
+          : '${_hundredthsEn(answer)} × ${_hundredthsEn(factor)} = '
+                '${_hundredthsEn(known)}',
+      parts: pair,
+    ),
+  ];
+}
+
 String _hundredthsEn(int hundredths) => formatHundredths(hundredths, 'en');
 
 List<SolutionStep> figureSteps(Figure figure) => [
@@ -1763,6 +1922,29 @@ SolutionStep _figureSentence(FigureStep step) => (l) {
     FigureMove.exteriorMissing => l.hintExteriorMissing(numbers[0], numbers[1]),
     FigureMove.isoscelesRest => l.hintIsoscelesRest(calculation, value),
     FigureMove.otherBase => l.hintOtherBase(numbers.single),
+    FigureMove.corresponding => l.hintIdeaCorresponding,
+    FigureMove.alternate => l.hintIdeaAlternate,
+    FigureMove.coInterior => l.hintIdeaCoInterior(numbers.single),
+    FigureMove.semicircle => l.hintIdeaSemicircle(numbers.single),
+    FigureMove.similar => l.hintIdeaSimilar,
+    FigureMove.nextOnLine => l.hintNextOnLine(
+      numbers.single,
+      calculation,
+      value,
+    ),
+    FigureMove.coInteriorPair => l.hintCoInteriorPair(numbers.single),
+    FigureMove.semicircleRest => l.hintSemicircleRest(
+      numbers.single,
+      calculation,
+      value,
+    ),
+    FigureMove.scaleFactor => l.hintScaleFactor(calculation, value),
+    FigureMove.nextMatches => l.hintNextMatches(
+      numbers.single,
+      calculation,
+      value,
+    ),
+    FigureMove.lengthIs => l.hintLengthIs(calculation, value),
     FigureMove.verticallyOpposite => l.hintIdeaVerticallyOpposite(
       numbers.single,
     ),

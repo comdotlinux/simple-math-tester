@@ -83,7 +83,7 @@ language's decimal separator.
 | 2 | The area of a rectangle, with a unit grid on it | Sides 1 to 10, the longer at most 4 times the shorter | Rectangle 5 by 3: 15 | 84 |
 | 3 | A missing side (a `?` on the side) of a square or rectangle, from its perimeter or area | As level 1 | Perimeter 16, one side 5: 3 | 240 |
 | 4 | A missing angle, with an arc at every angle and a square in a right angle: in a triangle, on a straight line, in a right angle; two crossing lines with one angle given and the opposite angle or a neighbour asked; three angles around a point; the outside angle of a triangle with one side drawn longer (from the two opposite inside angles, or an inside angle from the outside angle and the other one); an isosceles triangle with a tick on each equal side (a base angle from the top angle, or the top angle from a base angle) | Every angle whole and at least 20° (at least 10° in a right angle); crossing lines 20° to 160°; around a point 20° to 170° in steps of 5°; outside angle 66° to 160°; isosceles top angle 20° to 140° | Triangle with 50° and 60°: 70; crossing at 50°: opposite 50, neighbour 130; around a point 100° and 150°: 110; inside angles 50° and 60°: outside angle 110; isosceles with a 40° top: 70 | 22553 |
-| 5 | The area of a right triangle; the perimeter and area of an L-shape and of rectangles with sides in halves; a circle's circumference (from its diameter) and area (from its radius), with "Use π = 3.14" shown; Pythagoras: the longest side or a leg of a right triangle, and the diagonal of a rectangle (drawn, with a `?` on its middle); the fourth angle of a quadrilateral | Legs 1 to 12; L-shapes with outer sides 4 to 12; halves 0.5 to 12; diameter 1 to 20, radius 1 to 10; Pythagoras: the whole-number triangles 3-4-5, 6-8-10, 5-12-13, 9-12-15, 8-15-17 and 12-16-20, both leg orders (sides up to 20, so not "at most 12"); quadrilateral angles 20° to 160° in steps of 10°, 120 of the 2255 left out (see below) | Legs 6 and 4: 12; 2.5 by 1.5: 3.75; diameter 6: 18.84; legs 3 and 4: 5; 6 by 8: diagonal 10; 80°, 100° and 70°: 110 | 3739 |
+| 5 | The area of a right triangle; the perimeter and area of an L-shape and of rectangles with sides in halves; a circle's circumference (from its diameter) and area (from its radius), with "Use π = 3.14" shown; Pythagoras: the longest side or a leg of a right triangle, and the diagonal of a rectangle (drawn, with a `?` on its middle); the fourth angle of a quadrilateral; two parallel lines (an arrow on each) and a line across them, one angle given and the corresponding, alternate or co-interior angle at the other crossing asked; a triangle on the diameter of a circle with its third corner on the circle (that angle unlabelled), one angle at the diameter given and the other asked; two similar triangles (equal angles marked by one, two and three arcs), a side of one asked from its partner and the two bottom sides | Legs 1 to 12; L-shapes with outer sides 4 to 12; halves 0.5 to 12; diameter 1 to 20, radius 1 to 10; Pythagoras: the whole-number triangles 3-4-5, 6-8-10, 5-12-13, 9-12-15, 8-15-17 and 12-16-20, both leg orders (sides up to 20, so not "at most 12"); quadrilateral angles 20° to 160° in steps of 10°, 120 of the 2255 left out (see below); parallel lines crossed at 60° to 120°; the angle at the diameter 20° to 70°; similar triangles with whole sides up to 8 (the bottom longest and at most twice the shortest), 2 or 3 times as big | Legs 6 and 4: 12; 2.5 by 1.5: 3.75; diameter 6: 18.84; legs 3 and 4: 5; 6 by 8: diagonal 10; 80°, 100° and 70°: 110; parallel lines crossed at 70°: co-interior angle 110; 35° at the diameter: 55; sides 5 and 3, twice as big with bottom 10: 6 | 4397 |
 
 Families (the variant names saved with each answer) by level: 1
 `squarePerimeter`, `rectanglePerimeter`, `trianglePerimeter`; 2
@@ -95,7 +95,8 @@ Families (the variant names saved with each answer) by level: 1
 `rightTriangleArea`, `lShapePerimeter`, `lShapeArea`,
 `halvesRectanglePerimeter`, `halvesRectangleArea`, `circleCircumference`,
 `circleArea`, `pythagorasHypotenuse` (12), `pythagorasLeg` (12),
-`rectangleDiagonal` (12), `quadrilateralAngles` (2135).
+`rectangleDiagonal` (12), `quadrilateralAngles` (2135), `parallelLines`
+(244), `angleInSemicircle` (51), `similarTriangles` (363).
 
 Hints have the algebra shape: what is asked, naming the school word once
 ("This is called the perimeter."), the rule and why it holds, the working
@@ -106,7 +107,10 @@ theorem and says why it holds ("Vertically opposite angles are equal",
 "Angles around a point always add up to 360°", "Pythagoras' theorem", "The
 outside angle of a triangle equals the two opposite inside angles added
 together", "An isosceles triangle has two equal sides and two equal
-angles", "The four angles of a quadrilateral add up to 360°"),
+angles", "The four angles of a quadrilateral add up to 360°",
+"Corresponding angles are equal", "Alternate angles are equal",
+"Co-interior angles add up to 180°", "An angle in a semicircle is always a
+right angle", "Similar triangles have the same shape"),
 then works in small steps; for Pythagoras each side's square on its own,
 the sum or the difference, then which number times itself makes it.
 
@@ -162,6 +166,25 @@ No simple rule on the angles or side ratios separates them, so
 `quadrilateralsLeftOut` in `app/lib/geometry.dart` lists them, and a test
 checks that each still fails on some card.
 
+Two parallel lines lie across the card with the line across rising to the
+right; they are not turned. Each labelled angle is open, like an angle
+between rays: its label stands between its two lines just past the arc,
+and its arc reaches out to just before the label, so the label is nearer
+its own arc than the arc at the other crossing. Each parallel line carries
+an arrow, drawn at the first place along it from the left that keeps clear
+of the labels and arcs. The lines are 12 apart for every 4 of line past a
+crossing (18 for co-interior angles, whose two labels both stand between
+the lines on one side). Lines crossed at less than 60° (or more than 120°)
+are left out: the label of a narrow angle between the lines stands so far
+out that on the phone card at text scale 2 it is nearer the other
+crossing's arc than its own, or meets the other label. A triangle on a
+diameter is drawn with its circle and the circle's centre; its two angle
+labels stand inside their angles or outside the circle across from them,
+never across the circle's line, and the angle on the circle has no mark.
+Two similar triangles stand on one line, the smaller at the left, with a
+gap of 0.8 times the smaller's bottom side; the arcs that mark equal
+angles are 4 px apart.
+
 ## How correctness is checked
 
 - **Pure builds over finite ranges.** Every algebra form and geometry
@@ -201,12 +224,28 @@ checks that each still fails on some card.
   tick marks (each across the middle of a side), checks the two ticked
   sides are drawn equal and derives all three angles from the one given.
   For a quadrilateral it checks the shape is convex and the four angles
-  add up to 360°.
+  add up to 360°. For parallel lines it reads the two arrows (each along
+  one line, pointing the same way), checks those two lines are drawn
+  parallel and that the third line crosses both with every arm at least
+  16 px long, numbers the four angles at each crossing from the arrow's
+  way round, reads each label by its angle and nearest arc, and takes the
+  `?` as equal to the given angle when the two are an even number of
+  places apart round their crossings (corresponding, alternate, or
+  vertically opposite to one of those) and as 180° minus it otherwise. For
+  a triangle in a circle it checks that exactly one side has both ends on
+  the circle and its middle at the centre, that the third corner is on the
+  circle and has no label, and takes the `?` as 90° minus the given angle.
+  For similar triangles it counts the arcs at each corner (one, two and
+  three in each triangle), checks that corners with as many arcs have
+  equal angles, matches the sides between them, takes how many times as
+  big one triangle is from two matching labelled sides, and requires the
+  `?` (its matching side times that, in whole hundredths) and every side
+  drawn to one scale.
 - **Exhaustive runs.** Algebra: 484, 380, 938, 6127 and 6020 problems
   (levels 1 to 5), each through the oracle, and the oracle recomputes every
-  hint step of every problem. Geometry: 26892 problems, each laid out on 6
-  canvas sizes at text scale 1 and 2, 322704 oracle checks in all (3312,
-  1008, 2880, 270636 and 44868 for levels 1 to 5). Layout rules are checked
+  hint step of every problem. Geometry: 27550 problems, each laid out on 6
+  canvas sizes at text scale 1 and 2, 330600 oracle checks in all (3312,
+  1008, 2880, 270636 and 52764 for levels 1 to 5). Layout rules are checked
   for every figure too: label text at least 12 px, labels inside the canvas,
   apart from each other and off every line, sides at least 16 px, each
   angle label within 16.5 px of its arc, one of its lines or its corner
@@ -223,7 +262,11 @@ checks that each still fails on some card.
   and diameter cues swapped, the missing side or angle (`?`) moved, a ray
   turned by 10° with its label kept, the diagonal removed or drawn
   along a side, a tick mark removed or moved, a ticked side drawn 20%
-  longer, and the side drawn on removed or bent by 10° (geometry); in a geometry hint step, a value, a term, a
+  longer, the side drawn on removed or bent by 10°, an arrow removed,
+  moved to the line across or turned round, one parallel line turned by
+  3°, the circle moved or grown, a label on the corner on the circle,
+  equal-angle marks swapped, the bigger similar triangle stretched by 20%
+  (geometry); in a geometry hint step, a value, a term, a
   number or a check off by one, a highlight removed from a label the step
   reads, and a label highlighted that the step does not read.
 - **Hint style.** `app/test/hint_style_test.dart` checks every algebra and
@@ -253,7 +296,8 @@ checks that each still fails on some card.
   lists (a missing side from an area, the angle in a triangle, L-shapes,
   rectangles in halves, the circumference, and the theorem families:
   crossing lines, angles around a point, Pythagoras, the outside angle,
-  isosceles triangles, quadrilaterals) have no built row. Geometry
+  isosceles triangles, quadrilaterals, parallel lines, the angle in a
+  semicircle, similar triangles) have no built row. Geometry
   families without a row rest on the oracle and on figures worked by hand
   in `app/test/geometry_test.dart`, one or more per family.
 - **Whole hundredths, no floating point.** Answers are whole numbers of

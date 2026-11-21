@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui' show Offset;
+import 'dart:ui' show Offset, Rect;
 
 import 'package:simple_math_tester/figure.dart';
 
@@ -24,7 +24,12 @@ import 'package:simple_math_tester/figure.dart';
 /// corner shows the two inside angles opposite that corner and the outside
 /// angle there, one of them `?`; an isosceles triangle a tick on each of
 /// its two equal sides, one angle and a `?`; a quadrilateral three angles
-/// and a `?`. Anything else is not solvable.
+/// and a `?`. Two parallel lines carry an arrow each and show one angle at
+/// one crossing with the line across and a `?` at the other. A triangle in
+/// a circle with one side a diameter shows the angles at the ends of the
+/// diameter, one of them `?`. Two triangles with equal angles marked by
+/// one, two and three arcs show two sides of one and the matching two of
+/// the other, one of them `?`. Anything else is not solvable.
 class OracleFailure implements Exception {
   OracleFailure(this.message);
 
@@ -82,8 +87,22 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
     throw OracleFailure('a given total with the prompt $prompt');
   }
   final isCircle = shape == FigureShape.circle;
-  if ((layout.pi != null) != isCircle || (layout.circle != null) != isCircle) {
+  final inCircle = isCircle || shape == FigureShape.semicircle;
+  if ((layout.pi != null) != isCircle || (layout.circle != null) != inCircle) {
     throw OracleFailure('π or a circle drawn with a $shape');
+  }
+  // Separate lines only for parallel lines, separate triangles only for
+  // similar triangles, arrows only on parallel lines.
+  final piece = switch (shape) {
+    FigureShape.parallelLines => 2,
+    FigureShape.similarTriangles => 3,
+    _ => null,
+  };
+  if (layout.piece != piece) {
+    throw OracleFailure('pieces of ${layout.piece} corners in a $shape');
+  }
+  if (layout.arrows.isNotEmpty && shape != FigureShape.parallelLines) {
+    throw OracleFailure('arrows on a $shape');
   }
   final isRays = switch (shape) {
     FigureShape.straightAngle ||
@@ -129,6 +148,17 @@ int solveFigure(FigureShape shape, FigurePrompt prompt, FigureLayout layout) {
       _solvePolygonAngles(layout, 4),
     FigureShape.quadrilateral => throw OracleFailure(
       'a quadrilateral with the prompt $prompt',
+    ),
+    FigureShape.parallelLines when prompt == FigurePrompt.angle =>
+      _solveParallel(layout),
+    FigureShape.semicircle when prompt == FigurePrompt.angle =>
+      _solveSemicircle(layout),
+    FigureShape.similarTriangles when prompt == FigurePrompt.length =>
+      _solveSimilar(layout),
+    FigureShape.parallelLines ||
+    FigureShape.semicircle ||
+    FigureShape.similarTriangles => throw OracleFailure(
+      'a $shape with the prompt $prompt',
     ),
     FigureShape.square ||
     FigureShape.rectangle ||
@@ -549,6 +579,331 @@ int _solveIsosceles(FigureLayout layout) {
   return angles[asked.single];
 }
 
+/// Two lines marked as parallel by an arrow on each, and a line across
+/// them. The line across meets both at the same slant, so an angle at one
+/// crossing equals the angle in the same place at the other
+/// (corresponding angles); at one crossing, opposite angles are equal and
+/// neighbours make a straight line, 180°. So two angles at different
+/// crossings are equal when they are an even number of places apart around
+/// their crossings (counted from the arrow's way), and add up to 180°
+/// otherwise.
+int _solveParallel(FigureLayout layout) {
+  final c = layout.vertices;
+  if (c.length != 6) throw OracleFailure('parallel lines need 3 lines');
+  final lines = [(c[0], c[1]), (c[2], c[3]), (c[4], c[5])];
+  bool sameWay(Offset u, Offset w) =>
+      (u.dx * w.dy - u.dy * w.dx).abs() <=
+      sin(angleTolerance * pi / 180) * u.distance * w.distance;
+  // Each arrow lies along one line, and no line has two.
+  final marked = <int, Offset>{};
+  for (final (tail, tip) in layout.arrows) {
+    final along = tip - tail;
+    if (along.distance < arrowLength / 2) throw OracleFailure('a tiny arrow');
+    final on = [
+      for (final (i, (a, b)) in lines.indexed)
+        if ((_alongside(tail, a, b) ?? 2) <= 1 &&
+            (_alongside(tip, a, b) ?? 2) <= 1 &&
+            sameWay(along, b - a))
+          i,
+    ];
+    if (on.length != 1) throw OracleFailure('an arrow off every line');
+    if (marked.containsKey(on.single)) {
+      throw OracleFailure('two arrows on line ${on.single}');
+    }
+    marked[on.single] = along;
+  }
+  if (marked.length != 2) {
+    throw OracleFailure('${marked.length} lines marked parallel, not 2');
+  }
+  final [m, n] = marked.keys.toList()..sort();
+  final across = {0, 1, 2}.difference({m, n}).single;
+  final (p, q) = (lines[m], lines[n]);
+  if (!sameWay(p.$2 - p.$1, q.$2 - q.$1)) {
+    throw OracleFailure('the lines marked parallel are not parallel');
+  }
+  final (u, w) = (marked[m]!, marked[n]!);
+  if (u.dx * w.dx + u.dy * w.dy <= 0) {
+    throw OracleFailure('the arrows point different ways');
+  }
+  final (t0, t1) = lines[across];
+  // Where the line across crosses each parallel line: inside both lines,
+  // with at least 16 px of every arm showing.
+  final wedges = <(Offset, Offset, Offset)>[];
+  for (final (key, (a, b)) in [(m, p), (n, q)]) {
+    final d = b - a;
+    final e = t1 - t0;
+    final det = d.dx * e.dy - d.dy * e.dx;
+    if (det.abs() <= sin(1 * pi / 180) * d.distance * e.distance) {
+      throw OracleFailure('the line across is parallel too');
+    }
+    final s = ((t0 - a).dx * e.dy - (t0 - a).dy * e.dx) / det;
+    final x = a + d * s;
+    final arms = [a, b, t0, t1];
+    if (arms.any((end) => (end - x).distance < 16) ||
+        _alongside(x, t0, t1) == null ||
+        s <= 0 ||
+        s >= 1) {
+      throw OracleFailure('the line across does not cross line $key');
+    }
+    // The arms in turning order, from the one the arrow points along.
+    double degrees(Offset v) {
+      final at = atan2(-(v.dy - x.dy), v.dx - x.dx) * 180 / pi;
+      return at < 0 ? at + 360 : at;
+    }
+
+    final start = degrees(
+      (b - a).dx * marked[key]!.dx + (b - a).dy * marked[key]!.dy > 0 ? b : a,
+    );
+    arms.sort(
+      (g, h) => ((degrees(g) - start + 360) % 360).compareTo(
+        (degrees(h) - start + 360) % 360,
+      ),
+    );
+    for (var j = 0; j < 4; j++) {
+      wedges.add((x, arms[j], arms[(j + 1) % 4]));
+    }
+  }
+  if (layout.marks.any((mark) => mark.right)) {
+    throw OracleFailure('a right-angle mark on parallel lines');
+  }
+  final arcOf = <int, AngleMark>{
+    for (final (k, (v, a, b)) in wedges.indexed)
+      k: ?_spanning(layout.marks, v, a, b),
+  };
+  // A label stands in the wedge of its angle, clear of both arms by a
+  // degree, and is nearer that angle's arc than any other.
+  final byKey = <int, int?>{};
+  final keyOf = <PlacedLabel, int>{};
+  for (final label in layout.labels) {
+    final centre = label.box.center;
+    final at = [
+      for (final MapEntry(:key, value: arc) in arcOf.entries)
+        if (_degreesBetween(wedges[key].$1, centre, wedges[key].$2) > 1 &&
+            _degreesBetween(wedges[key].$1, centre, wedges[key].$3) > 1 &&
+            (_degreesBetween(wedges[key].$1, centre, wedges[key].$2) +
+                        _degreesBetween(
+                          wedges[key].$1,
+                          centre,
+                          wedges[key].$3,
+                        ) -
+                        _degreesBetween(
+                          wedges[key].$1,
+                          wedges[key].$2,
+                          wedges[key].$3,
+                        ))
+                    .abs() <
+                angleTolerance)
+          (key, (centre - arcMiddle(arc)).distance),
+    ]..sort((x, y) => x.$2.compareTo(y.$2));
+    if (at.isEmpty) {
+      throw OracleFailure('label ${label.text} is in no marked angle');
+    }
+    if (byKey.containsKey(at.first.$1)) {
+      throw OracleFailure('two labels in one angle');
+    }
+    byKey[at.first.$1] = _degrees(label.text);
+    keyOf[label] = at.first.$1;
+  }
+  if (layout.marks.length != byKey.length) {
+    throw OracleFailure(
+      '${layout.marks.length} arcs for ${byKey.length} angles',
+    );
+  }
+  _nearestArc(keyOf, arcOf, layout.marks);
+  final known = [
+    for (final MapEntry(:key, :value) in byKey.entries)
+      if (value != null) key,
+  ];
+  final asked = [
+    for (final MapEntry(:key, :value) in byKey.entries)
+      if (value == null) key,
+  ];
+  if (known.length != 1 || asked.length != 1) {
+    throw OracleFailure('parallel lines need one angle and one ?');
+  }
+  final (k, j) = (known.single, asked.single);
+  if (k ~/ 4 == j ~/ 4) {
+    throw OracleFailure('the angle and the ? are at one crossing');
+  }
+  double measured(int key) =>
+      _degreesBetween(wedges[key].$1, wedges[key].$2, wedges[key].$3);
+  final value = byKey[k]!;
+  if ((measured(k) - value).abs() > angleTolerance) {
+    throw OracleFailure('angle $value° is drawn as ${measured(k)}°');
+  }
+  final solved = (k - j).isEven ? value : 180 - value;
+  if ((measured(j) - solved).abs() > angleTolerance) {
+    throw OracleFailure('the asked angle $solved° is drawn as ${measured(j)}°');
+  }
+  return solved * 100;
+}
+
+/// A triangle in a circle with one side a diameter (both ends on the
+/// circle, its middle at the centre) and the third corner on the circle:
+/// the angle at that corner is a right angle (Thales), so the other two
+/// add up to 90°.
+int _solveSemicircle(FigureLayout layout) {
+  final corners = layout.vertices;
+  if (corners.length != 3) throw OracleFailure('a triangle has 3 corners');
+  _convex(corners);
+  final circle = layout.circle!;
+  if ((circle.width - circle.height).abs() > .5) {
+    throw OracleFailure('the circle is not round');
+  }
+  final (centre, radius) = (circle.center, circle.width / 2);
+  bool onRim(Offset p) =>
+      ((p - centre).distance - radius).abs() <= tolerance * radius;
+  if (layout.marks.any((mark) => mark.right)) {
+    throw OracleFailure('a right-angle mark in the circle');
+  }
+  final diameters = [
+    for (var i = 0; i < 3; i++)
+      if (onRim(corners[i]) &&
+          onRim(corners[(i + 1) % 3]) &&
+          ((corners[i] + corners[(i + 1) % 3]) / 2 - centre).distance <=
+              tolerance * radius)
+        i,
+  ];
+  if (diameters.length != 1) {
+    throw OracleFailure('no side is a diameter through the centre');
+  }
+  final top = (diameters.single + 2) % 3;
+  if (!onRim(corners[top])) {
+    throw OracleFailure('the third corner is not on the circle');
+  }
+  final byCorner = _angleLabels(layout);
+  if (byCorner.containsKey(top)) {
+    throw OracleFailure('a label at the corner on the circle');
+  }
+  final known = [
+    for (final MapEntry(:key, :value) in byCorner.entries)
+      if (value != null) key,
+  ];
+  final asked = [
+    for (final MapEntry(:key, :value) in byCorner.entries)
+      if (value == null) key,
+  ];
+  if (known.length != 1 || asked.length != 1) {
+    throw OracleFailure('a triangle in a circle needs one angle and one ?');
+  }
+  final measured = _insideAngles(corners);
+  final given = byCorner[known.single]!;
+  final solved = 90 - given;
+  for (final (corner, value) in [
+    (known.single, given),
+    (asked.single, solved),
+    (top, 90),
+  ]) {
+    if (value <= 0 || (measured[corner] - value).abs() > angleTolerance) {
+      throw OracleFailure(
+        'angle $corner is $value° but drawn as ${measured[corner]}°',
+      );
+    }
+  }
+  return solved * 100;
+}
+
+/// Two triangles whose angles match, marked by one, two and three arcs,
+/// and are drawn equal: they have the same shape, so each side of one is
+/// the same number of times its matching side of the other. Two matching
+/// labelled sides give that number; the side marked `?` is its labelled
+/// partner times it. Both triangles are drawn to one scale.
+int _solveSimilar(FigureLayout layout) {
+  final c = layout.vertices;
+  if (c.length != 6) throw OracleFailure('two triangles have 6 corners');
+  final triangles = [c.sublist(0, 3), c.sublist(3)];
+  for (final t in triangles) {
+    _convex(t);
+  }
+  Rect around(List<Offset> t) => Rect.fromPoints(
+    Offset(t.map((p) => p.dx).reduce(min), t.map((p) => p.dy).reduce(min)),
+    Offset(t.map((p) => p.dx).reduce(max), t.map((p) => p.dy).reduce(max)),
+  );
+  if (around(triangles[0]).overlaps(around(triangles[1]))) {
+    throw OracleFailure('the triangles overlap');
+  }
+  // How many arcs mark each corner's angle.
+  final arcs = List.filled(6, 0);
+  for (final mark in layout.marks) {
+    if (mark.right) throw OracleFailure('a right-angle mark');
+    final k = _cornerAt(mark.centre, c);
+    final start = k ~/ 3 * 3;
+    _checkMark(
+      mark,
+      c[k],
+      c[start + (k + 2) % 3],
+      c[start + (k + 1) % 3],
+      right: false,
+    );
+    arcs[k]++;
+  }
+  for (final t in [0, 3]) {
+    if ({for (var i = 0; i < 3; i++) arcs[t + i]}.length != 3 ||
+        arcs.sublist(t, t + 3).any((n) => n < 1 || n > 3)) {
+      throw OracleFailure('each triangle needs 1, 2 and 3 arcs');
+    }
+  }
+  // The matching corner of the second triangle has as many arcs, and the
+  // same angle.
+  final match = [
+    for (var i = 0; i < 3; i++) 3 + arcs.sublist(3).indexOf(arcs[i]),
+  ];
+  final measured = [
+    ..._insideAngles(triangles[0]),
+    ..._insideAngles(triangles[1]),
+  ];
+  for (var i = 0; i < 3; i++) {
+    if ((measured[i] - measured[match[i]]).abs() > angleTolerance) {
+      throw OracleFailure('angles marked alike are drawn unequal');
+    }
+  }
+  final edges = [
+    for (final t in [0, 3])
+      for (var i = 0; i < 3; i++) (c[t + i], c[t + (i + 1) % 3]),
+  ];
+  final byEdge = _segmentLabels(layout.labels, edges);
+  // The edge of the second triangle between the matches of edge i's ends.
+  int partner(int edge) {
+    if (edge >= 3) {
+      return [for (var i = 0; i < 3; i++) i]
+          .firstWhere((i) => partner(i) == edge);
+    }
+    final ends = {match[edge], match[(edge + 1) % 3]};
+    return 3 +
+        [0, 1, 2].firstWhere((i) => {3 + i, 3 + (i + 1) % 3}.containsAll(ends));
+  }
+
+  final asked = [
+    for (final MapEntry(:key, :value) in byEdge.entries)
+      if (value == null) key,
+  ];
+  if (asked.length != 1) throw OracleFailure('${asked.length} sides asked');
+  final e = asked.single;
+  final known =
+      byEdge[partner(e)] ??
+      (throw OracleFailure('the side matching the ? has no number'));
+  final pair = [
+    for (final f in byEdge.keys)
+      if (f != e &&
+          f ~/ 3 == e ~/ 3 &&
+          byEdge[f] != null &&
+          byEdge[partner(f)] != null)
+        f,
+  ];
+  if (pair.isEmpty) throw OracleFailure('no two matching sides labelled');
+  // Sides of the ?'s triangle over their partners, the same for all.
+  final f = pair.first;
+  final solved = _exact(known * byEdge[f]!, byEdge[partner(f)]!);
+  final lengths = {
+    for (final MapEntry(:key, :value) in byEdge.entries) key: value ?? solved,
+  };
+  _sameScale([
+    for (final MapEntry(:key, :value) in lengths.entries)
+      (edges[key].$2 - edges[key].$1).distance * 100 / value,
+  ]);
+  return solved;
+}
+
 /// The edges that carry a tick: a line across the middle of the edge,
 /// square to it and at least half a tick long; at most one per edge.
 List<int> _tickedEdges(List<(Offset, Offset)> ticks, List<Offset> corners) {
@@ -941,16 +1296,23 @@ Map<int, int?> _sideLabels(
   List<PlacedLabel> labels,
   List<Offset> corners, [
   (Offset, Offset)? diagonal,
-]) {
-  final count = corners.length;
+]) => _segmentLabels(labels, [
+  for (var i = 0; i < corners.length; i++)
+    (corners[i], corners[(i + 1) % corners.length]),
+  ?diagonal,
+]);
+
+/// Each label at the one of [edges] it stands beside, as for [_sideLabels].
+Map<int, int?> _segmentLabels(
+  List<PlacedLabel> labels,
+  List<(Offset, Offset)> edges,
+) {
   final byEdge = <int, int?>{};
   for (final label in labels) {
     final value = parseHundredths(label.text);
     final center = label.box.center;
     final distances = <int, double>{
-      for (var i = 0; i < count; i++)
-        i: ?_alongside(center, corners[i], corners[(i + 1) % count]),
-      if (diagonal case (final p, final q)) count: ?_alongside(center, p, q),
+      for (final (i, (p, q)) in edges.indexed) i: ?_alongside(center, p, q),
     };
     final sorted = distances.values.toList()..sort();
     if (sorted.isEmpty || sorted.length > 1 && sorted[0] >= .9 * sorted[1]) {

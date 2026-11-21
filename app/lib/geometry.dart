@@ -28,7 +28,11 @@ typedef FigureQuestion = ({Figure figure, int answer});
 /// A triangle with a side drawn on shows the two inside angles opposite
 /// the outside angle and that angle, one of the three a `?`; an isosceles
 /// triangle a tick on each equal side, one angle and a `?`; a
-/// quadrilateral three angles and a `?`.
+/// quadrilateral three angles and a `?`. Two parallel lines show an arrow
+/// on each, one angle and a `?` at the other crossing; a triangle in a
+/// circle its angle at one end of the diameter and a `?` at the other; two
+/// similar triangles their equal-angle marks, the bottom side of each, one
+/// more side of one and a `?` on the matching side of the other.
 enum GeometryFamily {
   squarePerimeter(1, _squareSpace, _squarePerimeter),
   rectanglePerimeter(1, _rectangleSpace, _rectanglePerimeter),
@@ -55,7 +59,10 @@ enum GeometryFamily {
   rectangleDiagonal(5, _diagonalSpace, _rectangleDiagonal),
   exteriorAngle(4, _exteriorSpace, _exteriorAngle),
   isoscelesTriangle(4, _isoscelesSpace, _isoscelesTriangle),
-  quadrilateralAngles(5, _quadrilateralSpace, _quadrilateralAngles);
+  quadrilateralAngles(5, _quadrilateralSpace, _quadrilateralAngles),
+  parallelLines(5, _parallelSpace, _parallelLines),
+  angleInSemicircle(5, _semicircleSpace, _angleInSemicircle),
+  similarTriangles(5, _similarSpace, _similarTriangles);
 
   const GeometryFamily(this.level, this._space, this.build);
 
@@ -275,6 +282,48 @@ const _leftOutCodes =
     'noa nob oaf oag oah oai oaj oca oda oea ofa oga oha oia oja oka '
     'ola old oma omb omc ona onb ooa';
 
+/// Two parallel lines and a line across: the angle theta at the top right
+/// of each crossing, 60° to 120°, and the form, which angle is given at the
+/// upper crossing and which is asked at the lower one (see
+/// [_parallelForms]). Narrower angles are left out: the label of a narrow
+/// angle between the lines stands so far out that on a phone card at large
+/// text it is nearer the other crossing's arc than its own.
+final _parallel = [
+  for (var theta = 60; theta <= 120; theta++)
+    for (var form = 0; form < _parallelForms.length; form++) [theta, form],
+];
+
+/// The given and the asked angle of each form (corners as in
+/// [parallelAngle]): corresponding angles above and below the parallel
+/// lines, alternate angles, and co-interior angles. The same forms on the
+/// other side of the line across are these turned over, which the range of
+/// [_parallel] already draws.
+const _parallelForms = [(0, 4), (3, 7), (2, 4), (2, 5)];
+
+/// A triangle in a circle on a diameter: the angle at one end 20° to 70°,
+/// so the angle at the other end is too.
+final _semicircle = [
+  for (var a = 20; a <= 70; a++) [a],
+];
+
+/// Two similar triangles: the smaller one's whole sides (as for
+/// [_triangles], the bottom longest, at most 8, and at most twice the
+/// shortest) and the form: bit 0 puts the `?` on the smaller triangle
+/// (else on the bigger), bit 1 on the right side (else the left one), and
+/// bit 2 makes the bigger one 3 times as big (else 2 times). A `?` on the
+/// smaller triangle that is as long as the factor is left out: the hint
+/// finds the factor first, so its number would come before the answer.
+final _similar = [
+  for (final [base, left, right] in _triangles)
+    if (base <= 8 && base <= 2 * left)
+      for (var form = 0; form < 8; form++)
+        if (!(form.isOdd && [left, right][form >> 1 & 1] == 2 + (form >> 2)))
+          [base, left, right, form],
+];
+
+List<List<int>> _parallelSpace() => _parallel;
+List<List<int>> _semicircleSpace() => _semicircle;
+List<List<int>> _similarSpace() => _similar;
 List<List<int>> _squareSpace() => _squares;
 List<List<int>> _rectangleSpace() => _rectangles;
 List<List<int>> _triangleSpace() => _triangles;
@@ -905,4 +954,102 @@ List<Offset> quadrilateralCorners(int a, int b, int c) {
 double _distanceToLine(Offset p, Offset a, Offset b) {
   final ab = b - a;
   return ((p - a).dx * ab.dy - (p - a).dy * ab.dx).abs() / ab.distance;
+}
+
+/// Two parallel lines across the card, 12 apart (18 for co-interior
+/// angles, whose two labels stand between the lines on one side), and a
+/// line across both at theta to them, rising to the right; an arrow on each
+/// parallel line. One angle at the upper crossing is given, one at the
+/// lower crossing is asked (see [_parallelForms]).
+FigureQuestion _parallelLines(List<int> params) {
+  _require(_inSpace(_parallel, params), params);
+  final [theta, form] = params;
+  final gap = form == 3 ? 18.0 : 12.0;
+  const past = 4.0;
+  const beyond = 2.8;
+  final up = _direction(theta);
+  // The lower crossing at (0, gap), the upper one up the line across.
+  final lower = Offset(0, gap);
+  final upper = lower + up * (gap / sin(theta * pi / 180));
+  final left = min(lower.dx, upper.dx) - past;
+  final right = max(lower.dx, upper.dx) + past;
+  final (given, asked) = _parallelForms[form];
+  int angle(int corner) => corner.isEven ? theta : 180 - theta;
+  return (
+    figure: Figure(
+      shape: FigureShape.parallelLines,
+      vertices: [
+        Offset(left, 0),
+        Offset(right, 0),
+        Offset(left, gap),
+        Offset(right, gap),
+        upper + up * beyond,
+        lower - up * beyond,
+      ],
+      labels: const [],
+      angles: [AngleLabel(given, angle(given)), AngleLabel(asked, null)],
+      prompt: FigurePrompt.angle,
+      arrows: const [0, 1],
+    ),
+    answer: angle(asked) * 100,
+  );
+}
+
+/// A triangle on the diameter of a circle of radius 5, its third corner on
+/// the circle: the angle a at the left end of the diameter is given, the
+/// angle at the right end asked; the angle on the circle has no label.
+FigureQuestion _angleInSemicircle(List<int> params) {
+  _require(_inSpace(_semicircle, params), params);
+  final [a] = params;
+  return (
+    figure: Figure(
+      shape: FigureShape.semicircle,
+      // The arc from the right end to the third corner is twice a.
+      vertices: [
+        const Offset(-5, 0),
+        _direction(2 * a) * 5,
+        const Offset(5, 0),
+      ],
+      labels: const [],
+      angles: [AngleLabel(0, a), const AngleLabel(2, null)],
+      prompt: FigurePrompt.angle,
+      centre: Offset.zero,
+    ),
+    answer: (90 - a) * 100,
+  );
+}
+
+/// The smaller triangle at the left drawn like [_trianglePerimeter], the
+/// bigger one [factor] times as big at its right, both standing on their
+/// bottom side. Labelled: both bottom sides, the asked side of one and the
+/// matching side of the other.
+FigureQuestion _similarTriangles(List<int> params) {
+  _require(_inSpace(_similar, params), params);
+  final [base, left, right, form] = params;
+  final factor = 2 + (form >> 2);
+  final x = (base * base + left * left - right * right) / (2 * base);
+  final small = [
+    Offset.zero,
+    Offset(x, -sqrt(left * left - x * x)),
+    Offset(base.toDouble(), 0),
+  ];
+  final shift = Offset(base * 1.8, 0);
+  final big = [for (final c in small) shift + c * factor.toDouble()];
+  final side = form >> 1 & 1;
+  final value = [left, right][side];
+  final onSmall = form.isOdd;
+  return (
+    figure: Figure(
+      shape: FigureShape.similarTriangles,
+      vertices: [...small, ...big],
+      labels: [
+        SideLabel(2, base * 100),
+        SideLabel(side, onSmall ? null : value * 100),
+        SideLabel(5, base * factor * 100),
+        SideLabel(3 + side, onSmall ? value * factor * 100 : null),
+      ],
+      prompt: FigurePrompt.length,
+    ),
+    answer: (onSmall ? value : value * factor) * 100,
+  );
 }

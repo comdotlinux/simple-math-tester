@@ -109,6 +109,21 @@ String figureSentence(AppLocalizations l, Figure figure) {
       angles[1],
       angles[2],
     ),
+    // Corners as in parallelAngle: the same place at both crossings is
+    // corresponding, two places on from it alternate, else co-interior.
+    FigureShape.parallelLines =>
+      switch ((figure.angles[0].corner - figure.angles[1].corner).abs()) {
+        4 => l.figureParallelCorresponding(angles[0]),
+        2 || 6 => l.figureParallelAlternate(angles[0]),
+        _ => l.figureParallelCoInterior(angles[0]),
+      },
+    FigureShape.semicircle => l.figureSemicircle(angles[0]),
+    FigureShape.similarTriangles => l.figureSimilar(
+      sides[0],
+      sides[1],
+      sides[2],
+      sides[3],
+    ),
     FigureShape.circle =>
       figure.vertices.contains(figure.centre)
           ? l.figureCircleRadius(sides[0])
