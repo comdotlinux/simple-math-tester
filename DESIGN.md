@@ -49,7 +49,16 @@ visible in stats.
 
 ## Privacy and trust
 Works offline: fully on native, on web after one online visit. No analytics; nothing
-leaves the device. Settings holds an Impressum and a privacy entry.
+leaves the device except a report a grown-up chooses to send. A flag on the question
+card and on algebra and geometry history entries marks a question as wrong on the
+device only. Sending goes through one dialog: ask a grown-up first (it lists exactly
+what is sent), a reason or category pick-list (no free text anywhere), and a grown-up
+check (type a number shown in words, new each time; a speed bump for young children,
+not security), then exactly one request. A failed send keeps the mark; it is sent
+again only from the flag, through the same check. Arithmetic questions have no
+question code the report function accepts, so they carry no flag. Settings holds an
+Impressum, a privacy entry, "Send a problem report" (the same dialog with a category)
+and the GitHub link for longer descriptions.
 
 ## Personas and jobs
 Everyone from school beginners to adults practicing arithmetic, with a parent or

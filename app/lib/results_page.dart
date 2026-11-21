@@ -10,7 +10,9 @@ import 'l10n/app_localizations.dart';
 import 'labels.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
+import 'progress.dart' show SuspectQuestion;
 import 'question_text.dart';
+import 'report_dialog.dart';
 import 'rules.dart';
 import 'slab.dart';
 
@@ -49,6 +51,13 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   static const _columnFlex = [55, 160, 250, 135];
+
+  /// The flag that marks [attempt]'s question as wrong; none for a question
+  /// without a code (arithmetic).
+  Widget? _flag(int index, Attempt attempt) =>
+      SuspectQuestion.of(attempt.problem) == null
+      ? null
+      : ReportFlag(key: historyFlagKey(index), problem: attempt.problem);
 
   AppLocalizations get _l => AppLocalizations.of(context);
 
@@ -367,9 +376,16 @@ class _ResultsPageState extends State<ResultsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _l.questionNumber('${index + 1}'),
-                style: textTheme.labelMedium?.copyWith(color: muted),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _l.questionNumber('${index + 1}'),
+                      style: textTheme.labelMedium?.copyWith(color: muted),
+                    ),
+                  ),
+                  ?_flag(index, attempt),
+                ],
               ),
               const SizedBox(height: 4),
               _questionText(context, attempt, textTheme.headlineMedium),
@@ -407,76 +423,70 @@ class _ResultsPageState extends State<ResultsPage> {
         ? null
         : _l.saidAnswer(_entered(attempt));
     final muted = textTheme.bodyMedium?.copyWith(color: tokens.inkMuted);
-    final row = Slab(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            spacing: 10,
-            children: [
-              Text('${index + 1}', style: muted),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: textTheme.titleMedium,
-                    children: [
-                      mathSpan(context, attempt.problem.shown(_l), null),
-                      // An equation already has its "=" and a figure is a
-                      // sentence, so an arrow leads to the answer; drawn, as
-                      // no bundled font has "→".
-                      if (attempt.problem is! ArithmeticProblem) ...[
-                        WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              size: textTheme.titleMedium?.fontSize,
-                              color: textTheme.titleMedium?.color,
-                              applyTextScaling: true,
-                            ),
-                          ),
-                        ),
-                        TextSpan(text: expected),
-                      ] else
-                        TextSpan(text: ' = $expected'),
-                      if (said != null)
-                        TextSpan(text: '   $said', style: muted),
-                    ],
+    final row = Row(
+      spacing: 10,
+      children: [
+        Text('${index + 1}', style: muted),
+        Expanded(
+          child: Text.rich(
+            TextSpan(
+              style: textTheme.titleMedium,
+              children: [
+                mathSpan(context, attempt.problem.shown(_l), null),
+                // An equation already has its "=" and a figure is a
+                // sentence, so an arrow leads to the answer; drawn, as
+                // no bundled font has "→".
+                if (attempt.problem is! ArithmeticProblem) ...[
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        size: textTheme.titleMedium?.fontSize,
+                        color: textTheme.titleMedium?.color,
+                        applyTextScaling: true,
+                      ),
+                    ),
                   ),
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                  // The smaller "said" part must not change the line height.
-                  strutStyle: StrutStyle.fromTextStyle(
-                    textTheme.titleMedium!,
-                    forceStrutHeight: true,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: tokens.outline,
-                    width: AppTokens.outlineWidth,
-                  ),
-                ),
-                child: Icon(icon, size: 16, color: onColor),
-              ),
-              if (!attempt.skipped)
-                Text(
-                  formatElapsed(_l, attempt.elapsedMs, abbreviated: true),
-                  style: muted,
-                ),
-            ],
+                  TextSpan(text: expected),
+                ] else
+                  TextSpan(text: ' = $expected'),
+                if (said != null) TextSpan(text: '   $said', style: muted),
+              ],
+            ),
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            // The smaller "said" part must not change the line height.
+            strutStyle: StrutStyle.fromTextStyle(
+              textTheme.titleMedium!,
+              forceStrutHeight: true,
+            ),
           ),
         ),
-      ),
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: tokens.outline,
+              width: AppTokens.outlineWidth,
+            ),
+          ),
+          child: Icon(icon, size: 16, color: onColor),
+        ),
+        if (!attempt.skipped)
+          Text(
+            formatElapsed(_l, attempt.elapsedMs, abbreviated: true),
+            style: muted,
+          ),
+      ],
     );
-    return Semantics(
+    // The flag stays outside the row's one semantics node, so a screen
+    // reader reaches it as its own button.
+    final read = Semantics(
       container: true,
       label: _l.answerRowSemantics(
         '${index + 1}',
@@ -495,6 +505,19 @@ class _ResultsPageState extends State<ResultsPage> {
                     : _l.youSaid(_entered(attempt)),
                 child: row,
               ),
+      ),
+    );
+    return Slab(
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(child: read),
+              ?_flag(index, attempt),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -522,7 +545,13 @@ class _ResultsPageState extends State<ResultsPage> {
         ),
       ),
       child: _tableCells([
-        Text('${index + 1}', style: textTheme.titleMedium),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${index + 1}', style: textTheme.titleMedium),
+            ?_flag(index, attempt),
+          ],
+        ),
         _questionText(context, attempt, textTheme.titleLarge),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

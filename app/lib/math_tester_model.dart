@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui' show AppLifecycleState;
 
@@ -12,6 +13,7 @@ import 'legal.dart';
 import 'operations.dart';
 import 'progress.dart';
 import 'progress_store.dart';
+import 'report.dart';
 import 'rules.dart';
 import 'solution_steps.dart';
 import 'sound_player.dart';
@@ -53,9 +55,11 @@ class MathTesterModel extends ChangeNotifier {
     void Function(Haptic)? haptic,
     this._sounds = const SilentSoundPlayer(),
     Future<bool> Function(Uri)? openLink,
+    ReportClient? reportClient,
     this._updateReminders = false,
     @visibleForTesting this._signedDecimalAnswers = _kindSignedDecimalAnswers,
   }) : _openLink = openLink ?? openInBrowser,
+       _reports = reportClient ?? HttpReportClient(),
        _ticker = ticker ?? _everySecond,
        // Silent unless given, so a model built without a binding works.
        _haptic = haptic ?? _silent,
@@ -89,6 +93,7 @@ class MathTesterModel extends ChangeNotifier {
   final void Function(Haptic) _haptic;
   SoundPlayer _sounds;
   final Future<bool> Function(Uri) _openLink;
+  final ReportClient _reports;
   final bool _updateReminders;
   final Random _random;
   final DateTime Function() _clock;
@@ -340,6 +345,77 @@ class MathTesterModel extends ChangeNotifier {
       return false;
     }
   }
+
+  /// The player's mark on [problem]'s question; null when it has none or
+  /// cannot have one (arithmetic).
+  SuspectQuestion? suspectOf(Problem problem) =>
+      switch (SuspectQuestion.of(problem)) {
+        final code? => _progress.suspects.where(code.sameQuestion).firstOrNull,
+        null => null,
+      };
+
+  /// Marks [problem]'s question as suspect, on this device only: marking
+  /// sends nothing.
+  void markSuspect(Problem problem) {
+    final code = SuspectQuestion.of(problem);
+    if (code == null || suspectOf(problem) != null) return;
+    _progress = _progress.withSuspect(code);
+    _save();
+    notifyListeners();
+  }
+
+  void unmarkSuspect(Problem problem) {
+    final mark = suspectOf(problem);
+    if (mark == null) return;
+    _progress = _progress.withoutSuspect(mark);
+    _save();
+    notifyListeners();
+  }
+
+  /// Sends one report on [problem]'s question with [reason], after the
+  /// grown-up check; the mark is saved as sent when it arrived. [locale] is
+  /// the app language's code.
+  Future<ReportOutcome> sendQuestionReport(
+    Problem problem,
+    String reason,
+    String locale,
+  ) async {
+    final code = suspectOf(problem) ?? SuspectQuestion.of(problem)!;
+    final outcome = await _reports.send(
+      jsonEncode({
+        'type': 'question',
+        'kind': code.kind,
+        'variant': code.variant,
+        'params': code.params,
+        'level': code.level,
+        'reason': reason,
+        ..._reportApp(locale),
+      }),
+    );
+    if (outcome == ReportOutcome.sent) {
+      _progress = _progress.withSuspect(code.asSent());
+      _save();
+      notifyListeners();
+    }
+    return outcome;
+  }
+
+  /// Sends one problem report with [category], after the grown-up check.
+  Future<ReportOutcome> sendProblemReport(String category, String locale) =>
+      _reports.send(
+        jsonEncode({
+          'type': 'problem',
+          'category': category,
+          ..._reportApp(locale),
+        }),
+      );
+
+  /// What every report says about the app; nothing about the player.
+  static Map<String, String> _reportApp(String locale) => {
+    'version': appVersion,
+    'platform': reportPlatform,
+    'locale': locale,
+  };
 
   /// Opens this version's GitHub release; false when nothing opened it.
   Future<bool> openReleaseNotes() async {
