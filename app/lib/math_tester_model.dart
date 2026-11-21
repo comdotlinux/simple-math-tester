@@ -226,6 +226,25 @@ class MathTesterModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The first kind outside [arithmeticKinds] that was never switched on,
+  /// answered or closed on its card; null when there is none.
+  OperationType? get newKind => OperationType.values
+      .where(
+        (kind) =>
+            !arithmeticKinds.contains(kind) &&
+            !selectedOperations.contains(kind) &&
+            _progress.difficulty[kind]!.answered == 0 &&
+            !_progress.seenKinds.contains(kind.name),
+      )
+      .firstOrNull;
+
+  /// Hides [kind]'s new-kind card for good.
+  void dismissNewKind(OperationType kind) {
+    _progress = _progress.withSeenKind(kind);
+    _save();
+    notifyListeners();
+  }
+
   /// Dismisses the update reminder and opens this app's store page, trying
   /// each of [storeUrls]; false when none opened.
   Future<bool> openStore() async {

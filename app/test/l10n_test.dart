@@ -104,6 +104,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.practiceTitle), findsOneWidget);
 
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       expect(find.text(en.languageSystem), findsWidgets);
@@ -132,6 +133,7 @@ void main() {
       expect(find.text(en.practiceTitle), findsNothing);
 
       // System again: the saved document drops the field.
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(languageTileKey));
@@ -166,6 +168,7 @@ void main() {
       });
       await bootstrap(store);
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(settingsButtonKey));
       await tester.tap(find.byKey(settingsButtonKey));
       await tester.pumpAndSettle();
       await tester.ensureVisible(find.byKey(languageTileKey));

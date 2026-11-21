@@ -386,6 +386,11 @@ class _ProblemPageState extends State<ProblemPage> {
                       _SprintStatus(score: model.sprintScore),
                       SizedBox(height: gap),
                     ],
+                    if (!sprinting)
+                      if (model.newKind case final kind?) ...[
+                        _NewKindCard(kind: kind),
+                        SizedBox(height: gap),
+                      ],
                     LayoutBuilder(
                       builder: (context, constraints) {
                         const types = OperationType.values;
@@ -936,6 +941,38 @@ class _SprintResult extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Names a kind the player has not tried, once, above the toggles. Closing
+/// it or switching the kind on hides it for good; it never comes back.
+class _NewKindCard extends StatelessWidget {
+  const _NewKindCard({required this.kind});
+
+  final OperationType kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final model = context.read<MathTesterModel>();
+    final l = AppLocalizations.of(context);
+    return Slab(
+      child: Card(
+        key: newKindCardKey,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          leading: const Icon(Icons.auto_awesome_outlined),
+          title: Text(l.newKindTitle(kind.label(l))),
+          subtitle: Text(l.newKindSubtitle),
+          trailing: IconButton(
+            key: newKindDismissKey,
+            icon: const Icon(Icons.close),
+            tooltip: l.newKindDismiss,
+            onPressed: () => model.dismissNewKind(kind),
+          ),
+          onTap: () => model.toggleOperation(kind),
         ),
       ),
     );

@@ -47,6 +47,7 @@ class Progress {
     String? language,
     AppPalette palette = AppPalette.sunny,
     String? updateReminderDate,
+    List<String> seenKinds = const [],
   }) : this._(
          selectedOperations ?? arithmeticKinds,
          const [],
@@ -61,6 +62,7 @@ class Progress {
          language,
          palette,
          updateReminderDate,
+         seenKinds,
          const {},
          const {},
        );
@@ -79,6 +81,7 @@ class Progress {
     this.language,
     this.palette,
     this.updateReminderDate,
+    List<String> seenKinds,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -94,6 +97,7 @@ class Progress {
                 level: arithmeticKinds.contains(type) ? tier?.level ?? 1 : 1,
               ),
       }),
+      seenKinds = List.unmodifiable(seenKinds.toSet()),
       _unknownOperations = Map.unmodifiable(unknownOperations),
       extra = Map.unmodifiable(extra) {
     history = List.unmodifiable(_entries.whereType<Attempt>());
@@ -140,6 +144,10 @@ class Progress {
   /// the first launch that offers reminders, then each reminder's day.
   final String? updateReminderDate;
 
+  /// Names of the kinds whose new-kind card was closed or that were switched
+  /// on, so the card never shows for them again. Unknown names are kept.
+  final List<String> seenKinds;
+
   final List<String> _unknownSelected;
 
   /// [Attempt]s and raw history entries of unknown kinds, in stored order.
@@ -151,8 +159,15 @@ class Progress {
   Progress withAttempt(Attempt attempt) =>
       _copy(entries: [..._entries, attempt]);
 
-  Progress withSelectedOperations(Set<OperationType> selected) =>
-      _copy(selected: selected);
+  /// A kind outside [arithmeticKinds] switched on counts as seen.
+  Progress withSelectedOperations(Set<OperationType> selected) => _copy(
+    selected: selected,
+    seenKinds: [
+      ...seenKinds,
+      for (final type in selected)
+        if (!arithmeticKinds.contains(type)) type.name,
+    ],
+  );
 
   Progress withDifficulty(OperationType type, Difficulty value) =>
       _copy(difficulty: {...difficulty, type: value});
@@ -171,6 +186,8 @@ class Progress {
   Progress withPalette(AppPalette palette) => _copy(palette: palette);
   Progress withUpdateReminderDate(String date) =>
       _copy(updateReminderDate: date);
+  Progress withSeenKind(OperationType kind) =>
+      _copy(seenKinds: [...seenKinds, kind.name]);
 
   /// Sets [tier] and resets every arithmetic kind to its level; other kinds
   /// keep their levels.
@@ -198,6 +215,7 @@ class Progress {
     (String?,)? language,
     AppPalette? palette,
     String? updateReminderDate,
+    List<String>? seenKinds,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -212,6 +230,7 @@ class Progress {
     language == null ? this.language : language.$1,
     palette ?? this.palette,
     updateReminderDate ?? this.updateReminderDate,
+    seenKinds ?? this.seenKinds,
     _unknownOperations,
     extra,
   );
@@ -262,6 +281,8 @@ class Progress {
     'language': ?language,
     'palette': palette.name,
     'updateReminderDate': ?updateReminderDate,
+    // Left out while empty, which keeps older documents' bytes.
+    if (seenKinds.isNotEmpty) 'seenKinds': seenKinds,
   });
 
   /// Throws [NewerProgressException] for a document of a newer schema and
@@ -356,6 +377,7 @@ class Progress {
       'language',
       'palette',
       'updateReminderDate',
+      'seenKinds',
     };
     return Progress._(
       selected,
@@ -379,6 +401,12 @@ class Progress {
       AppPalette.values.asNameMap()[_field<String>(json, 'palette')] ??
           AppPalette.sunny,
       _date(json, 'updateReminderDate'),
+      [
+        for (final name in _field<List<Object?>>(json, 'seenKinds') ?? const [])
+          name is String
+              ? name
+              : throw FormatException('seenKinds holds a non-string', name),
+      ],
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)
