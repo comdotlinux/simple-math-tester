@@ -39,6 +39,9 @@ class _ProblemPageState extends State<ProblemPage> {
   /// Skip under the question card, which a docked phone page keeps in view
   /// with it.
   final _skipKey = GlobalKey();
+
+  /// The one-time new-kind card, which the page opens with in view.
+  final _newKindKey = GlobalKey();
   final _scroll = ScrollController();
 
   /// Whether a phone page with the docked field repeats the question over
@@ -155,6 +158,11 @@ class _ProblemPageState extends State<ProblemPage> {
       showPad,
     );
     if (!docked || shown == _revealed) return;
+    // A card shown once must be seen: on a short phone the page opens
+    // scrolled back as far as its top needs. With the keyboard already up
+    // the little room above it keeps the question instead.
+    final showCard =
+        _revealed == null && View.of(context).viewInsets.bottom == 0;
     // The page opens in place; later changes scroll there.
     final jump = _revealed == null || MediaQuery.disableAnimationsOf(context);
     final newProblem = _revealed?.$1 != model.current;
@@ -185,6 +193,12 @@ class _ProblemPageState extends State<ProblemPage> {
       if (compact && newProblem) {
         await reveal(
           _answerKey,
+          ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+        );
+      }
+      if (showCard) {
+        await reveal(
+          _newKindKey,
           ScrollPositionAlignmentPolicy.keepVisibleAtStart,
         );
       }
@@ -407,7 +421,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     ],
                     if (!sprinting)
                       if (model.newKind case final kind?) ...[
-                        _NewKindCard(kind: kind),
+                        _NewKindCard(key: _newKindKey, kind: kind),
                         SizedBox(height: gap),
                       ],
                     LayoutBuilder(
@@ -1000,7 +1014,7 @@ class _SprintResult extends StatelessWidget {
 /// Names a kind the player has not tried, once, above the toggles. Closing
 /// it or switching the kind on hides it for good; it never comes back.
 class _NewKindCard extends StatelessWidget {
-  const _NewKindCard({required this.kind});
+  const _NewKindCard({super.key, required this.kind});
 
   final OperationType kind;
 
