@@ -7,9 +7,11 @@ import 'hundredths.dart';
 
 /// The shapes a [Figure] can be; each has its own branch in the oracle.
 /// Polygons store their corners; a [rightTriangle] has its right angle at
-/// corner 0. [straightAngle] and [rightAngle] are rays from corner 0 to the
-/// other corners, in turning order. A [circle] stores the drawn radius or
-/// diameter as its two corners, and its [Figure.centre].
+/// corner 0. [straightAngle], [rightAngle], [crossingLines] (two straight
+/// lines crossing at corner 0) and [aroundPoint] (rays all the way round)
+/// are rays from corner 0 to the other corners, in turning order. A
+/// [circle] stores the drawn radius or diameter as its two corners, and its
+/// [Figure.centre].
 enum FigureShape {
   square,
   rectangle,
@@ -19,13 +21,16 @@ enum FigureShape {
   straightAngle,
   rightAngle,
   circle,
+  crossingLines,
+  aroundPoint,
 }
 
 /// What a figure asks for, and so which language-free cue it carries: a
 /// thick outline for a perimeter or circumference (also when the perimeter
 /// is given and a side is asked), a shaded inside for an area. An asked
 /// side or angle carries a `?`; [angle] figures are thin and unshaded, with
-/// an arc at every labelled angle.
+/// an arc at every labelled angle. [length] asks a side or diagonal marked
+/// `?` from the other labels (Pythagoras' theorem); thin and unshaded.
 enum FigurePrompt {
   perimeter,
   area,
@@ -33,6 +38,7 @@ enum FigurePrompt {
   sideFromArea,
   angle,
   circumference,
+  length,
 }
 
 /// A length written next to one edge: the edge from corner [edge] to the
@@ -66,7 +72,8 @@ class SideLabel {
 
 /// An angle in whole degrees, null for the asked one (`?`). On a polygon
 /// [corner] is the corner whose inside angle it is; on rays it is the
-/// angle from the ray to corner [corner] to the ray to the next corner.
+/// angle from the ray to corner [corner] to the ray to the next corner
+/// (after the last ray comes the first again, see [nextRay]).
 @immutable
 class AngleLabel {
   const AngleLabel(this.corner, this.degrees);
@@ -91,6 +98,10 @@ class AngleLabel {
   String toString() => 'AngleLabel($corner, $text)';
 }
 
+/// The corner of the ray after the ray to [corner], turning the same way,
+/// among rays from corner 0 to the other [count] - 1 corners.
+int nextRay(int corner, int count) => corner % (count - 1) + 1;
+
 /// A figure to scale, as data: the corners in model units (one unit is
 /// one length unit of the labels), the labels, an optional unit grid and
 /// what is asked. Squares and rectangles have whole-number corners; a
@@ -108,6 +119,7 @@ class Figure {
     this.centre,
     this.total,
     this.pi,
+    this.diagonal = false,
   });
 
   final FigureShape shape;
@@ -134,6 +146,10 @@ class Figure {
   /// The value of π to use in hundredths, for a circle.
   final int? pi;
 
+  /// A rectangle's diagonal from corner 0 to corner 2, drawn and marked
+  /// `?` (it is always the asked length).
+  final bool diagonal;
+
   @override
   bool operator ==(Object other) =>
       other is Figure &&
@@ -145,7 +161,8 @@ class Figure {
       listEquals(other.angles, angles) &&
       other.centre == centre &&
       other.total == total &&
-      other.pi == pi;
+      other.pi == pi &&
+      other.diagonal == diagonal;
 
   @override
   int get hashCode => Object.hash(
@@ -158,6 +175,7 @@ class Figure {
     centre,
     total,
     pi,
+    diagonal,
   );
 }
 
@@ -206,6 +224,7 @@ class FigureLayout {
     this.circle,
     this.total,
     this.pi,
+    this.diagonal,
   });
 
   /// The corners, scaled uniformly from the model, so the drawing is to
@@ -237,6 +256,10 @@ class FigureLayout {
   /// The given perimeter or area, and π, as the prompt line shows them.
   final String? total;
   final String? pi;
+
+  /// A drawn diagonal, from corner to corner; its `?` stands on its middle
+  /// like a textbook label, on a patch of the card that breaks the line.
+  final (Offset, Offset)? diagonal;
 }
 
 /// The outline widths: thick is the perimeter cue.
@@ -257,13 +280,63 @@ const arcShare = .3;
 /// Fits [figure] into [canvas]: one uniform scale for the whole figure, as
 /// large as fits with every label box outside its own edge and inside the
 /// canvas. [measure] gives the drawn size of a label's text; numbers are
-/// written in the language [localeName].
+/// written in the language [localeName]. Rays all the way round a point
+/// have no up or down, so they are turned (in steps of 15°) to the angle
+/// that keeps their labels apart and draws them longest.
 FigureLayout layoutFigure(
   Figure figure,
   Size canvas,
   Size Function(String text) measure, {
   String localeName = 'en',
 }) {
+  if (figure.shape != FigureShape.crossingLines &&
+      figure.shape != FigureShape.aroundPoint) {
+    return _layoutFigure(figure, canvas, measure, localeName);
+  }
+  FigureLayout? best;
+  var longest = 0.0;
+  var apart = false;
+  for (var step = 0; step < 24; step++) {
+    final (c, s) = (cos(step * pi / 12), sin(step * pi / 12));
+    final turned = Figure(
+      shape: figure.shape,
+      vertices: [
+        for (final v in figure.vertices)
+          Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c),
+      ],
+      labels: figure.labels,
+      prompt: figure.prompt,
+      angles: figure.angles,
+    );
+    final drawn = _layoutFigure(turned, canvas, measure, localeName);
+    final length = (drawn.vertices[1] - drawn.vertices[0]).distance;
+    final separate = !_anyOverlap([
+      for (final label in drawn.labels) label.box,
+    ]);
+    // Labels apart first; then clearly longer, so rounding never picks
+    // between equal turns.
+    if (separate && !apart || separate == apart && length > longest * 1.0001) {
+      (best, longest, apart) = (drawn, length, separate);
+    }
+  }
+  return best!;
+}
+
+bool _anyOverlap(List<Rect> boxes) {
+  for (final (i, box) in boxes.indexed) {
+    for (final other in boxes.skip(i + 1)) {
+      if (box.overlaps(other)) return true;
+    }
+  }
+  return false;
+}
+
+FigureLayout _layoutFigure(
+  Figure figure,
+  Size canvas,
+  Size Function(String text) measure,
+  String localeName,
+) {
   final stroke = switch (figure.prompt) {
     FigurePrompt.perimeter ||
     FigurePrompt.sideFromPerimeter ||
@@ -276,9 +349,13 @@ FigureLayout layoutFigure(
   };
   final model = figure.vertices;
   final count = model.length;
-  final rays =
-      figure.shape == FigureShape.straightAngle ||
-      figure.shape == FigureShape.rightAngle;
+  final rays = switch (figure.shape) {
+    FigureShape.straightAngle ||
+    FigureShape.rightAngle ||
+    FigureShape.crossingLines ||
+    FigureShape.aroundPoint => true,
+    _ => false,
+  };
   final centre = figure.centre;
   final radius = centre == null
       ? 0.0
@@ -358,6 +435,14 @@ FigureLayout layoutFigure(
       half: half,
     ));
   }
+  if (figure.diagonal) {
+    texts.add('?');
+    points.add((
+      at: (model[0] + model[2]) / 2,
+      shift: Offset.zero,
+      half: boxOf('?'),
+    ));
+  }
   for (final angle in figure.angles) {
     final text = angle.text;
     final half = boxOf(text);
@@ -365,8 +450,14 @@ FigureLayout layoutFigure(
     if (rays) {
       // Beyond the ray tips on the bisector, so it touches no ray.
       final o = model[0];
-      final (a, b) = (model[angle.corner], model[angle.corner + 1]);
-      final bisector = unit(unit(a - o) + unit(b - o));
+      final (a, b) = (model[angle.corner], model[nextRay(angle.corner, count)]);
+      // Half the smaller turn from one ray to the other; also defined for
+      // a straight angle, which the oracle then rejects by its arc.
+      final from = atan2(a.dy - o.dy, a.dx - o.dx);
+      final turn = atan2(b.dy - o.dy, b.dx - o.dx) - from;
+      final bisector = Offset.fromDirection(
+        from + (turn + 3 * pi) % (2 * pi) / 2 - pi / 2,
+      );
       points.add((
         at: o + bisector * (a - o).distance,
         shift: bisector * (stroke / 2 + labelGap + reach(half, bisector)),
@@ -463,7 +554,7 @@ FigureLayout layoutFigure(
   final marks = <AngleMark>[
     for (final angle in figure.angles)
       if (rays)
-        mark(model[0], model[angle.corner], model[angle.corner + 1])
+        mark(model[0], model[angle.corner], model[nextRay(angle.corner, count)])
       else
         mark(
           model[angle.corner],
@@ -506,5 +597,6 @@ FigureLayout layoutFigure(
       final value? => formatHundredths(value, localeName),
       null => null,
     },
+    diagonal: figure.diagonal ? (place(model[0]), place(model[2])) : null,
   );
 }

@@ -1117,6 +1117,12 @@ void main() {
       ('halvesRectangleArea', [5, 3], 5, 3.75),
       ('circleCircumference', [6], 5, 18.84),
       ('circleArea', [5], 5, 78.5),
+      ('verticallyOppositeAngles', [50, 0], 4, 50),
+      ('verticallyOppositeAngles', [50, 1], 4, 130),
+      ('anglesAroundPoint', [100, 150], 4, 110),
+      ('pythagorasHypotenuse', [3, 4], 5, 5),
+      ('pythagorasLeg', [12, 5], 5, 5),
+      ('rectangleDiagonal', [6, 8], 5, 10),
     ]) {
       test('a $variant attempt round-trips with its decimal answer', () {
         final problem = (OperationType.geometry.source as GeometrySource).build(
@@ -1160,6 +1166,16 @@ void main() {
         'an angle outside its family',
         '"variant":"triangleAngle","params":[10,60]',
         110,
+      ),
+      (
+        'legs that are not a whole-number triple',
+        '"variant":"pythagorasHypotenuse","params":[3,5]',
+        5.83,
+      ),
+      (
+        'four angles around a point',
+        '"variant":"anglesAroundPoint","params":[90,90,90]',
+        90,
       ),
       (
         'params outside the family',

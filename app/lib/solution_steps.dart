@@ -689,6 +689,28 @@ List<SolutionStep> figureSteps(Figure figure) {
   };
   final total = figure.total;
   switch (figure.prompt) {
+    case FigurePrompt.angle when figure.shape == FigureShape.crossingLines:
+      final [given, asked] = figure.angles;
+      final a = given.degrees!;
+      if ((asked.corner - given.corner) % 4 == 2) {
+        return [
+          (l) => l.stepVerticallyOpposite,
+          (l) => l.stepCrossingBetween('180', '$a', '${180 - a}'),
+          (l) => l.stepSoResult('180', '−', '${180 - a}', '$a'),
+        ];
+      }
+      return [
+        (l) => l.stepCrossingNeighbour,
+        (l) => l.stepSoResult('180', '−', '$a', '${180 - a}'),
+      ];
+    case FigurePrompt.angle when figure.shape == FigureShape.aroundPoint:
+      final known = [for (final angle in figure.angles) ?angle.degrees];
+      final sum = known.reduce((a, b) => a + b);
+      return [
+        (l) => l.stepAroundPoint,
+        (l) => l.stepAddKnownAngles(known.join(' + '), '$sum'),
+        (l) => l.stepSoResult('360', '−', '$sum', '${360 - sum}'),
+      ];
     case FigurePrompt.angle:
       final known = [for (final angle in figure.angles) ?angle.degrees];
       final whole = figure.shape == FigureShape.rightAngle ? 90 : 180;
@@ -746,6 +768,8 @@ List<SolutionStep> figureSteps(Figure figure) {
         (l) => l.stepCircumference(n(l, pi)),
         (l) => l.stepSoResult(n(l, pi), '×', n(l, d), n(l, pi * d ~/ 100)),
       ];
+    case FigurePrompt.length:
+      return _pythagorasSteps(figure, n);
     case FigurePrompt.area || FigurePrompt.perimeter:
       break;
   }
@@ -859,5 +883,68 @@ List<SolutionStep> figureSteps(Figure figure) {
       all.map((side) => n(l, side)).join(' + '),
       n(l, all.reduce((a, b) => a + b)),
     ),
+  ];
+}
+
+/// Pythagoras' theorem for the side or diagonal marked `?`: the squares of
+/// the two shorter sides add up to the square of the longest side. A right
+/// triangle's legs are edges 2 and 0 and its longest side edge 1; a
+/// rectangle's diagonal is the longest side of the two halves it cuts.
+List<SolutionStep> _pythagorasSteps(
+  Figure figure,
+  String Function(AppLocalizations l, int hundredths) n,
+) {
+  final byEdge = {
+    for (final label in figure.labels) label.edge: label.hundredths,
+  };
+  final (a, b, c) = figure.diagonal
+      ? (figure.labels[0].hundredths, figure.labels[1].hundredths, null)
+      : (byEdge[2], byEdge[0], byEdge[1]);
+  // Squares of hundredths are ten-thousandths; back to hundredths.
+  int square(int side) => side * side ~/ 100;
+  // The side whose square is [area], in whole steps: no floating point.
+  int root(int area) {
+    var side = 100;
+    while (square(side) < area) {
+      side += 100;
+    }
+    return side;
+  }
+
+  final List<SolutionStep> working;
+  if (c == null) {
+    final sum = square(a!) + square(b!);
+    working = [
+      (l) => l.stepPythagorasSquares(
+        n(l, a),
+        n(l, square(a)),
+        n(l, b),
+        n(l, square(b)),
+      ),
+      (l) => l.stepPythagorasAdd(n(l, square(a)), n(l, square(b)), n(l, sum)),
+      (l) => l.stepPythagorasRoot(n(l, sum), n(l, root(sum))),
+    ];
+  } else {
+    final leg = a ?? b!;
+    final rest = square(c) - square(leg);
+    working = [
+      (l) => l.stepPythagorasSquares(
+        n(l, c),
+        n(l, square(c)),
+        n(l, leg),
+        n(l, square(leg)),
+      ),
+      (l) => l.stepPythagorasTakeAway(
+        n(l, square(c)),
+        n(l, square(leg)),
+        n(l, rest),
+      ),
+      (l) => l.stepPythagorasRoot(n(l, rest), n(l, root(rest))),
+    ];
+  }
+  return [
+    if (figure.diagonal) (l) => l.stepDiagonalTriangles,
+    (l) => l.stepPythagoras,
+    ...working,
   ];
 }
