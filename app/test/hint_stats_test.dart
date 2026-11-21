@@ -231,6 +231,8 @@ void main() {
       double scale = 1,
       Brightness brightness = Brightness.light,
       String? language,
+      // Practice starts as after a tap on Start; false stays before it.
+      bool start = true,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -262,6 +264,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      if (start) {
+        model.startPractice();
+        await tester.pumpAndSettle();
+      }
       return model;
     }
 
@@ -458,6 +464,7 @@ void main() {
         'kind', (tester) async {
       await launch(
         tester,
+        start: false,
         history: mixedHistory(),
         size: const Size(1280, 900),
       );
@@ -509,6 +516,7 @@ void main() {
         'line without a right answer', (tester) async {
       await launch(
         tester,
+        start: false,
         history: [
           entry(skipped: true, opened: true),
           entry(sprint: true),
@@ -519,7 +527,11 @@ void main() {
       expect(find.byKey(statsCardKey), findsOneWidget);
       expect(find.byKey(hintStatsKey), findsNothing);
 
-      await launch(tester, history: [entry(correct: false, opened: true)]);
+      await launch(
+        tester,
+        start: false,
+        history: [entry(correct: false, opened: true)],
+      );
       await openMyAnswers(tester);
       expect(find.text('Hint used on 1 of 1 question, 100%'), findsNWidgets(2));
       expect(find.textContaining('without a hint'), findsNothing);
@@ -533,6 +545,7 @@ void main() {
           for (final scale in const [1.0, 2.0]) {
             await launch(
               tester,
+              start: false,
               history: mixedHistory(),
               size: size,
               scale: scale,

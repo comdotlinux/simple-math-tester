@@ -128,6 +128,7 @@ void hintsJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy, history: _answers(6)));
+      await pressStart(tester);
       final model = modelOf(tester);
       final question = model.current;
 
@@ -173,6 +174,7 @@ void hintsJourneys() {
     testWidgets('after hints on 5 of the last 10 answers the hint opens at '
         'once', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy, history: _answers(5)));
+      await pressStart(tester);
       await tapKey(tester, hintButtonKey);
       expect(find.byKey(hintNudgeKey), findsNothing);
       expect(find.byKey(solutionStepsKey), findsOneWidget);
