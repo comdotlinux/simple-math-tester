@@ -4,8 +4,18 @@ import 'app_theme.dart';
 import 'figure.dart';
 import 'l10n/app_localizations.dart';
 
-/// The height of the figure in the question card; the width is the card's.
+/// The height of the figure in the question card at text scale 1; the
+/// width is the card's. [FigureView] grows it with the text scale
+/// ([figureCanvasHeight]).
 double figureHeight({required bool compact}) => compact ? 150 : 210;
+
+/// [height] grown by what a label line in [style] gains under [scaler],
+/// once above the figure and once below it, so larger text gets a taller
+/// canvas instead of a smaller figure.
+double figureCanvasHeight(double height, TextStyle style, TextScaler scaler) {
+  final size = style.fontSize!;
+  return height + 2 * (scaler.scale(size) - size) * (style.height ?? 1);
+}
 
 typedef FigureColors = ({
   Color label,
@@ -90,9 +100,10 @@ FigureHighlight highlightOf(Figure figure, FigureParts parts) => (
   diagonal: parts.diagonal,
 );
 
-/// [figure] drawn to scale over the available width, [height] tall, with
-/// its labels in the theme's label style under the system text scale, and
-/// the [highlight] parts a hint step uses in the accent colour.
+/// [figure] drawn to scale over the available width, [height] tall at text
+/// scale 1 and taller at larger text ([figureCanvasHeight]), with its
+/// labels in the theme's label style under the system text scale, and the
+/// [highlight] parts a hint step uses in the accent colour.
 class FigureView extends StatelessWidget {
   const FigureView({
     super.key,
@@ -114,6 +125,7 @@ class FigureView extends StatelessWidget {
     final colors = figureColors(context.tokens);
     final localeName = AppLocalizations.of(context).localeName;
     final parts = highlight;
+    final height = figureCanvasHeight(this.height, style, scaler);
     return Semantics(
       label: semanticsLabel,
       image: true,

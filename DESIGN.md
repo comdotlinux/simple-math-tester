@@ -28,7 +28,8 @@ rules: a figure drawn to scale in place of the question text, with a short promp
 shaded inside with a unit grid for the area); history and screen readers get a
 sentence that names the shape, every label and the question. Its levels 3 to 5
 ask a missing side (a `?` on the side, the perimeter or area given), a missing
-angle (an arc at every angle, a square in a right angle; also between two
+angle (an arc at every angle, its label inside the angle next to the arc where it
+fits, a square in a right angle; also between two
 crossing lines, around a point, outside a triangle with one side drawn
 longer, in an isosceles triangle with ticks on its equal sides and in a
 quadrilateral), the area of a right triangle, an
@@ -151,7 +152,8 @@ mobile; header, pad and sprint card stay inside the safe area.
 Below 800 logical pixels: compact header, bottom navigation, stacked content.
 At/above 800: spacious navigation rail, bounded centered main content. Use available
 constraints and scrollable content, not fixed page heights. At 200% text scale,
-navigation can use the compact layout. Test 320/390/600/768/800/1440 widths,
+navigation can use the compact layout, and a geometry figure gets a canvas taller
+by two lines of label text instead of a smaller figure. Test 320/390/600/768/800/1440 widths,
 short viewports, keyboard insets and 200% text scale. Results wrap, never clip.
 
 ## Interaction states

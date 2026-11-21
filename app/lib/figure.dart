@@ -353,21 +353,44 @@ const labelGap = 4.0;
 const canvasMargin = 4.0;
 
 /// The largest angle arc, and the share of the shorter neighbouring edge
-/// it may take.
+/// (or of the way to the nearest other corner) it may take.
 const arcRadius = 24.0;
 const arcShare = .3;
+
+/// The shortest side a turned figure is drawn with when a turn allows it:
+/// clearly longer than the thick outline is wide.
+const shortestSide = 16.0;
+
+/// How far past its arc a label inside its angle may stand; one that would
+/// stand farther out stands outside the corner instead.
+const nextToArc = 12.0;
 
 /// The length of a tick mark across an edge.
 const tickLength = 12.0;
 
+/// The arcs of rays at one point: each wider angle than an arc's own
+/// makes it larger by this share, so arcs that meet on a ray never join
+/// up, and the narrowest angle, whose label stands farthest out, has the
+/// largest arc.
+const arcStep = .5;
+
 /// Fits [figure] into [canvas]: one uniform scale for the whole figure, as
-/// large as fits with every label box outside its own edge and inside the
-/// canvas. [measure] gives the drawn size of a label's text; numbers are
-/// written in the language [localeName]. Rays all the way round a point
-/// have no up or down, so they are turned (in steps of 15°) to the angle
-/// that keeps their labels apart and draws them longest; so are a
-/// quadrilateral and a triangle with a side drawn on, whose labels crowd a
-/// short card.
+/// large as fits with every label box inside the canvas. [measure] gives
+/// the drawn size of a label's text; numbers are written in the language
+/// [localeName]. A side label stands outside the middle of its side. An
+/// angle label stands inside its angle on the line that halves it, just
+/// past the arc, where its box clears every line, tick, arc and label;
+/// otherwise just outside the corner on that line, across from the angle,
+/// further out only as far as clears another label. Of the choices of
+/// which labels stand inside, the one that draws the figure largest wins.
+/// An angle between rays or outside a side drawn on is open, so its label
+/// always stands in it. Rays all the way round a point have no up or down,
+/// so they are turned (in steps of 15°); so are a quadrilateral and a
+/// triangle with a side drawn on, whose labels crowd a short card. The
+/// turns are laid out from the one whose corners could fill the canvas
+/// most until one keeps every side at least [shortestSide], its labels
+/// apart and each angle label nearer the middle of its own arc than of any
+/// other; if none does, the one that draws the figure largest.
 FigureLayout layoutFigure(
   Figure figure,
   Size canvas,
@@ -378,14 +401,48 @@ FigureLayout layoutFigure(
       figure.shape != FigureShape.aroundPoint &&
       figure.shape != FigureShape.quadrilateral &&
       figure.extension == null) {
-    return _layoutFigure(figure, canvas, measure, localeName);
+    return _layoutFigure(figure, canvas, measure, localeName).drawn;
   }
+  Offset Function(Offset) turnBy(int step) {
+    final (c, s) = _turns[step];
+    return (v) => Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
+  }
+
+  final corners = [...figure.vertices, ?figure.extension];
+  final fills = [
+    for (final (c, s) in _turns)
+      () {
+        var (left, top, right, bottom) = (
+          double.infinity,
+          double.infinity,
+          double.negativeInfinity,
+          double.negativeInfinity,
+        );
+        for (final v in corners) {
+          final (x, y) = (v.dx * c - v.dy * s, v.dx * s + v.dy * c);
+          (left, right) = (min(left, x), max(right, x));
+          (top, bottom) = (min(top, y), max(bottom, y));
+        }
+        final fill = min(
+          canvas.width / max(right - left, 1e-9),
+          canvas.height / max(bottom - top, 1e-9),
+        );
+        // Rounded, so rounding noise never picks between equal turns.
+        return (fill * 1e4).round();
+      }(),
+  ];
+  final steps = [for (var step = 0; step < 24; step++) step]
+    ..sort((a, b) => fills[a] != fills[b] ? fills[b] - fills[a] : a - b);
+  final unit = (figure.vertices[1] - figure.vertices[0]).distance;
+  final labelled = figure.labels.length + (figure.diagonal ? 1 : 0);
+  Offset middle(AngleMark mark) =>
+      mark.centre +
+      Offset.fromDirection(mark.from + mark.sweep / 2, mark.radius);
   FigureLayout? best;
-  var longest = 0.0;
-  var apart = false;
-  for (var step = 0; step < 24; step++) {
-    final (c, s) = (cos(step * pi / 12), sin(step * pi / 12));
-    Offset turn(Offset v) => Offset(v.dx * c - v.dy * s, v.dx * s + v.dy * c);
+  var largest = 0.0;
+  var readable = false;
+  for (final step in steps) {
+    final turn = turnBy(step);
     final turned = Figure(
       shape: figure.shape,
       vertices: [for (final v in figure.vertices) turn(v)],
@@ -397,19 +454,56 @@ FigureLayout layoutFigure(
         null => null,
       },
     );
-    final drawn = _layoutFigure(turned, canvas, measure, localeName);
-    final length = (drawn.vertices[1] - drawn.vertices[0]).distance;
-    final separate = !_anyOverlap([
-      for (final label in drawn.labels) label.box,
-    ]);
-    // Labels apart first; then clearly longer, so rounding never picks
-    // between equal turns.
-    if (separate && !apart || separate == apart && length > longest * 1.0001) {
-      (best, longest, apart) = (drawn, length, separate);
+    final (:drawn, :crowded) = _layoutFigure(
+      turned,
+      canvas,
+      measure,
+      localeName,
+    );
+    final scale = (drawn.vertices[1] - drawn.vertices[0]).distance / unit;
+    // Every side long enough to see, labels apart, each angle label nearer
+    // the middle of its own arc than of any other.
+    final arcs = [
+      for (final mark in drawn.marks)
+        if (!mark.right) middle(mark),
+    ];
+    final corners = drawn.vertices;
+    final sides = [
+      for (var i = drawn.rays ? 1 : 0; i < corners.length; i++)
+        drawn.rays
+            ? (corners[0], corners[i])
+            : (corners[i], corners[(i + 1) % corners.length]),
+      ?drawn.extension,
+    ];
+    if (sides.every((side) => (side.$2 - side.$1).distance >= shortestSide) &&
+        !_anyOverlap([for (final label in drawn.labels) label.box]) &&
+        figure.angles.indexed.every((entry) {
+          final at = drawn.labels[labelled + entry.$1].box.center;
+          final own = (at - arcs[entry.$1]).distance;
+          return arcs.indexed.every(
+            (arc) => arc.$1 == entry.$1 || (at - arc.$2).distance > own,
+          );
+        })) {
+      // A turn whose labels had to move out of each other's way may draw
+      // the figure small, so every turn is tried for a larger one.
+      if (!crowded) return drawn;
+      if (!readable || scale > largest * 1.0001) {
+        (best, largest, readable) = (drawn, scale, true);
+      }
+    } else if (!readable && scale > largest * 1.0001) {
+      // Clearly larger, so rounding never picks between equal turns.
+      (best, largest) = (drawn, scale);
     }
   }
   return best!;
 }
+
+/// The turns a figure is drawn at, in steps of 15°, as their cosine and
+/// sine.
+final _turns = [
+  for (var step = 0; step < 24; step++)
+    (cos(step * pi / 12), sin(step * pi / 12)),
+];
 
 bool _anyOverlap(List<Rect> boxes) {
   for (final (i, box) in boxes.indexed) {
@@ -420,7 +514,32 @@ bool _anyOverlap(List<Rect> boxes) {
   return false;
 }
 
-FigureLayout _layoutFigure(
+/// Whether the line from [a] to [b] meets [rect]: the part of the line
+/// between each pair of the rectangle's sides is cut off in turn.
+bool _meets(Offset a, Offset b, Rect rect) {
+  final d = b - a;
+  var (from, to) = (0.0, 1.0);
+  for (final (p, q) in [
+    (-d.dx, a.dx - rect.left),
+    (d.dx, rect.right - a.dx),
+    (-d.dy, a.dy - rect.top),
+    (d.dy, rect.bottom - a.dy),
+  ]) {
+    if (p == 0) {
+      if (q < 0) return false;
+    } else if (p < 0) {
+      from = max(from, q / p);
+    } else {
+      to = min(to, q / p);
+    }
+    if (from > to) return false;
+  }
+  return true;
+}
+
+/// [figure] laid out unturned, and whether labels outside their corners
+/// had to move out of each other's way.
+({FigureLayout drawn, bool crowded}) _layoutFigure(
   Figure figure,
   Size canvas,
   Size Function(String text) measure,
@@ -548,89 +667,382 @@ FigureLayout _layoutFigure(
       half: boxOf('?'),
     ));
   }
-  for (final angle in figure.angles) {
-    final text = angle.text;
-    final half = boxOf(text);
-    texts.add(text);
-    if (rays) {
-      // Beyond the ray tips on the bisector, so it touches no ray.
-      final o = model[0];
-      final (a, b) = (model[angle.corner], model[nextRay(angle.corner, count)]);
-      // Half the smaller turn from one ray to the other; also defined for
-      // a straight angle, which the oracle then rejects by its arc.
-      final from = atan2(a.dy - o.dy, a.dx - o.dx);
-      final turn = atan2(b.dy - o.dy, b.dx - o.dx) - from;
-      final bisector = Offset.fromDirection(
-        from + (turn + 3 * pi) % (2 * pi) / 2 - pi / 2,
-      );
-      points.add((
-        at: o + bisector * (a - o).distance,
-        shift: bisector * (stroke / 2 + labelGap + reach(half, bisector)),
-        half: half,
-      ));
-    } else if (angle.corner == count) {
-      // The outside angle at a side drawn on: on the line that halves it,
-      // far enough out that the box clears both of its lines.
-      final v = model[count - 1];
-      final (a, b) = (unit(figure.extension! - v), unit(model[count - 2] - v));
-      final halfAngle = acos((a.dx * b.dx + a.dy * b.dy).clamp(-1.0, 1.0)) / 2;
-      final clear = [
-        for (final d in [a, b])
-          reach(half, Offset(-d.dy, d.dx)) + stroke / 2 + labelGap,
-      ].reduce(max);
-      points.add((
-        at: v,
-        shift: unit(a + b) * (clear / sin(halfAngle)),
-        half: half,
-      ));
-    } else {
-      // Outside the corner, opposite the inside bisector, so it touches no
-      // edge of the convex shape.
-      final v = model[angle.corner];
-      final prev = model[(angle.corner + count - 1) % count];
-      final next = model[(angle.corner + 1) % count];
-      final out = -unit(unit(prev - v) + unit(next - v));
-      points.add((
-        at: v,
-        shift: out * (stroke / 2 + labelGap + reach(half, out)),
-        half: half,
-      ));
-    }
+
+  // Each angle as its corner and a point on each of its arms. An angle
+  // between rays or outside a side drawn on is open beyond its arms.
+  final angles = [
+    for (final angle in figure.angles)
+      if (rays)
+        (
+          v: model[0],
+          a: model[angle.corner],
+          b: model[nextRay(angle.corner, count)],
+          open: true,
+        )
+      else if (angle.corner == count)
+        (
+          v: model[count - 1],
+          a: figure.extension!,
+          b: model[count - 2],
+          open: true,
+        )
+      else
+        (
+          v: model[angle.corner],
+          a: model[(angle.corner + count - 1) % count],
+          b: model[(angle.corner + 1) % count],
+          open: false,
+        ),
+  ];
+  double direction(Offset d) => atan2(d.dy, d.dx);
+  // The smaller turn at [v] from the direction to [a] to the one to [b],
+  // signed; also defined for a straight angle, which the oracle then
+  // rejects by its arc.
+  double turnAt(Offset v, Offset a, Offset b) =>
+      (direction(b - v) - direction(a - v) + 3 * pi) % (2 * pi) - pi;
+  final sweeps = [for (final g in angles) turnAt(g.v, g.a, g.b)];
+  final bisectors = [
+    for (final (i, g) in angles.indexed)
+      Offset.fromDirection(direction(g.a - g.v) + sweeps[i] / 2),
+  ];
+  final halves = [for (final angle in figure.angles) boxOf(angle.text)];
+  final growth = [
+    for (final (i, sweep) in sweeps.indexed)
+      rays
+          ? 1 +
+                arcStep *
+                    [
+                      for (final (j, other) in sweeps.indexed)
+                        if (other.abs() > sweep.abs() ||
+                            other.abs() == sweep.abs() && j < i)
+                          j,
+                    ].length
+          : 1.0,
+  ];
+  // An arc sized to the shorter of its two arms, at scale [s].
+  double arcSize(Offset v, Offset a, Offset b, double s) =>
+      min(arcRadius, arcShare * min((a - v).distance, (b - v).distance) * s);
+  // An angle's arc is also sized to the nearest other corner, so in a flat
+  // shape it does not reach across to the corner opposite.
+  final shortArm = [
+    for (final g in angles)
+      [
+        (g.a - g.v).distance,
+        (g.b - g.v).distance,
+        for (final corner in model)
+          if (corner != g.v) (corner - g.v).distance,
+      ].reduce(min),
+  ];
+  final longArm = [
+    for (final g in angles) max((g.a - g.v).distance, (g.b - g.v).distance),
+  ];
+  // How far along the bisector the box clears both arms.
+  final between = [
+    for (final (i, g) in angles.indexed)
+      ([
+                for (final arm in [g.a, g.b])
+                  reach(
+                    halves[i],
+                    Offset(-unit(arm - g.v).dy, unit(arm - g.v).dx),
+                  ),
+              ].reduce(max) +
+              stroke / 2 +
+              labelGap) /
+          max(sin(sweeps[i].abs() / 2), 1e-6),
+  ];
+  // Inside its angle: far enough along the bisector to clear both arms and
+  // the arc.
+  final past = [
+    for (final (i, b) in bisectors.indexed) reach(halves[i], b) + labelGap,
+  ];
+  // An arc sized to the shorter arm; an outside angle's label stands far
+  // out in its wedge, so its arc reaches out to just before the label,
+  // within its lines.
+  double arcAt(int i, double s) {
+    final size = min(arcRadius, arcShare * shortArm[i] * s) * growth[i];
+    if (!angles[i].open || rays) return size;
+    return max(size, min(between[i] - past[i], .8 * shortArm[i] * s));
   }
 
-  Rect bounds(double scale) {
-    var rect = Rect.zero;
-    var first = true;
+  // Between rays: the nearest point along the bisector where the box
+  // clears both rays, between them or just past their ends.
+  double clearOfRays(int i, double s) {
+    final g = angles[i];
+    final ends = [(g.a - g.v) * s, (g.b - g.v) * s];
+    bool clear(double d) {
+      final room = Rect.fromCenter(
+        center: bisectors[i] * d,
+        width: halves[i].width * 2,
+        height: halves[i].height * 2,
+      ).inflate(stroke / 2 + labelGap);
+      return !ends.any((end) => _meets(Offset.zero, end, room));
+    }
+
+    var (near, far) = (
+      0.0,
+      min(between[i], longArm[i] * s + stroke / 2 + past[i]),
+    );
+    for (var k = 0; k < 12; k++) {
+      final mid = (near + far) / 2;
+      if (clear(mid)) {
+        far = mid;
+      } else {
+        near = mid;
+      }
+    }
+    return far;
+  }
+
+  double insideAt(int i, double s) =>
+      max(rays ? clearOfRays(i, s) : between[i], arcAt(i, s) + past[i]);
+
+  // Outside the corner, across from the inside bisector, so it touches no
+  // edge of the convex shape; further out by what clears another label
+  // (see below).
+  final outside = [
+    for (final (i, b) in bisectors.indexed)
+      stroke / 2 + labelGap + reach(halves[i], b),
+  ];
+  Offset angleCentre(int i, double s, {required bool inside}) =>
+      angles[i].v * s +
+      (angles[i].open || inside
+          ? bisectors[i] * insideAt(i, s)
+          : -bisectors[i] * outside[i]);
+  Rect angleBox(int i, double s, Set<int> inside) => Rect.fromCenter(
+    center: angleCentre(i, s, inside: inside.contains(i)),
+    width: halves[i].width * 2,
+    height: halves[i].height * 2,
+  );
+  Rect pointBox(int i, double s) => Rect.fromCenter(
+    center: points[i].at * s + points[i].shift,
+    width: points[i].half.width * 2,
+    height: points[i].half.height * 2,
+  );
+  // The lines drawn, in model units.
+  final lines = [
+    for (var i = 0; i < (rays ? count - 1 : count); i++)
+      rays ? (model[0], model[i + 1]) : (model[i], model[(i + 1) % count]),
+    if (figure.extension case final end?) (model[count - 1], end),
+    if (figure.diagonal) (model[0], model[2]),
+  ];
+
+  // Nine points along each arc of radius 1.
+  final arcPoints = [
+    for (final (j, g) in angles.indexed)
+      [
+        for (var t = 0; t <= 8; t++)
+          Offset.fromDirection(direction(g.a - g.v) + sweeps[j] * t / 8),
+      ],
+  ];
+
+  // Whether the label of the corner angle [i] fits inside it at scale [s],
+  // with the labels in [inside] inside theirs: next to its arc, within the
+  // shape, clear of every line, tick, arc and label, and nearer its own
+  // corner and arc than any other.
+  bool fitsInside(int i, double s, Set<int> inside) {
+    final g = angles[i];
+    // Next to its arc: a narrow angle pushes the label far along its
+    // bisector, where it would read as standing in the middle of the shape.
+    if (between[i] - past[i] - arcAt(i, s) > nextToArc) return false;
+    final at = angleCentre(i, s, inside: true);
+    for (var k = 0; k < count; k++) {
+      final (p, q) = (model[k] * s, model[(k + 1) % count] * s);
+      final turn = (q - p).dx * (at - p).dy - (q - p).dy * (at - p).dx;
+      if (turn * twiceArea <= 0) return false;
+      if (model[k] != g.v &&
+          (at - model[k] * s).distance <= (at - g.v * s).distance) {
+        return false;
+      }
+    }
+    final box = Rect.fromCenter(
+      center: at,
+      width: halves[i].width * 2,
+      height: halves[i].height * 2,
+    );
+    final room = box.inflate(stroke / 2 + 1);
+    for (final (p, q) in lines) {
+      if (_meets(p * s, q * s, room)) return false;
+    }
+    for (final edge in figure.ticks) {
+      final (:middle, :across) = tick(edge);
+      if (_meets(
+        middle * s - across * (tickLength / 2),
+        middle * s + across * (tickLength / 2),
+        room,
+      )) {
+        return false;
+      }
+    }
+    for (var k = first; k < points.length; k++) {
+      if (pointBox(k, s).inflate(labelGap / 2).overlaps(box)) return false;
+    }
+    final ownArc = (at - g.v * s).distance - arcAt(i, s);
+    for (var j = 0; j < angles.length; j++) {
+      if (j == i) continue;
+      if (angleBox(j, s, inside).inflate(labelGap / 2).overlaps(box)) {
+        return false;
+      }
+      final other = angles[j];
+      final r = arcAt(j, s);
+      if ((at - other.v * s).distance - r <= ownArc) return false;
+      for (final along in arcPoints[j]) {
+        if (room.contains(other.v * s + along * r)) return false;
+      }
+    }
+    return true;
+  }
+
+  Rect bounds(double s, Set<int> inside) {
+    var (left, top, right, bottom) = (
+      double.infinity,
+      double.infinity,
+      double.negativeInfinity,
+      double.negativeInfinity,
+    );
+    void include(Offset centre, Size half) {
+      left = min(left, centre.dx - half.width);
+      top = min(top, centre.dy - half.height);
+      right = max(right, centre.dx + half.width);
+      bottom = max(bottom, centre.dy + half.height);
+    }
+
     for (final p in points) {
-      final box = Rect.fromCenter(
-        center: p.at * scale + p.shift,
-        width: p.half.width * 2,
-        height: p.half.height * 2,
-      );
-      rect = first ? box : rect.expandToInclude(box);
-      first = false;
+      include(p.at * s + p.shift, p.half);
     }
-    return rect;
+    for (var i = 0; i < angles.length; i++) {
+      include(angleCentre(i, s, inside: inside.contains(i)), halves[i]);
+    }
+    return Rect.fromLTRB(left, top, right, bottom);
   }
 
-  bool fits(double scale) {
-    final rect = bounds(scale);
-    return rect.width <= canvas.width - 2 * canvasMargin &&
-        rect.height <= canvas.height - 2 * canvasMargin;
+  // No scale is larger than the corners alone could fill the canvas.
+  final extent = centre == null
+      ? [...model, ?figure.extension]
+      : [centre - Offset(radius, radius), centre + Offset(radius, radius)];
+  final ceiling = min(
+    canvas.width /
+        (extent.map((p) => p.dx).reduce(max) -
+            extent.map((p) => p.dx).reduce(min)),
+    canvas.height /
+        (extent.map((p) => p.dy).reduce(max) -
+            extent.map((p) => p.dy).reduce(min)),
+  );
+  // How far the drawing at scale [s] overflows the canvas (at most 0 when
+  // it fits).
+  double overflow(double s, Set<int> inside) {
+    final rect = bounds(s, inside);
+    return max(
+      rect.width - (canvas.width - 2 * canvasMargin),
+      rect.height - (canvas.height - 2 * canvasMargin),
+    );
   }
 
-  var low = 0.0;
-  var high = max(canvas.width, canvas.height);
-  for (var i = 0; i < 40; i++) {
-    final mid = (low + high) / 2;
-    if (fits(mid)) {
-      low = mid;
-    } else {
-      high = mid;
+  // The largest scale that fits. The overflow grows with the scale, mostly
+  // in straight pieces, so the line through a fitting and an overflowing
+  // scale finds the next fitting one, nearer the largest; halving the gap
+  // takes over where a step would overflow.
+  double largest(Set<int> inside) {
+    var (low, high) = (
+      0.0,
+      ceiling.isFinite ? ceiling : max(canvas.width, canvas.height),
+    );
+    var (under, over) = (overflow(low, inside), overflow(high, inside));
+    if (under > 0) return 0;
+    if (over <= 0) return high;
+    for (var i = 0; i < 24 && high - low > 1e-6 * high; i++) {
+      var mid = low + (high - low) * -under / (over - under);
+      if (mid - low < 1e-9 * high) mid = (low + high) / 2;
+      final at = overflow(mid, inside);
+      if (at > 0) {
+        (high, over) = (mid, at);
+        mid = (low + high) / 2;
+        final half = overflow(mid, inside);
+        if (half > 0) {
+          (high, over) = (mid, half);
+        } else {
+          (low, under) = (mid, half);
+        }
+      } else {
+        (low, under) = (mid, at);
+        if (at > -.5) break;
+      }
+    }
+    return low;
+  }
+
+  // Which corner labels stand inside: all of them if they fit; otherwise,
+  // of the choices left when labels that do not fit move out one by one,
+  // the one that lets the figure grow largest.
+  final corners = [
+    for (final (i, g) in angles.indexed)
+      if (!g.open) i,
+  ];
+  Set<int> chosen(int mask) => {
+    for (final (j, i) in corners.indexed)
+      if (mask >> j & 1 == 1) i,
+  };
+  final sizes = <int, double>{};
+  double size(int mask) => sizes[mask] ??= largest(chosen(mask));
+  final searched = <int>{};
+  var (pick, scale) = (0, size(0));
+  void search(int mask) {
+    if (!searched.add(mask) || size(mask) <= scale) return;
+    final choice = chosen(mask);
+    final misfits = [
+      for (final (j, i) in corners.indexed)
+        if (mask >> j & 1 == 1 && !fitsInside(i, size(mask), choice)) j,
+    ];
+    if (misfits.isEmpty) {
+      (pick, scale) = (mask, size(mask));
+    }
+    for (final j in misfits) {
+      search(mask & ~(1 << j));
     }
   }
-  final scale = low;
-  final rect = bounds(scale);
+
+  search((1 << corners.length) - 1);
+  final inside = chosen(pick);
+
+  // A label outside its corner that overlaps another label moves further
+  // out along the bisector, as little as clears it, and the figure shrinks
+  // to make room; a label inside that then no longer fits moves out too.
+  var crowded = false;
+  for (var round = 0; round < 4; round++) {
+    var moved = false;
+    for (final i in [
+      for (final (i, g) in angles.indexed)
+        if (!g.open && !inside.contains(i)) i,
+    ]) {
+      final others = [
+        for (var k = first; k < points.length; k++) pointBox(k, scale),
+        for (var j = 0; j < angles.length; j++)
+          if (j != i) angleBox(j, scale, inside),
+      ];
+      for (final other in others) {
+        final box = angleBox(i, scale, inside);
+        if (!box.overlaps(other)) continue;
+        final d = -bisectors[i];
+        outside[i] +=
+            [
+              if (d.dx > 1e-9) (other.right - box.left) / d.dx,
+              if (d.dx < -1e-9) (other.left - box.right) / d.dx,
+              if (d.dy > 1e-9) (other.bottom - box.top) / d.dy,
+              if (d.dy < -1e-9) (other.top - box.bottom) / d.dy,
+            ].reduce(min) +
+            labelGap / 2;
+        moved = crowded = true;
+      }
+    }
+    if (!moved) break;
+    scale = largest(inside);
+    inside.removeAll({
+      for (final i in inside)
+        if (!fitsInside(i, scale, inside)) i,
+    });
+    scale = largest(inside);
+  }
+
+  final rect = bounds(scale, inside);
   final origin = Offset(
     (canvas.width - rect.width) / 2 - rect.left,
     (canvas.height - rect.height) / 2 - rect.top,
@@ -655,52 +1067,32 @@ FigureLayout _layoutFigure(
     }
   }
 
-  // An arc between the directions to [a] and [b] seen from [v], on the
-  // inside (the smaller turn), sized to the shorter of the two edges.
-  AngleMark mark(Offset v, Offset a, Offset b, {bool right = false}) {
-    final (pv, pa, pb) = (place(v), place(a), place(b));
-    final from = atan2(pa.dy - pv.dy, pa.dx - pv.dx);
-    var sweep = atan2(pb.dy - pv.dy, pb.dx - pv.dx) - from;
-    if (sweep > pi) sweep -= 2 * pi;
-    if (sweep < -pi) sweep += 2 * pi;
-    final size = min(
-      arcRadius,
-      arcShare * min((pa - pv).distance, (pb - pv).distance),
-    );
-    // A right-angle square fits inside the arcs around the same corner.
-    return AngleMark(pv, right ? size * .55 : size, from, sweep, right: right);
-  }
+  // A right-angle square at [v] between the directions to [a] and [b]; it
+  // fits inside the arcs around the same corner.
+  AngleMark square(Offset v, Offset a, Offset b) => AngleMark(
+    place(v),
+    arcSize(v, a, b, scale) * .55,
+    direction(a - v),
+    turnAt(v, a, b),
+    right: true,
+  );
 
   final marks = <AngleMark>[
-    for (final angle in figure.angles)
-      if (rays)
-        mark(model[0], model[angle.corner], model[nextRay(angle.corner, count)])
-      else if (angle.corner == count)
-        mark(model[count - 1], figure.extension!, model[count - 2])
-      else
-        mark(
-          model[angle.corner],
-          model[(angle.corner + count - 1) % count],
-          model[(angle.corner + 1) % count],
-        ),
+    for (final (i, g) in angles.indexed)
+      AngleMark(place(g.v), arcAt(i, scale), direction(g.a - g.v), sweeps[i]),
     if (figure.shape == FigureShape.rightAngle)
-      mark(model[0], model[1], model[count - 1], right: true),
+      square(model[0], model[1], model[count - 1]),
     if (figure.shape == FigureShape.rightTriangle)
-      mark(model[0], model[count - 1], model[1], right: true),
+      square(model[0], model[count - 1], model[1]),
   ];
 
-  return FigureLayout(
+  final drawn = FigureLayout(
     vertices: [for (final v in model) place(v)],
     labels: [
       for (final (i, text) in texts.indexed)
-        PlacedLabel(
-          text,
-          Rect.fromCenter(
-            center: place(points[first + i].at) + points[first + i].shift,
-            width: points[first + i].half.width * 2,
-            height: points[first + i].half.height * 2,
-          ),
-        ),
+        PlacedLabel(text, pointBox(first + i, scale).shift(origin)),
+      for (final (i, angle) in figure.angles.indexed)
+        PlacedLabel(angle.text, angleBox(i, scale, inside).shift(origin)),
     ],
     grid: figure.grid,
     gridLines: gridLines,
@@ -732,4 +1124,5 @@ FigureLayout _layoutFigure(
         ),
     ],
   );
+  return (drawn: drawn, crowded: crowded);
 }
