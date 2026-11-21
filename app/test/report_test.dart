@@ -633,6 +633,7 @@ void main() {
       expect(reports.bodies, hasLength(1));
 
       now = now.add(const Duration(seconds: 15));
+      await tap(tester, settingsButtonKey);
       await tap(tester, sendProblemReportTileKey);
       expect(find.text(en.reportWait(45)), findsOneWidget);
       expect(find.byKey(reportContinueKey), findsNothing);
@@ -641,6 +642,7 @@ void main() {
       expect(find.byKey(reportDialogKey), findsNothing);
 
       now = now.add(const Duration(seconds: 45));
+      await tap(tester, settingsButtonKey);
       await tap(tester, sendProblemReportTileKey);
       expect(find.byKey(reportWaitKey), findsNothing);
       expect(find.byKey(reportContinueKey), findsOneWidget);
@@ -867,6 +869,7 @@ void main() {
               expect(find.byKey(reportWaitKey), findsOneWidget);
               await tap(tester, reportCloseKey);
               now = now.add(reportPause);
+              await tap(tester, settingsButtonKey);
               await tap(tester, sendProblemReportTileKey);
               await tap(tester, reportContinueKey);
               await tap(tester, reportOptionKey('translation'));
