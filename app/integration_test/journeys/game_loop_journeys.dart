@@ -18,6 +18,7 @@ void gameLoopJourneys() {
   group('game loop', () {
     testWidgets('a correct first answer adds XP to the header', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       expect(textOf(tester, hudXpKey), showsXp(0));
 
       await submit(tester, modelOf(tester).current.result);
@@ -31,6 +32,7 @@ void gameLoopJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await tapKey(tester, hintButtonKey);
       await tapKey(tester, hintCloseKey);
 
@@ -47,6 +49,7 @@ void gameLoopJourneys() {
         tester,
         Progress(tier: Tier.easy, game: const GameState(combo: 2)),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       expect(semanticsNodesLabelled(tester, 'Combo: 2'), 1);
 
@@ -67,6 +70,7 @@ void gameLoopJourneys() {
         tester,
         Progress(tier: Tier.easy, game: const GameState(xp: 95)),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
       await typeAnswer(tester, formatNumber(model.current.result));
       await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
@@ -102,6 +106,7 @@ void gameLoopJourneys() {
           ),
         ),
       );
+      await pressStart(tester);
       expect(semanticsNodesLabelled(tester, 'Daily goal: 9 of 10'), 1);
       expect(semanticsNodesLabelled(tester, 'Daily streak: 2'), 1);
 
@@ -129,6 +134,7 @@ void gameLoopJourneys() {
           ),
         ),
       );
+      await pressStart(tester);
 
       expect(semanticsNodesLabelled(tester, 'Daily goal: 0 of 10'), 1);
       expect(semanticsNodesLabelled(tester, 'Daily streak: 0'), 1);
@@ -151,6 +157,7 @@ void gameLoopJourneys() {
           ),
         ),
       );
+      await pressStart(tester);
 
       expect(semanticsNodesLabelled(tester, 'Daily streak: 4'), 1);
       expect(semanticsNodesLabelled(tester, 'Daily goal: 0 of 10'), 1);
@@ -161,6 +168,7 @@ void gameLoopJourneys() {
         tester,
         Progress(tier: Tier.easy, selectedOperations: {OperationType.plus}),
       );
+      await pressStart(tester);
       final model = modelOf(tester);
 
       for (var i = 0; i < levelUpAfter; i++) {

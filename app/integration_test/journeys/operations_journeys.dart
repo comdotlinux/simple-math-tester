@@ -32,7 +32,6 @@ void operationsJourneys() {
       ) async {
         await startWith(tester, Progress(tier: Tier.easy));
         final model = modelOf(tester);
-        final shown = model.current;
 
         for (final type in arithmeticKinds) {
           if (!subset.contains(type)) {
@@ -41,10 +40,10 @@ void operationsJourneys() {
         }
 
         expect(model.selectedOperations, subset);
-        // The selection applies from the next question on, and changing it
-        // records no attempt.
-        expect(model.current, same(shown));
+        // Changing the kinds records no attempt; Start asks from them.
         expect(model.history, isEmpty);
+        await pressStart(tester);
+        expect(subset, contains(model.current.kind));
 
         final kinds = <OperationType>{};
         final questions = <String>{};
@@ -80,6 +79,7 @@ void operationsJourneys() {
       await tapVisible(tester, operationToggle(OperationType.plus));
 
       expect(model.selectedOperations, {OperationType.plus});
+      await pressStart(tester);
       await nextQuestion(tester);
       expect(model.current.kind, OperationType.plus);
     });
@@ -114,7 +114,8 @@ void operationsJourneys() {
 
       await tapVisible(tester, operationToggle(OperationType.algebra));
       await tapVisible(tester, operationToggle(OperationType.plus));
-      await nextQuestion(tester);
+      // Start asks from the new selection at once.
+      await pressStart(tester);
 
       expect(model.current.kind, OperationType.algebra);
       // The blank is a drawn box, a placeholder in the text, not a glyph.
@@ -138,7 +139,8 @@ void operationsJourneys() {
 
       await tapVisible(tester, operationToggle(OperationType.geometry));
       await tapVisible(tester, operationToggle(OperationType.plus));
-      await nextQuestion(tester);
+      // Start asks from the new selection at once.
+      await pressStart(tester);
 
       expect(model.current.kind, OperationType.geometry);
       // A drawn figure stands where the question text would be.
@@ -152,6 +154,64 @@ void operationsJourneys() {
       await submit(tester, model.current.result);
       expect(model.history.last.correct, isTrue);
       expect(model.history.last.problem.kind, OperationType.geometry);
+    });
+
+    testWidgets('practice hides the kinds, settings, the sprint and the '
+        'navigation; End brings them back with the summary and records '
+        'nothing for the open question', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+      await pressStart(tester);
+      expect(await answerFocused(tester), isTrue);
+      for (final key in [
+        settingsButtonKey,
+        sprintButtonKey,
+        startPracticeButtonKey,
+        myAnswersNavKey,
+        operationToggleKey(OperationType.plus),
+      ]) {
+        expect(find.byKey(key), findsNothing, reason: '$key');
+      }
+
+      await submit(tester, model.current.result);
+      await typeAnswer(tester, '1');
+      final history = model.history.length;
+      final xp = model.game.xp;
+      await pressEnd(tester);
+
+      expect(model.history, hasLength(history));
+      expect(model.game.xp, xp);
+      expect(find.byKey(roundSummaryKey), findsOneWidget);
+      expect(textOf(tester, summaryAnsweredKey), showsNumber(1));
+      expect(textOf(tester, summaryCorrectKey), showsNumber(1));
+      expect(find.byKey(questionOnProblemsPageKey), findsNothing);
+      expect(operationToggle(OperationType.plus), findsOneWidget);
+      expect(find.byKey(myAnswersNavKey), findsOneWidget);
+      expect(startFocused(tester), isTrue);
+
+      await tapKey(tester, roundSummaryDoneKey);
+      expect(find.byKey(roundSummaryKey), findsNothing);
+      expect(model.history, hasLength(history));
+    });
+
+    testWidgets('after End the kinds change, and the next Start asks only '
+        'from the new kinds', (tester) async {
+      await startWith(tester, Progress(tier: Tier.easy));
+      final model = modelOf(tester);
+      await pressStart(tester);
+      await submit(tester, model.current.result);
+      await pressEnd(tester);
+
+      for (final type in arithmeticKinds.skip(1)) {
+        await tapVisible(tester, operationToggle(type));
+      }
+      await pressStart(tester);
+
+      for (var i = 0; i < 5; i++) {
+        expect(model.current.kind, arithmeticKinds.first, reason: 'draw $i');
+        await nextQuestion(tester);
+      }
     });
 
     testWidgets('the new-kind card switches Algebra on once and stays away '

@@ -40,6 +40,11 @@ class _ProblemPageState extends State<ProblemPage> {
 
   /// Start, which takes the focus back after End.
   final _startFocus = FocusNode();
+
+  /// The one-time new-kind card, which the page opens with in view: on a
+  /// short phone with large text it starts below the screen.
+  final _newKindKey = GlobalKey();
+  bool _cardRevealed = false;
   final _answerKey = GlobalKey();
 
   /// Skip under the question card, which a docked phone page keeps in view
@@ -132,12 +137,11 @@ class _ProblemPageState extends State<ProblemPage> {
     _model.startPractice();
   }
 
-  /// End: back to the kinds, with the round's summary at the top and the
-  /// focus on Start.
+  /// End: back to the kinds, with the round's summary at the top; Start
+  /// takes the focus as it is built again.
   void _end() {
     if (_scroll.hasClients) _scroll.jumpTo(0);
     _model.endPractice();
-    _startFocus.requestFocus();
   }
 
   @override
@@ -230,14 +234,15 @@ class _ProblemPageState extends State<ProblemPage> {
       );
     }
 
-    // On a phone the answer key marks the question card above Skip, so
-    // revealing Skip shows both when they fit and Skip when they do not;
+    // Skip, the last control, comes into view. On a phone the answer key
+    // marks the question card above Skip, so revealing Skip shows both when
+    // they fit and Skip when they do not;
     // within a problem the page never scrolls back from where the player
     // took it. A new problem brings the card's top back into view, also
     // scrolling back, so it wins over Skip.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await reveal(_skipKey);
       if (compact) {
-        await reveal(_skipKey);
         await reveal(_choicesKey);
         await reveal(
           _tryAgainKey,
@@ -276,6 +281,17 @@ class _ProblemPageState extends State<ProblemPage> {
     // practising (or in a sprint) the question and the answer.
     final setup = model.tier != null && !model.practising && !sprinting;
     final asking = model.tier != null && !setup;
+    if (setup && model.newKind != null && !_cardRevealed) {
+      _cardRevealed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final card = _newKindKey.currentContext;
+        if (card == null || !card.mounted) return;
+        Scrollable.ensureVisible(
+          card,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        );
+      });
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final showPad = _padShown && asking;
@@ -501,7 +517,7 @@ class _ProblemPageState extends State<ProblemPage> {
                       SizedBox(height: gap),
                     ],
                     if (model.newKind case final kind?) ...[
-                      _NewKindCard(kind: kind),
+                      _NewKindCard(key: _newKindKey, kind: kind),
                       SizedBox(height: gap),
                     ],
                     LayoutBuilder(
@@ -552,6 +568,7 @@ class _ProblemPageState extends State<ProblemPage> {
                             child: FilledButton.icon(
                               key: startPracticeButtonKey,
                               focusNode: _startFocus,
+                              autofocus: true,
                               onPressed: _start,
                               style: ButtonStyle(
                                 minimumSize: const WidgetStatePropertyAll(
@@ -1237,7 +1254,7 @@ class _SprintResult extends StatelessWidget {
 /// Names a kind the player has not tried, once, above the toggles. Closing
 /// it or switching the kind on hides it for good; it never comes back.
 class _NewKindCard extends StatelessWidget {
-  const _NewKindCard({required this.kind});
+  const _NewKindCard({super.key, required this.kind});
 
   final OperationType kind;
 

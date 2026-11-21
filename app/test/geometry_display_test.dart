@@ -208,7 +208,8 @@ void main() {
   });
 
   testWidgets('the pinned band shows the sentence', (tester) async {
-    final model = await launch(tester, size: const Size(320, 568));
+    // Large text, so the page is long enough to scroll the card away.
+    final model = await launch(tester, size: const Size(320, 568), scale: 1.5);
     model.setDraftInput('9');
     model.submitAnswer();
     await tester.pumpAndSettle();

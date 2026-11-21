@@ -76,7 +76,7 @@ void main() {
   ) async {
     final semantics = tester.ensureSemantics();
     final store = FakeStore();
-    final model = await launch(tester, store: store);
+    final model = await launch(tester, start: false, store: store);
     expect(pageColour(tester), AppTokens.light.surface);
 
     await tester.tap(find.byKey(settingsButtonKey));

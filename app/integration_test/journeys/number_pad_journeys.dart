@@ -18,6 +18,7 @@ void numberPadJourneys() {
   group('number pad', () {
     testWidgets('each digit key types its digit', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
 
       for (final digit in '1234567890'.split('')) {
@@ -30,6 +31,7 @@ void numberPadJourneys() {
 
     testWidgets('Delete removes the last digit', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       await tapVisible(tester, padKey('4'));
       await tapVisible(tester, padKey('2'));
@@ -46,6 +48,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
 
       await tapVisible(
@@ -64,6 +67,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       final model = modelOf(tester);
 
@@ -84,6 +88,7 @@ void numberPadJourneys() {
 
     testWidgets('pressing Check twice checks, then moves on', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       final model = modelOf(tester);
       final first = model.current;
@@ -116,6 +121,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       expect(_switchTooltip(tester), 'Use the keyboard');
 
@@ -139,6 +145,7 @@ void numberPadJourneys() {
       tester,
     ) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await closePad(tester);
       final model = modelOf(tester);
       await typeAnswer(tester, formatNumber(model.current.result));
@@ -162,6 +169,7 @@ void numberPadJourneys() {
     testWidgets('with the pad, tapping the answer field opens no system '
         'keyboard; the keyboard button asks for one', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       EditableText editable() =>
           tester.widget<EditableText>(find.byType(EditableText));
@@ -189,6 +197,7 @@ void numberPadJourneys() {
 
     testWidgets('only digits reach the answer field', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
 
       await typeAnswer(tester, '-1a2.5');
 
@@ -199,6 +208,7 @@ void numberPadJourneys() {
     testWidgets('a phone starts with the system keyboard, a larger screen '
         'with the pad', (tester) async {
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final phone = isPhone(tester);
 
       expect(find.byKey(numberPadKey), phone ? findsNothing : findsOneWidget);
@@ -226,6 +236,7 @@ void numberPadJourneys() {
         addTearDown(tester.view.reset);
       }
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       final model = modelOf(tester);
       final first = model.current;
       expect(find.byKey(numberPadKey), findsNothing);
@@ -280,6 +291,7 @@ void numberPadJourneys() {
       tester.view.viewPadding = insets;
       addTearDown(tester.view.reset);
       await startWith(tester, Progress(tier: Tier.easy));
+      await pressStart(tester);
       await openPad(tester);
       final model = modelOf(tester);
 

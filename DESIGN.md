@@ -74,9 +74,24 @@ per operation, so advanced questions appear only after the player earns them.
 Phones and tablets are first-class; desktop supports keyboard-first practice.
 
 ## Information architecture
-Two destinations: **Practice** and **My answers**. Practice centers one problem and
-one answer field, with operation selection (at least one stays on) and the sprint
-mode; a header shows the daily streak, daily goal, XP with level, and combo.
+Two destinations: **Practice** and **My answers**. Practice has two states. Before
+**Start** it holds the title, the settings button, the operation toggles (at least
+one stays on), the one-time new-kind card, a prominent Start and the sprint button;
+no question and no answer field yet. After Start it centers one problem and one
+answer field and shows nothing else: the header (daily streak, daily goal, XP with
+level, and combo), the question or figure, the answer with the pad and Check, the
+feedback with Try again / Show a hint / Next, a small Skip and the quiet Hint, the
+suspect flag, and **End** at the top, away from Check. The title, toggles, settings,
+sprint, new-kind card, update reminder and the navigation (bottom bar or rail) wait
+before Start, so settings and My answers are two taps away (End, then the item);
+kinds change only before Start. End records nothing for the open question and
+shows the round's summary card at the top of the page before Start: questions
+answered, right at the first try, XP earned, best combo, hints opened, skipped,
+time spent, one line per kind practised, and a level reached; zero answers is one
+calm line. Done closes it, See my answers opens My answers; the focus goes to
+Start. The state is for the session only: the app always opens before Start, and
+nothing new is saved. A sprint starts before Start, keeps its own result card and
+returns there when it ends; the summary and the sprint result never show together.
 My answers shows stats and a chronological review of the last 200 answers.
 Once a hint was used, a Hints card above the stats shows on how many answers
 a hint was used and how many of the right answers came without one, in total
@@ -84,7 +99,8 @@ and per kind ([definitions](docs/question-kinds.md#hint-use-the-nudge-and-the-to
 It scrolls with the page rather than sitting in the pinned stats header,
 which cuts its bottom off as the page scrolls. Settings
 (starting tier, sound, haptics, Impressum, privacy) is a secondary sheet, not a
-third destination. Keep the current question/draft when switching destinations.
+third destination. Switching destinations during a sprint ends the round; practice
+has no navigation until End.
 A new problem is drawn after a reload.
 
 ## Design principles
@@ -125,7 +141,7 @@ A new problem is drawn after a reload.
 (`app/lib/slab.dart`) is the one shared widget: the hard slab under a card or
 button. Adaptive navigation shell, game-style header (flame, goal ring, combo, XP
 bar), question card with an operation band, a row of operation toggles (two rows when they do not fit),
-answer field, feedback strip, hint modal, sprint card, stats chips and result rows
+Start and End, answer field, feedback strip, hint modal, round summary card, sprint card, stats chips and result rows
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
 The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
 then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
@@ -164,8 +180,9 @@ by two lines of label text instead of a smaller figure. Test 320/390/600/768/800
 short viewports, keyboard insets and 200% text scale. Results wrap, never clip.
 
 ## Interaction states
-Initial: a clear question with an empty labeled answer field; before a starting tier
-is chosen, a tier picker covers Practice. Invalid: inline hint, no submission.
+Initial: the kinds and Start; Start shows a clear question with an empty labeled
+answer field and moves the focus to it. Before a starting tier is chosen, a tier
+picker covers Practice. The Android back gesture during practice is End. Invalid: inline hint, no submission.
 The first valid check is the answer on record; retries are allowed and do not change
 it. Correct: encouraging confirmation, combo and XP; a correct first check pops the
 answer and the header XP counts up. Wrong: invitation to try again and a short

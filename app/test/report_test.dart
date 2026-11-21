@@ -593,8 +593,14 @@ void main() {
     testWidgets('no flag on an arithmetic question or in a sprint', (
       tester,
     ) async {
-      final model = await launch(tester, problem: sum);
+      final model = await launch(
+        tester,
+        problem: sum,
+        progress: Progress(tier: Tier.easy, seenKinds: _seen),
+      );
       expect(find.byKey(reportFlagKey), findsNothing);
+      // A sprint starts before Start.
+      model.endPractice();
       model.startSprint();
       await tester.pumpAndSettle();
       expect(find.byKey(reportFlagKey), findsNothing);
@@ -625,6 +631,7 @@ void main() {
           final model = await launch(
             tester,
             problem: sum,
+            start: false,
             size: Size(width, 900),
             progress: Progress(
               tier: Tier.easy,
@@ -684,7 +691,7 @@ void main() {
 
     testWidgets('Send a problem report in settings: a category, the check '
         'and one request', (tester) async {
-      await launch(tester);
+      await launch(tester, start: false);
       await tap(tester, settingsButtonKey);
       await tap(tester, sendProblemReportTileKey);
       expect(find.text('• ${en.reportSendsCategory}'), findsOneWidget);
@@ -707,7 +714,7 @@ void main() {
 
     testWidgets('a failed problem report says to try later', (tester) async {
       reports.outcome = ReportOutcome.failed;
-      await launch(tester);
+      await launch(tester, start: false);
       await tap(tester, settingsButtonKey);
       await tap(tester, sendProblemReportTileKey);
       await tap(tester, reportContinueKey);
@@ -768,7 +775,8 @@ void main() {
               // The sent mark's dialog.
               await tap(tester, reportFlagKey);
               await tap(tester, reportCloseKey);
-              // The problem report's first steps.
+              // The problem report's first steps, from settings after End.
+              await tap(tester, endPracticeButtonKey);
               await tap(tester, settingsButtonKey);
               await tap(tester, sendProblemReportTileKey);
               await tap(tester, reportContinueKey);

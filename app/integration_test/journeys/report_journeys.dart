@@ -27,6 +27,7 @@ void reportJourneys() {
         reportClient: reports,
         store: store,
       );
+      await pressStart(tester);
       final question = model.current;
 
       await tapKey(tester, reportFlagKey);

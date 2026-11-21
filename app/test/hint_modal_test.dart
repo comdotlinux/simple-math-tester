@@ -63,6 +63,8 @@ void main() {
       initialProblem: problem,
       progress: Progress(
         tier: Tier.easy,
+        // With the problem's kind on, Start keeps the problem.
+        selectedOperations: {...arithmeticKinds, problem.kind},
         seenKinds: [for (final kind in OperationType.values) kind.name],
       ),
     );
@@ -317,7 +319,7 @@ void main() {
   });
 
   testWidgets('a sprint has no hint', (tester) async {
-    final model = await launch(tester);
+    final model = await launch(tester, start: false);
     await tapKey(tester, sprintButtonKey);
     expect(find.byKey(hintButtonKey), findsNothing);
     model.openHint();

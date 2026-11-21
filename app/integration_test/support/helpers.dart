@@ -169,6 +169,12 @@ Future<bool> answerFocused(WidgetTester tester) async {
       .hasFocus;
 }
 
+/// Whether Start has the focus, as after End or closing settings.
+bool startFocused(WidgetTester tester) => tester
+    .widget<ButtonStyleButton>(find.byKey(startPracticeButtonKey))
+    .focusNode!
+    .hasFocus;
+
 /// The text on the Next button: Skip before a check.
 Finder nextButtonText(String text) => find.descendant(
   of: find.byKey(nextQuestionButtonKey),
@@ -178,14 +184,34 @@ Finder nextButtonText(String text) => find.descendant(
 Future<void> nextQuestion(WidgetTester tester) =>
     tapKey(tester, nextQuestionButtonKey);
 
-Future<void> openHistory(WidgetTester tester) =>
-    tapKey(tester, myAnswersNavKey);
+/// Start: the question and the answer replace the kind toggles. The app
+/// opens before Start, so every journey that practises presses it first,
+/// also after a restart or End.
+Future<void> pressStart(WidgetTester tester) =>
+    tapKey(tester, startPracticeButtonKey);
+
+/// End: back to the kinds, with the round's summary at the top.
+Future<void> pressEnd(WidgetTester tester) =>
+    tapKey(tester, endPracticeButtonKey);
+
+/// Whether practice runs, so End is the way out.
+bool practising(WidgetTester tester) =>
+    find.byKey(endPracticeButtonKey).evaluate().isNotEmpty;
+
+/// My answers and settings wait before Start: from practice each is two
+/// taps, End and then the item.
+Future<void> openHistory(WidgetTester tester) async {
+  if (practising(tester)) await pressEnd(tester);
+  await tapKey(tester, myAnswersNavKey);
+}
 
 Future<void> returnToPractice(WidgetTester tester) =>
     tapKey(tester, practiceNavKey);
 
-Future<void> openSettings(WidgetTester tester) =>
-    tapKey(tester, settingsButtonKey);
+Future<void> openSettings(WidgetTester tester) async {
+  if (practising(tester)) await pressEnd(tester);
+  await tapKey(tester, settingsButtonKey);
+}
 
 /// Closes the settings sheet with a tap on the barrier halfway between the
 /// top of the screen and the sheet, wherever the sheet ends with large text
