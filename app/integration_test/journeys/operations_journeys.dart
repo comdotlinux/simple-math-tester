@@ -8,9 +8,9 @@ import '../support/helpers.dart';
 
 /// Every non-empty selection of the four operations, smallest first.
 final _subsets = [
-  for (var mask = 1; mask < 1 << OperationType.values.length; mask++)
+  for (var mask = 1; mask < 1 << arithmeticKinds.length; mask++)
     {
-      for (final type in OperationType.values)
+      for (final type in arithmeticKinds)
         if (mask & 1 << type.index != 0) type,
     },
 ]..sort((a, b) => a.length.compareTo(b.length));
@@ -32,7 +32,7 @@ void operationsJourneys() {
         final model = modelOf(tester);
         final shown = model.current;
 
-        for (final type in OperationType.values) {
+        for (final type in arithmeticKinds) {
           if (!subset.contains(type)) {
             await tapVisible(tester, operationToggle(type));
           }
@@ -99,6 +99,30 @@ void operationsJourneys() {
       });
       final saved = await waitForSaved((p) => p.selectedOperations.length == 2);
       expect(saved.selectedOperations, model.selectedOperations);
+    });
+
+    testWidgets('with only Algebra on, a missing-number question is answered', (
+      tester,
+    ) async {
+      await startWith(
+        tester,
+        Progress(tier: Tier.easy, selectedOperations: {OperationType.plus}),
+      );
+      final model = modelOf(tester);
+
+      await tapVisible(tester, operationToggle(OperationType.algebra));
+      await tapVisible(tester, operationToggle(OperationType.plus));
+      await nextQuestion(tester);
+
+      expect(model.current.kind, OperationType.algebra);
+      // The blank is a drawn box, a placeholder in the text, not a glyph.
+      expect(
+        questionOnScreen(tester),
+        model.current.question.replaceAll(EquationProblem.blank, '\ufffc'),
+      );
+      await submit(tester, model.current.result);
+      expect(model.history.last.correct, isTrue);
+      expect(model.history.last.problem.kind, OperationType.algebra);
     });
   });
 }

@@ -17,11 +17,19 @@ final _languages = [
     lookupAppLocalizations(locale),
 ];
 
+/// The whole numbers [problem] shows: for arithmetic, its two operands.
+Set<int> shownNumbers(Problem problem) => {
+  for (final match in RegExp(r'\d+').allMatches(problem.question))
+    int.parse(match[0]!),
+};
+
 /// Criterion 6: at least 2 steps, and no step before the last contains the
-/// result as a whole-number token, in every language. [source] draws one problem of a kind, so
-/// a later phase can run the same check per difficulty level.
+/// result as a whole-number token unless the question shows that number, in
+/// every language. [source] draws one problem of a kind, so a later phase can
+/// run the same check per difficulty level.
 void expectStepsHideResult(
   Problem Function(OperationType type, Random random) source, {
+  required int level,
   String label = '',
 }) {
   const fixed = [
@@ -41,15 +49,14 @@ void expectStepsHideResult(
   ];
 
   // In every language: a translation must not add or drop a number.
-  void check(ArithmeticProblem problem) {
+  void check(Problem problem) {
     final token = RegExp('(?<!\\d)${problem.result.toInt()}(?!\\d)');
-    // A result equal to an operand is already on screen (10000 − 5000).
-    final operand =
-        problem.result == problem.lhs || problem.result == problem.rhs;
+    // A result the question shows is already on screen (10000 − 5000).
+    final shown = shownNumbers(problem).contains(problem.result);
     for (final l in _languages) {
       final steps = solutionSteps(problem).map((step) => step(l)).toList();
       expect(steps.length, greaterThanOrEqualTo(2), reason: problem.question);
-      for (final step in steps.take(operand ? 0 : steps.length - 1)) {
+      for (final step in steps.take(shown ? 0 : steps.length - 1)) {
         expect(
           token.hasMatch(step),
           isFalse,
@@ -65,14 +72,13 @@ void expectStepsHideResult(
   });
 
   for (final type in OperationType.values) {
+    if (level > type.highestLevel) continue;
     test('criterion 6$label: 300 seeded $type problems hide the result', () {
       final random = Random(600 + type.index);
       var checked = 0;
       while (checked < 300) {
-        final problem = source(type, random) as ArithmeticProblem;
-        if (problem.result == problem.lhs || problem.result == problem.rhs) {
-          continue;
-        }
+        final problem = source(type, random);
+        if (shownNumbers(problem).contains(problem.result)) continue;
         check(problem);
         checked++;
       }
@@ -84,6 +90,7 @@ void main() {
   for (var level = 1; level <= maxLevel; level++) {
     expectStepsHideResult(
       (type, random) => type.generate(random, level),
+      level: level,
       label: ' at level $level',
     );
   }
@@ -278,5 +285,46 @@ void main() {
       'Count in 3s until you reach 18. How many 3s did you count?',
       '3 × 6 = 18, so 18 ÷ 3 = 6.',
     ]);
+  });
+
+  group('equation steps', () {
+    final source = OperationType.algebra.source as AlgebraSource;
+    EquationProblem equation(String variant, int a, int b) =>
+        source.build(OperationType.algebra, variant, [a, b])!;
+
+    test('name what to undo, then state the answer and put it back', () {
+      expect(steps(equation('missingSecondAddend', 3, 4)), [
+        'Adding 3 and the blank makes 7. To undo the adding, take 3 away '
+            'from 7.',
+        '7 − 3 = 4, so the blank is 4. Check: 3 + 4 = 7',
+      ]);
+      expect(steps(equation('missingFirstAddend', 3, 4)), [
+        'Adding 3 and the blank makes 7. To undo the adding, take 3 away '
+            'from 7.',
+        '7 − 3 = 4, so the blank is 4. Check: 4 + 3 = 7',
+      ]);
+      expect(steps(equation('missingSubtrahend', 3, 4)), [
+        'Taking the blank away from 7 leaves 3. To find the blank, take 3 '
+            'away from 7.',
+        '7 − 3 = 4, so the blank is 4. Check: 7 − 4 = 3',
+      ]);
+      expect(steps(equation('missingMinuend', 3, 4)), [
+        'Taking 3 away from the blank leaves 4. To undo the taking away, add '
+            '3 back to 4.',
+        '4 + 3 = 7, so the blank is 7. Check: 7 − 3 = 4',
+      ]);
+    });
+
+    test('every level 1 equation ends with its answer put back', () {
+      for (final problem in source.problems(OperationType.algebra, 1)) {
+        final last = steps(problem).last;
+        final answer = formatNumber(problem.result);
+        expect(
+          last,
+          endsWith(problem.question.replaceAll(EquationProblem.blank, answer)),
+        );
+        expect(last, contains('the blank is $answer.'));
+      }
+    });
   });
 }

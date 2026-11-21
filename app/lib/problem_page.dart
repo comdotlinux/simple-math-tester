@@ -17,6 +17,7 @@ import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
 import 'progress.dart' show LayoutMode;
+import 'question_text.dart';
 import 'rules.dart';
 import 'slab.dart';
 
@@ -385,20 +386,36 @@ class _ProblemPageState extends State<ProblemPage> {
                       _SprintStatus(score: model.sprintScore),
                       SizedBox(height: gap),
                     ],
-                    Row(
-                      children: [
-                        for (final type in OperationType.values) ...[
-                          if (type.index > 0) const SizedBox(width: 10),
-                          Expanded(
-                            child: _OperationToggle(
-                              type: type,
-                              selected: model.selectedOperations.contains(type),
-                              onPressed: () => model.toggleOperation(type),
-                              compact: tight,
-                            ),
-                          ),
-                        ],
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        const types = OperationType.values;
+                        final perRow = togglesPerRow(
+                          constraints.maxWidth,
+                          types.length,
+                        );
+                        return Column(
+                          spacing: 10,
+                          children: [
+                            for (var i = 0; i < types.length; i += perRow)
+                              Row(
+                                spacing: 10,
+                                children: [
+                                  for (final type in types.skip(i).take(perRow))
+                                    Expanded(
+                                      child: _OperationToggle(
+                                        type: type,
+                                        selected: model.selectedOperations
+                                            .contains(type),
+                                        onPressed: () =>
+                                            model.toggleOperation(type),
+                                        compact: tight,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                          ],
+                        );
+                      },
                     ),
                     SizedBox(height: gap),
                     KeyedSubtree(
@@ -673,12 +690,11 @@ class _QuestionCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final tokens = context.tokens;
     final textTheme = Theme.of(context).textTheme;
-    Widget question(TextStyle? style) => Text(
-      problem.question,
+    Widget question(TextStyle? style) => Text.rich(
+      mathSpan(context, problem.question, style),
       key: questionOnProblemsPageKey,
       textAlign: TextAlign.center,
-      semanticsLabel: l.mathQuestion(problem.question),
-      style: style,
+      semanticsLabel: l.mathQuestion(problem.spoken(l)),
     );
     return Slab(
       child: Card(
@@ -743,11 +759,14 @@ class _PinnedQuestion extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       // The card keeps the question's semantics.
       child: ExcludeSemantics(
-        child: Text(
-          problem.question,
+        child: Text.rich(
+          mathSpan(
+            context,
+            problem.question,
+            Theme.of(context).textTheme.titleLarge,
+          ),
           key: pinnedQuestionKey,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge,
         ),
       ),
     ),
@@ -1368,6 +1387,15 @@ class _PrivacyPage extends StatelessWidget {
     child: Text(text),
   );
 }
+
+/// The narrowest a selection toggle gets in one row, gaps included.
+const _toggleMinWidth = 58.0;
+
+/// How many of [count] equal toggles go in one row of [width]: all of them,
+/// or else half (rounded up) in each of two rows.
+@visibleForTesting
+int togglesPerRow(double width, int count) =>
+    width >= count * _toggleMinWidth - 10 ? count : (count + 1) ~/ 2;
 
 /// Selected stands up on its slab with a check; unselected sits flat on a
 /// sunken fill, so the state reads without colour.

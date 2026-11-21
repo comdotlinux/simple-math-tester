@@ -32,7 +32,7 @@ void main() {
     return model;
   }
 
-  for (final type in OperationType.values) {
+  for (final type in arithmeticKinds) {
     test('accepts numeric input for $type', () {
       final problem = ArithmeticProblem(
         12,
@@ -258,8 +258,8 @@ void main() {
       return model;
     }
 
-    test('all four operations are selected by default', () {
-      expect(drawingModel(1).selectedOperations, OperationType.values.toSet());
+    test('the four arithmetic operations are selected by default', () {
+      expect(drawingModel(1).selectedOperations, arithmeticKinds);
     });
 
     test('criterion 4: only multiplication selected draws 200 products', () {
@@ -418,7 +418,7 @@ void main() {
         progress: Progress(
           tier: Tier.easy,
           difficulty: {
-            for (final type in OperationType.values)
+            for (final type in arithmeticKinds)
               type: Difficulty(level: type.index + 2),
           },
         ),
@@ -488,9 +488,11 @@ void main() {
         expect(model.current, isNot(same(before)));
         expect(model.current.level, 5);
         expect(model.history, isEmpty);
-        for (final value in model.difficulty.values) {
+        for (final type in arithmeticKinds) {
+          final value = model.difficulty[type]!;
           expect([value.level, value.upCount, value.downCount], [5, 0, 0]);
         }
+        expect(model.difficulty[OperationType.algebra]!.level, 1);
 
         answer(model, right: false);
         model.chooseTier(Tier.medium);
@@ -503,6 +505,37 @@ void main() {
         );
       },
     );
+
+    test('an equation never comes twice in a row', () {
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.easy,
+          selectedOperations: {OperationType.algebra},
+        ),
+      );
+      var previous = model.current.question;
+      for (var i = 0; i < 2000; i++) {
+        model.generateNextProblem();
+        expect(model.current.question, isNot(previous), reason: 'draw $i');
+        previous = model.current.question;
+      }
+    });
+
+    test('algebra stays at its highest level, whatever the tier', () {
+      final model = seeded(
+        progress: Progress(
+          tier: Tier.harder,
+          selectedOperations: {OperationType.algebra},
+        ),
+      );
+      expect(model.current.level, 1);
+      for (var i = 0; i < 9; i++) {
+        answer(model, right: true);
+        expect(model.current.level, 1);
+      }
+      expect(model.difficulty[OperationType.algebra]!.level, 1);
+      expect(model.difficulty[OperationType.algebra]!.correct, 9);
+    });
   });
 
   group('game loop', () {
@@ -832,6 +865,41 @@ void main() {
       expect((model.history.first.problem as ArithmeticProblem).lhs, 1);
       expect(model.history.last.sprint, isTrue);
       expect(model.history.last.problem.question, '1 + 1');
+    });
+
+    MathTesterModel drawing(Set<OperationType> selected, int seed) {
+      final model = MathTesterModel(
+        random: Random(seed),
+        clock: () => start,
+        ticker: () => ticks.stream,
+        progress: Progress(tier: Tier.easy, selectedOperations: selected),
+      );
+      addTearDown(model.dispose);
+      return model;
+    }
+
+    test('with only algebra selected, a sprint draws all four arithmetic '
+        'kinds and does not throw', () {
+      final model = drawing({OperationType.algebra}, 3);
+      expect(model.current.kind, OperationType.algebra);
+      model.startSprint();
+      final kinds = <OperationType>{};
+      for (var i = 0; i < 100; i++) {
+        kinds.add(model.current.kind);
+        check(model, formatNumber(model.current.result));
+      }
+      expect(kinds, arithmeticKinds);
+      model.endSprint();
+      expect(model.current.kind, OperationType.algebra);
+    });
+
+    test('a sprint draws only the selected arithmetic kinds', () {
+      final model = drawing({OperationType.minus, OperationType.algebra}, 4);
+      model.startSprint();
+      for (var i = 0; i < 100; i++) {
+        expect(model.current.kind, OperationType.minus);
+        check(model, formatNumber(model.current.result));
+      }
     });
   });
 }

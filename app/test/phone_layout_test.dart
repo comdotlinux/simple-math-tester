@@ -257,7 +257,10 @@ void main() {
           final question = pinned.evaluate().isEmpty
               ? find.byKey(questionOnProblemsPageKey)
               : pinned;
-          expect(tester.widget<Text>(question).data, '48 + 27');
+          expect(
+            tester.widget<Text>(question).textSpan!.toPlainText(),
+            '48 + 27',
+          );
           expectOnScreen(tester, question, size);
           for (final finder in mustShow(
             '65',

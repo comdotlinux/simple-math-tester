@@ -11,7 +11,15 @@ extension OperationLabel on OperationType {
     OperationType.minus => l.operationSubtraction,
     OperationType.multiply => l.operationMultiplication,
     OperationType.divide => l.operationDivision,
+    OperationType.algebra => l.operationAlgebra,
   };
+}
+
+extension ProblemLabel on Problem {
+  /// [Problem.question] for screen readers: the blank is a word, not a
+  /// "white square".
+  String spoken(AppLocalizations l) =>
+      question.replaceAll(EquationProblem.blank, l.blank);
 }
 
 extension TierLabel on Tier {

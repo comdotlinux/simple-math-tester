@@ -48,9 +48,11 @@ void tierPickerJourneys() {
       expect(find.byKey(tierPickerKey), findsNothing);
       expect(find.byKey(questionOnProblemsPageKey), findsOneWidget);
       expect(model.tier, Tier.medium);
-      for (final type in OperationType.values) {
+      for (final type in arithmeticKinds) {
         expect(model.difficulty[type]!.level, Tier.medium.level);
       }
+      // A kind that is off by default starts at level 1 whatever the tier.
+      expect(model.difficulty[OperationType.algebra]!.level, 1);
       expect(model.current.level, Tier.medium.level);
       final saved = await waitForSaved((p) => p.tier == Tier.medium);
       expect(saved.difficulty[OperationType.plus]!.level, 3);
@@ -66,9 +68,10 @@ void tierPickerJourneys() {
         final model = modelOf(tester);
         expect(find.byKey(tierPickerKey), findsNothing);
         expect(model.tier, tier);
-        for (final type in OperationType.values) {
+        for (final type in arithmeticKinds) {
           expect(model.difficulty[type]!.level, level);
         }
+        expect(model.difficulty[OperationType.algebra]!.level, 1);
         expect(model.current.level, level);
         await waitForSaved((p) => p.tier == tier);
       });

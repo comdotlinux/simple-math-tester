@@ -70,9 +70,10 @@ void settingsJourneys() {
 
         expect(find.byKey(settingsSheetKey), findsNothing);
         expect(model.tier, Tier.hard);
-        for (final type in OperationType.values) {
+        for (final type in arithmeticKinds) {
           expect(model.difficulty[type]!.level, Tier.hard.level);
         }
+        expect(model.difficulty[OperationType.algebra]!.level, 1);
         expect(model.current, isNot(same(shown)));
         expect(model.current.level, Tier.hard.level);
         // The replaced question is not recorded.

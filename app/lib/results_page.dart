@@ -9,6 +9,7 @@ import 'l10n/app_localizations.dart';
 import 'labels.dart';
 import 'math_tester_model.dart';
 import 'operations.dart';
+import 'question_text.dart';
 import 'rules.dart';
 import 'slab.dart';
 
@@ -350,7 +351,7 @@ class _ResultsPageState extends State<ResultsPage> {
                 style: textTheme.labelMedium?.copyWith(color: muted),
               ),
               const SizedBox(height: 4),
-              Text(_question(attempt), style: textTheme.headlineMedium),
+              _questionText(context, attempt, textTheme.headlineMedium),
               const SizedBox(height: 12),
               _status(context, attempt),
               const SizedBox(height: 12),
@@ -396,9 +397,27 @@ class _ResultsPageState extends State<ResultsPage> {
               Expanded(
                 child: Text.rich(
                   TextSpan(
-                    text: '${_question(attempt)} = $expected',
                     style: textTheme.titleMedium,
                     children: [
+                      mathSpan(context, attempt.problem.question, null),
+                      // An equation already has its "=", so an arrow leads
+                      // to its answer; drawn, as no bundled font has "→".
+                      if (attempt.problem is EquationProblem) ...[
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              size: textTheme.titleMedium?.fontSize,
+                              color: textTheme.titleMedium?.color,
+                              applyTextScaling: true,
+                            ),
+                          ),
+                        ),
+                        TextSpan(text: expected),
+                      ] else
+                        TextSpan(text: ' = $expected'),
                       if (said != null)
                         TextSpan(text: '   $said', style: muted),
                     ],
@@ -439,7 +458,7 @@ class _ResultsPageState extends State<ResultsPage> {
       container: true,
       label: _l.answerRowSemantics(
         '${index + 1}',
-        _question(attempt),
+        attempt.problem.spoken(_l),
         status,
         entered,
         expected,
@@ -482,7 +501,7 @@ class _ResultsPageState extends State<ResultsPage> {
       ),
       child: _tableCells([
         Text('${index + 1}', style: textTheme.titleMedium),
-        Text(_question(attempt), style: textTheme.titleLarge),
+        _questionText(context, attempt, textTheme.titleLarge),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -509,7 +528,16 @@ class _ResultsPageState extends State<ResultsPage> {
     child: child,
   );
 
-  String _question(Attempt attempt) => attempt.problem.question;
+  /// The question with a drawn box for a blank, read with the blank as a
+  /// word.
+  Widget _questionText(
+    BuildContext context,
+    Attempt attempt,
+    TextStyle? style,
+  ) => Text.rich(
+    mathSpan(context, attempt.problem.question, style),
+    semanticsLabel: attempt.problem.spoken(_l),
+  );
 
   String _elapsed(Attempt attempt) => attempt.skipped
       ? _l.timeNotAvailable
@@ -742,20 +770,25 @@ class _Stats extends StatelessWidget {
                   ),
                   for (final MapEntry(key: type, value: d)
                       in difficulty.entries)
-                    TableRow(
-                      children: [
-                        cell(Text(type.label(l))),
-                        cell(
-                          d.answered == 0
-                              ? Text('–', semanticsLabel: l.noneYet)
-                              : Text(
-                                  '${(100 * d.correct / d.answered).round()}%',
-                                  style: textTheme.titleMedium,
-                                ),
-                        ),
-                        cell(Text('${d.level}', style: textTheme.titleMedium)),
-                      ],
-                    ),
+                    // A kind that is off by default shows from its first
+                    // answer.
+                    if (arithmeticKinds.contains(type) || d.answered > 0)
+                      TableRow(
+                        children: [
+                          cell(Text(type.label(l))),
+                          cell(
+                            d.answered == 0
+                                ? Text('–', semanticsLabel: l.noneYet)
+                                : Text(
+                                    '${(100 * d.correct / d.answered).round()}%',
+                                    style: textTheme.titleMedium,
+                                  ),
+                          ),
+                          cell(
+                            Text('${d.level}', style: textTheme.titleMedium),
+                          ),
+                        ],
+                      ),
                 ],
               ),
             ],

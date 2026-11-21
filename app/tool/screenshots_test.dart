@@ -90,6 +90,13 @@ void main() {
     LayoutMode layout = LayoutMode.comfortable,
     List<Attempt> history = const [],
     AppPalette palette = AppPalette.sunny,
+    Problem problem = const ArithmeticProblem(
+      48,
+      27,
+      OperationType.plus,
+      75,
+      level: 3,
+    ),
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -98,13 +105,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewInsets);
     final model = MathTesterModel(
-      initialProblem: const ArithmeticProblem(
-        48,
-        27,
-        OperationType.plus,
-        75,
-        level: 3,
-      ),
+      initialProblem: problem,
       progress: Progress(
         tier: tier,
         game: game,
@@ -459,6 +460,53 @@ void main() {
             await shoot(tester, '$tag-10b-system-keyboard-wrong');
             await check(tester, '75');
             await shoot(tester, '$tag-10c-system-keyboard-correct');
+          }
+        });
+
+        testWidgets('algebra screenshots $tag', (tester) async {
+          language = code;
+          final algebra = OperationType.algebra.source as AlgebraSource;
+          EquationProblem equation(String variant, int a, int b) =>
+              algebra.build(OperationType.algebra, variant, [a, b])!;
+          final practice = await launch(
+            tester,
+            size,
+            brightness,
+            problem: equation('missingSecondAddend', 3, 4),
+          );
+          practice.toggleOperation(OperationType.algebra);
+          await shoot(tester, '$tag-13-algebra-practice');
+          await check(tester, '5');
+          practice.revealStep();
+          await tester.pumpAndSettle();
+          await tester.ensureVisible(find.byKey(revealStepButtonKey));
+          await shoot(tester, '$tag-13b-algebra-wrong-hints');
+
+          Attempt solved(EquationProblem problem, int? answer) => Attempt(
+            problem,
+            firstAnswer: answer,
+            elapsedMs: 6000,
+            answeredAt: now,
+          );
+          final history = [
+            solved(equation('missingSecondAddend', 3, 4), 4),
+            solved(equation('missingFirstAddend', 6, 2), 3),
+            solved(equation('missingSubtrahend', 5, 4), null),
+            solved(equation('missingMinuend', 7, 8), 15),
+          ];
+          for (final layout in LayoutMode.values) {
+            final answers = await launch(
+              tester,
+              size,
+              brightness,
+              layout: layout,
+              history: history,
+            );
+            answers.setCurrentPage(1);
+            await tester.pumpAndSettle();
+            // The first rows, just under the stats.
+            scrollAnswers(tester, 400);
+            await shoot(tester, '$tag-13c-algebra-answers-${layout.name}');
           }
         });
       }
