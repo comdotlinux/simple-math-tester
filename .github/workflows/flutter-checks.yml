@@ -175,7 +175,8 @@ jobs:
           "$aapt2" dump permissions build/app/outputs/flutter-apk/app-release.apk | tee "$RUNNER_TEMP/aapt2-permissions.txt"
           sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" "$RUNNER_TEMP/aapt2-permissions.txt" \
             | LC_ALL=C sort -u > "$RUNNER_TEMP/actual-permissions.txt"
-          diff -u android/expected-permissions.txt "$RUNNER_TEMP/actual-permissions.txt"
+          # Lines starting with # in the expected list are comments.
+          grep -v '^#' android/expected-permissions.txt | diff -u - "$RUNNER_TEMP/actual-permissions.txt"
 
   ios:
     name: Build unsigned iOS release

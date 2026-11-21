@@ -1441,7 +1441,7 @@
   "@privacyTitle": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum. (heading)"
   },
-  "privacyIntro": "Simple Math Tester is a free arithmetic practice app for children, without ads. This policy covers the Android and iOS apps and the web version. Last updated: 15 November 2026.",
+  "privacyIntro": "Simple Math Tester is a free arithmetic practice app for children, without ads. This policy covers the Android and iOS apps and the web version. Last updated: 21 November 2026.",
   "@privacyIntro": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
@@ -1449,7 +1449,7 @@
   "@privacyCollectsHeading": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum. (heading)"
   },
-  "privacyCollects": "Nothing. The app's own code collects no personal data and sends nothing anywhere. There are no accounts, no analytics, no advertising and no tracking.",
+  "privacyCollects": "No personal data. There are no accounts, no analytics, no advertising and no tracking. The app makes one kind of request only: a report that a grown-up chooses to send (see Reporting a problem below). It makes no other request.",
   "@privacyCollects": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
@@ -1457,11 +1457,11 @@
   "@privacyStoresHeading": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum. (heading)"
   },
-  "privacyStores": "To keep your progress between sessions, the app saves your answers, your level in each kind of exercise and your settings (such as sound and vibration) on your own device: in the app's private storage on Android and iOS, and in your browser's local storage on the web. This data never leaves the device. Uninstalling the app, or clearing the site's data in the browser, deletes it.",
+  "privacyStores": "To keep your progress between sessions, the app saves your answers, the questions you marked as wrong, your level in each kind of exercise and your settings (such as sound and vibration) on your own device: in the app's private storage on Android and iOS, and in your browser's local storage on the web. This data never leaves the device. Uninstalling the app, or clearing the site's data in the browser, deletes it.",
   "@privacyStores": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
-  "privacyOffline": "The app works offline. The Android app does not request internet access.",
+  "privacyOffline": "The app works offline. The Android app requests internet access only to send a report that a grown-up chooses to send.",
   "@privacyOffline": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
@@ -1489,15 +1489,19 @@
   "@privacyReportHeading": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum. (heading)"
   },
-  "privacyReport": "Report a problem in the settings opens a new issue on GitHub in your browser, prefilled with the app version and platform. The app sends nothing itself. If you submit the report, it is public, and GitHub's own privacy policy applies.",
+  "privacyReport": "Report a problem in the settings opens a new issue on GitHub in your browser, prefilled with the app version and platform, for a longer description. The app sends nothing itself there. If you submit that issue, it is public, and GitHub's own privacy policy applies.",
+  "privacyReportSend": "A question can be marked as wrong; the mark stays on the device and sends nothing. A report is sent only when a grown-up chooses Send report, picks a reason from a list and passes the grown-up check (typing a number shown in words, which slows down young children but is not a lock). Send a problem report in the settings works the same way, with the kind of problem picked from a list. Each report is one request to the app's own site, math.munich-tech.de, served by Cloudflare. It contains only the question code (or the kind of problem), the reason, the app version, the platform and the app language: no name, no progress, nothing typed. A function on that site turns it into a public issue on GitHub that holds no personal data. Like any web request, the report gives Cloudflare your IP address; the function does not store it.",
   "@privacyReport": {
+    "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
+  },
+  "@privacyReportSend": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
   "privacyChildrenHeading": "Children",
   "@privacyChildrenHeading": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum. (heading)"
   },
-  "privacyChildren": "The app is made for children and collects no data from anyone, children included.",
+  "privacyChildren": "The app is made for children and collects no personal data from anyone, children included. Only a grown-up can send a report, and a report holds no personal data.",
   "@privacyChildren": {
     "description": "Privacy policy text shown in the app. Translate faithfully and completely; keep product names (Cloudflare, Cloudflare Pages, Cloudflare Turnstile, GitHub, Google Play, Android, iOS) and the word Impressum."
   },
@@ -1862,5 +1866,225 @@
         "type": "String"
       }
     }
+  },
+  "reportFlag": "Mark this question as wrong",
+  "@reportFlag": {
+    "description": "Tooltip and screen reader label of the flag button on a question that is not marked."
+  },
+  "reportFlagMarked": "Marked as wrong. Send a report",
+  "@reportFlagMarked": {
+    "description": "Tooltip and screen reader label of the filled flag on a question the player marked as wrong, before a report was sent."
+  },
+  "reportFlagSent": "Marked as wrong. Report sent",
+  "@reportFlagSent": {
+    "description": "Tooltip and screen reader label of the filled flag on a marked question whose report was sent."
+  },
+  "reportAskTitle": "Ask a grown-up",
+  "@reportAskTitle": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Title of the first step, which tells the child to fetch an adult before anything is sent."
+  },
+  "reportMarkedNote": "This question is marked as wrong on this device. Nothing has been sent.",
+  "@reportMarkedNote": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown after the child marks a question."
+  },
+  "reportAskBody": "A grown-up can send a report to the app's developer. It becomes a public issue on GitHub.",
+  "@reportAskBody": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Keep 'GitHub'."
+  },
+  "reportSendsHeading": "What is sent:",
+  "@reportSendsHeading": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Heading over the list of everything the report contains."
+  },
+  "reportSendsQuestion": "The question code: {code}",
+  "@reportSendsQuestion": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). List item. {code} is a technical code such as 'algebra missingAddend [3, 4] L2'; keep it unchanged.",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "reportSendsReason": "The reason you pick",
+  "@reportSendsReason": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). List item."
+  },
+  "reportSendsCategory": "The kind of problem you pick",
+  "@reportSendsCategory": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). List item."
+  },
+  "reportSendsApp": "App version {version}, platform {platform}, language {language}",
+  "@reportSendsApp": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). List item. The placeholders are technical values such as '1.3.0', 'android' and 'de'.",
+    "placeholders": {
+      "version": {
+        "type": "String"
+      },
+      "platform": {
+        "type": "String"
+      },
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "reportSendsNothingElse": "No name, no progress and nothing you typed.",
+  "@reportSendsNothingElse": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Last list item: what is never sent."
+  },
+  "reportAlreadySent": "A report on this question was sent. Thank you!",
+  "@reportAlreadySent": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown for a marked question whose report was already sent."
+  },
+  "reportRemoveMark": "Remove mark",
+  "@reportRemoveMark": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button that removes the wrong-question mark."
+  },
+  "reportNotNow": "Not now",
+  "@reportNotNow": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button that closes the dialog and keeps the mark."
+  },
+  "reportContinue": "Continue",
+  "@reportContinue": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button to the next step."
+  },
+  "reportReasonTitle": "What is wrong?",
+  "@reportReasonTitle": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Title of the list of reasons for a wrong question."
+  },
+  "reportReasonWrongAnswer": "The answer is wrong",
+  "@reportReasonWrongAnswer": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Reason in a pick list."
+  },
+  "reportReasonUnclearQuestion": "The question is unclear",
+  "@reportReasonUnclearQuestion": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Reason in a pick list."
+  },
+  "reportReasonWrongHint": "A hint step is wrong",
+  "@reportReasonWrongHint": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Reason in a pick list."
+  },
+  "reportReasonWrongDrawing": "The drawing is wrong",
+  "@reportReasonWrongDrawing": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Reason in a pick list, for geometry figures."
+  },
+  "reportCategoryTitle": "What went wrong?",
+  "@reportCategoryTitle": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Title of the list of problem kinds."
+  },
+  "reportCategoryCrash": "The app closed or froze",
+  "@reportCategoryCrash": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Problem kind in a pick list."
+  },
+  "reportCategoryDisplay": "Something looks wrong on the screen",
+  "@reportCategoryDisplay": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Problem kind in a pick list."
+  },
+  "reportCategorySound": "Sound or vibration",
+  "@reportCategorySound": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Problem kind in a pick list."
+  },
+  "reportCategoryTranslation": "A wrong or missing translation",
+  "@reportCategoryTranslation": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Problem kind in a pick list."
+  },
+  "reportCategoryOther": "Something else",
+  "@reportCategoryOther": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Problem kind in a pick list."
+  },
+  "reportCheckTitle": "Grown-up check",
+  "@reportCheckTitle": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Title of the step where an adult types a number shown in words."
+  },
+  "reportCheckPrompt": "Type this number with digits:",
+  "@reportCheckPrompt": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Above a number written in words, such as 'forty-two'."
+  },
+  "reportCheckField": "Number in digits",
+  "@reportCheckField": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Label of the field where the adult types the number."
+  },
+  "reportCheckWrong": "That is not the number. Here is a new one.",
+  "@reportCheckWrong": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown after a wrong number; a new number in words is shown."
+  },
+  "reportSend": "Send report",
+  "@reportSend": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button that sends the report."
+  },
+  "reportSending": "Sending the report",
+  "@reportSending": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown while the report is being sent."
+  },
+  "reportThanks": "Thank you! The report was sent.",
+  "@reportThanks": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown when the report arrived."
+  },
+  "reportFailedQuestion": "Could not send the report. The mark is kept on this device, so it can be sent later from My answers.",
+  "@reportFailedQuestion": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown when sending failed (offline, too many reports, server error). 'My answers' is the name of the app's history page; use the same name as there."
+  },
+  "reportFailedProblem": "Could not send the report. Please try again later.",
+  "@reportFailedProblem": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Shown when a problem report could not be sent."
+  },
+  "reportTryAgain": "Try again",
+  "@reportTryAgain": {
+    "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Button after a failed send; it asks for the grown-up check again."
+  },
+  "reportSendProblem": "Send a problem report",
+  "@reportSendProblem": {
+    "description": "Settings row title: a grown-up sends a short report without a browser."
+  },
+  "reportSendProblemSubtitle": "Pick what went wrong; a grown-up sends it",
+  "@reportSendProblemSubtitle": {
+    "description": "Settings row description."
+  },
+  "checkNumber17": "seventeen",
+  "@checkNumber17": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber24": "twenty-four",
+  "@checkNumber24": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber36": "thirty-six",
+  "@checkNumber36": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber42": "forty-two",
+  "@checkNumber42": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber53": "fifty-three",
+  "@checkNumber53": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber58": "fifty-eight",
+  "@checkNumber58": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber61": "sixty-one",
+  "@checkNumber61": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber75": "seventy-five",
+  "@checkNumber75": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber79": "seventy-nine",
+  "@checkNumber79": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber84": "eighty-four",
+  "@checkNumber84": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber93": "ninety-three",
+  "@checkNumber93": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
+  },
+  "checkNumber98": "ninety-eight",
+  "@checkNumber98": {
+    "description": "A number written in words, for a grown-up check: an adult reads it and types its digits. Write the same number only in words of the language, never with digits."
   }
 }

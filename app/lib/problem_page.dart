@@ -18,8 +18,9 @@ import 'licences_page.dart';
 import 'math_tester_model.dart';
 import 'number_pad.dart';
 import 'operations.dart';
-import 'progress.dart' show LayoutMode;
+import 'progress.dart' show LayoutMode, SuspectQuestion;
 import 'question_text.dart';
+import 'report_dialog.dart';
 import 'rules.dart';
 import 'slab.dart';
 
@@ -461,6 +462,10 @@ class _ProblemPageState extends State<ProblemPage> {
                       child: _QuestionCard(
                         problem: model.current,
                         compact: tight,
+                        // A dialog would stop a running round's clock.
+                        flag:
+                            !sprinting &&
+                            SuspectQuestion.of(model.current) != null,
                       ),
                     ),
                     if (!compact) ...[
@@ -722,12 +727,18 @@ class _CheckMotionState extends State<_CheckMotion>
 
 Widget _flexed(bool row, Widget child) => row ? Expanded(child: child) : child;
 
-/// The hero: the operation's name on a colour band over the question.
+/// The hero: the operation's name on a colour band over the question, and
+/// the flag that marks it as wrong in its top corner.
 class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({required this.problem, required this.compact});
+  const _QuestionCard({
+    required this.problem,
+    required this.compact,
+    required this.flag,
+  });
 
   final Problem problem;
   final bool compact;
+  final bool flag;
 
   @override
   Widget build(BuildContext context) {
@@ -748,69 +759,90 @@ class _QuestionCard extends StatelessWidget {
       textAlign: TextAlign.center,
       semanticsLabel: l.mathQuestion(problem.spoken(l)),
     );
+    // Without the band the flag sits beside the question: a line of text
+    // keeps clear of it on both sides and stays centred, a figure only on
+    // the flag's side, so it keeps its width.
+    final side = flag ? 48.0 : 20.0;
     return Slab(
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
           children: [
-            // The question's own label already names the operation; a phone
-            // with the docked field drops the band for room.
-            if (!compact)
-              ExcludeSemantics(
-                child: _Band(
-                  color: tokens.operation,
-                  child: Text(
-                    problem.kind.label(l),
-                    style: textTheme.labelMedium?.copyWith(
-                      color: tokens.onOperation,
-                    ),
-                  ),
-                ),
-              ),
-            if (problem case FigureProblem(:final figure))
-              // The figure where the question text would be, with the
-              // short prompt under it; the figure reads the whole sentence.
-              Padding(
-                padding: compact
-                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
-                    : const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                child: Column(
-                  key: questionOnProblemsPageKey,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FigureView(
-                      figure: figure,
-                      height: figureHeight(compact: compact),
-                      semanticsLabel: l.mathQuestion(problem.spoken(l)),
-                    ),
-                    SizedBox(height: compact ? 2 : 8),
-                    ExcludeSemantics(
-                      child: Text(
-                        figurePromptText(l, figure),
-                        textAlign: TextAlign.center,
-                        style: compact
-                            ? textTheme.titleLarge
-                            : textTheme.headlineMedium,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // The question's own label already names the operation; a phone
+                // with the docked field drops the band for room.
+                if (!compact)
+                  ExcludeSemantics(
+                    child: _Band(
+                      color: tokens.operation,
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.only(end: flag ? 32 : 0),
+                        child: Text(
+                          problem.kind.label(l),
+                          style: textTheme.labelMedium?.copyWith(
+                            color: tokens.onOperation,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              )
-            else
-              Padding(
-                padding: compact
-                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
-                    : const EdgeInsets.fromLTRB(20, 36, 20, 44),
-                child: compact
-                    // One line that shrinks to fit rather than wrapping.
-                    ? FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: question(
-                          textTheme.displayLarge?.copyWith(fontSize: 52),
+                  ),
+                if (problem case FigureProblem(:final figure))
+                  // The figure where the question text would be, with the
+                  // short prompt under it; the figure reads the whole sentence.
+                  Padding(
+                    padding: compact
+                        ? EdgeInsetsDirectional.fromSTEB(20, 6, side, 6)
+                        : const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                    child: Column(
+                      key: questionOnProblemsPageKey,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FigureView(
+                          figure: figure,
+                          height: figureHeight(compact: compact),
+                          semanticsLabel: l.mathQuestion(problem.spoken(l)),
                         ),
-                      )
-                    : question(textTheme.displayLarge),
+                        SizedBox(height: compact ? 2 : 8),
+                        ExcludeSemantics(
+                          child: Text(
+                            figurePromptText(l, figure),
+                            textAlign: TextAlign.center,
+                            style: compact
+                                ? textTheme.titleLarge
+                                : textTheme.headlineMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: compact
+                        ? EdgeInsets.symmetric(horizontal: side, vertical: 6)
+                        : const EdgeInsets.fromLTRB(20, 36, 20, 44),
+                    child: compact
+                        // One line that shrinks to fit rather than wrapping.
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: question(
+                              textTheme.displayLarge?.copyWith(fontSize: 52),
+                            ),
+                          )
+                        : question(textTheme.displayLarge),
+                  ),
+              ],
+            ),
+            if (flag)
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: ReportFlag(
+                  key: reportFlagKey,
+                  problem: problem,
+                  color: compact ? null : tokens.onOperation,
+                ),
               ),
           ],
         ),
@@ -1362,6 +1394,18 @@ Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
                       SnackBar(content: Text(l.browserDidNotOpen)),
                     );
                   }
+                },
+              ),
+              ListTile(
+                key: sendProblemReportTileKey,
+                leading: const Icon(Icons.outlined_flag),
+                title: Text(l.reportSendProblem),
+                subtitle: Text(l.reportSendProblemSubtitle),
+                onTap: () {
+                  // The sheet closes first; the dialog opens on the page.
+                  final page = Navigator.of(context);
+                  page.pop();
+                  showReportDialog(page.context);
                 },
               ),
               ListTile(

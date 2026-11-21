@@ -124,7 +124,8 @@ class MyHomePage extends StatelessWidget {
 }
 
 /// A monthly row under the header suggesting a look at Google Play. It never
-/// checks anything itself: the app sends nothing, it only opens the store.
+/// checks anything itself: the reminder sends nothing, it only opens the
+/// store.
 class _UpdateReminder extends StatelessWidget {
   const _UpdateReminder();
 
