@@ -91,7 +91,7 @@ jobs:
 
   # Runs beside the web job; the deploy waits for it, so a broken function never ships.
   functions:
-    name: Test the Impressum function
+    name: Test the Pages functions
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
