@@ -1,0 +1,147 @@
+name: App Store listing
+
+# Manual only: writes every listing in play/listing/ (en-US.json and the
+# translations the Translate workflow made) to the App Store version being
+# prepared in App Store Connect, with tool/app_store.mjs. It also shoots the
+# Play phone scenes for each screenshot set in `devices` of tool/app_store.mjs
+# (iPhone 6.3", iPhone 6.9", iPad 13") in every app language and, in the same
+# run, replaces each language's screenshots with them.
+# Apple reviews the texts with the next submitted version. See docs/app-store.md.
+on:
+  workflow_dispatch:
+    inputs:
+      screenshots:
+        description: 'Also replace the screenshots (off: texts only)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  # No secrets and no environment: runs on any ref, so a branch run makes the
+  # artifacts for review while the listing job is skipped.
+  screenshots:
+    name: Shoot the ${{ matrix.device }} screenshots
+    if: inputs.screenshots
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        # The keys of `devices` in tool/app_store.mjs, which holds their sizes.
+        device: [iphone, iphone-large, ipad]
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: '3.50.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+      # SCREENSHOT_SIZE and SCREENSHOT_PIXEL_RATIO for screenshots_test.dart, SCREENSHOT_PIXELS to check.
+      - name: Read the size of the ${{ matrix.device }} screenshots
+        working-directory: .
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: node tool/app_store.mjs devices "$DEVICE" | tee -a "$GITHUB_ENV"
+      # Same app:Play language pairs as play-listing.yml; the listings are named by Play code.
+      - name: Map app languages to Play languages
+        working-directory: .
+        run: |
+          node -e "Promise.all([import('./tool/translate.mjs'), import('./tool/translate_listing.mjs')]).then(([{ languages }, { playCodes }]) => {
+            console.log(['en:en-US', ...languages.map((l) => l + ':' + playCodes[l])].join(' '));
+          })" - > "$RUNNER_TEMP/codes.txt"
+          cat "$RUNNER_TEMP/codes.txt"
+      - name: Shoot every language
+        run: |
+          export SCREENSHOT_DIR="$RUNNER_TEMP/raw"
+          mkdir -p "$SCREENSHOT_DIR"
+          flutter test tool/screenshots_test.dart
+          codes="$(tr ' ' '\n' < "$RUNNER_TEMP/codes.txt" | cut -d: -f1 | grep -vx en | paste -sd,)"
+          SCREENSHOT_LANGUAGES="$codes" flutter test tool/screenshots_test.dart
+      # The scenes of play-listing.yml, in the same order. App Store Connect
+      # rejects screenshots with an alpha channel.
+      - name: Convert to PNG without alpha
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: |
+          SIZE="$SCREENSHOT_SIZE" PIXELS="$SCREENSHOT_PIXELS"
+          im=magick; command -v magick > /dev/null || im=convert
+          out="$RUNNER_TEMP/app-store-screenshots/$DEVICE"
+          for pair in $(cat "$RUNNER_TEMP/codes.txt"); do
+            code="${pair%%:*}" play="${pair#*:}"
+            prefix="$code-"; if [ "$code" = en ]; then prefix=; fi
+            mkdir -p "$out/$play"
+            for map in light-$SIZE-0-before-start:1-practice light-$SIZE-2b-celebration:2-correct \
+                light-$SIZE-3b-wrong-hints:3-hints light-$SIZE-5-sprint:4-sprint \
+                light-$SIZE-17c-answers-top:5-my-answers dark-$SIZE-16-geometry-pythagorasHypotenuse-8x15-x1.0:6-dark \
+                light-$SIZE-2e-round-summary:7-summary \
+                light-$SIZE-13g-algebra-level-4-hints:8-algebra; do
+              "$im" "$RUNNER_TEMP/raw/$prefix${map%%:*}.png" -background white -alpha remove -alpha off \
+                "PNG24:$out/$play/${map#*:}.png"
+            done
+          done
+          bad=0
+          for png in "$out"/*/*.png; do
+            read -r size alpha < <(identify -format '%wx%h %A\n' "$png")
+            echo "$png $size alpha=$alpha"
+            if [ "$size" != "$PIXELS" ] || [ "$alpha" = True ] || [ "$alpha" = Blend ]; then
+              echo "::error::$png is $size alpha=$alpha, not $PIXELS without alpha"
+              bad=1
+            fi
+          done
+          exit "$bad"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-store-screenshots-${{ matrix.device }}
+          path: ${{ runner.temp }}/app-store-screenshots
+          retention-days: 7
+          if-no-files-found: error
+
+  listing:
+    name: Write the listings to App Store Connect
+    needs: screenshots
+    # The App Store Connect key is a `release` environment secret, which only v*
+    # tags and main get. Also runs when the screenshots job was skipped (texts only).
+    if: github.ref == 'refs/heads/main' && !cancelled() && !failure()
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    environment: release
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      # Both artifacts hold <device>/<Play code>/*.png, so they merge into one tree.
+      - name: Download the screenshots
+        if: inputs.screenshots
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: app-store-screenshots-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/app-store-screenshots
+      - name: Check the listings against the stores' limits
+        run: node tool/translate_listing.mjs --check
+      - name: Update the listings
+        env:
+          APPSTORE_API_KEY: ${{ secrets.APPSTORE_API_KEY }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          SCREENSHOTS: ${{ inputs.screenshots }}
+        run: |
+          dir=
+          if [ "$SCREENSHOTS" = true ]; then dir="$RUNNER_TEMP/app-store-screenshots"; fi
+          node tool/app_store.mjs listing $dir

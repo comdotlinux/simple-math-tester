@@ -99,7 +99,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
-      - run: node --test 'tool/functions_test/*.test.mjs' tool/translate.test.mjs tool/translate_listing.test.mjs
+      - run: node --test 'tool/functions_test/*.test.mjs' tool/translate.test.mjs tool/translate_listing.test.mjs tool/app_store.test.mjs
       - run: node tool/translate_listing.mjs --check
 
   linux-integration:

@@ -86,19 +86,22 @@ repository settings; without it the last step fails.
 
 ## The Play store listing
 
-`play/listing/en-US.json` holds the English store title and descriptions;
+`play/listing/en-US.json` holds the English store title and descriptions,
+and the App Store's subtitle and keywords;
 `tool/translate_listing.mjs` translates them the same way into
 `play/listing/<Play code>.json`, with hashes in
 `play/listing/translation_sources.json`. The Translate workflow runs it too,
 so listing translations arrive in the same pull request. Locally:
-`node tool/translate_listing.mjs --dry-run`, or `--check` for Play's length
-limits. Pushing the listings to Play is a separate, manual workflow; see
-"Store listing" in [play-store.md](play-store.md).
+`node tool/translate_listing.mjs --dry-run`, or `--check` for the stores' length
+limits. Pushing the listings to Play and to the App Store are separate, manual
+workflows; see "Store listing" in [play-store.md](play-store.md) and
+[app-store.md](app-store.md).
 
 ## A new language
 
 1. Add its code to `languages` in `tool/translate.mjs`, and its Play store
-   listing code to `playCodes` in `tool/translate_listing.mjs`. Where the
+   listing code to `playCodes` in `tool/translate_listing.mjs`, and that code's
+   App Store locale to `appStoreLocales` in `tool/app_store.mjs`. Where the
    English name leaves the variant or script open, name it in `promptNames`
    there (such as "European Portuguese (Portugal)"). Add its English name to
    `englishLanguageNames` in `app/lib/labels.dart`.

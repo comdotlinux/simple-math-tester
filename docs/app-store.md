@@ -49,6 +49,62 @@ The build number is `run number * 10 + attempt`, like `play-bundle.yml`.
 `ITSAppUsesNonExemptEncryption` is `false` in `Info.plist`: the app uses no
 encryption beyond the system's, so TestFlight asks no export-compliance question.
 
+## Store listing
+
+The App Store texts come from the same files as Play's:
+[`play/listing/en-US.json`](../play/listing/en-US.json) and its translations
+(see "Title and descriptions" in [play-store.md](play-store.md) and
+[translations.md](translations.md)). `tool/app_store.mjs` maps them:
+
+| App Store field | Limit | From |
+|---|---|---|
+| Name | 30 | "Simple Math Tester: Practice" in every language |
+| Subtitle | 30 | `subtitle` (App Store only) |
+| Promotional text | 170 | `shortDescription` |
+| Description | 4000 | `fullDescription` |
+| Keywords | 100 | `keywords` (App Store only), comma-separated |
+| Support URL | | `https://math.munich-tech.de/impressum` |
+| Marketing URL | | `https://math.munich-tech.de` |
+| Privacy policy URL | | `https://math.munich-tech.de/privacy` |
+
+"What's New" is written when a version is submitted for review; the first
+version has none. Category, age rating, privacy answers and pricing are set by
+the owner in App Store Connect; nothing here changes them.
+
+Play codes map to App Store Connect locales (App Store Connect API, "Managing
+metadata in your app by using locale shortcodes"): `pl-PL` to `pl`, `hi-IN` to
+`hi`, `pa` to `pa-IN`; the others are the same. A locale App Store Connect
+refuses is skipped with a notice.
+
+After the Translate pull request is merged, write the listings by hand:
+`gh workflow run app-store-listing.yml` (from `main`; it needs the `release`
+environment). It writes the texts of every language to the version in "Prepare
+for Submission" (or rejected), and creates the languages that are missing.
+By default it also shoots the eight Play scenes of `app/tool/screenshots_test.dart`
+in every language for each screenshot set, in parallel jobs of about 30 minutes,
+and replaces each language's screenshots with them (untick `screenshots` for
+texts only). A run on another branch only shoots; its artifacts are
+`app-store-screenshots-<device>`. Apple reviews the texts with the next version
+submitted.
+
+The sets are one table, `devices` in `tool/app_store.mjs`; the workflow reads
+the sizes from it (`node tool/app_store.mjs devices <device>`):
+
+| Device | App Store Connect slot | Display type | Shot at | Pixels |
+|---|---|---|---|---|
+| `iphone` | iPhone with Dynamic Island (medium display), 6.1"/6.3", **required** | `APP_IPHONE_61` | 402 x 874 at 3x | 1206 x 2622 |
+| `iphone-large` | iPhone with Dynamic Island (large display), 6.7"/6.9", optional | `APP_IPHONE_67` | 430 x 932 at 3x | 1290 x 2796 |
+| `ipad` | iPad 13" display, required for iPad | `APP_IPAD_PRO_3GEN_129` | 1024 x 1366 at 2x | 2048 x 2732 |
+
+Apple scales the medium iPhone set down for smaller phones, so the other slots
+(Face ID, Home Button, iPhone Duo) stay empty. Before uploading, the run prints
+the sets each language already has; if App Store Connect refuses a set, it
+stops and names the display type and those sets, so the table can be fixed.
+
+`tool/app_store.mjs` needs no dependency: it signs the API token (ES256 JWT)
+with `node:crypto` from `APPSTORE_API_KEY` and calls the App Store Connect API
+with `fetch`. Its tests are `tool/app_store.test.mjs`.
+
 ## Releasing to TestFlight
 
 1. Before tagging: `gh workflow run ios-bundle.yml --ref main` and wait for green.
