@@ -5,6 +5,9 @@ name: OpenSSF Scorecard
 # env or defaults, no workflow-level write permissions, and only checkout,
 # upload-artifact, upload-sarif, scorecard-action and harden-runner steps in the job.
 on:
+  # TEMPORARY trial run on this pull request; removed before merge.
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   schedule:
