@@ -24,16 +24,16 @@ The tool writes many shots; these eight are the Play ones (Play shows at most ei
 
 | Play file | Tool shot |
 | --- | --- |
-| `phone-1-practice.png` | `light-450x800-1b-switched.png` |
+| `phone-1-practice.png` | `light-450x800-0-before-start.png` (the start screen: kinds, Start, sprint) |
 | `phone-2-correct.png` | `light-450x800-2b-celebration.png` |
-| `phone-3-hints.png` | `light-450x800-3b-wrong-hints.png` |
+| `phone-3-hints.png` | `light-450x800-3b-wrong-hints.png` (the hint modal with its steps) |
 | `phone-4-sprint.png` | `light-450x800-5-sprint.png` |
-| `phone-5-my-answers.png` | `light-450x800-7-answers.png` |
-| `phone-6-dark.png` | `dark-450x800-14-geometry-rectangleArea-5x3-comfortable-x1.0.png` (geometry, dark theme) |
-| `phone-7-compact.png` | `light-450x800-11b-compact-answers.png` |
+| `phone-5-my-answers.png` | `light-450x800-17c-answers-top.png` (My answers with the Hints card) |
+| `phone-6-dark.png` | `dark-450x800-16-geometry-pythagorasHypotenuse-8x15-x1.0.png` (a theorem figure, dark theme) |
+| `phone-7-summary.png` | `light-450x800-2e-round-summary.png` (the summary at End) |
 | `phone-8-algebra.png` | `light-450x800-13g-algebra-level-4-hints.png` (algebra with its hint steps) |
 
-With `SCREENSHOT_LANGUAGES=de,hi` each name starts with the code, for example `de-light-450x800-1b-switched.png`.
+With `SCREENSHOT_LANGUAGES=de,hi` each name starts with the code, for example `de-light-450x800-0-before-start.png`.
 
 To add a language: add its code to `languages` in `tool/translate.mjs` and its Play code to `playCodes` in
 `tool/translate_listing.mjs` (and a Noto Sans font in `app/pubspec.yaml` if it uses a new script). Run **Translate new

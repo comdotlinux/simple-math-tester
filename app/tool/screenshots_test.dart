@@ -39,6 +39,8 @@ void main() {
   String? language;
   final boundary = GlobalKey();
   final now = DateTime(2026, 11, 14, 9);
+  // Time played since the launch, read by the model's clock.
+  var played = Duration.zero;
   const game = GameState(
     xp: 340,
     combo: 4,
@@ -109,6 +111,7 @@ void main() {
     // Practice starts as after a tap on Start; false stays before it.
     bool start = true,
   }) async {
+    played = Duration.zero;
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     tester.view.viewInsets = FakeViewPadding(bottom: keyboard);
@@ -131,7 +134,7 @@ void main() {
             for (final kind in OperationType.values) kind.name,
         ],
       ),
-      clock: () => now,
+      clock: () => now.add(played),
       ticker: ticks == null ? null : () => ticks.stream,
       // Nothing is sent from a screenshot.
       reportClient: _ShotReports(reportOutcome),
@@ -294,6 +297,18 @@ void main() {
           await tester.ensureVisible(find.byKey(endPracticeButtonKey));
           await tester.tap(find.byKey(endPracticeButtonKey));
           await shoot(tester, '$tag-2d-after-end-summary');
+
+          // A longer round at End: a hint, a skip and a wrong answer.
+          final round = await launch(tester, size, brightness);
+          round.openHint();
+          answer(round, more: 4);
+          played = const Duration(minutes: 4, seconds: 30);
+          round.endPractice();
+          await tester.pumpAndSettle();
+          // The card at the top, so in every language it shows whole with
+          // its buttons and no heading is cut in half.
+          await tester.ensureVisible(find.byKey(roundSummaryKey));
+          await shoot(tester, '$tag-2e-round-summary');
 
           await launch(tester, size, brightness);
           await check(tester, '65');
@@ -665,8 +680,13 @@ void main() {
             await shoot(tester, '$name-17a-hint-nudge');
             await tester.tap(find.byKey(hintNudgeTryKey));
             await tester.pumpAndSettle();
-            await tester.tap(find.byKey(myAnswersNavKey));
+            // My answers is in the navigation after End.
+            await tester.ensureVisible(find.byKey(endPracticeButtonKey));
             await tester.pumpAndSettle();
+            await tester.tap(find.byKey(endPracticeButtonKey));
+            await tester.pumpAndSettle();
+            await tester.tap(find.byKey(myAnswersNavKey));
+            await shoot(tester, '$name-17c-answers-top');
             await tester.ensureVisible(find.byKey(hintStatsKey));
             await shoot(tester, '$name-17b-hint-totals');
           }
