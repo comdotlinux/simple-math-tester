@@ -5,7 +5,7 @@
 // Usage: DEEPSEEK_API_KEY=... node tool/translate_listing.mjs [--dry-run | --check]
 // --dry-run only lists what would be translated; --check only checks every
 // listing file against the stores' limits. Neither needs a key.
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -67,7 +67,8 @@ export function retryNote(field, why) {
   if (length) {
     return `Your ${field} had ${length[1]} characters; the store allows at most ${limits[field]}. Write a shorter one.`;
   }
-  if (why.endsWith('missing')) return `Your ${field} lost ${why.replace(/ missing$/, '')}: keep it exactly, in Latin letters.`;
+  if (why.endsWith('missing'))
+    return `Your ${field} lost ${why.replace(/ missing$/, '')}: keep it exactly, in Latin letters.`;
   if (why === 'non-Western digits') return `Your ${field} had non-Western digits: use only Western digits 0-9.`;
   if (why.startsWith('digits ')) return `Your ${field} changed a number: keep exactly the numbers of the English text.`;
   return `Your ${field} was ${why}: write the whole translation.`;
@@ -92,7 +93,9 @@ async function ask(model, key, english, language, keys, rejected) {
     'Parents read it. Use natural, friendly, simple words a native speaker would use in an app store, not a word-by-word translation.',
     `Keep these names unchanged, in Latin letters: ${brands.join(', ')}, Google Play, App Store, Android.`,
     'Digits are always Western 0-9; never change, add or drop a number. Keep the line breaks and the "- " list items of the English text.',
-    `Hard limits in characters: ${Object.entries(limits).map(([k, v]) => `${k} ${v}`).join(', ')}.`,
+    `Hard limits in characters: ${Object.entries(limits)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(', ')}.`,
     'keywords are App Store search words, separated by commas without spaces; translate them as words a parent would search for.',
     'The fields to translate are under "translate". If "yourRejectedAnswers" is there, your last answer for those fields was rejected: fix exactly the problem it names.',
     'Answer with one JSON object that maps each requested field to its translated text, nothing else.',

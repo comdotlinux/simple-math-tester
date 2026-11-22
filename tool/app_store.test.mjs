@@ -39,7 +39,12 @@ test('the token is an ES256 JWT that App Store Connect accepts', () => {
   // JOSE wants the raw 64-byte r||s signature, not DER.
   assert.equal(Buffer.from(signature, 'base64url').length, 64);
   assert.ok(
-    verify('sha256', Buffer.from(`${header}.${payload}`), { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(signature, 'base64url')),
+    verify(
+      'sha256',
+      Buffer.from(`${header}.${payload}`),
+      { key: publicKey, dsaEncoding: 'ieee-p1363' },
+      Buffer.from(signature, 'base64url'),
+    ),
   );
 });
 
@@ -71,8 +76,17 @@ test('Play texts map to App Store fields', () => {
 
 test('only an editable version or app info is picked', () => {
   const item = (id, attributes) => ({ id, attributes });
-  assert.equal(pickEditable([item('1', { appVersionState: 'READY_FOR_DISTRIBUTION' }), item('2', { appVersionState: 'PREPARE_FOR_SUBMISSION' })]).id, '2');
-  assert.equal(pickEditable([item('1', { state: 'READY_FOR_DISTRIBUTION' }), item('2', { state: 'REJECTED' })]).id, '2');
+  assert.equal(
+    pickEditable([
+      item('1', { appVersionState: 'READY_FOR_DISTRIBUTION' }),
+      item('2', { appVersionState: 'PREPARE_FOR_SUBMISSION' }),
+    ]).id,
+    '2',
+  );
+  assert.equal(
+    pickEditable([item('1', { state: 'READY_FOR_DISTRIBUTION' }), item('2', { state: 'REJECTED' })]).id,
+    '2',
+  );
   assert.equal(pickEditable([item('1', { appStoreState: 'METADATA_REJECTED' })]).id, '1');
   assert.equal(pickEditable([item('1', { appStoreState: 'WAITING_FOR_REVIEW' })]), undefined);
 });
@@ -83,7 +97,9 @@ test('API calls carry a token and fail with Apple’s error details', async () =
   const api = connect(env, async (url, init) => {
     calls.push({ url, init });
     return url.endsWith('/bad')
-      ? new Response(JSON.stringify({ errors: [{ title: 'Conflict', detail: 'locale not supported' }] }), { status: 409 })
+      ? new Response(JSON.stringify({ errors: [{ title: 'Conflict', detail: 'locale not supported' }] }), {
+          status: 409,
+        })
       : new Response(JSON.stringify({ data: [] }), { status: 200 });
   });
   assert.deepEqual(await api('GET', '/v1/apps'), { data: [] });
@@ -105,7 +121,13 @@ test('a screenshot is uploaded in the parts Apple names and committed with its M
   const api = async (method, path, data) => {
     calls.push({ method, path, data });
     if (method !== 'POST') return null;
-    const op = (offset, length) => ({ method: 'PUT', url: `https://up/${offset}`, offset, length, requestHeaders: [{ name: 'Content-Type', value: 'image/png' }] });
+    const op = (offset, length) => ({
+      method: 'PUT',
+      url: `https://up/${offset}`,
+      offset,
+      length,
+      requestHeaders: [{ name: 'Content-Type', value: 'image/png' }],
+    });
     return { data: { id: 'shot-1', attributes: { uploadOperations: [op(0, 6), op(6, 4)] } } };
   };
   const puts = [];
@@ -139,12 +161,16 @@ test('the listing updates existing locales, creates new ones and skips a locale 
   const api = async (method, path, data) => {
     calls.push(`${method} ${path}${data?.attributes?.locale ? ` ${data.attributes.locale}` : ''}`);
     if (path.startsWith('/v1/apps?')) return { data: [{ id: 'app' }] };
-    if (path === '/v1/apps/app/appInfos') return { data: [{ id: 'info', attributes: { state: 'PREPARE_FOR_SUBMISSION' } }] };
+    if (path === '/v1/apps/app/appInfos')
+      return { data: [{ id: 'info', attributes: { state: 'PREPARE_FOR_SUBMISSION' } }] };
     if (path.startsWith('/v1/apps/app/appStoreVersions')) {
-      return { data: [{ id: 'ver', attributes: { versionString: '1.4.1', appVersionState: 'PREPARE_FOR_SUBMISSION' } }] };
+      return {
+        data: [{ id: 'ver', attributes: { versionString: '1.4.1', appVersionState: 'PREPARE_FOR_SUBMISSION' } }],
+      };
     }
     if (path.startsWith('/v1/appInfos/info/')) return { data: [{ id: 'info-en', attributes: { locale: 'en-US' } }] };
-    if (path.startsWith('/v1/appStoreVersions/ver/')) return { data: [{ id: 'ver-en', attributes: { locale: 'en-US' } }] };
+    if (path.startsWith('/v1/appStoreVersions/ver/'))
+      return { data: [{ id: 'ver-en', attributes: { locale: 'en-US' } }] };
     if (method === 'POST' && data.attributes.locale === 'pa-IN') {
       throw Object.assign(new Error('409 not supported'), { status: 409 });
     }
@@ -169,10 +195,11 @@ test('the listing updates existing locales, creates new ones and skips a locale 
 });
 
 test('the screenshot sets are the required iPhone medium size, iPhone large and iPad 13"', () => {
-  assert.deepEqual(
-    Object.fromEntries(Object.entries(devices).map(([device, d]) => [device, d.displayType])),
-    { iphone: 'APP_IPHONE_61', 'iphone-large': 'APP_IPHONE_67', ipad: 'APP_IPAD_PRO_3GEN_129' },
-  );
+  assert.deepEqual(Object.fromEntries(Object.entries(devices).map(([device, d]) => [device, d.displayType])), {
+    iphone: 'APP_IPHONE_61',
+    'iphone-large': 'APP_IPHONE_67',
+    ipad: 'APP_IPAD_PRO_3GEN_129',
+  });
   for (const { size, ratio, pixels } of Object.values(devices)) {
     const [w, h] = size.split('x').map(Number);
     assert.equal(`${w * ratio}x${h * ratio}`, pixels);
@@ -192,16 +219,21 @@ function screenshotDir() {
 test('the screenshots replace each set, creating the missing ones, and the sets are printed first', async () => {
   const calls = [];
   const api = async (method, path, data) => {
-    calls.push(`${method} ${path}${data?.attributes?.screenshotDisplayType ? ` ${data.attributes.screenshotDisplayType}` : ''}`);
+    calls.push(
+      `${method} ${path}${data?.attributes?.screenshotDisplayType ? ` ${data.attributes.screenshotDisplayType}` : ''}`,
+    );
     if (path.endsWith('/appScreenshotSets?limit=50')) {
       return { data: [{ id: 'set-67', attributes: { screenshotDisplayType: 'APP_IPHONE_67' } }] };
     }
     if (path.endsWith('/appScreenshots?limit=50')) return { data: path.includes('set-67') ? [{ id: 'old' }] : [] };
-    if (method === 'POST' && path === '/v1/appScreenshotSets') return { data: { id: `set-${data.attributes.screenshotDisplayType}` } };
+    if (method === 'POST' && path === '/v1/appScreenshotSets')
+      return { data: { id: `set-${data.attributes.screenshotDisplayType}` } };
     if (method === 'POST') return { data: { id: 'shot', attributes: { uploadOperations: [] } } };
     return null;
   };
-  const lines = await quietly(() => replaceScreenshots(api, 'loc', screenshotDir(), 'en-US', 'en-US', async () => ({ ok: true })));
+  const lines = await quietly(() =>
+    replaceScreenshots(api, 'loc', screenshotDir(), 'en-US', 'en-US', async () => ({ ok: true })),
+  );
   assert.deepEqual(lines, ['Screenshot sets of en-US: APP_IPHONE_67']);
   assert.ok(calls.includes('POST /v1/appScreenshotSets APP_IPHONE_61'));
   assert.ok(calls.includes('POST /v1/appScreenshotSets APP_IPAD_PRO_3GEN_129'));
@@ -220,8 +252,14 @@ test('a refused screenshot set fails naming the type and the sets the localizati
   await assert.rejects(
     quietly(() => replaceScreenshots(api, 'loc', screenshotDir(), 'en-US', 'en-US', async () => ({ ok: true }))),
     (error) => {
-      assert.match(error.message, /refused the iphone screenshot set APP_IPHONE_61 for en-US \(POST \/v1\/appScreenshotSets: 409 invalid display type\)/);
-      assert.match(error.message, /Sets this localization has: APP_IPHONE_65\. Fix displayType in devices in tool\/app_store\.mjs/);
+      assert.match(
+        error.message,
+        /refused the iphone screenshot set APP_IPHONE_61 for en-US \(POST \/v1\/appScreenshotSets: 409 invalid display type\)/,
+      );
+      assert.match(
+        error.message,
+        /Sets this localization has: APP_IPHONE_65\. Fix displayType in devices in tool\/app_store\.mjs/,
+      );
       return true;
     },
   );
@@ -320,7 +358,10 @@ test('the first version gets no What’s New; a new version is created when none
   const next = fakeStore({ versions: [version('v1', '1.4.1', 'READY_FOR_DISTRIBUTION')] });
   await quietly(() => review(next.api, '1.5.0', notes, false));
   assert.equal(next.writes[0], 'POST /v1/appStoreVersions {"platform":"IOS","versionString":"1.5.0"}');
-  assert.equal(next.writes[1], 'PATCH /v1/appStoreVersions/new-appStoreVersions/relationships/build {"type":"builds","id":"b1"}');
+  assert.equal(
+    next.writes[1],
+    'PATCH /v1/appStoreVersions/new-appStoreVersions/relationships/build {"type":"builds","id":"b1"}',
+  );
 });
 
 test('a draft submission that holds the version is submitted as it is', async () => {

@@ -44,7 +44,13 @@ const issue = (number, title, label) => ({ number, title, labels: [{ name: label
 function fakeGitHub({ open = {}, create, react } = {}) {
   const calls = [];
   globalThis.fetch = async (url, init = {}) => {
-    calls.push({ url, method: init.method ?? 'GET', headers: init.headers, signal: init.signal, body: init.body && JSON.parse(init.body) });
+    calls.push({
+      url,
+      method: init.method ?? 'GET',
+      headers: init.headers,
+      signal: init.signal,
+      body: init.body && JSON.parse(init.body),
+    });
     const { pathname, searchParams } = new URL(url);
     if ((init.method ?? 'GET') === 'GET' && pathname.endsWith('/issues')) {
       return json(open[searchParams.get('labels')] ?? []);
@@ -106,7 +112,10 @@ describe('new reports', () => {
       assert.ok(call.signal instanceof AbortSignal && !call.signal.aborted);
     }
     assert.deepEqual(
-      calls.filter((c) => c.method === 'GET').map((c) => c.url).sort(),
+      calls
+        .filter((c) => c.method === 'GET')
+        .map((c) => c.url)
+        .sort(),
       [
         `${API}/issues?state=open&labels=reported-problem&per_page=100`,
         `${API}/issues?state=open&labels=suspect-question&per_page=100`,
@@ -128,12 +137,18 @@ describe('new reports', () => {
     const body = { ...QUESTION, kind: 'algebra', variant: 'anTenths', params: [-1000, 1000], level: 5 };
     const request = post(body, { 'Content-Type': 'application/json; charset=utf-8' });
     await expectAnswer(await onRequestPost({ request, env: env() }), 201);
-    assert.equal(calls.find((c) => c.method === 'POST').body.title, 'Suspect question: algebra anTenths [-1000,1000] L5');
+    assert.equal(
+      calls.find((c) => c.method === 'POST').body.title,
+      'Suspect question: algebra anTenths [-1000,1000] L5',
+    );
   });
 
   test('an issue GitHub created without the label is closed and gives 500', async () => {
     const calls = fakeGitHub({ create: () => json({ number: 9, labels: [] }, 201) });
-    assert.equal(await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 500), 'Not configured.');
+    assert.equal(
+      await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 500),
+      'Not configured.',
+    );
     const close = calls.find((c) => c.method === 'PATCH');
     assert.equal(close.url, `${API}/issues/9`);
     assert.deepEqual(close.body, { state: 'closed', state_reason: 'not_planned' });
@@ -142,33 +157,54 @@ describe('new reports', () => {
 
 describe('repeats', () => {
   test('a question already open gets a +1 reaction and no new issue: 200', async () => {
-    const calls = fakeGitHub({ open: { 'suspect-question': [issue(1, 'Other', 'suspect-question'), issue(42, QUESTION_TITLE, 'suspect-question')] } });
-    assert.equal(await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 200), 'Already reported.');
+    const calls = fakeGitHub({
+      open: {
+        'suspect-question': [issue(1, 'Other', 'suspect-question'), issue(42, QUESTION_TITLE, 'suspect-question')],
+      },
+    });
+    assert.equal(
+      await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 200),
+      'Already reported.',
+    );
     const posts = calls.filter((c) => c.method === 'POST');
-    assert.deepEqual(posts.map((c) => [c.url, c.body]), [[`${API}/issues/42/reactions`, { content: '+1' }]]);
+    assert.deepEqual(
+      posts.map((c) => [c.url, c.body]),
+      [[`${API}/issues/42/reactions`, { content: '+1' }]],
+    );
   });
 
   test('a reaction that already exists (GitHub 200) still gives 200', async () => {
-    fakeGitHub({ open: { 'reported-problem': [issue(7, PROBLEM_TITLE, 'reported-problem')] }, react: () => json({}, 200) });
+    fakeGitHub({
+      open: { 'reported-problem': [issue(7, PROBLEM_TITLE, 'reported-problem')] },
+      react: () => json({}, 200),
+    });
     await expectAnswer(await onRequestPost({ request: post(PROBLEM), env: env() }), 200);
   });
 
   test('a repeat is counted even at the limit, as it creates nothing', async () => {
-    const full = Array.from({ length: 100 }, (_, i) => issue(i + 1, i === 50 ? QUESTION_TITLE : `Q${i}`, 'suspect-question'));
+    const full = Array.from({ length: 100 }, (_, i) =>
+      issue(i + 1, i === 50 ? QUESTION_TITLE : `Q${i}`, 'suspect-question'),
+    );
     const calls = fakeGitHub({ open: { 'suspect-question': full } });
     await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 200);
     assert.equal(calls.filter((c) => c.url.endsWith('/issues') && c.method === 'POST').length, 0);
   });
 
   test('a pull request with the same title is not taken for the issue', async () => {
-    const calls = fakeGitHub({ open: { 'suspect-question': [{ ...issue(3, QUESTION_TITLE, 'suspect-question'), pull_request: {} }] } });
+    const calls = fakeGitHub({
+      open: { 'suspect-question': [{ ...issue(3, QUESTION_TITLE, 'suspect-question'), pull_request: {} }] },
+    });
     await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 201);
     assert.equal(calls.filter((c) => c.url.endsWith('/reactions')).length, 0);
   });
 });
 
 describe('the limit on open reports', () => {
-  for (const [questions, problems] of [[100, 0], [60, 40], [0, 100]]) {
+  for (const [questions, problems] of [
+    [100, 0],
+    [60, 40],
+    [0, 100],
+  ]) {
     test(`${questions} questions and ${problems} problems open gives 429 and creates nothing`, async () => {
       const calls = fakeGitHub({
         open: {
@@ -176,13 +212,18 @@ describe('the limit on open reports', () => {
           'reported-problem': Array.from({ length: problems }, (_, i) => issue(i, `P${i}`, 'reported-problem')),
         },
       });
-      assert.equal(await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 429), 'Too many reports.');
+      assert.equal(
+        await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 429),
+        'Too many reports.',
+      );
       assert.equal(calls.filter((c) => c.method === 'POST').length, 0);
     });
   }
 
   test('99 open still creates the issue', async () => {
-    fakeGitHub({ open: { 'reported-problem': Array.from({ length: 99 }, (_, i) => issue(i, `P${i}`, 'reported-problem')) } });
+    fakeGitHub({
+      open: { 'reported-problem': Array.from({ length: 99 }, (_, i) => issue(i, `P${i}`, 'reported-problem')) },
+    });
     await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 201);
   });
 });
@@ -209,7 +250,11 @@ describe('configuration and GitHub failures', () => {
     'the list is not an array': { listBody: { message: 'x' } },
     'the list is not JSON': { listRaw: '<html>' },
     'issue creation answers 422': { create: () => json({ message: `Validation Failed ${TOKEN}` }, 422) },
-    'issue creation is unreachable': { create: () => { throw new TypeError('fetch failed'); } },
+    'issue creation is unreachable': {
+      create: () => {
+        throw new TypeError('fetch failed');
+      },
+    },
     'the reaction answers 403': { repeat: true, react: () => json({ message: 'Forbidden' }, 403) },
   };
   for (const [name, f] of Object.entries(failures)) {
@@ -229,12 +274,15 @@ describe('configuration and GitHub failures', () => {
         }
         return fake(url, init);
       };
-      assert.equal(await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 502), 'Unavailable.');
+      assert.equal(
+        await expectAnswer(await onRequestPost({ request: post(QUESTION), env: env() }), 502),
+        'Unavailable.',
+      );
     });
   }
 
   test('a GitHub call that times out gives 502', async () => {
-    globalThis.fetch = async (url, init) => {
+    globalThis.fetch = async (_url, init) => {
       assert.ok(init.signal instanceof AbortSignal);
       throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
     };
@@ -252,7 +300,7 @@ describe('configuration and GitHub failures', () => {
       asked.push(ms);
       return timeout.call(AbortSignal, 20);
     };
-    globalThis.fetch = (url, init) =>
+    globalThis.fetch = (_url, init) =>
       new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
     // AbortSignal.timeout does not keep Node's event loop alive; this timer does.
     const alive = setTimeout(() => {}, 5000);
@@ -302,7 +350,10 @@ describe('invalid requests give 400 and never call GitHub', () => {
   add('a null param', { ...QUESTION, params: [null] });
   add('a nested param', { ...QUESTION, params: [[3]] });
   add('params as an object', { ...QUESTION, params: { 0: 3, length: 1 } });
-  add('a huge param', '{"type":"question","kind":"geometry","variant":"rectangleArea","params":[1e400],"level":2,"reason":"wrongAnswer","version":"1.3.0","platform":"android","locale":"de"}');
+  add(
+    'a huge param',
+    '{"type":"question","kind":"geometry","variant":"rectangleArea","params":[1e400],"level":2,"reason":"wrongAnswer","version":"1.3.0","platform":"android","locale":"de"}',
+  );
   add('version unknown', { ...QUESTION, version: 'unknown' });
   add('version with a suffix', { ...QUESTION, version: '1.3.0+12' });
   add('version with a newline', { ...QUESTION, version: '1.3.0\n' });
@@ -335,9 +386,14 @@ describe('invalid requests give 400 and never call GitHub', () => {
     'toString',
   ];
   const values = [...hostile, { nested: { a: 1 } }, ['geometry'], null, true, 7];
-  for (const [shapeName, shape] of [['question', QUESTION], ['problem', PROBLEM]]) {
+  for (const [shapeName, shape] of [
+    ['question', QUESTION],
+    ['problem', PROBLEM],
+  ]) {
     for (const field of Object.keys(shape)) {
-      values.forEach((value, i) => add(`${shapeName} ${field} hostile #${i}`, { ...shape, [field]: value }));
+      values.forEach((value, i) => {
+        add(`${shapeName} ${field} hostile #${i}`, { ...shape, [field]: value });
+      });
     }
   }
 

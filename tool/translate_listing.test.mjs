@@ -3,14 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { hash, languageName, languages, westernDigits } from './translate.mjs';
-import {
-  check,
-  limits,
-  playCodes,
-  problem,
-  retryNote,
-  stale,
-} from './translate_listing.mjs';
+import { check, limits, playCodes, problem, retryNote, stale } from './translate_listing.mjs';
 
 test('digits of any script become Western digits', () => {
   assert.equal(westernDigits('६०-सेकंद'), '60-सेकंद'); // Devanagari

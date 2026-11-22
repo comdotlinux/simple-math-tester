@@ -161,15 +161,12 @@ describe('real verification with Cloudflare test keys', () => {
 
   async function reachable() {
     try {
-      const response = await realFetch(
-        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret: ALWAYS_PASSES, response: 'XXXX.DUMMY.TOKEN.XXXX' }),
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
+      const response = await realFetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: ALWAYS_PASSES, response: 'XXXX.DUMMY.TOKEN.XXXX' }),
+        signal: AbortSignal.timeout(10_000),
+      });
       return response.status === 200;
     } catch {
       return false;

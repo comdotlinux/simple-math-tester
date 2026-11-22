@@ -33,9 +33,7 @@ self.addEventListener('install', (event) => {
               const key = cacheKey(e.url);
               // Only a hashed name guarantees unchanged content.
               const unchanged =
-                e.urlHashed &&
-                previous?.hashes.get(e.url) === e.hash &&
-                (await previous.cache.match(key));
+                e.urlHashed && previous?.hashes.get(e.url) === e.hash && (await previous.cache.match(key));
               await cache.put(key, unchanged || (await download(key)));
             }),
         );
