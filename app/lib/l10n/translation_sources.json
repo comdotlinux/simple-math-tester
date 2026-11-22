@@ -420,7 +420,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "pl": {
     "languageName": "ba118bf7fc9c",
@@ -843,7 +844,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "hi": {
     "languageName": "ba118bf7fc9c",
@@ -1266,7 +1268,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "mr": {
     "languageName": "ba118bf7fc9c",
@@ -1689,7 +1692,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "te": {
     "languageName": "ba118bf7fc9c",
@@ -2112,7 +2116,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "ta": {
     "languageName": "ba118bf7fc9c",
@@ -2535,7 +2540,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "ml": {
     "languageName": "ba118bf7fc9c",
@@ -2958,7 +2964,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "fr": {
     "languageName": "ba118bf7fc9c",
@@ -3381,7 +3388,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "ro": {
     "languageName": "ba118bf7fc9c",
@@ -3804,7 +3812,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "uk": {
     "languageName": "ba118bf7fc9c",
@@ -4227,7 +4236,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "pt": {
     "languageName": "ba118bf7fc9c",
@@ -4650,7 +4660,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "pt_PT": {
     "languageName": "ba118bf7fc9c",
@@ -5073,7 +5084,8 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   },
   "pa": {
     "languageName": "ba118bf7fc9c",
@@ -5496,6 +5508,7 @@
     "summaryLevelUp": "5247c181e1c7",
     "summaryDone": "11a6767d5674",
     "summarySeeAnswers": "f1b72c5028bd",
-    "menuKinds": "f6cb3ec26cb5"
+    "menuKinds": "f6cb3ec26cb5",
+    "reportButton": "b6ce788d9786"
   }
 }

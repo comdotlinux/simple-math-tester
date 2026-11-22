@@ -326,7 +326,7 @@
   "reportFlag": "Marcar esta pergunta como errada",
   "reportFlagMarked": "Marcada como errada. Enviar um relatório",
   "reportFlagSent": "Marcada como errada. Denúncia enviada",
-  "reportButton": "Report",
+  "reportButton": "Denunciar",
   "reportAskTitle": "Chama um adulto",
   "reportMarkedNote": "Esta pergunta está marcada como errada neste dispositivo. Não foi enviado nada.",
   "reportAskBody": "Um adulto pode enviar uma denúncia ao criador da app. Fica como um problema público no GitHub.",
