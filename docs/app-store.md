@@ -67,8 +67,8 @@ The App Store texts come from the same files as Play's:
 | Marketing URL | | `https://math.munich-tech.de` |
 | Privacy policy URL | | `https://math.munich-tech.de/privacy` |
 
-"What's New" is written when a version is submitted for review; the first
-version has none. Category, age rating, privacy answers and pricing are set by
+"What's New" is written by `app-store-review.yml` (see "Submitting for App
+Review"); the first version has none. Category, age rating, privacy answers and pricing are set by
 the owner in App Store Connect; nothing here changes them.
 
 Play codes map to App Store Connect locales (App Store Connect API, "Managing
@@ -110,5 +110,33 @@ with `fetch`. Its tests are `tool/app_store.test.mjs`.
 1. Before tagging: `gh workflow run ios-bundle.yml --ref main` and wait for green.
 2. The same `v*` tag that starts `play-bundle.yml` starts `ios-bundle.yml`.
 3. After the upload, App Store Connect processes the build (minutes to an hour).
-   Internal testers in TestFlight get it then. External testing and App Store
-   review are done by the owner in App Store Connect.
+   Internal testers in TestFlight get it then. External testing is done by the
+   owner in App Store Connect.
+
+## Submitting for App Review
+
+`.github/workflows/app-store-review.yml` (manual, from `main`, `release`
+environment) takes inputs `version` (the tag, `v1.4.1`), `dry-run` (on by
+default) and `notes-since` (optional tag). It runs `tool/app_store.mjs review`:
+
+1. Finds the newest processed (VALID, not expired) TestFlight build of that
+   version. None: the run stops; push the tag and wait for processing.
+2. Finds the App Store version of that number. If there is none, the version in
+   preparation takes the number, or a new version is created. A version already
+   waiting for or in review stops the run.
+3. Attaches the build to the version.
+4. Writes What's New in every language of the version: the changes from the
+   tag before `version` (or `notes-since`) to `version`, summed up and
+   translated by `.github/play-release-notes.sh` like the Play notes; a language
+   without a valid translation gets the English text. The app's first App Store
+   version has no What's New, so this step is skipped for it.
+5. Submits the version for App Review (a review submission with the version as
+   its item; a draft submission is reused).
+
+```sh
+gh workflow run app-store-review.yml -f version=v1.4.1             # dry run: lists what it would do
+gh workflow run app-store-review.yml -f version=v1.4.1 -f dry-run=false
+```
+
+Release type (manual or automatic after approval), age rating, privacy answers
+and pricing stay as the owner set them in App Store Connect.
