@@ -81,12 +81,25 @@ After the Translate pull request is merged, write the listings by hand:
 environment). It writes the texts of every language to the version in "Prepare
 for Submission" (or rejected), and creates the languages that are missing.
 By default it also shoots the eight Play scenes of `app/tool/screenshots_test.dart`
-in every language, for iPhone 6.9" (430 x 932 at 3x, 1290 x 2796) and iPad 13"
-(1024 x 1366 at 2x, 2048 x 2732), in two parallel jobs of about 30 minutes,
+in every language for each screenshot set, in parallel jobs of about 30 minutes,
 and replaces each language's screenshots with them (untick `screenshots` for
 texts only). A run on another branch only shoots; its artifacts are
-`app-store-screenshots-iphone` and `app-store-screenshots-ipad`. Apple reviews
-the texts with the next version submitted.
+`app-store-screenshots-<device>`. Apple reviews the texts with the next version
+submitted.
+
+The sets are one table, `devices` in `tool/app_store.mjs`; the workflow reads
+the sizes from it (`node tool/app_store.mjs devices <device>`):
+
+| Device | App Store Connect slot | Display type | Shot at | Pixels |
+|---|---|---|---|---|
+| `iphone` | iPhone with Dynamic Island (medium display), 6.1"/6.3", **required** | `APP_IPHONE_61` | 402 x 874 at 3x | 1206 x 2622 |
+| `iphone-large` | iPhone with Dynamic Island (large display), 6.7"/6.9", optional | `APP_IPHONE_67` | 430 x 932 at 3x | 1290 x 2796 |
+| `ipad` | iPad 13" display, required for iPad | `APP_IPAD_PRO_3GEN_129` | 1024 x 1366 at 2x | 2048 x 2732 |
+
+Apple scales the medium iPhone set down for smaller phones, so the other slots
+(Face ID, Home Button, iPhone Duo) stay empty. Before uploading, the run prints
+the sets each language already has; if App Store Connect refuses a set, it
+stops and names the display type and those sets, so the table can be fixed.
 
 `tool/app_store.mjs` needs no dependency: it signs the API token (ES256 JWT)
 with `node:crypto` from `APPSTORE_API_KEY` and calls the App Store Connect API

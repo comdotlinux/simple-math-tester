@@ -6,7 +6,8 @@
 // `listing` writes every play/listing/<code>.json to the version being prepared
 // (name, subtitle, privacy URL; description, keywords, promotional text, support
 // and marketing URL). With a screenshots dir (<dir>/<device>/<Play code>/*.png,
-// device iphone or ipad) it also replaces each language's screenshots.
+// device a key of `devices`) it also replaces each language's screenshots.
+// `devices <device>` prints that device's sizes as environment lines for the workflow.
 import { createHash, sign } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -39,8 +40,18 @@ export const appStoreLocales = {
   pa: 'pa-IN',
 };
 
-// iPhone 6.9" (1290 x 2796) and iPad 13" (2048 x 2732).
-export const displayTypes = { iphone: 'APP_IPHONE_67', ipad: 'APP_IPAD_PRO_3GEN_129' };
+// The screenshot sets, by device folder: App Store Connect's display type and
+// the size app-store-listing.yml shoots (logical size times pixel ratio).
+// iphone: "iPhone with Dynamic Island (medium display)", 6.1"/6.3", the one
+// iPhone size App Store Connect requires (1179 x 2556 or 1206 x 2622); Apple
+// scales it down for smaller phones. iphone-large: "iPhone with Dynamic Island
+// (large display)", 6.7"/6.9", optional. ipad: 13" (2048 x 2732 or 2064 x 2752).
+// A wrong guess is a one-line fix here.
+export const devices = {
+  iphone: { displayType: 'APP_IPHONE_61', size: '402x874', ratio: 3, pixels: '1206x2622' },
+  'iphone-large': { displayType: 'APP_IPHONE_67', size: '430x932', ratio: 3, pixels: '1290x2796' },
+  ipad: { displayType: 'APP_IPAD_PRO_3GEN_129', size: '1024x1366', ratio: 2, pixels: '2048x2732' },
+};
 
 // Versions and app infos whose texts can still be changed.
 const editable = ['PREPARE_FOR_SUBMISSION', 'DEVELOPER_REJECTED', 'REJECTED', 'METADATA_REJECTED', 'INVALID_BINARY'];
@@ -137,27 +148,37 @@ async function upsert(api, type, existing, locale, attributes, relationships) {
 
 // shortcut: appScreenshotSets are deprecated for the App Asset Library; move when Apple removes them.
 /** Replaces every screenshot of one version localization; returns the set ids. */
-async function replaceScreenshots(api, localizationId, dir, code) {
+export async function replaceScreenshots(api, localizationId, dir, code, locale, put = fetch) {
   const sets = (await api('GET', `/v1/appStoreVersionLocalizations/${localizationId}/appScreenshotSets?limit=50`)).data;
+  const existing = sets.map((s) => s.attributes.screenshotDisplayType);
+  console.log(`Screenshot sets of ${locale}: ${existing.join(', ') || 'none'}`);
   const ids = [];
-  for (const [device, displayType] of Object.entries(displayTypes)) {
+  for (const [device, { displayType }] of Object.entries(devices)) {
     const folder = join(dir, device, code);
     const files = (await readdir(folder).catch(() => [])).filter((n) => n.endsWith('.png')).sort();
     if (files.length === 0) throw new Error(`No ${device} screenshots in ${folder}`);
-    const set =
-      sets.find((s) => s.attributes.screenshotDisplayType === displayType) ??
-      (
-        await api('POST', '/v1/appScreenshotSets', {
-          type: 'appScreenshotSets',
-          attributes: { screenshotDisplayType: displayType },
-          relationships: { appStoreVersionLocalization: { data: { type: 'appStoreVersionLocalizations', id: localizationId } } },
-        })
-      ).data;
+    let set = sets.find((s) => s.attributes.screenshotDisplayType === displayType);
+    if (!set) {
+      try {
+        set = (
+          await api('POST', '/v1/appScreenshotSets', {
+            type: 'appScreenshotSets',
+            attributes: { screenshotDisplayType: displayType },
+            relationships: { appStoreVersionLocalization: { data: { type: 'appStoreVersionLocalizations', id: localizationId } } },
+          })
+        ).data;
+      } catch (error) {
+        throw new Error(
+          `App Store Connect refused the ${device} screenshot set ${displayType} for ${locale} (${error.message}). ` +
+            `Sets this localization has: ${existing.join(', ') || 'none'}. Fix displayType in devices in tool/app_store.mjs.`,
+        );
+      }
+    }
     for (const old of (await api('GET', `/v1/appScreenshotSets/${set.id}/appScreenshots?limit=50`)).data) {
       await api('DELETE', `/v1/appScreenshots/${old.id}`);
     }
     // Uploaded in file order, which is the order the App Store shows them in.
-    for (const name of files) await upload(api, set.id, join(folder, name));
+    for (const name of files) await upload(api, set.id, join(folder, name), put);
     ids.push(set.id);
   }
   return ids;
@@ -220,7 +241,7 @@ export async function listing(api, screenshots) {
     });
     console.log(`Updated ${locale}`);
     if (screenshots) {
-      setIds.push(...(await replaceScreenshots(api, localization.id, screenshots, code)));
+      setIds.push(...(await replaceScreenshots(api, localization.id, screenshots, code, locale)));
       console.log(`Replaced the screenshots of ${locale}`);
     }
   }
@@ -231,7 +252,11 @@ export async function listing(api, screenshots) {
 async function main() {
   const [command, arg] = process.argv.slice(2);
   if (command === 'listing') return listing(connect(process.env), arg);
-  throw new Error('Usage: node tool/app_store.mjs listing [screenshots dir]');
+  if (command === 'devices' && devices[arg]) {
+    const { size, ratio, pixels } = devices[arg];
+    return console.log(`SCREENSHOT_SIZE=${size}\nSCREENSHOT_PIXEL_RATIO=${ratio}\nSCREENSHOT_PIXELS=${pixels}`);
+  }
+  throw new Error('Usage: node tool/app_store.mjs listing [screenshots dir] | devices <device>');
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

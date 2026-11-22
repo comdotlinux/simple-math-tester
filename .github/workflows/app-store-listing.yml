@@ -3,8 +3,9 @@ name: App Store listing
 # Manual only: writes every listing in play/listing/ (en-US.json and the
 # translations the Translate workflow made) to the App Store version being
 # prepared in App Store Connect, with tool/app_store.mjs. It also shoots the
-# Play phone scenes for iPhone 6.9" and iPad 13" in every app language and, in
-# the same run, replaces each language's screenshots with them.
+# Play phone scenes for each screenshot set in `devices` of tool/app_store.mjs
+# (iPhone 6.3", iPhone 6.9", iPad 13") in every app language and, in the same
+# run, replaces each language's screenshots with them.
 # Apple reviews the texts with the next submitted version. See docs/app-store.md.
 on:
   workflow_dispatch:
@@ -27,16 +28,8 @@ jobs:
     timeout-minutes: 60
     strategy:
       matrix:
-        include:
-          # Logical size times pixel ratio gives App Store Connect's sizes.
-          - device: iphone
-            size: 430x932
-            ratio: 3
-            pixels: 1290x2796
-          - device: ipad
-            size: 1024x1366
-            ratio: 2
-            pixels: 2048x2732
+        # The keys of `devices` in tool/app_store.mjs, which holds their sizes.
+        device: [iphone, iphone-large, ipad]
     defaults:
       run:
         shell: bash
@@ -53,6 +46,12 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
+      # SCREENSHOT_SIZE and SCREENSHOT_PIXEL_RATIO for screenshots_test.dart, SCREENSHOT_PIXELS to check.
+      - name: Read the size of the ${{ matrix.device }} screenshots
+        working-directory: .
+        env:
+          DEVICE: ${{ matrix.device }}
+        run: node tool/app_store.mjs devices "$DEVICE" | tee -a "$GITHUB_ENV"
       # Same app:Play language pairs as play-listing.yml; the listings are named by Play code.
       - name: Map app languages to Play languages
         working-directory: .
@@ -62,9 +61,6 @@ jobs:
           })" - > "$RUNNER_TEMP/codes.txt"
           cat "$RUNNER_TEMP/codes.txt"
       - name: Shoot every language
-        env:
-          SCREENSHOT_SIZE: ${{ matrix.size }}
-          SCREENSHOT_PIXEL_RATIO: ${{ matrix.ratio }}
         run: |
           export SCREENSHOT_DIR="$RUNNER_TEMP/raw"
           mkdir -p "$SCREENSHOT_DIR"
@@ -73,12 +69,11 @@ jobs:
           SCREENSHOT_LANGUAGES="$codes" flutter test tool/screenshots_test.dart
       # The scenes of play-listing.yml, in the same order. App Store Connect
       # rejects screenshots with an alpha channel.
-      - name: Convert to ${{ matrix.pixels }} PNG without alpha
+      - name: Convert to PNG without alpha
         env:
-          SIZE: ${{ matrix.size }}
-          PIXELS: ${{ matrix.pixels }}
           DEVICE: ${{ matrix.device }}
         run: |
+          SIZE="$SCREENSHOT_SIZE" PIXELS="$SCREENSHOT_PIXELS"
           im=magick; command -v magick > /dev/null || im=convert
           out="$RUNNER_TEMP/app-store-screenshots/$DEVICE"
           for pair in $(cat "$RUNNER_TEMP/codes.txt"); do

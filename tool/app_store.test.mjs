@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync, verify } from 'node:crypto';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -10,8 +10,10 @@ import {
   appStoreLocales,
   appStoreTexts,
   connect,
+  devices,
   listing,
   pickEditable,
+  replaceScreenshots,
   token,
   upload,
   urls,
@@ -163,3 +165,74 @@ test('the listing updates existing locales, creates new ones and skips a locale 
   assert.ok(lines.some((l) => l.startsWith('::notice::App Store Connect did not take pa-IN (pa)')));
   assert.equal(lines.filter((l) => l.startsWith('Updated ')).length, Object.keys(appStoreLocales).length - 1);
 });
+
+test('the screenshot sets are the required iPhone medium size, iPhone large and iPad 13"', () => {
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(devices).map(([device, d]) => [device, d.displayType])),
+    { iphone: 'APP_IPHONE_61', 'iphone-large': 'APP_IPHONE_67', ipad: 'APP_IPAD_PRO_3GEN_129' },
+  );
+  for (const { size, ratio, pixels } of Object.values(devices)) {
+    const [w, h] = size.split('x').map(Number);
+    assert.equal(`${w * ratio}x${h * ratio}`, pixels);
+  }
+});
+
+/** A screenshots dir with one PNG per device for en-US. */
+function screenshotDir() {
+  const dir = mkdtempSync(join(tmpdir(), 'app-store-shots-'));
+  for (const device of Object.keys(devices)) {
+    mkdirSync(join(dir, device, 'en-US'), { recursive: true });
+    writeFileSync(join(dir, device, 'en-US', '1-practice.png'), 'png');
+  }
+  return dir;
+}
+
+test('the screenshots replace each set, creating the missing ones, and the sets are printed first', async () => {
+  const calls = [];
+  const api = async (method, path, data) => {
+    calls.push(`${method} ${path}${data?.attributes?.screenshotDisplayType ? ` ${data.attributes.screenshotDisplayType}` : ''}`);
+    if (path.endsWith('/appScreenshotSets?limit=50')) {
+      return { data: [{ id: 'set-67', attributes: { screenshotDisplayType: 'APP_IPHONE_67' } }] };
+    }
+    if (path.endsWith('/appScreenshots?limit=50')) return { data: path.includes('set-67') ? [{ id: 'old' }] : [] };
+    if (method === 'POST' && path === '/v1/appScreenshotSets') return { data: { id: `set-${data.attributes.screenshotDisplayType}` } };
+    if (method === 'POST') return { data: { id: 'shot', attributes: { uploadOperations: [] } } };
+    return null;
+  };
+  const lines = await quietly(() => replaceScreenshots(api, 'loc', screenshotDir(), 'en-US', 'en-US', async () => ({ ok: true })));
+  assert.deepEqual(lines, ['Screenshot sets of en-US: APP_IPHONE_67']);
+  assert.ok(calls.includes('POST /v1/appScreenshotSets APP_IPHONE_61'));
+  assert.ok(calls.includes('POST /v1/appScreenshotSets APP_IPAD_PRO_3GEN_129'));
+  assert.ok(!calls.includes('POST /v1/appScreenshotSets APP_IPHONE_67'));
+  assert.ok(calls.includes('DELETE /v1/appScreenshots/old'));
+});
+
+test('a refused screenshot set fails naming the type and the sets the localization has', async () => {
+  const api = async (method, path) => {
+    if (method === 'GET') return { data: [{ id: 's', attributes: { screenshotDisplayType: 'APP_IPHONE_65' } }] };
+    if (path === '/v1/appScreenshotSets') {
+      throw Object.assign(new Error('POST /v1/appScreenshotSets: 409 invalid display type'), { status: 409 });
+    }
+    return null;
+  };
+  await assert.rejects(
+    quietly(() => replaceScreenshots(api, 'loc', screenshotDir(), 'en-US', 'en-US', async () => ({ ok: true }))),
+    (error) => {
+      assert.match(error.message, /refused the iphone screenshot set APP_IPHONE_61 for en-US \(POST \/v1\/appScreenshotSets: 409 invalid display type\)/);
+      assert.match(error.message, /Sets this localization has: APP_IPHONE_65\. Fix displayType in devices in tool\/app_store\.mjs/);
+      return true;
+    },
+  );
+});
+
+async function quietly(run) {
+  const log = console.log;
+  const lines = [];
+  console.log = (line) => lines.push(line);
+  try {
+    await run();
+  } finally {
+    console.log = log;
+  }
+  return lines;
+}
