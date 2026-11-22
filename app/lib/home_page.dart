@@ -10,6 +10,40 @@ import 'math_tester_model.dart';
 import 'problem_page.dart';
 import 'results_page.dart';
 
+/// The page column beside the navigation rail, while the rail shows.
+final contentAreaKey = GlobalKey();
+
+/// Keeps a sheet or dialog over the page column instead of the whole window,
+/// so on a wide screen it lines up with the page beside the navigation rail
+/// (issue #237). Without the rail (phones, practice) it changes nothing; the
+/// strip it leaves free still belongs to the dimmed area, so a tap there
+/// closes the sheet or dialog.
+class ContentArea extends StatelessWidget {
+  const ContentArea({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    // shortcut: reads the column's last layout, so a resize while open may
+    // lag one frame; measure in a layout pass if that ever shows.
+    final box = contentAreaKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return child;
+    final left = box.localToGlobal(Offset.zero).dx;
+    final right = MediaQuery.sizeOf(context).width - left - box.size.width;
+    // The column already sits inside the safe area at its sides.
+    return Padding(
+      padding: EdgeInsets.only(left: left, right: right),
+      child: MediaQuery.removePadding(
+        context: context,
+        removeLeft: true,
+        removeRight: true,
+        child: child,
+      ),
+    );
+  }
+}
+
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
@@ -79,6 +113,7 @@ class MyHomePage extends StatelessWidget {
                       ),
                       Expanded(
                         child: Column(
+                          key: contentAreaKey,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             const Hud(),

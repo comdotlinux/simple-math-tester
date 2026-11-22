@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'app_theme.dart';
 import 'figure_view.dart';
 import 'hint_modal.dart';
+import 'home_page.dart' show ContentArea;
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -1690,334 +1691,366 @@ Future<void> _showSettings(BuildContext context) {
   return _settingsSheet(context);
 }
 
-Future<void> _settingsSheet(BuildContext context) => showModalBottomSheet<void>(
-  context: context,
-  showDragHandle: true,
-  isScrollControlled: true,
-  // A full-height sheet would otherwise reach under the status bar.
-  useSafeArea: true,
-  builder: (context) {
-    final model = context.watch<MathTesterModel>();
-    final l = AppLocalizations.of(context);
-    final textTheme = Theme.of(context).textTheme;
-    final listTileTheme = Theme.of(context).listTileTheme;
-    final compact = model.compact;
-    // Compact tiles keep their 48 px minimum height.
-    final density = compact ? VisualDensity.compact : null;
-    final rowPadding = EdgeInsetsDirectional.fromSTEB(
-      16,
-      compact ? 6 : 12,
-      24,
-      compact ? 6 : 12,
-    );
-    final rowSpacing = compact ? 8.0 : 12.0;
-    // Shorter than the screen, so the page shows above it. A drag down on
-    // the list at its top shrinks the sheet; at its smallest it closes.
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.8,
-      maxChildSize: 0.8,
-      minChildSize: 0.4,
-      snap: true,
-      builder: (_, scroll) => SafeArea(
-        child: SingleChildScrollView(
-          key: settingsSheetKey,
-          controller: scroll,
-          padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 8 : 16),
-          child: ListTileTheme.merge(
-            visualDensity: density,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              spacing: compact ? 0 : 4,
-              children: [
-                // The same kinds as before Start; a change applies from the
-                // next question. The menu is hidden during a sprint.
-                if (model.tier != null) ...[
-                  ListTile(
-                    title: Semantics(
-                      header: true,
-                      child: Text(l.menuKinds, style: textTheme.titleLarge),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _KindToggles(compact: compact),
-                  ),
-                  SizedBox(height: compact ? 4 : 8),
-                ],
+Future<void> _settingsSheet(BuildContext context) {
+  final navigator = Navigator.of(context);
+  final localizations = MaterialLocalizations.of(context);
+  // showModalBottomSheet, but kept over the page column ([ContentArea]).
+  return navigator.push(
+    _ContentSheetRoute<void>(
+      capturedThemes: InheritedTheme.capture(
+        from: context,
+        to: navigator.context,
+      ),
+      barrierLabel: localizations.scrimLabel,
+      barrierOnTapHint: localizations.scrimOnTapHint(
+        localizations.bottomSheetLabel,
+      ),
+      modalBarrierColor: Theme.of(context).bottomSheetTheme.modalBarrierColor,
+      showDragHandle: true,
+      isScrollControlled: true,
+      // A full-height sheet would otherwise reach under the status bar.
+      useSafeArea: true,
+      builder: _settingsList,
+    ),
+  );
+}
+
+class _ContentSheetRoute<T> extends ModalBottomSheetRoute<T> {
+  _ContentSheetRoute({
+    required super.builder,
+    required super.isScrollControlled,
+    super.capturedThemes,
+    super.barrierLabel,
+    super.barrierOnTapHint,
+    super.modalBarrierColor,
+    super.showDragHandle,
+    super.useSafeArea,
+  });
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) => ContentArea(
+    child: super.buildPage(context, animation, secondaryAnimation),
+  );
+}
+
+Widget _settingsList(BuildContext context) {
+  final model = context.watch<MathTesterModel>();
+  final l = AppLocalizations.of(context);
+  final textTheme = Theme.of(context).textTheme;
+  final listTileTheme = Theme.of(context).listTileTheme;
+  final compact = model.compact;
+  // Compact tiles keep their 48 px minimum height.
+  final density = compact ? VisualDensity.compact : null;
+  final rowPadding = EdgeInsetsDirectional.fromSTEB(
+    16,
+    compact ? 6 : 12,
+    24,
+    compact ? 6 : 12,
+  );
+  final rowSpacing = compact ? 8.0 : 12.0;
+  // Shorter than the screen, so the page shows above it. A drag down on
+  // the list at its top shrinks the sheet; at its smallest it closes.
+  return DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.8,
+    maxChildSize: 0.8,
+    minChildSize: 0.4,
+    snap: true,
+    builder: (_, scroll) => SafeArea(
+      child: SingleChildScrollView(
+        key: settingsSheetKey,
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(12, 0, 12, compact ? 8 : 16),
+        child: ListTileTheme.merge(
+          visualDensity: density,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: compact ? 0 : 4,
+            children: [
+              // The same kinds as before Start; a change applies from the
+              // next question. The menu is hidden during a sprint.
+              if (model.tier != null) ...[
                 ListTile(
                   title: Semantics(
                     header: true,
-                    child: Text(
-                      l.startingDifficulty,
-                      style: textTheme.titleLarge,
-                    ),
-                  ),
-                  subtitle: Text(
-                    key: currentTierNoteKey,
-                    l.currentTier(model.tier?.label(l) ?? l.tierNotChosen),
-                  ),
-                ),
-                for (final tier in Tier.values)
-                  ListTile(
-                    key: tierSettingKey(tier),
-                    title: Text(tier.label(l)),
-                    selected: tier == model.tier,
-                    trailing: tier == model.tier
-                        ? const Icon(Icons.check_circle)
-                        : null,
-                    onTap: () {
-                      if (tier != model.tier) model.chooseTier(tier);
-                      Navigator.pop(context);
-                    },
-                  ),
-                SizedBox(height: compact ? 4 : 8),
-                SwitchListTile(
-                  key: soundSwitchKey,
-                  title: Text(l.sound),
-                  subtitle: Text(l.soundSubtitle),
-                  value: model.sound,
-                  onChanged: model.setSound,
-                ),
-                if (model.soundMuted)
-                  Padding(
-                    key: soundVolumeHintKey,
-                    padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.volumeOff,
-                          style: listTileTheme.subtitleTextStyle,
-                        ),
-                        TextButton(
-                          key: openVolumeSettingsKey,
-                          onPressed: model.openVolumeSettings,
-                          child: Text(l.openPhoneSettings),
-                        ),
-                      ],
-                    ),
-                  ),
-                SwitchListTile(
-                  key: hapticsSwitchKey,
-                  title: Text(l.vibration),
-                  subtitle: Text(l.vibrationSubtitle),
-                  value: model.haptics,
-                  onChanged: model.setHaptics,
-                ),
-                if (model.vibrationBlocked)
-                  Padding(
-                    key: touchFeedbackHintKey,
-                    padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l.touchFeedbackOff,
-                          style: listTileTheme.subtitleTextStyle,
-                        ),
-                        TextButton(
-                          key: openVibrationSettingsKey,
-                          onPressed: model.openVibrationSettings,
-                          child: Text(l.openPhoneSettings),
-                        ),
-                      ],
-                    ),
-                  ),
-                // Laid out like the switch tiles above: same insets and text
-                // styles, with the choice on its own full-width line.
-                Padding(
-                  padding: rowPadding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: rowSpacing,
-                    children: [
-                      Text(l.theme, style: listTileTheme.titleTextStyle),
-                      SegmentedButton<ThemeMode>(
-                        expandedInsets: EdgeInsets.zero,
-                        showSelectedIcon: false,
-                        segments: [
-                          // Text only: an icon beside "System" wraps it at 360 px.
-                          for (final (mode, label) in [
-                            (ThemeMode.system, l.themeSystem),
-                            (ThemeMode.light, l.themeLight),
-                            (ThemeMode.dark, l.themeDark),
-                          ])
-                            ButtonSegment(
-                              value: mode,
-                              label: Text(
-                                label,
-                                key: themeModeKey(mode),
-                                maxLines: 1,
-                                softWrap: false,
-                              ),
-                            ),
-                        ],
-                        selected: {model.themeMode},
-                        onSelectionChanged: (modes) =>
-                            model.setThemeMode(modes.single),
-                      ),
-                    ],
+                    child: Text(l.menuKinds, style: textTheme.titleLarge),
                   ),
                 ),
                 Padding(
-                  padding: rowPadding,
-                  child: Column(
-                    // Stretch: the Wrap below would otherwise shrink the
-                    // column and the sheet would centre it.
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    spacing: rowSpacing,
-                    children: [
-                      Text(l.colours, style: listTileTheme.titleTextStyle),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: [
-                          for (final palette in AppPalette.values)
-                            _Swatch(
-                              key: paletteKey(palette),
-                              palette: palette,
-                              selected: palette == model.palette,
-                              onTap: () => model.setPalette(palette),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: rowPadding,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: rowSpacing,
-                    children: [
-                      Text(l.layout, style: listTileTheme.titleTextStyle),
-                      SegmentedButton<LayoutMode>(
-                        expandedInsets: EdgeInsets.zero,
-                        showSelectedIcon: false,
-                        segments: [
-                          for (final (mode, label) in [
-                            (LayoutMode.comfortable, l.layoutComfortable),
-                            (LayoutMode.compact, l.layoutCompact),
-                          ])
-                            ButtonSegment(
-                              value: mode,
-                              label: Text(
-                                label,
-                                key: layoutModeKey(mode),
-                                maxLines: 1,
-                                softWrap: false,
-                              ),
-                            ),
-                        ],
-                        selected: {model.layoutMode},
-                        onSelectionChanged: (modes) =>
-                            model.setLayoutMode(modes.single),
-                      ),
-                    ],
-                  ),
-                ),
-                // Eleven choices: a dialog, not a segmented row.
-                ListTile(
-                  key: languageTileKey,
-                  leading: const Icon(Icons.translate),
-                  title: Text(l.language),
-                  subtitle: Text(
-                    _languageName(model.language) ?? l.languageSystem,
-                  ),
-                  onTap: () => _showLanguages(context),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _KindToggles(compact: compact),
                 ),
                 SizedBox(height: compact ? 4 : 8),
-                ListTile(
-                  key: privacyTileKey,
-                  leading: const Icon(Icons.privacy_tip_outlined),
-                  title: Text(l.privacy),
-                  subtitle: Text(l.privacySubtitle),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const _PrivacyPage(),
-                    ),
-                  ),
-                ),
-                ListTile(
-                  key: licencesTileKey,
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(l.licences),
-                  subtitle: Text(l.licencesSubtitle),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LicencesPage(),
-                    ),
-                  ),
-                ),
-                ListTile(
-                  key: impressumTileKey,
-                  leading: const Icon(Icons.open_in_new),
-                  title: Text(l.impressum),
-                  subtitle: Text(l.impressumSubtitle),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    // Closed first, so a failure notice is not hidden behind it.
-                    Navigator.pop(context);
-                    if (!await model.openImpressum()) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(l.browserDidNotOpen)),
-                      );
-                    }
-                  },
-                ),
-                ListTile(
-                  key: sendProblemReportTileKey,
-                  leading: const Icon(Icons.outlined_flag),
-                  title: Text(l.reportSendProblem),
-                  subtitle: Text(l.reportSendProblemSubtitle),
-                  onTap: () {
-                    // The sheet closes first; the dialog opens on the page.
-                    final page = Navigator.of(context);
-                    page.pop();
-                    showReportDialog(page.context);
-                  },
-                ),
-                ListTile(
-                  key: reportProblemTileKey,
-                  leading: const Icon(Icons.bug_report_outlined),
-                  title: Text(l.reportProblem),
-                  subtitle: Text(l.reportProblemSubtitle),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    Navigator.pop(context);
-                    if (!await model.openProblemReport()) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(l.browserDidNotOpen)),
-                      );
-                    }
-                  },
-                ),
-                ListTile(
-                  key: appVersionTileKey,
-                  leading: const Icon(Icons.info_outline),
-                  title: Text(l.appVersionTitle(appVersion)),
-                  subtitle: Text(l.releaseNotesSubtitle),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    Navigator.pop(context);
-                    if (!await model.openReleaseNotes()) {
-                      messenger.showSnackBar(
-                        SnackBar(content: Text(l.browserDidNotOpen)),
-                      );
-                    }
-                  },
-                ),
               ],
-            ),
+              ListTile(
+                title: Semantics(
+                  header: true,
+                  child: Text(
+                    l.startingDifficulty,
+                    style: textTheme.titleLarge,
+                  ),
+                ),
+                subtitle: Text(
+                  key: currentTierNoteKey,
+                  l.currentTier(model.tier?.label(l) ?? l.tierNotChosen),
+                ),
+              ),
+              for (final tier in Tier.values)
+                ListTile(
+                  key: tierSettingKey(tier),
+                  title: Text(tier.label(l)),
+                  selected: tier == model.tier,
+                  trailing: tier == model.tier
+                      ? const Icon(Icons.check_circle)
+                      : null,
+                  onTap: () {
+                    if (tier != model.tier) model.chooseTier(tier);
+                    Navigator.pop(context);
+                  },
+                ),
+              SizedBox(height: compact ? 4 : 8),
+              SwitchListTile(
+                key: soundSwitchKey,
+                title: Text(l.sound),
+                subtitle: Text(l.soundSubtitle),
+                value: model.sound,
+                onChanged: model.setSound,
+              ),
+              if (model.soundMuted)
+                Padding(
+                  key: soundVolumeHintKey,
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.volumeOff, style: listTileTheme.subtitleTextStyle),
+                      TextButton(
+                        key: openVolumeSettingsKey,
+                        onPressed: model.openVolumeSettings,
+                        child: Text(l.openPhoneSettings),
+                      ),
+                    ],
+                  ),
+                ),
+              SwitchListTile(
+                key: hapticsSwitchKey,
+                title: Text(l.vibration),
+                subtitle: Text(l.vibrationSubtitle),
+                value: model.haptics,
+                onChanged: model.setHaptics,
+              ),
+              if (model.vibrationBlocked)
+                Padding(
+                  key: touchFeedbackHintKey,
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 24, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.touchFeedbackOff,
+                        style: listTileTheme.subtitleTextStyle,
+                      ),
+                      TextButton(
+                        key: openVibrationSettingsKey,
+                        onPressed: model.openVibrationSettings,
+                        child: Text(l.openPhoneSettings),
+                      ),
+                    ],
+                  ),
+                ),
+              // Laid out like the switch tiles above: same insets and text
+              // styles, with the choice on its own full-width line.
+              Padding(
+                padding: rowPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: rowSpacing,
+                  children: [
+                    Text(l.theme, style: listTileTheme.titleTextStyle),
+                    SegmentedButton<ThemeMode>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      segments: [
+                        // Text only: an icon beside "System" wraps it at 360 px.
+                        for (final (mode, label) in [
+                          (ThemeMode.system, l.themeSystem),
+                          (ThemeMode.light, l.themeLight),
+                          (ThemeMode.dark, l.themeDark),
+                        ])
+                          ButtonSegment(
+                            value: mode,
+                            label: Text(
+                              label,
+                              key: themeModeKey(mode),
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
+                          ),
+                      ],
+                      selected: {model.themeMode},
+                      onSelectionChanged: (modes) =>
+                          model.setThemeMode(modes.single),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: rowPadding,
+                child: Column(
+                  // Stretch: the Wrap below would otherwise shrink the
+                  // column and the sheet would centre it.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: rowSpacing,
+                  children: [
+                    Text(l.colours, style: listTileTheme.titleTextStyle),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final palette in AppPalette.values)
+                          _Swatch(
+                            key: paletteKey(palette),
+                            palette: palette,
+                            selected: palette == model.palette,
+                            onTap: () => model.setPalette(palette),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: rowPadding,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: rowSpacing,
+                  children: [
+                    Text(l.layout, style: listTileTheme.titleTextStyle),
+                    SegmentedButton<LayoutMode>(
+                      expandedInsets: EdgeInsets.zero,
+                      showSelectedIcon: false,
+                      segments: [
+                        for (final (mode, label) in [
+                          (LayoutMode.comfortable, l.layoutComfortable),
+                          (LayoutMode.compact, l.layoutCompact),
+                        ])
+                          ButtonSegment(
+                            value: mode,
+                            label: Text(
+                              label,
+                              key: layoutModeKey(mode),
+                              maxLines: 1,
+                              softWrap: false,
+                            ),
+                          ),
+                      ],
+                      selected: {model.layoutMode},
+                      onSelectionChanged: (modes) =>
+                          model.setLayoutMode(modes.single),
+                    ),
+                  ],
+                ),
+              ),
+              // Eleven choices: a dialog, not a segmented row.
+              ListTile(
+                key: languageTileKey,
+                leading: const Icon(Icons.translate),
+                title: Text(l.language),
+                subtitle: Text(
+                  _languageName(model.language) ?? l.languageSystem,
+                ),
+                onTap: () => _showLanguages(context),
+              ),
+              SizedBox(height: compact ? 4 : 8),
+              ListTile(
+                key: privacyTileKey,
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: Text(l.privacy),
+                subtitle: Text(l.privacySubtitle),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const _PrivacyPage()),
+                ),
+              ),
+              ListTile(
+                key: licencesTileKey,
+                leading: const Icon(Icons.description_outlined),
+                title: Text(l.licences),
+                subtitle: Text(l.licencesSubtitle),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(builder: (_) => const LicencesPage()),
+                ),
+              ),
+              ListTile(
+                key: impressumTileKey,
+                leading: const Icon(Icons.open_in_new),
+                title: Text(l.impressum),
+                subtitle: Text(l.impressumSubtitle),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  // Closed first, so a failure notice is not hidden behind it.
+                  Navigator.pop(context);
+                  if (!await model.openImpressum()) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(l.browserDidNotOpen)),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                key: sendProblemReportTileKey,
+                leading: const Icon(Icons.outlined_flag),
+                title: Text(l.reportSendProblem),
+                subtitle: Text(l.reportSendProblemSubtitle),
+                onTap: () {
+                  // The sheet closes first; the dialog opens on the page.
+                  final page = Navigator.of(context);
+                  page.pop();
+                  showReportDialog(page.context);
+                },
+              ),
+              ListTile(
+                key: reportProblemTileKey,
+                leading: const Icon(Icons.bug_report_outlined),
+                title: Text(l.reportProblem),
+                subtitle: Text(l.reportProblemSubtitle),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(context);
+                  if (!await model.openProblemReport()) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(l.browserDidNotOpen)),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                key: appVersionTileKey,
+                leading: const Icon(Icons.info_outline),
+                title: Text(l.appVersionTitle(appVersion)),
+                subtitle: Text(l.releaseNotesSubtitle),
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(context);
+                  if (!await model.openReleaseNotes()) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text(l.browserDidNotOpen)),
+                    );
+                  }
+                },
+              ),
+            ],
           ),
         ),
       ),
-    );
-  },
-);
+    ),
+  );
+}
 
 /// A language's name in that language, such as "Deutsch"; null for none.
 String? _languageName(String? code) =>
@@ -2030,51 +2063,53 @@ Future<void> _showLanguages(BuildContext context) => showDialog<void>(
   builder: (context) {
     final model = context.read<MathTesterModel>();
     final l = AppLocalizations.of(context);
-    return SimpleDialog(
-      title: Text(l.language),
-      children: [
-        for (final code in [
-          null,
-          for (final locale in AppLocalizations.supportedLocales)
-            locale.toString(),
-        ])
-          ListTile(
-            key: languageOptionKey(code),
-            // A long press (or hover) shows the English name the row may cut
-            // off; screen readers already read the whole row.
-            title: Tooltip(
-              message: code == null || code == 'en'
-                  ? ''
-                  : '${_languageName(code)} · ${englishLanguageNames[code]}',
-              excludeFromSemantics: true,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(_languageName(code) ?? l.languageSystem),
-                  if (code != null && code != 'en') ...[
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        englishLanguageNames[code]!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        overflow: TextOverflow.ellipsis,
+    return ContentArea(
+      child: SimpleDialog(
+        title: Text(l.language),
+        children: [
+          for (final code in [
+            null,
+            for (final locale in AppLocalizations.supportedLocales)
+              locale.toString(),
+          ])
+            ListTile(
+              key: languageOptionKey(code),
+              // A long press (or hover) shows the English name the row may cut
+              // off; screen readers already read the whole row.
+              title: Tooltip(
+                message: code == null || code == 'en'
+                    ? ''
+                    : '${_languageName(code)} · ${englishLanguageNames[code]}',
+                excludeFromSemantics: true,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(_languageName(code) ?? l.languageSystem),
+                    if (code != null && code != 'en') ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          englishLanguageNames[code]!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
+              selected: code == model.language,
+              trailing: code == model.language
+                  ? const Icon(Icons.check_circle)
+                  : null,
+              onTap: () {
+                model.setLanguage(code);
+                Navigator.pop(context);
+              },
             ),
-            selected: code == model.language,
-            trailing: code == model.language
-                ? const Icon(Icons.check_circle)
-                : null,
-            onTap: () {
-              model.setLanguage(code);
-              Navigator.pop(context);
-            },
-          ),
-      ],
+        ],
+      ),
     );
   },
 );
