@@ -464,20 +464,23 @@ class _ProblemPageState extends State<ProblemPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         menu,
-                        Tooltip(
-                          message: l.endPracticeLabel,
-                          excludeFromSemantics: true,
-                          child: Slab(
-                            pressable: true,
-                            radius: AppTokens.radiusControl,
-                            child: OutlinedButton.icon(
-                              key: endPracticeButtonKey,
-                              onPressed: _end,
-                              style: ButtonStyle(minimumSize: button),
-                              icon: const Icon(Icons.stop_circle_outlined),
-                              label: Text(
-                                l.endPractice,
-                                semanticsLabel: l.endPracticeLabel,
+                        // A long End label wraps instead of pushing past the edge.
+                        Flexible(
+                          child: Tooltip(
+                            message: l.endPracticeLabel,
+                            excludeFromSemantics: true,
+                            child: Slab(
+                              pressable: true,
+                              radius: AppTokens.radiusControl,
+                              child: OutlinedButton.icon(
+                                key: endPracticeButtonKey,
+                                onPressed: _end,
+                                style: ButtonStyle(minimumSize: button),
+                                icon: const Icon(Icons.stop_circle_outlined),
+                                label: Text(
+                                  l.endPractice,
+                                  semanticsLabel: l.endPracticeLabel,
+                                ),
                               ),
                             ),
                           ),
