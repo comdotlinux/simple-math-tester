@@ -12,7 +12,7 @@ final allow = jsonDecode(
   File('../functions/report-allowlist.json').readAsStringSync(),
 ) as Map<String, Object?>;
 
-List<String> names(String key) => (allow[key] as List).cast<String>();
+List<String> names(String key) => (allow[key]! as List).cast<String>();
 
 void main() {
   final algebra = OperationType.algebra.source as AlgebraSource;
@@ -38,9 +38,9 @@ void main() {
   });
 
   test('every question fits the report param limits', () {
-    final min = allow['paramMin'] as int;
-    final max = allow['paramMax'] as int;
-    final count = allow['maxParams'] as int;
+    final min = allow['paramMin']! as int;
+    final max = allow['paramMax']! as int;
+    final count = allow['maxParams']! as int;
     void check(List<int> params, String variant) {
       expect(params.length, inInclusiveRange(1, count), reason: variant);
       for (final p in params) {

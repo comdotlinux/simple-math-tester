@@ -603,7 +603,7 @@ void main() {
       final entries = stored.toJsonHistory();
       // The unknown entry is kept and does not count toward the cap.
       expect(entries, hasLength(Progress.historyCap + 1));
-      expect((entries.first as Map)['kind'], 'power');
+      expect((entries.first! as Map)['kind'], 'power');
     },
   );
 
@@ -765,7 +765,7 @@ void main() {
         'sprint': false,
       });
       // Arithmetic entries keep their shape.
-      expect((entries.last as Map).keys, [
+      expect((entries.last! as Map).keys, [
         'lhs',
         'rhs',
         'kind',
@@ -811,7 +811,7 @@ void main() {
       expect(answered(4.0).answerHundredths, 400);
 
       final decimal = answered(numberOfHundredths(-25), -25);
-      final entry = Progress(history: [decimal]).toJsonHistory().single as Map;
+      final entry = Progress(history: [decimal]).toJsonHistory().single! as Map;
       expect(entry['firstAnswerHundredths'], -25);
       expect(entry['firstAnswer'], -0.25);
       final back = Progress.decode(Progress(history: [decimal]).encode());
@@ -847,14 +847,14 @@ void main() {
       );
       final entries = progress.toJsonHistory();
       expect(
-        [for (final entry in entries) (entry as Map)['params']],
+        [for (final entry in entries) (entry! as Map)['params']],
         [
           [3, 2, -4],
           [4, -25],
         ],
       );
       expect(
-        [for (final entry in entries) (entry as Map)['result']],
+        [for (final entry in entries) (entry! as Map)['result']],
         [-4, -2.5],
       );
       final decoded = Progress.decode(progress.encode());
@@ -955,7 +955,7 @@ void main() {
           answeredAt: DateTime.utc(2026, 11, 21, 12).toLocal(),
         );
         final progress = Progress(history: [answered]);
-        final saved = progress.toJsonHistory().single as Map;
+        final saved = progress.toJsonHistory().single! as Map;
         expect(
           [saved['variant'], saved['params'], saved['result'], saved['level']],
           [variant, params, result, level],
@@ -1149,7 +1149,7 @@ void main() {
         );
         expect(answered.correct, isTrue);
         final progress = Progress(history: [answered]);
-        final saved = progress.toJsonHistory().single as Map;
+        final saved = progress.toJsonHistory().single! as Map;
         expect(
           [saved['variant'], saved['params'], saved['result'], saved['level']],
           [variant, params, result, level],

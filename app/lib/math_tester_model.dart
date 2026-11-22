@@ -298,7 +298,7 @@ class MathTesterModel extends ChangeNotifier {
   static Future<Object?> _deviceSettings(String method) async {
     try {
       return await deviceSettingsChannel.invokeMethod<Object?>(method);
-    } catch (_) {
+    } on Object catch (_) {
       return null;
     }
   }
@@ -358,7 +358,7 @@ class MathTesterModel extends ChangeNotifier {
     for (final url in storeUrls) {
       try {
         if (await _openLink(url)) return true;
-      } catch (_) {
+      } on Object catch (_) {
         // The next one may still open.
       }
     }
@@ -415,7 +415,7 @@ class MathTesterModel extends ChangeNotifier {
   Future<bool> openImpressum() async {
     try {
       return await _openLink(impressumUrl);
-    } catch (_) {
+    } on Object catch (_) {
       return false;
     }
   }
@@ -424,7 +424,7 @@ class MathTesterModel extends ChangeNotifier {
   Future<bool> openProblemReport() async {
     try {
       return await _openLink(problemReportUrl);
-    } catch (_) {
+    } on Object catch (_) {
       return false;
     }
   }
@@ -525,7 +525,7 @@ class MathTesterModel extends ChangeNotifier {
   Future<bool> openReleaseNotes() async {
     try {
       return await _openLink(releaseNotesUrl);
-    } catch (_) {
+    } on Object catch (_) {
       return false;
     }
   }
@@ -789,7 +789,7 @@ class MathTesterModel extends ChangeNotifier {
   /// problem on screen is not recorded.
   void endSprint() {
     if (!inSprint) return;
-    _ticks?.cancel();
+    unawaited(_ticks?.cancel());
     _ticks = null;
     final score = sprintScore;
     _progress = _progress.withGame(sprintEnded(game, score));
@@ -818,7 +818,7 @@ class MathTesterModel extends ChangeNotifier {
   void handleLifecycle(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.paused || AppLifecycleState.hidden:
-        if (_canSave) _writer.flush();
+        if (_canSave) unawaited(_writer.flush());
       case AppLifecycleState.resumed:
         _progress = _withDayChange(_progress);
         notifyListeners();
@@ -827,7 +827,7 @@ class MathTesterModel extends ChangeNotifier {
         unawaited(checkDeviceSettings());
         if (!_canSave && !_retried) {
           _retried = true;
-          _retryLoad();
+          unawaited(_retryLoad());
         }
       default:
     }
@@ -942,7 +942,7 @@ class MathTesterModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    _ticks?.cancel();
+    unawaited(_ticks?.cancel());
     sprintSecondsLeft.dispose();
     super.dispose();
   }

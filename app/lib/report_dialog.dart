@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/services.dart';
@@ -55,7 +56,7 @@ String reportCode(SuspectQuestion code) =>
     icon: mark == null ? Icons.outlined_flag : Icons.flag,
     onPressed: () {
       context.read<MathTesterModel>().markSuspect(problem);
-      showReportDialog(context, problem: problem);
+      unawaited(showReportDialog(context, problem: problem));
     },
   );
 }
@@ -137,7 +138,7 @@ class _ReportDialogState extends State<_ReportDialog> {
 
   void _check() {
     if (int.tryParse(_typed.text.trim()) == _number) {
-      _send();
+      unawaited(_send());
     } else {
       setState(() {
         _wrong = true;

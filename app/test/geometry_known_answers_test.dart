@@ -222,10 +222,10 @@ const _built = <(String, GeometryFamily, List<int>)>[
 /// longer than 12. G12 is an L-shape cut at the bottom right with all six
 /// sides labelled. G29 asks a missing side in halves.
 final _oracleOnly = {
-  'G22': Figure(
+  'G22': const Figure(
     shape: FigureShape.circle,
-    vertices: const [Offset(0, -3), Offset(0, 3)],
-    labels: const [SideLabel(0, 600)],
+    vertices: [Offset(0, -3), Offset(0, 3)],
+    labels: [SideLabel(0, 600)],
     prompt: FigurePrompt.area,
     centre: Offset.zero,
     pi: piHundredths,

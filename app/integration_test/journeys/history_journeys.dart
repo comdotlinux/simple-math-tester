@@ -50,7 +50,9 @@ void historyJourneys() {
         tester,
         Progress(
           tier: Tier.easy,
-          history: [attempt(ArithmeticProblem(2, 3, OperationType.plus, 5), 5)],
+          history: [
+            attempt(const ArithmeticProblem(2, 3, OperationType.plus, 5), 5),
+          ],
           game: const GameState(xp: 250, bestStreak: 4, bestSprint: 70),
         ),
       );
@@ -75,7 +77,9 @@ void historyJourneys() {
         tester,
         Progress(
           tier: Tier.easy,
-          history: [attempt(ArithmeticProblem(2, 3, OperationType.plus, 5), 5)],
+          history: [
+            attempt(const ArithmeticProblem(2, 3, OperationType.plus, 5), 5),
+          ],
           difficulty: {
             OperationType.plus: const Difficulty(
               level: 3,
@@ -227,8 +231,8 @@ void historyJourneys() {
         Progress(
           tier: Tier.easy,
           history: [
-            attempt(ArithmeticProblem(2, 3, OperationType.plus, 5), 6),
-            attempt(ArithmeticProblem(4, 3, OperationType.plus, 7), 7),
+            attempt(const ArithmeticProblem(2, 3, OperationType.plus, 5), 6),
+            attempt(const ArithmeticProblem(4, 3, OperationType.plus, 7), 7),
           ],
         ),
       );
@@ -261,9 +265,12 @@ void historyJourneys() {
         Progress(
           tier: Tier.easy,
           history: [
-            attempt(ArithmeticProblem(77, 23, OperationType.plus, 100), 100),
+            attempt(
+              const ArithmeticProblem(77, 23, OperationType.plus, 100),
+              100,
+            ),
             for (var i = 0; i < 44; i++)
-              attempt(ArithmeticProblem(1, 1, OperationType.plus, 2), 2),
+              attempt(const ArithmeticProblem(1, 1, OperationType.plus, 2), 2),
           ],
         ),
       );

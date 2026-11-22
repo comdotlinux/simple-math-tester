@@ -141,9 +141,7 @@ void main() {
       tester,
       progress: Progress(
         tier: Tier.easy,
-        difficulty: {
-          OperationType.algebra: const Difficulty(level: 1, answered: 1),
-        },
+        difficulty: {OperationType.algebra: const Difficulty(answered: 1)},
       ),
     );
     expectNextCard();
@@ -216,7 +214,8 @@ void main() {
           jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
       for (final family in manifest.cast<Map<String, dynamic>>()) {
         final loader = FontLoader(family['family'] as String);
-        for (final font in (family['fonts'] as List).cast<Map>()) {
+        for (final font
+            in (family['fonts'] as List).cast<Map<String, dynamic>>()) {
           loader.addFont(rootBundle.load(font['asset'] as String));
         }
         await loader.load();

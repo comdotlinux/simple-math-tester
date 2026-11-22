@@ -45,7 +45,7 @@ class HttpReportClient implements ReportClient {
         201 || 200 => ReportOutcome.sent,
         _ => ReportOutcome.failed,
       };
-    } catch (_) {
+    } on Object catch (_) {
       return ReportOutcome.failed;
     } finally {
       if (_client == null) client.close();

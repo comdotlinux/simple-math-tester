@@ -1513,9 +1513,9 @@ List<FigureStep> _pythagorasHint(Figure figure, Map<int, int?> byEdge) {
   return [
     FigureStep(FigureMove.askLength, parts: target),
     if (diagonal) ...[
-      FigureStep(
+      const FigureStep(
         FigureMove.diagonalTriangles,
-        parts: const FigureParts(diagonal: true),
+        parts: FigureParts(diagonal: true),
       ),
       FigureStep(
         FigureMove.pythagoras,

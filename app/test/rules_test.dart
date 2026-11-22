@@ -125,7 +125,7 @@ void main() {
     );
 
     test('criterion 18: at level 1, 2 wrong leave level 1, downCount 0', () {
-      final after = apply(const Difficulty(level: 1), wrong, 2);
+      final after = apply(const Difficulty(), wrong, 2);
       expect(state(after), [1, 0, 0, 2, 0]);
     });
 
@@ -160,7 +160,7 @@ void main() {
     });
 
     test('criterion 19: always right goes from 1 to 5 in exactly 12', () {
-      var d = const Difficulty(level: 1);
+      var d = const Difficulty();
       var answers = 0;
       while (d.level < 5) {
         d = difficultyAfter(d, right);
@@ -181,7 +181,7 @@ void main() {
 
     test('criterion 19: a 60-percent player stays off both limits', () {
       final random = Random(60);
-      var d = const Difficulty(level: 1);
+      var d = const Difficulty();
       final atLevel = <int, int>{};
       for (var i = 0; i < 500; i++) {
         atLevel.update(d.level, (n) => n + 1, ifAbsent: () => 1);
