@@ -14,6 +14,11 @@ on:
         description: 'Also replace the screenshots (off: texts only)'
         type: boolean
         default: true
+      screenshots-from-run:
+        description: 'Run id whose screenshot artifacts (7 days) to upload instead of shooting new ones'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
   # artifacts for review while the listing job is skipped.
   screenshots:
     name: Shoot the ${{ matrix.device }} screenshots
-    if: inputs.screenshots
+    if: inputs.screenshots && inputs.screenshots-from-run == ''
     runs-on: ubuntu-26.04
     timeout-minutes: 60
     strategy:
@@ -119,6 +124,10 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     environment: release
+    permissions:
+      contents: read
+      # Download the artifacts of another run (screenshots-from-run).
+      actions: read
     defaults:
       run:
         shell: bash
@@ -137,6 +146,8 @@ jobs:
           pattern: app-store-screenshots-*
           merge-multiple: true
           path: ${{ runner.temp }}/app-store-screenshots
+          run-id: ${{ inputs.screenshots-from-run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Check the listings against the stores' limits
         run: node tool/translate_listing.mjs --check
       - name: Update the listings

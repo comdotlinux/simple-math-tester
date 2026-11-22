@@ -259,16 +259,23 @@ export async function listing(api, screenshots) {
       console.log(`::notice::App Store Connect did not take ${locale} (${code}), skipped: ${error.message}`);
       continue;
     }
-    const localization = await upsert(
-      api,
-      'appStoreVersionLocalizations',
-      versionLocalizations[locale],
-      locale,
-      texts.version,
-      {
+    const updateVersion = (existing) =>
+      upsert(api, 'appStoreVersionLocalizations', existing, locale, texts.version, {
         appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
-      },
-    );
+      });
+    let localization;
+    try {
+      localization = await updateVersion(versionLocalizations[locale]);
+    } catch (error) {
+      if (versionLocalizations[locale] || error.status !== 409) throw error;
+      // Creating the app info localization can add the version localization too, so
+      // the list read at the start misses it: read it again and update it.
+      const fresh = byLocale(
+        await api('GET', `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=200`),
+      );
+      if (!fresh[locale]) throw error;
+      localization = await updateVersion(fresh[locale]);
+    }
     console.log(`Updated ${locale}`);
     if (screenshots) {
       setIds.push(...(await replaceScreenshots(api, localization.id, screenshots, code, locale)));
