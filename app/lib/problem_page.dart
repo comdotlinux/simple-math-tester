@@ -57,6 +57,7 @@ class _ProblemPageState extends State<ProblemPage> {
   /// Try again and Show a hint after a wrong answer, which a docked phone
   /// page keeps in view, Try again first.
   final _choicesKey = GlobalKey();
+  final _cardKey = GlobalKey();
   final _tryAgainKey = GlobalKey();
   final _scroll = ScrollController();
 
@@ -64,6 +65,14 @@ class _ProblemPageState extends State<ProblemPage> {
   /// its top, because the question card is scrolled out of view (for
   /// example on a short screen with large text).
   bool _questionPinned = false;
+
+  /// End and the menu are a header pinned to the top of the page while
+  /// practising, so neither the docked pad's reveal nor a scroll hides them
+  /// (#200); pinned slivers also keep revealed controls below them. Whether
+  /// the page is scrolled under the header, and the header's height.
+  final _endHeaderKey = GlobalKey();
+  bool _endPinned = false;
+  double _endHeaderHeight = 0;
 
   /// Keeps the field's state and input connection when it moves between
   /// the page and the phone dock.
@@ -107,7 +116,21 @@ class _ProblemPageState extends State<ProblemPage> {
       final top = RenderAbstractViewport.of(card).getOffsetToReveal(card, 0);
       pinned = _scroll.offset > top.offset + 1;
     }
-    if (pinned != _questionPinned) setState(() => _questionPinned = pinned);
+    final header = _endHeaderKey.currentContext?.findRenderObject();
+    final endPinned =
+        _model.practising && _scroll.hasClients && _scroll.offset > .5;
+    final headerHeight = header is RenderBox && header.hasSize
+        ? header.size.height
+        : 0.0;
+    if (pinned != _questionPinned ||
+        endPinned != _endPinned ||
+        headerHeight != _endHeaderHeight) {
+      setState(() {
+        _questionPinned = pinned;
+        _endPinned = endPinned;
+        _endHeaderHeight = headerHeight;
+      });
+    }
   }
 
   void _syncDraft() {
@@ -251,14 +274,10 @@ class _ProblemPageState extends State<ProblemPage> {
     // scrolling back, so it wins over Skip.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await reveal(_skipKey);
-      // With the pad, Skip is in the pad; Try again and Show a hint are then
-      // the last controls on the page.
-      await reveal(_choicesKey);
-      if (compact) {
-        await reveal(
-          _tryAgainKey,
-          ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-        );
+      // After a wrong answer the child looks at the question again: the
+      // card stays in view with as much below it as fits.
+      if (model.answerCorrect == false && await _revealCard(compact, jump)) {
+        return;
       }
       await reveal(_answerKey);
       if (compact && newProblem) {
@@ -268,6 +287,66 @@ class _ProblemPageState extends State<ProblemPage> {
         );
       }
     });
+  }
+
+  /// Scrolls so the question card's top and the lowest of Try again and
+  /// Show a hint, Try again, or (beside the pad on a taller page) the field
+  /// and its feedback show together; when none fits with the card, the
+  /// docked phone page shows the card, the taller page the feedback.
+  /// False when there is nothing to reveal, or when a card taller than the
+  /// page shows its end instead.
+  Future<bool> _revealCard(bool compact, bool jump) async {
+    RenderBox? box(GlobalKey key) =>
+        switch (key.currentContext?.findRenderObject()) {
+          final RenderBox box when box.attached => box,
+          _ => null,
+        };
+    final card = box(compact ? _answerKey : _cardKey);
+    if (card == null || !_scroll.hasClients) return false;
+    final viewport = RenderAbstractViewport.of(card);
+    final position = _scroll.position;
+    // The offset that puts the card's top at the page's top, under End.
+    final top = viewport.getOffsetToReveal(card, 0).offset;
+    double? target;
+    // A card taller than the page: on the docked phone page, whose dock
+    // holds the feedback, a figure shows from its top, so the child sees
+    // the figure again; otherwise the card's end shows, with the question
+    // repeated over the page.
+    if (viewport.getOffsetToReveal(card, 1).offset > top) {
+      if (!compact || _model.current is! FigureProblem) return false;
+      target = top;
+    } else {
+      for (final key in [_choicesKey, _tryAgainKey, if (!compact) _answerKey]) {
+        final below = box(key);
+        if (below == null) continue;
+        // The offset that puts its bottom at the page's bottom.
+        final bottom = viewport.getOffsetToReveal(below, 1).offset;
+        if (bottom <= top) {
+          target = position.pixels.clamp(bottom, top);
+          break;
+        }
+      }
+    }
+    if (target == null) {
+      final feedback = compact ? null : box(_answerKey);
+      target = feedback == null
+          ? position.pixels.clamp(
+              viewport.getOffsetToReveal(card, 1).offset,
+              top,
+            )
+          : viewport.getOffsetToReveal(feedback, 1).offset;
+    }
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (target != position.pixels) {
+      jump
+          ? position.jumpTo(target)
+          : await position.animateTo(
+              target,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
+    }
+    return true;
   }
 
   @override
@@ -310,7 +389,10 @@ class _ProblemPageState extends State<ProblemPage> {
         final dockHeight = phone
             ? NumberPad.height(scaler, dense: true, actions: !sprinting) +
                   scaler.scale(28) * 1.2 +
-                  128
+                  128 +
+                  // A wrong answer's longer message, so the page above
+                  // keeps room for End and the question after it (#200).
+                  _longFeedback(context, constraints.maxWidth)
             : NumberPad.height(scaler, actions: !sprinting) + 2 * 12 + 7;
         // With the system keyboard a phone docks the field, the feedback and
         // Check without the pad, so the keyboard below never hides them.
@@ -321,9 +403,7 @@ class _ProblemPageState extends State<ProblemPage> {
             MediaQuery.sizeOf(context).shortestSide < 600 &&
             // Room above the dock for at least the pinned question.
             constraints.maxHeight -
-                    (scaler.scale(28) * 1.2 +
-                        128 +
-                        _longFeedback(context, constraints.maxWidth)) >=
+                    _keyDockHeight(context, constraints.maxWidth) >=
                 scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48;
         final docked =
             side ||
@@ -337,14 +417,18 @@ class _ProblemPageState extends State<ProblemPage> {
             : constraints.maxWidth;
         final wide = width >= 520;
         // Next sits in the feedback strip while a result shows there.
+        // With the pad its big key is the one Next after a check.
         final nextInStrip =
-            compact && !sprinting && model.answerCorrect != null;
+            compact && !sprinting && !showPad && model.answerCorrect != null;
         final wrong = !sprinting && model.answerCorrect == false;
         // The docked phone page packs its column tighter, so the question
         // and Skip fit above the dock on a short screen; the compact layout
         // setting packs it the same way everywhere.
         final tight = compact || model.compact;
         final gap = tight ? 12.0 : 24.0;
+        // Above a pad docked below, the smaller card keeps the figure in
+        // view with the answer after a wrong answer (#200).
+        final smallCard = tight || docked && !side;
         final button = tight
             ? const WidgetStatePropertyAll(Size(48, 48))
             : null;
@@ -394,7 +478,8 @@ class _ProblemPageState extends State<ProblemPage> {
               : Icons.skip_next;
           final skipText = model.answerChecked ? l.nextQuestion : l.skip;
           return [
-            if (!nextInStrip)
+            // Skip; after a check, Next where the pad's key is not it.
+            if (!nextInStrip && !(inPad && model.answerCorrect != null))
               Slab(
                 key: _skipKey,
                 pressable: true,
@@ -541,256 +626,371 @@ class _ProblemPageState extends State<ProblemPage> {
             icon: Icon(Icons.menu, semanticLabel: l.settings),
           ),
         );
-        final page = SingleChildScrollView(
-          controller: _scroll,
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.symmetric(
-            horizontal: width < 600 ? 16 : 24,
-            vertical: gap,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // End sits at the top, away from Check.
-                  // The menu stays, so the kinds can change during practice;
-                  // it sits at the other end from End, so neither is hit for
-                  // the other.
-                  if (model.practising)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // End sits at the top, away from Check. The menu stays, so the kinds
+        // can change during practice; it sits at the other end from End, so
+        // neither is hit for the other. [middle] goes between them;
+        // [oneLine] keeps the row a button high.
+        Widget endRow({
+          Widget middle = const SizedBox.shrink(),
+          bool oneLine = false,
+        }) => Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            menu,
+            middle,
+            // A long End label wraps instead of pushing past the edge.
+            Flexible(
+              child: Tooltip(
+                message: l.endPracticeLabel,
+                excludeFromSemantics: true,
+                child: Slab(
+                  pressable: true,
+                  radius: AppTokens.radiusControl,
+                  child: OutlinedButton.icon(
+                    key: endPracticeButtonKey,
+                    onPressed: _end,
+                    style: ButtonStyle(minimumSize: button),
+                    icon: const Icon(Icons.stop_circle_outlined),
+                    label: oneLine
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              l.endPractice,
+                              semanticsLabel: l.endPracticeLabel,
+                            ),
+                          )
+                        : Text(
+                            l.endPractice,
+                            semanticsLabel: l.endPracticeLabel,
+                          ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+        // A condition line ("n is positive") makes the pinned question two.
+        final pinnedLines = model.current.shown(l).split('\n').length;
+        final questionStrip = scaler.scale(22) * 1.25 * pinnedLines + 2 * 6 + 2;
+        // The header packs tight on a phone-height page.
+        final headerTop = phone ? 4.0 : gap;
+        const headerBottom = 4.0;
+        // On a page [area] high, the docked page's pinned question goes
+        // under the header where the page keeps room to read below it, else
+        // between the menu and End, scaled to the row.
+        bool roomy(double area) =>
+            area >= headerTop + 48 + headerBottom + questionStrip + 48;
+        Widget header(double area) {
+          final fitQuestion = compact && _questionPinned && !roomy(area);
+          return PinnedHeaderSliver(
+            child: DecoratedBox(
+              key: _endHeaderKey,
+              // Like the page until the page scrolls under it.
+              decoration: BoxDecoration(
+                color: _endPinned ? tokens.surfaceRaised : tokens.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: _endPinned ? tokens.outline : tokens.surface,
+                    width: AppTokens.outlineWidth,
+                  ),
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  width < 600 ? 16 : 24,
+                  headerTop,
+                  width < 600 ? 16 : 24,
+                  headerBottom,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 640),
+                    child: endRow(
+                      oneLine: compact && !roomy(area),
+                      middle: fitQuestion
+                          ? Expanded(
+                              // Display only, as the question strip; wrapped
+                              // to the room beside the buttons, then scaled
+                              // down to their height.
+                              child: IgnorePointer(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: LayoutBuilder(
+                                    builder: (context, room) => SizedBox(
+                                      height: 48,
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: SizedBox(
+                                          width: room.maxWidth,
+                                          child: _PinnedQuestion(
+                                            problem: model.current,
+                                            strip: false,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final content = Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!model.practising)
+                  Row(
+                    crossAxisAlignment: compact
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          sprinting ? l.sprintTitle : l.practiceTitle,
+                          style: tight
+                              ? theme.textTheme.headlineMedium
+                              : theme.textTheme.displaySmall,
+                        ),
+                      ),
+                      // A tier change would move levels during a round.
+                      if (!sprinting) menu,
+                    ],
+                  ),
+                // The encouragement gives way to the question on a short
+                // phone; the sprint rules stay.
+                if (sprinting || !tight && !model.practising) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    sprinting
+                        ? l.sprintRules('${sprintLength.inSeconds}')
+                        : l.practiceEncouragement,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: tokens.inkMuted,
+                    ),
+                  ),
+                ],
+                SizedBox(height: model.practising ? gap - headerBottom : gap),
+                if (model.tier == null)
+                  const _TierPicker()
+                else if (setup) ...[
+                  if (model.lastRound case final summary?) ...[
+                    RoundSummaryCard(key: _summaryKey, summary: summary),
+                    SizedBox(height: gap),
+                  ],
+                  if (model.lastSprint case final result?) ...[
+                    _SprintResult(result: result),
+                    SizedBox(height: gap),
+                  ],
+                  if (model.newKind case final kind?) ...[
+                    _NewKindCard(key: _newKindKey, kind: kind),
+                    SizedBox(height: gap),
+                  ],
+                  _KindToggles(compact: tight),
+                  SizedBox(height: gap),
+                  // Side by side when both fit, else full-width rows.
+                  Flex(
+                    direction: wide ? Axis.horizontal : Axis.vertical,
+                    crossAxisAlignment: wide
+                        ? CrossAxisAlignment.center
+                        : CrossAxisAlignment.stretch,
+                    spacing: tight ? 12 : 16,
+                    children: [
+                      _flexed(
+                        wide,
+                        Slab(
+                          pressable: true,
+                          radius: AppTokens.radiusControl,
+                          child: FilledButton.icon(
+                            key: startPracticeButtonKey,
+                            focusNode: _startFocus,
+                            autofocus: true,
+                            onPressed: _start,
+                            style: ButtonStyle(
+                              minimumSize: const WidgetStatePropertyAll(
+                                Size(48, 56),
+                              ),
+                              textStyle: WidgetStatePropertyAll(
+                                theme.textTheme.titleLarge,
+                              ),
+                            ),
+                            icon: const Icon(Icons.play_arrow),
+                            label: Text(
+                              l.startPractice,
+                              semanticsLabel: l.startPracticeLabel,
+                            ),
+                          ),
+                        ),
+                      ),
+                      _flexed(
+                        wide,
+                        Slab(
+                          pressable: true,
+                          radius: AppTokens.radiusControl,
+                          child: FilledButton.icon(
+                            key: sprintButtonKey,
+                            onPressed: model.startSprint,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: tokens.sprint,
+                              foregroundColor: tokens.onSprint,
+                            ).copyWith(minimumSize: button),
+                            icon: const Icon(Icons.timer_outlined),
+                            label: Text(
+                              l.sprintButton('${sprintLength.inSeconds}'),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  if (sprinting) ...[
+                    _SprintStatus(score: model.sprintScore),
+                    SizedBox(height: gap),
+                  ],
+                  KeyedSubtree(
+                    key: compact ? _answerKey : _cardKey,
+                    child: _QuestionCard(
+                      problem: model.current,
+                      compact: smallCard,
+                    ),
+                  ),
+                  if (!compact) ...[
+                    SizedBox(height: smallCard ? 16 : 28),
+                    Column(
+                      key: _answerKey,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        menu,
-                        // A long End label wraps instead of pushing past the edge.
-                        Flexible(
-                          child: Tooltip(
-                            message: l.endPracticeLabel,
-                            excludeFromSemantics: true,
-                            child: Slab(
+                        field,
+                        // Above the feedback, so a message never moves it.
+                        if (showPad && !docked) ...[
+                          const SizedBox(height: 16),
+                          pad,
+                        ],
+                        const SizedBox(height: 12),
+                        _AnswerFeedback(model: model),
+                      ],
+                    ),
+                  ],
+                  if (!showPad && !docked) ...[
+                    const SizedBox(height: 16),
+                    check,
+                  ],
+                  if (!sprinting) ...[
+                    // After a wrong answer the player chooses: try again,
+                    // or open the hint.
+                    if (wrong) ...[
+                      SizedBox(height: tight ? 12 : 16),
+                      Flex(
+                        key: _choicesKey,
+                        direction: wide ? Axis.horizontal : Axis.vertical,
+                        crossAxisAlignment: wide
+                            ? CrossAxisAlignment.center
+                            : CrossAxisAlignment.stretch,
+                        spacing: tight ? 12 : 16,
+                        children: [
+                          _flexed(
+                            wide,
+                            Slab(
+                              key: _tryAgainKey,
+                              pressable: true,
+                              radius: AppTokens.radiusControl,
+                              child: FilledButton.icon(
+                                key: tryAgainButtonKey,
+                                onPressed: _tryAgain,
+                                style: ButtonStyle(minimumSize: button),
+                                icon: const Icon(Icons.replay),
+                                label: Text(l.tryAgain),
+                              ),
+                            ),
+                          ),
+                          _flexed(
+                            wide,
+                            Slab(
                               pressable: true,
                               radius: AppTokens.radiusControl,
                               child: OutlinedButton.icon(
-                                key: endPracticeButtonKey,
-                                onPressed: _end,
+                                key: hintButtonKey,
+                                onPressed: _showHint,
                                 style: ButtonStyle(minimumSize: button),
-                                icon: const Icon(Icons.stop_circle_outlined),
-                                label: Text(
-                                  l.endPractice,
-                                  semanticsLabel: l.endPracticeLabel,
-                                ),
+                                icon: const Icon(Icons.lightbulb_outline),
+                                label: Text(l.showHint),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: compact
-                          ? CrossAxisAlignment.center
-                          : CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            sprinting ? l.sprintTitle : l.practiceTitle,
-                            style: tight
-                                ? theme.textTheme.headlineMedium
-                                : theme.textTheme.displaySmall,
-                          ),
-                        ),
-                        // A tier change would move levels during a round.
-                        if (!sprinting) menu,
-                      ],
-                    ),
-                  // The encouragement gives way to the question on a short
-                  // phone; the sprint rules stay.
-                  if (sprinting || !tight && !model.practising) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      sprinting
-                          ? l.sprintRules('${sprintLength.inSeconds}')
-                          : l.practiceEncouragement,
-                      style: theme.textTheme.bodyLarge?.copyWith(
-                        color: tokens.inkMuted,
-                      ),
-                    ),
-                  ],
-                  SizedBox(height: gap),
-                  if (model.tier == null)
-                    const _TierPicker()
-                  else if (setup) ...[
-                    if (model.lastRound case final summary?) ...[
-                      RoundSummaryCard(key: _summaryKey, summary: summary),
-                      SizedBox(height: gap),
-                    ],
-                    if (model.lastSprint case final result?) ...[
-                      _SprintResult(result: result),
-                      SizedBox(height: gap),
-                    ],
-                    if (model.newKind case final kind?) ...[
-                      _NewKindCard(key: _newKindKey, kind: kind),
-                      SizedBox(height: gap),
-                    ],
-                    _KindToggles(compact: tight),
-                    SizedBox(height: gap),
-                    // Side by side when both fit, else full-width rows.
-                    Flex(
-                      direction: wide ? Axis.horizontal : Axis.vertical,
-                      crossAxisAlignment: wide
-                          ? CrossAxisAlignment.center
-                          : CrossAxisAlignment.stretch,
-                      spacing: tight ? 12 : 16,
-                      children: [
-                        _flexed(
-                          wide,
-                          Slab(
-                            pressable: true,
-                            radius: AppTokens.radiusControl,
-                            child: FilledButton.icon(
-                              key: startPracticeButtonKey,
-                              focusNode: _startFocus,
-                              autofocus: true,
-                              onPressed: _start,
-                              style: ButtonStyle(
-                                minimumSize: const WidgetStatePropertyAll(
-                                  Size(48, 56),
-                                ),
-                                textStyle: WidgetStatePropertyAll(
-                                  theme.textTheme.titleLarge,
-                                ),
-                              ),
-                              icon: const Icon(Icons.play_arrow),
-                              label: Text(
-                                l.startPractice,
-                                semanticsLabel: l.startPracticeLabel,
-                              ),
-                            ),
-                          ),
-                        ),
-                        _flexed(
-                          wide,
-                          Slab(
-                            pressable: true,
-                            radius: AppTokens.radiusControl,
-                            child: FilledButton.icon(
-                              key: sprintButtonKey,
-                              onPressed: model.startSprint,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: tokens.sprint,
-                                foregroundColor: tokens.onSprint,
-                              ).copyWith(minimumSize: button),
-                              icon: const Icon(Icons.timer_outlined),
-                              label: Text(
-                                l.sprintButton('${sprintLength.inSeconds}'),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ] else ...[
-                    if (sprinting) ...[
-                      _SprintStatus(score: model.sprintScore),
-                      SizedBox(height: gap),
-                    ],
-                    KeyedSubtree(
-                      key: compact ? _answerKey : null,
-                      child: _QuestionCard(
-                        problem: model.current,
-                        compact: tight,
-                      ),
-                    ),
-                    if (!compact) ...[
-                      SizedBox(height: tight ? 16 : 28),
-                      Column(
-                        key: _answerKey,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          field,
-                          // Above the feedback, so a message never moves it.
-                          if (showPad && !docked) ...[
-                            const SizedBox(height: 16),
-                            pad,
-                          ],
-                          const SizedBox(height: 12),
-                          _AnswerFeedback(model: model),
                         ],
                       ),
                     ],
-                    if (!showPad && !docked) ...[
-                      const SizedBox(height: 16),
-                      check,
-                    ],
-                    if (!sprinting) ...[
-                      // After a wrong answer the player chooses: try again,
-                      // or open the hint.
-                      if (wrong) ...[
-                        SizedBox(height: tight ? 12 : 16),
-                        Flex(
-                          key: _choicesKey,
-                          direction: wide ? Axis.horizontal : Axis.vertical,
-                          crossAxisAlignment: wide
-                              ? CrossAxisAlignment.center
-                              : CrossAxisAlignment.stretch,
-                          spacing: tight ? 12 : 16,
-                          children: [
-                            _flexed(
-                              wide,
-                              Slab(
-                                key: _tryAgainKey,
-                                pressable: true,
-                                radius: AppTokens.radiusControl,
-                                child: FilledButton.icon(
-                                  key: tryAgainButtonKey,
-                                  onPressed: _tryAgain,
-                                  style: ButtonStyle(minimumSize: button),
-                                  icon: const Icon(Icons.replay),
-                                  label: Text(l.tryAgain),
-                                ),
-                              ),
-                            ),
-                            _flexed(
-                              wide,
-                              Slab(
-                                pressable: true,
-                                radius: AppTokens.radiusControl,
-                                child: OutlinedButton.icon(
-                                  key: hintButtonKey,
-                                  onPressed: _showHint,
-                                  style: ButtonStyle(minimumSize: button),
-                                  icon: const Icon(Icons.lightbulb_outline),
-                                  label: Text(l.showHint),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      // With the system keyboard a small Skip, the quiet Hint
-                      // and Report share one line, and wrap where they do not
-                      // fit; with the pad they are its top row.
-                      if (pageActions.isNotEmpty) ...[
-                        SizedBox(height: tight ? 12 : 16),
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: 12,
-                          runSpacing: 8,
-                          children: pageActions,
-                        ),
-                      ],
+                    // With the system keyboard a small Skip, the quiet Hint
+                    // and Report share one line, and wrap where they do not
+                    // fit; with the pad they are its top row.
+                    if (pageActions.isNotEmpty) ...[
+                      SizedBox(height: tight ? 12 : 16),
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 8,
+                        children: pageActions,
+                      ),
                     ],
                   ],
                 ],
-              ),
+              ],
             ),
           ),
         );
+        // While practising, End and the menu are a pinned header.
+        Widget page(double area) => !model.practising
+            ? SingleChildScrollView(
+                controller: _scroll,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.symmetric(
+                  horizontal: width < 600 ? 16 : 24,
+                  vertical: gap,
+                ),
+                child: content,
+              )
+            : CustomScrollView(
+                controller: _scroll,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                slivers: [
+                  header(area),
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      width < 600 ? 16 : 24,
+                      0,
+                      width < 600 ? 16 : 24,
+                      gap,
+                    ),
+                    sliver: SliverToBoxAdapter(child: content),
+                  ),
+                ],
+              );
         // Taps anywhere on the page count as taps on the field, so a
         // button or pad key press never takes its focus.
-        if (!docked) return _backEnds(TextFieldTapRegion(child: page));
+        if (!docked) {
+          return _backEnds(
+            TextFieldTapRegion(
+              child: LayoutBuilder(
+                builder: (context, area) => page(area.maxHeight),
+              ),
+            ),
+          );
+        }
         final edge = BorderSide(
           color: tokens.outline,
           width: AppTokens.outlineWidth,
@@ -856,8 +1056,6 @@ class _ProblemPageState extends State<ProblemPage> {
             ),
           ),
         );
-        // A condition line ("n is positive") makes the pinned question two.
-        final pinnedLines = model.current.shown(l).split('\n').length;
         return _backEnds(
           TextFieldTapRegion(
             child: Flex(
@@ -870,17 +1068,16 @@ class _ProblemPageState extends State<ProblemPage> {
                   child: LayoutBuilder(
                     builder: (context, area) => Stack(
                       children: [
-                        Positioned.fill(child: page),
-                        // Only while the page keeps room to read below it.
+                        Positioned.fill(child: page(area.maxHeight)),
+                        // Only while the page keeps room to read below it;
+                        // under End and the menu while practising.
                         if (compact &&
                             _questionPinned &&
-                            area.maxHeight >=
-                                scaler.scale(22) * 1.25 * pinnedLines +
-                                    2 * 6 +
-                                    2 +
-                                    48)
+                            (model.practising
+                                ? roomy(area.maxHeight)
+                                : area.maxHeight >= questionStrip + 48))
                           Positioned(
-                            top: 0,
+                            top: model.practising ? _endHeaderHeight : 0,
                             left: 0,
                             right: 0,
                             // Display only: a control scrolled under the strip
@@ -901,6 +1098,54 @@ class _ProblemPageState extends State<ProblemPage> {
         );
       },
     );
+  }
+
+  /// The keyboard dock's height, measured as it lays out on a page [width]
+  /// wide with its tallest content, a wrong answer: the dock's padding, the
+  /// field (its text line and padding) beside Check, the gap, and the
+  /// feedback strip with Next beside the message, or under it when the
+  /// message would take more than two lines there.
+  double _keyDockHeight(BuildContext context, double width) {
+    final l = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    TextPainter measure(String text, TextStyle? style, [double? maxWidth]) =>
+        TextPainter(
+          text: TextSpan(text: text, style: style),
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: maxWidth ?? double.infinity);
+    final field = measure('0', textTheme.headlineMedium);
+    final label = measure(l.next, textTheme.labelLarge);
+    // The strip's text room as `_AnswerFeedback` works it out: the dock's
+    // gutters, the strip's border and padding, the icon and the gaps.
+    final strip = min(width - 32, 440) - 2 * AppTokens.outlineWidth - 18;
+    final style = textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700);
+    final beside = measure(
+      l.feedbackWrong,
+      style,
+      max(0, strip - 24 - 2 * 8 - label.width - 54),
+    );
+    final double feedback;
+    if (beside.computeLineMetrics().length > 2) {
+      final under = measure(l.feedbackWrong, style, max(0, strip - 24 - 8));
+      feedback = max(24.0, under.height) + 6 + 48 + 2 * 6;
+      under.dispose();
+    } else {
+      feedback = max(48.0, beside.height) + 2 * 6;
+    }
+    final height =
+        AppTokens.outlineWidth +
+        8 +
+        field.height +
+        2 * 10 +
+        6 +
+        max(48.0, feedback) +
+        8 +
+        5;
+    field.dispose();
+    label.dispose();
+    beside.dispose();
+    return height;
   }
 
   /// How much taller than its two lines beside Next, which the dock's
@@ -1069,9 +1314,8 @@ class _QuestionCard extends StatelessWidget {
                     ),
                     SizedBox(height: compact ? 2 : 8),
                     ExcludeSemantics(
-                      child: Text(
+                      child: _WholeWords(
                         figurePromptText(l, figure),
-                        textAlign: TextAlign.center,
                         style: compact
                             ? textTheme.titleLarge
                             : textTheme.headlineMedium,
@@ -1102,40 +1346,86 @@ class _QuestionCard extends StatelessWidget {
   }
 }
 
+/// Centred [text] that wraps only between words: a word wider than the
+/// line ("Perimeter?" at large text on a small phone) shrinks the text
+/// until it fits instead of breaking inside the word.
+class _WholeWords extends StatelessWidget {
+  const _WholeWords(this.text, {required this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final scaler = MediaQuery.textScalerOf(context);
+      var widest = 0.0;
+      for (final word in text.split(RegExp(r'\s+'))) {
+        final painter = TextPainter(
+          text: TextSpan(text: word, style: style),
+          textScaler: scaler,
+          textDirection: Directionality.of(context),
+        )..layout();
+        widest = max(widest, painter.width);
+        painter.dispose();
+      }
+      final size = style?.fontSize ?? 14;
+      return Text(
+        text,
+        textAlign: TextAlign.center,
+        style: style,
+        textScaler: widest <= box.maxWidth
+            ? null
+            : TextScaler.linear(
+                scaler.scale(size) / size * box.maxWidth / widest * .99,
+              ),
+      );
+    },
+  );
+}
+
 /// The question repeated over the top of a phone page whose question card
 /// has scrolled away, so it stays in view with the docked field.
 class _PinnedQuestion extends StatelessWidget {
-  const _PinnedQuestion({required this.problem});
+  const _PinnedQuestion({required this.problem, this.strip = true});
 
   final Problem problem;
 
+  /// False for the question alone, between the menu and End.
+  final bool strip;
+
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: context.tokens.surfaceRaised,
-      border: Border(
-        bottom: BorderSide(
-          color: context.tokens.outline,
-          width: AppTokens.outlineWidth,
+  Widget build(BuildContext context) {
+    // The card keeps the question's semantics.
+    final question = ExcludeSemantics(
+      child: Text.rich(
+        mathSpan(
+          context,
+          problem.shown(AppLocalizations.of(context)),
+          Theme.of(context).textTheme.titleLarge,
         ),
+        key: pinnedQuestionKey,
+        textAlign: TextAlign.center,
       ),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      // The card keeps the question's semantics.
-      child: ExcludeSemantics(
-        child: Text.rich(
-          mathSpan(
-            context,
-            problem.shown(AppLocalizations.of(context)),
-            Theme.of(context).textTheme.titleLarge,
-          ),
-          key: pinnedQuestionKey,
-          textAlign: TextAlign.center,
-        ),
-      ),
-    ),
-  );
+    );
+    return !strip
+        ? question
+        : DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.tokens.surfaceRaised,
+              border: Border(
+                bottom: BorderSide(
+                  color: context.tokens.outline,
+                  width: AppTokens.outlineWidth,
+                ),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: question,
+            ),
+          );
+  }
 }
 
 /// A colour block across the top of a card, ruled off from its body.
