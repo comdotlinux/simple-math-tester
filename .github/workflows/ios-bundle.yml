@@ -112,12 +112,34 @@ jobs:
           flutter build ios --release --config-only "${args[@]}"
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key_path"
             -authenticationKeyID "$APPSTORE_KEY_ID" -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID")
+          # Archive unsigned: signing here wants a development profile, which needs a
+          # registered device (the team has none). The export signs for distribution.
           xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
-            "${auth[@]}" archive
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= archive
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
             -exportOptionsPlist ios/ExportOptions.plist -exportPath "$RUNNER_TEMP/ipa" "${auth[@]}"
           ls -l "$RUNNER_TEMP/ipa"
+      # The export signed the app: check signer, bundle id and entitlements.
+      - name: Check the IPA signature
+        if: steps.key.outputs.signing == 'signed'
+        run: |
+          ipas=("$RUNNER_TEMP"/ipa/*.ipa)
+          unzip -q "${ipas[0]}" -d "$RUNNER_TEMP/ipa-check"
+          app="$(find "$RUNNER_TEMP/ipa-check/Payload" -maxdepth 1 -name '*.app' | head -n 1)"
+          codesign --verify --deep --strict "$app"
+          codesign -dv "$app" 2>&1 | grep '^Authority=' | tee "$RUNNER_TEMP/authority.txt"
+          if ! grep -q '^Authority=Apple Distribution' "$RUNNER_TEMP/authority.txt"; then
+            echo "::error::The app is not signed with an Apple Distribution certificate"
+            exit 1
+          fi
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          echo "Bundle id: $bundle_id"
+          if [ "$bundle_id" != com.linux.simplemath ]; then
+            echo "::error::Bundle id is $bundle_id, expected com.linux.simplemath"
+            exit 1
+          fi
+          codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p -
       - name: Upload to TestFlight
         if: github.ref_type == 'tag'
         env:

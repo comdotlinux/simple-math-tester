@@ -1,7 +1,9 @@
 # App Store and TestFlight
 
 The iOS app is `com.linux.simplemath` (team `296X8GK5BR`), shown on the home
-screen as "Simple Math". Android, web and the in-app title keep their names.
+screen as "Simple Math". Its App Store name is "Simple Math Tester: Practice"
+("Simple Math Tester" and "Simple Math" are taken). Android, web and the in-app
+title keep their names.
 No Mac is needed: GitHub Actions macOS runners build, sign and upload.
 
 ## Secrets
@@ -25,9 +27,13 @@ other branches get no secrets and build an unsigned app instead.
 
 `.github/workflows/ios-bundle.yml` runs on `v*` tags and by hand (no inputs).
 It writes the key to `~/.appstoreconnect/private_keys` on the runner, archives
-with `xcodebuild -allowProvisioningUpdates` and the API key (automatic signing:
-Apple manages the distribution certificate and the profile in the cloud), and
-exports with `app/ios/ExportOptions.plist` (method `app-store-connect`).
+unsigned (signing at archive time wants a development profile, which needs a
+registered device; the team has none), and exports with
+`app/ios/ExportOptions.plist` (method `app-store-connect`),
+`-allowProvisioningUpdates` and the API key. The export signs: Apple manages the
+distribution certificate and the App Store profile in the cloud. The workflow
+then checks the IPA is signed by "Apple Distribution" with bundle id
+`com.linux.simplemath`, and prints its entitlements.
 The build number is `run number * 10 + attempt`, like `play-bundle.yml`.
 
 - A manual run on `main` builds and signs the IPA, then discards it. On another
