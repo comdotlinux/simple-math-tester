@@ -42,7 +42,7 @@ cat "$out/play-notes.txt"
 # failed translation never costs the English summary.
 echo '{}' > "$out/ai-answer.json"
 # || true: no translations yet means nothing to translate.
-languages="$(cd "$dir/../play/listing" && ls -- *.json | sed 's/\.json$//' \
+languages="$(cd "$dir/../play/listing" && printf '%s\n' *.json | sed 's/\.json$//' \
   | { grep -vxE 'en-US|translation_sources' || true; } | paste -sd, -)"
 if [ "$source" = "$out/ai-notes.txt" ] && [ -n "$languages" ]; then
   jq -n --arg model "$model" --arg languages "$languages" \
