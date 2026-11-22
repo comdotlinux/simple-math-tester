@@ -9,8 +9,13 @@ No Mac is needed: GitHub Actions macOS runners build, sign and upload.
 ## Secrets
 
 Set once by the owner in the `release` environment (`gh secret set NAME -e release`),
-like the Android keystore and Play secrets, from an App Store Connect API key
-with the App Manager role (Users and Access, Integrations, App Store Connect API):
+like the Android keystore and Play secrets, from an App Store Connect team API key
+with the **Admin** role (Users and Access, Integrations, App Store Connect API).
+API keys have fixed roles only, and only Admin may create the cloud-managed
+distribution certificate that `-allowProvisioningUpdates` uses at export; an App
+Manager key fails with "Cloud signing permission error". The key in use is
+`github-ci-admin`. A key's role cannot be changed: to rotate, create a new key,
+replace `APPSTORE_API_KEY` and `APPSTORE_KEY_ID`, then revoke the old key.
 
 | Secret | Value |
 |---|---|
