@@ -13,7 +13,7 @@
 // writes What's New from notes.json ([{language: Play code, text}], made by
 // .github/play-release-notes-languages.jq) and submits it for App Review.
 import { createHash, sign } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -105,7 +105,11 @@ export function appStoreTexts(listing) {
     version: {
       description: listing.fullDescription,
       // Spaces after commas count against the 100 characters.
-      keywords: listing.keywords.split(',').map((k) => k.trim()).filter(Boolean).join(','),
+      keywords: listing.keywords
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .join(','),
       promotionalText: listing.shortDescription,
       marketingUrl: urls.marketingUrl,
       supportUrl: urls.supportUrl,
@@ -115,7 +119,9 @@ export function appStoreTexts(listing) {
 
 /** The editable item of a list, by `state`, `appVersionState` or `appStoreState`. */
 export function pickEditable(items) {
-  return items.find((i) => editable.includes(i.attributes.state ?? i.attributes.appVersionState ?? i.attributes.appStoreState));
+  return items.find((i) =>
+    editable.includes(i.attributes.state ?? i.attributes.appVersionState ?? i.attributes.appStoreState),
+  );
 }
 
 /** Reserves, uploads and commits one screenshot (Apple's "Uploading assets"). */
@@ -168,7 +174,9 @@ export async function replaceScreenshots(api, localizationId, dir, code, locale,
           await api('POST', '/v1/appScreenshotSets', {
             type: 'appScreenshotSets',
             attributes: { screenshotDisplayType: displayType },
-            relationships: { appStoreVersionLocalization: { data: { type: 'appStoreVersionLocalizations', id: localizationId } } },
+            relationships: {
+              appStoreVersionLocalization: { data: { type: 'appStoreVersionLocalizations', id: localizationId } },
+            },
           })
         ).data;
       } catch (error) {
@@ -198,14 +206,17 @@ async function waitForScreenshots(api, setIds) {
       const shots = (await api('GET', `/v1/appScreenshotSets/${id}/appScreenshots?limit=50`)).data;
       const failed = shots.filter((s) => s.attributes.assetDeliveryState?.state === 'FAILED');
       if (failed.length) {
-        const why = failed.map((s) => `${s.attributes.fileName}: ${JSON.stringify(s.attributes.assetDeliveryState.errors)}`);
+        const why = failed.map(
+          (s) => `${s.attributes.fileName}: ${JSON.stringify(s.attributes.assetDeliveryState.errors)}`,
+        );
         throw new Error(`App Store Connect rejected screenshots:\n${why.join('\n')}`);
       }
       if (shots.some((s) => s.attributes.assetDeliveryState?.state !== 'COMPLETE')) next.push(id);
     }
     pending = next;
   }
-  if (pending.length) console.log(`::warning::${pending.length} screenshot sets still processing; check App Store Connect`);
+  if (pending.length)
+    console.log(`::warning::${pending.length} screenshot sets still processing; check App Store Connect`);
 }
 
 /** The app record of [bundleId]. */
@@ -219,7 +230,9 @@ async function appRecord(api) {
 export async function findApp(api) {
   const app = await appRecord(api);
   const info = pickEditable((await api('GET', `/v1/apps/${app.id}/appInfos`)).data);
-  const version = pickEditable((await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=10`)).data);
+  const version = pickEditable(
+    (await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=10`)).data,
+  );
   if (!info || !version) throw new Error('No App Store version in preparation: create one in App Store Connect first');
   return { app, info, version };
 }
@@ -246,9 +259,16 @@ export async function listing(api, screenshots) {
       console.log(`::notice::App Store Connect did not take ${locale} (${code}), skipped: ${error.message}`);
       continue;
     }
-    const localization = await upsert(api, 'appStoreVersionLocalizations', versionLocalizations[locale], locale, texts.version, {
-      appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
-    });
+    const localization = await upsert(
+      api,
+      'appStoreVersionLocalizations',
+      versionLocalizations[locale],
+      locale,
+      texts.version,
+      {
+        appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+      },
+    );
     console.log(`Updated ${locale}`);
     if (screenshots) {
       setIds.push(...(await replaceScreenshots(api, localization.id, screenshots, code, locale)));
@@ -283,7 +303,10 @@ export async function review(api, versionString, notes, dryRun) {
         '&filter[processingState]=VALID&filter[expired]=false&sort=-uploadedDate&limit=1',
     )
   ).data[0];
-  if (!build) throw new Error(`No processed build of ${versionString} in TestFlight: push tag v${versionString}, then wait for processing`);
+  if (!build)
+    throw new Error(
+      `No processed build of ${versionString} in TestFlight: push tag v${versionString}, then wait for processing`,
+    );
 
   const versions = (await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=50`)).data;
   const open = pickEditable(versions);
@@ -295,19 +318,25 @@ export async function review(api, versionString, notes, dryRun) {
   if (!version && open) {
     // App Store Connect keeps one version in preparation; it takes the new number.
     await act(`rename version ${open.attributes.versionString} to ${versionString}`, () =>
-      api('PATCH', `/v1/appStoreVersions/${open.id}`, { type: 'appStoreVersions', id: open.id, attributes: { versionString } }),
+      api('PATCH', `/v1/appStoreVersions/${open.id}`, {
+        type: 'appStoreVersions',
+        id: open.id,
+        attributes: { versionString },
+      }),
     );
     version = open;
   }
   if (!version) {
-    version = await act(`create version ${versionString}`, async () =>
-      (
-        await api('POST', '/v1/appStoreVersions', {
-          type: 'appStoreVersions',
-          attributes: { platform: 'IOS', versionString },
-          relationships: { app: { data: { type: 'apps', id: app.id } } },
-        })
-      ).data,
+    version = await act(
+      `create version ${versionString}`,
+      async () =>
+        (
+          await api('POST', '/v1/appStoreVersions', {
+            type: 'appStoreVersions',
+            attributes: { platform: 'IOS', versionString },
+            relationships: { app: { data: { type: 'apps', id: app.id } } },
+          })
+        ).data,
     );
   }
   await act(`attach build ${build.attributes.version} to version ${versionString}`, () =>
@@ -320,11 +349,17 @@ export async function review(api, versionString, notes, dryRun) {
   } else if (!version) {
     console.log("Would set What's New in every language of the new version");
   } else {
-    const localizations = (await api('GET', `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=200`)).data;
+    const localizations = (
+      await api('GET', `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=200`)
+    ).data;
     for (const l of localizations) {
       const whatsNew = whatsNewFor(notes, l.attributes.locale);
       await act(`set What's New of ${l.attributes.locale}: ${JSON.stringify(whatsNew)}`, () =>
-        api('PATCH', `/v1/appStoreVersionLocalizations/${l.id}`, { type: 'appStoreVersionLocalizations', id: l.id, attributes: { whatsNew } }),
+        api('PATCH', `/v1/appStoreVersionLocalizations/${l.id}`, {
+          type: 'appStoreVersionLocalizations',
+          id: l.id,
+          attributes: { whatsNew },
+        }),
       );
     }
   }
@@ -359,7 +394,8 @@ export async function review(api, versionString, notes, dryRun) {
       attributes: { submitted: true },
     });
   });
-  if (!dryRun) console.log(`::notice::Version ${versionString} (build ${build.attributes.version}) is submitted for App Review`);
+  if (!dryRun)
+    console.log(`::notice::Version ${versionString} (build ${build.attributes.version}) is submitted for App Review`);
 }
 
 async function main() {

@@ -112,6 +112,7 @@ flutter test
 flutter test integration_test -d linux      # add xvfb-run -a when headless
 cd .. && node --test tool/functions_test/ tool/translate.test.mjs tool/translate_listing.test.mjs tool/app_store.test.mjs
 node tool/translate_listing.mjs --check
+npm ci --prefix tool && tool/node_modules/.bin/biome ci .   # JS lint and format; biome check --write . fixes
 ```
 
 Publish the branch early. CI is the source of truth; run quick local checks alongside it.

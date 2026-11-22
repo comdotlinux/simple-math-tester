@@ -1,8 +1,9 @@
 {
   "private": true,
-  "description": "CI-only browser check for the offline web build; not an app dependency.",
+  "description": "CI-only tools: the browser check for the offline web build and Biome; not an app dependency.",
   "type": "module",
   "devDependencies": {
+    "@biomejs/biome": "2.6.8",
     "playwright": "1.65.1"
   }
 }

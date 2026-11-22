@@ -61,16 +61,11 @@ async function expectHistory(page, count) {
 }
 
 function savedHistoryLength(page) {
-  return page.evaluate(
-    (key) => JSON.parse(JSON.parse(localStorage.getItem(key))).history.length,
-    progressKey,
-  );
+  return page.evaluate((key) => JSON.parse(JSON.parse(localStorage.getItem(key))).history.length, progressKey);
 }
 
 function appCaches(page) {
-  return page.evaluate(async () =>
-    (await caches.keys()).filter((name) => name.startsWith('app-')),
-  );
+  return page.evaluate(async () => (await caches.keys()).filter((name) => name.startsWith('app-')));
 }
 
 async function expectedCache(dir) {
@@ -166,10 +161,7 @@ try {
   await expectHistory(page, 4);
   const offline = await page.evaluate(() => fetch('version.json').then((r) => r.json()));
   const kept = await appCaches(page);
-  check(
-    offline.build_number === '1' && kept.join() === firstCache,
-    `failed install keeps build 1 offline in ${kept}`,
-  );
+  check(offline.build_number === '1' && kept.join() === firstCache, `failed install keeps build 1 offline in ${kept}`);
 
   // A new deploy is picked up online, then still works offline.
   stopServer = await serve(secondBuild);
@@ -181,9 +173,7 @@ try {
     await page.waitForTimeout(500);
   }
   await openApp(page, '/');
-  const version = await page.evaluate(() =>
-    fetch('version.json', { cache: 'no-store' }).then((r) => r.json()),
-  );
+  const version = await page.evaluate(() => fetch('version.json', { cache: 'no-store' }).then((r) => r.json()));
   check(version.build_number === '2', 'version.json shows build number 2');
   const names = await appCaches(page);
   check(names.length === 1 && names[0] === secondCache, `exactly one cache remains: ${names}`);
@@ -209,9 +199,7 @@ try {
   // from fonts.gstatic.com.
   stopServer = await serve(firstBuild);
   for (const code of ['hi', 'te', 'ta', 'ml', 'pa', 'uk']) {
-    const texts = JSON.parse(
-      await readFile(new URL(`../app/lib/l10n/app_${code}.arb`, import.meta.url), 'utf8'),
-    );
+    const texts = JSON.parse(await readFile(new URL(`../app/lib/l10n/app_${code}.arb`, import.meta.url), 'utf8'));
     const scriptContext = await browser.newContext();
     scriptContext.setDefaultTimeout(60_000);
     const scriptPage = await scriptContext.newPage();
@@ -222,7 +210,7 @@ try {
     );
     const requests = [];
     scriptContext.on('request', (request) => requests.push(request.url()));
-    await scriptPage.goto(origin + '/');
+    await scriptPage.goto(`${origin}/`);
     await scriptPage.locator('flt-semantics-placeholder').evaluate((el) => el.click());
     await scriptPage.getByRole('tab', { name: texts.practice }).waitFor();
     await scriptPage.getByText(texts.practiceTitle, { exact: true }).waitFor();

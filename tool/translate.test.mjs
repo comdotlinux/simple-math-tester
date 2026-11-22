@@ -18,16 +18,8 @@ import {
 } from './translate.mjs';
 
 test('placeholders are argument names, not words in plural branches', () => {
-  assert.deepEqual(
-    placeholders('{count, plural, =1{Noch {count} Sekunde} other{Noch {count} Sekunden}}'),
-    ['count'],
-  );
-  assert.deepEqual(placeholders('So {left} {op} {right} = {result}.'), [
-    'left',
-    'op',
-    'result',
-    'right',
-  ]);
+  assert.deepEqual(placeholders('{count, plural, =1{Noch {count} Sekunde} other{Noch {count} Sekunden}}'), ['count']);
+  assert.deepEqual(placeholders('So {left} {op} {right} = {result}.'), ['left', 'op', 'result', 'right']);
 });
 
 test('a translation must keep placeholders, braces, plurals and digits', () => {
@@ -62,11 +54,17 @@ test('in a plural, the number of an =N branch may become the argument', () => {
   const uk = '{count, plural, one{{count} секунда} few{{count} секунди} many{{count} секунд} other{{count} секунди}}';
   assert.equal(problem(source, uk), null);
   assert.equal(problem(source, '{count, plural, =1{eine Sekunde} other{{count} Sekunden}}'), null);
-  assert.equal(problem(source, '{count, plural, =1{1 Sekunde} other{{count} Sekunden, 2}}'), 'digits {|2} instead of {}');
+  assert.equal(
+    problem(source, '{count, plural, =1{1 Sekunde} other{{count} Sekunden, 2}}'),
+    'digits {|2} instead of {}',
+  );
   // Added plural categories must carry the same numbers as the English branches.
   const tens = '{n, plural, =1{1 ten is 10} other{{n} tens are 10 each}}';
   assert.equal(digits(tens), '{01}');
-  assert.equal(problem(tens, '{n, plural, one{{n} десяток - 10} few{{n} десятки по 10} other{{n} десятків по 10}}'), null);
+  assert.equal(
+    problem(tens, '{n, plural, one{{n} десяток - 10} few{{n} десятки по 10} other{{n} десятків по 10}}'),
+    null,
+  );
   assert.equal(
     problem(tens, '{n, plural, one{{n} десяток - 10} few{{n} десятки по 100} other{{n} десятків по 10}}'),
     'digits {001|01} instead of {01}',
@@ -108,8 +106,14 @@ const keyNames = (n) => Array.from({ length: n }, (_, i) => `k${i}`);
 
 test('first batches hold up to 60 keys; fallback batches 20', () => {
   const template = Object.fromEntries(keyNames(130).map((k) => [k, 'x']));
-  assert.deepEqual(batches(template, keyNames(130)).map((b) => b.length), [60, 60, 10]);
-  assert.deepEqual(batches(template, keyNames(45), 20, 1500).map((b) => b.length), [20, 20, 5]);
+  assert.deepEqual(
+    batches(template, keyNames(130)).map((b) => b.length),
+    [60, 60, 10],
+  );
+  assert.deepEqual(
+    batches(template, keyNames(45), 20, 1500).map((b) => b.length),
+    [20, 20, 5],
+  );
 });
 
 test('a cut-off batch of 60 is retried as batches of 20 with up to 3 attempts each', async () => {
@@ -178,7 +182,10 @@ test('failed keys are listed per language and give exit code 2', async () => {
   assert.equal(await readFile(file, 'utf8'), '- de: a, b\n- uk: c\n');
   assert.equal(log[0], 'Not translated after every retry, retried on the next run:\n- de: a, b\n- uk: c');
   // Nothing translated at all: a plain error (exit 1).
-  await assert.rejects(reportFailures({ de: ['a'] }, 0, undefined, () => {}), /No string could be translated/);
+  await assert.rejects(
+    reportFailures({ de: ['a'] }, 0, undefined, () => {}),
+    /No string could be translated/,
+  );
 });
 
 test('a cut-off, unparseable or empty answer is a failed attempt', () => {

@@ -1,15 +1,22 @@
 // Static server that redirects like Cloudflare Pages: /index.html -> /,
 // /foo.html -> /foo, and /foo is served from foo.html. _headers is not served.
 // Usage: node tool/pages_like_server.mjs <dir> <port>
-import { createServer } from 'node:http';
+
 import { readFile, stat } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 
 const [root, port] = process.argv.slice(2);
 const types = {
-  '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
-  '.json': 'application/json', '.wasm': 'application/wasm', '.png': 'image/png',
-  '.ttf': 'font/ttf', '.otf': 'font/otf', '.bin': 'application/octet-stream',
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.mjs': 'text/javascript',
+  '.json': 'application/json',
+  '.wasm': 'application/wasm',
+  '.png': 'image/png',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.bin': 'application/octet-stream',
   '.wav': 'audio/wav',
 };
 
@@ -37,9 +44,12 @@ createServer(async (req, res) => {
   }
   // normalize() of a path starting with "/" cannot climb above the root.
   const local = join(root, normalize(decoded));
-  const path = pathname.split('/').pop() === '_headers' ? null
-    : pathname.endsWith('/') ? await file(join(local, 'index.html'))
-    : (await file(local)) ?? (await file(`${local}.html`));
+  const path =
+    pathname.split('/').pop() === '_headers'
+      ? null
+      : pathname.endsWith('/')
+        ? await file(join(local, 'index.html'))
+        : ((await file(local)) ?? (await file(`${local}.html`)));
   if (!path) {
     res.writeHead(404).end('Not found');
     return;

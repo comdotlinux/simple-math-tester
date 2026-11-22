@@ -40,7 +40,7 @@ export function digits(message) {
   // shortcut: one plural/select level, as in every message so far; a nested plural needs a real ICU parser.
   let rest = message.replace(/\{\w+\}/g, '');
   const branches = new Set();
-  rest = rest.replace(/(=(\d+)|\w+)\s*\{([^{}]*)\}/g, (_, selector, value, text) => {
+  rest = rest.replace(/(=(\d+)|\w+)\s*\{([^{}]*)\}/g, (_, _selector, value, text) => {
     branches.add(sorted(value ? text.replace(new RegExp(`(?<![0-9])${value}(?![0-9])`, 'g'), '') : text));
     return '';
   });
@@ -86,8 +86,7 @@ const promptNames = {
 };
 
 /** The English name of [code] that DeepSeek is told to translate into. */
-export const languageName = (code) =>
-  promptNames[code] ?? new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
+export const languageName = (code) => promptNames[code] ?? new Intl.DisplayNames(['en'], { type: 'language' }).of(code);
 
 /** [text] with every decimal digit of any script turned into Western 0-9. */
 export function westernDigits(text) {
@@ -157,7 +156,9 @@ export function parseAnswer(body, keys) {
     answer = values[0] ?? {};
   }
   if (!keys.some((k) => k in answer)) {
-    return new Error(`none of the requested keys in the answer (got: ${Object.keys(answer).slice(0, 5).join(', ') || 'nothing'})`);
+    return new Error(
+      `none of the requested keys in the answer (got: ${Object.keys(answer).slice(0, 5).join(', ') || 'nothing'})`,
+    );
   }
   return answer;
 }
@@ -306,12 +307,13 @@ async function main() {
         sources[language][k] = hash(template[k]);
         translated++;
       }
-      if (result.failed.length) (failed[language] ??= []).push(...result.failed);
+      if (result.failed.length) {
+        failed[language] ??= [];
+        failed[language].push(...result.failed);
+      }
     }
     // Hashes of keys the template no longer has are dropped.
-    sources[language] = Object.fromEntries(
-      Object.entries(sources[language]).filter(([k]) => k in template),
-    );
+    sources[language] = Object.fromEntries(Object.entries(sources[language]).filter(([k]) => k in template));
     await writeFile(file, `${JSON.stringify(ordered(template, arb, language), null, 2)}\n`);
   }
   if (!dryRun) {
@@ -329,7 +331,9 @@ async function main() {
 export async function reportFailures(failed, translated, file, log = console.log) {
   if (Object.keys(failed).length === 0) return 0;
   // A failed key keeps its old (or hand-written, or English) text and old hash, so it stays stale.
-  const list = Object.entries(failed).map(([l, keys]) => `- ${l}: ${keys.join(', ')}`).join('\n');
+  const list = Object.entries(failed)
+    .map(([l, keys]) => `- ${l}: ${keys.join(', ')}`)
+    .join('\n');
   log(`Not translated after every retry, retried on the next run:\n${list}`);
   // Nothing at all worked: most likely the key, model or endpoint is wrong.
   if (translated === 0) throw new Error('No string could be translated; see above');

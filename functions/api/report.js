@@ -42,9 +42,7 @@ const intIn = (value, min, max) => Number.isInteger(value) && value >= min && va
 /** The report when [body] is exactly one of the two shapes, otherwise null. */
 export function validate(body) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return null;
-  const fields = body.type === 'question' ? FIELDS.question
-    : body.type === 'problem' ? FIELDS.problem
-    : null;
+  const fields = body.type === 'question' ? FIELDS.question : body.type === 'problem' ? FIELDS.problem : null;
   const keys = Object.keys(body);
   if (!fields || keys.length !== fields.length || !fields.every((f) => keys.includes(f))) return null;
   if (!(typeof body.version === 'string' && VERSION.test(body.version))) return null;
@@ -61,7 +59,8 @@ export function validate(body) {
 /** The title, the dedupe key, and the body of the issue for a valid [report]. */
 export function issueFor(r) {
   const common = [`- Version: \`${r.version}\``, `- Platform: \`${r.platform}\``, `- Language: \`${r.locale}\``];
-  const footer = 'Sent from the app as a fixed report code: no free text, no personal data. ' +
+  const footer =
+    'Sent from the app as a fixed report code: no free text, no personal data. ' +
     'Later reports of the same thing add a +1 reaction to this issue.';
   if (r.type === 'problem') {
     return {
@@ -159,9 +158,7 @@ export async function onRequestPost({ request, env }) {
   const label = LABELS[report.type];
   const { title, body } = issueFor(report);
   try {
-    const [questions, problems] = await Promise.all(
-      [LABELS.question, LABELS.problem].map((l) => openIssues(auth, l)),
-    );
+    const [questions, problems] = await Promise.all([LABELS.question, LABELS.problem].map((l) => openIssues(auth, l)));
     const existing = (label === LABELS.question ? questions : problems).find((i) => i.title === title);
     if (existing) {
       if (!Number.isInteger(existing.number)) throw new GitHubError();
