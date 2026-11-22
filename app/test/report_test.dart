@@ -882,7 +882,34 @@ void main() {
                   await tester.pumpAndSettle();
                   expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
                   expectActions(tester, usePad, {reportFlagKey});
-                  await tap(tester, reportFlagKey);
+                  final flag = find.byKey(reportFlagKey);
+                  await tester.ensureVisible(flag);
+                  await tester.pumpAndSettle();
+                  // End's header pinned over the page (#200) leaves the
+                  // tallest text on the smallest phone less room than
+                  // Report: its part between the header and the dock is
+                  // tapped, and must be at least half a touch target.
+                  var shown = tester.getRect(flag);
+                  if (Scrollable.maybeOf(tester.element(flag))
+                      case final page?) {
+                    final view = page.context.findRenderObject()! as RenderBox;
+                    final header = tester.getRect(
+                      find
+                          .descendant(
+                            of: find.byType(PinnedHeaderSliver),
+                            matching: find.byType(DecoratedBox),
+                          )
+                          .first,
+                    );
+                    shown = shown
+                        .intersect(view.localToGlobal(Offset.zero) & view.size)
+                        .intersect(
+                          Rect.fromLTRB(0, header.bottom, 10000, 10000),
+                        );
+                  }
+                  expect(shown.height, greaterThanOrEqualTo(24));
+                  await tester.tapAt(shown.center);
+                  await tester.pumpAndSettle();
                   expect(find.byKey(reportDialogKey), findsOneWidget);
                 });
               }

@@ -562,6 +562,8 @@ void main() {
 
     Future<void> tapKey(WidgetTester tester, Key key) async {
       await tester.ensureVisible(find.byKey(key));
+      // The practice page is a sliver view: the scroll lays out next frame.
+      await tester.pump();
       await tester.tap(find.byKey(key));
       await tester.pumpAndSettle();
     }
@@ -569,6 +571,9 @@ void main() {
     Future<void> check(WidgetTester tester, String answer) async {
       await tester.ensureVisible(find.byType(TextField));
       await tester.enterText(find.byType(TextField), answer);
+      // The caret's scroll into view below the pinned End header ends
+      // before the next tap.
+      await tester.pumpAndSettle();
       await tapKey(tester, checkAnswerButtonKey);
     }
 
