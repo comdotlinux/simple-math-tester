@@ -117,21 +117,6 @@ MathTesterModel modelOf(WidgetTester tester) =>
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
   await Scrollable.ensureVisible(tester.element(finder), alignment: 1);
   await tester.pumpAndSettle();
-  final el = tester.element(finder);
-  final s = Scrollable.maybeOf(el);
-  final box = el.renderObject! as RenderBox;
-  final r = box.localToGlobal(Offset.zero) & box.size;
-  final hit = tester.hitTestOnBinding(r.center);
-  if (!hit.path.any((e) => e.target == box)) {
-    final sb = s?.context.findRenderObject() as RenderBox?;
-    debugPrint(
-      'DIAG205 widget=$r view=${tester.view.physicalSize / tester.view.devicePixelRatio} '
-      'insets=${MediaQuery.of(el).viewInsets} padding=${MediaQuery.of(el).padding} '
-      'scrollable=${sb == null ? null : sb.localToGlobal(Offset.zero) & sb.size} '
-      'pixels=${s?.position.pixels} max=${s?.position.maxScrollExtent} '
-      'viewport=${s?.position.viewportDimension}',
-    );
-  }
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
