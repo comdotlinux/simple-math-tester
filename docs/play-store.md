@@ -233,13 +233,15 @@ Check the phone builds before creating the tag, as pull requests and pushes to
 
 ```sh
 gh workflow run play-bundle.yml --ref main
-gh workflow run flutter-checks.yml --ref main -f environment-name=none
+gh workflow run flutter-checks.yml --ref main -f environment-name=none -f ios=true
 ```
 
 The first builds and signs the bundle (throwaway key) and runs every check a tag
 runs (16 KB pages, package id and signer, permissions), without uploading. The
 second builds the Android APK and the iOS app and runs the emulator and
-simulator tests, without deploying. Wait until both are green, and only then
+simulator tests, without deploying. Without `-f ios=true` it skips the iOS build
+and simulator, which run on macOS runners; use that for every manual run that is
+not a pre-release check. Wait until both are green, and only then
 create the tag. If either is red, fix it on `main` first.
 
 Pushing a version tag releases: `git tag v1.0.1 && git push origin v1.0.1`.

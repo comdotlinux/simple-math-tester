@@ -18,6 +18,11 @@ on:
           - dev
           - prod
           - test
+      ios:
+        description: 'Also build iOS and run the iOS simulator journeys (macOS runners; for the pre-release check)'
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       environment-name:
@@ -189,7 +194,9 @@ jobs:
   ios:
     name: Build unsigned iOS release
     needs: linux-integration
-    if: github.event_name == 'workflow_dispatch'
+    # macOS minutes are scarce (#223): only a manual run with ios ticked. A call from
+    # flutter-web-cloudflare-pages.yml has no ios input, so it never runs this.
+    if: github.event_name == 'workflow_dispatch' && inputs.ios == true
     runs-on: macos-26
     timeout-minutes: 30
     defaults:
@@ -226,7 +233,7 @@ jobs:
   ios-simulator:
     name: Test user journeys on iOS simulator
     needs: linux-integration
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.ios == true
     runs-on: macos-26
     timeout-minutes: 60
     defaults:
