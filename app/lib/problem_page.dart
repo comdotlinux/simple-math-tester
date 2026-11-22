@@ -2011,7 +2011,7 @@ Widget _settingsList(BuildContext context) {
                   // The sheet closes first; the dialog opens on the page.
                   final page = Navigator.of(context);
                   page.pop();
-                  showReportDialog(page.context);
+                  unawaited(showReportDialog(page.context));
                 },
               ),
               ListTile(

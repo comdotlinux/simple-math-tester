@@ -1,11 +1,11 @@
-import 'dart:math';
 import 'dart:async';
+import 'dart:math';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/celebration.dart';
@@ -1084,7 +1084,6 @@ void main() {
           start: false,
           size: Size(width, 640),
           scale: scale,
-          tier: Tier.easy,
         );
         expect(
           tester.getSemantics(find.byKey(settingsButtonKey)),
@@ -1535,7 +1534,7 @@ void main() {
               : findsNothing,
         );
       },
-      variant: TargetPlatformVariant({
+      variant: const TargetPlatformVariant({
         TargetPlatform.android,
         TargetPlatform.iOS,
       }),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,7 +50,7 @@ Future<LoadedProgress> loadProgress(
   final String? raw;
   try {
     raw = await store.read(progressKey);
-  } catch (error, stack) {
+  } on Object catch (error, stack) {
     _report(error, stack, 'reading saved progress');
     return (progress: Progress(), canSave: false);
   }
@@ -58,14 +60,14 @@ Future<LoadedProgress> loadProgress(
     return (progress: Progress.decode(raw), canSave: true);
   } on NewerProgressException {
     return (progress: Progress(), canSave: false);
-  } catch (error, stack) {
+  } on Object catch (error, stack) {
     try {
       var ms = clock().millisecondsSinceEpoch;
       while (await store.read('$unreadableKeyPrefix$ms') != null) {
         ms++;
       }
       await store.write('$unreadableKeyPrefix$ms', raw);
-    } catch (backupError, backupStack) {
+    } on Object catch (backupError, backupStack) {
       _report(backupError, backupStack, 'backing up unreadable progress');
       return (progress: Progress(), canSave: false);
     }
@@ -86,7 +88,7 @@ class ProgressWriter {
 
   void save(String snapshot) {
     _waiting = snapshot;
-    flush();
+    unawaited(flush());
   }
 
   /// Writes the waiting snapshot, if any; also retries a failed write.
@@ -99,7 +101,7 @@ class ProgressWriter {
         _waiting = null;
         try {
           await _store.write(progressKey, snapshot);
-        } catch (error, stack) {
+        } on Object catch (error, stack) {
           if (!_reported) {
             _reported = true;
             _report(error, stack, 'saving progress');

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/legal.dart';
 import 'package:simple_math_tester/report.dart';

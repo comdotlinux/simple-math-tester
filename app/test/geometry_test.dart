@@ -7,9 +7,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/app_theme.dart';
 import 'package:simple_math_tester/figure.dart';
 import 'package:simple_math_tester/figure_view.dart';
+import 'package:simple_math_tester/geometry.dart';
 import 'package:simple_math_tester/hundredths.dart' show formatHundredths;
 import 'package:simple_math_tester/labels.dart';
-import 'package:simple_math_tester/geometry.dart';
 import 'package:simple_math_tester/solution_steps.dart';
 
 import 'app_theme_test.dart' show contrast;
@@ -515,7 +515,8 @@ void main() {
         jsonDecode(await rootBundle.loadString('FontManifest.json')) as List;
     for (final family in manifest.cast<Map<String, dynamic>>()) {
       final loader = FontLoader(family['family'] as String);
-      for (final font in (family['fonts'] as List).cast<Map>()) {
+      for (final font
+          in (family['fonts'] as List).cast<Map<String, dynamic>>()) {
         loader.addFont(rootBundle.load(font['asset'] as String));
       }
       await loader.load();
@@ -1883,7 +1884,9 @@ void main() {
           layout(
             copy(figure, angles: [figure.angles[0], const AngleLabel(1, null)]),
           ),
-          layout(copy(figure, angles: [...figure.angles, AngleLabel(1, 90)])),
+          layout(
+            copy(figure, angles: [...figure.angles, const AngleLabel(1, 90)]),
+          ),
         ];
         for (final mutant in mutants) {
           mustFail(

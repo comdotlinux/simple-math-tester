@@ -221,12 +221,12 @@ void main() {
           for (var i = 0; i < 200; i++) {
             final code = SuspectQuestion.of(kind.generate(random, level))!;
             expect(code.kind, kind.name);
-            expect(allow[kind.name] as List, contains(code.variant));
+            expect(allow[kind.name]! as List, contains(code.variant));
             expect(code.level, inInclusiveRange(1, 5));
             variants.add(code.variant);
           }
         }
-        expect(variants, unorderedEquals(allow[kind.name] as List));
+        expect(variants, unorderedEquals(allow[kind.name]! as List));
       }
     });
 
@@ -816,7 +816,8 @@ void main() {
           ) as List;
           for (final family in manifest.cast<Map<String, dynamic>>()) {
             final loader = FontLoader(family['family'] as String);
-            for (final font in (family['fonts'] as List).cast<Map>()) {
+            for (final font
+                in (family['fonts'] as List).cast<Map<String, dynamic>>()) {
               loader.addFont(rootBundle.load(font['asset'] as String));
             }
             await loader.load();
@@ -1034,7 +1035,8 @@ void main() {
         ) as List;
         for (final family in manifest.cast<Map<String, dynamic>>()) {
           final loader = FontLoader(family['family'] as String);
-          for (final font in (family['fonts'] as List).cast<Map>()) {
+          for (final font
+              in (family['fonts'] as List).cast<Map<String, dynamic>>()) {
             loader.addFont(rootBundle.load(font['asset'] as String));
           }
           await loader.load();

@@ -161,7 +161,7 @@ void main() {
         expect(errors, hasLength(1), reason: 'reported once per session');
         expect(store.values, isEmpty);
 
-        writer.flush();
+        unawaited(writer.flush());
         await pumpEventQueue();
         expect(store.values[progressKey], 'snapshot 2');
         expect(store.writes, hasLength(3));
@@ -201,7 +201,7 @@ void main() {
       expect(store.writes, hasLength(2), reason: 'A, then B once');
       expect(errors, hasLength(1));
 
-      writer.flush();
+      unawaited(writer.flush());
       await pumpEventQueue();
       expect(store.writes, hasLength(3), reason: 'B once more, then stop');
       expect(store.values, isEmpty);
@@ -213,7 +213,7 @@ void main() {
       final writer = ProgressWriter(store);
       writer.save('snapshot 1');
       await pumpEventQueue();
-      writer.flush();
+      unawaited(writer.flush());
       await pumpEventQueue();
       expect(store.values[progressKey], 'snapshot 1');
     });

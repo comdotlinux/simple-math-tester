@@ -10,7 +10,6 @@ import 'package:simple_math_tester/main.dart' as app;
 import 'package:simple_math_tester/progress.dart';
 import 'package:simple_math_tester/progress_store.dart';
 import 'package:simple_math_tester/rules.dart';
-import 'package:simple_math_tester/sound_player.dart';
 import 'package:web/web.dart' as web;
 
 /// The `inputmode` of Flutter's focused text-editing element, once [wanted]
@@ -51,7 +50,7 @@ void main() {
         progressKey,
         Progress(tier: Tier.easy).encode(),
       );
-      await app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
+      await app.bootstrap(SharedPreferencesStore());
       await tester.pumpAndSettle();
       // The app opens before Start; Start shows the answer and the pad.
       await tester.tap(find.byKey(startPracticeButtonKey));

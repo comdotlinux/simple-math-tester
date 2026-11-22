@@ -41,8 +41,7 @@ Future<void> startWithRaw(WidgetTester tester, String document) async {
 
 /// The real entry point's startup on the real plugin, without audio: the
 /// test devices may have no sound output.
-Future<void> launch() =>
-    app.bootstrap(SharedPreferencesStore(), const SilentSoundPlayer());
+Future<void> launch() => app.bootstrap(SharedPreferencesStore());
 
 /// Closes and reopens the app once the saved document passes [saved]: the
 /// new app reads only what the old one wrote.
