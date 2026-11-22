@@ -25,7 +25,7 @@ jobs:
     name: Shoot the phone screenshots
     if: inputs.screenshots
     runs-on: ubuntu-26.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         shell: bash
