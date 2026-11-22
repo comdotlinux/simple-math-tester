@@ -2,10 +2,3 @@
 self-hosted-runner:
   # GitHub-hosted, but newer than the label list in actionlint 1.7.12.
   labels: [ubuntu-26.04]
-paths:
-  # shortcut: another pull request is changing this file; its two shellcheck infos
-  # (SC2013 loop over codes.txt, SC2086 optional $dir argument) get fixed after it merges.
-  .github/workflows/app-store-listing.yml:
-    ignore:
-      - 'SC2013'
-      - 'SC2086'

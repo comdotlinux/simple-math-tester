@@ -78,6 +78,8 @@ jobs:
           SIZE="$SCREENSHOT_SIZE" PIXELS="$SCREENSHOT_PIXELS"
           im=magick; command -v magick > /dev/null || im=convert
           out="$RUNNER_TEMP/app-store-screenshots/$DEVICE"
+          # codes.txt holds code:play pairs, one per line, without spaces.
+          # shellcheck disable=SC2013
           for pair in $(cat "$RUNNER_TEMP/codes.txt"); do
             code="${pair%%:*}" play="${pair#*:}"
             prefix="$code-"; if [ "$code" = en ]; then prefix=; fi
@@ -146,4 +148,4 @@ jobs:
         run: |
           dir=
           if [ "$SCREENSHOTS" = true ]; then dir="$RUNNER_TEMP/app-store-screenshots"; fi
-          node tool/app_store.mjs listing $dir
+          node tool/app_store.mjs listing ${dir:+"$dir"}
