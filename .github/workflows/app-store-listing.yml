@@ -14,6 +14,11 @@ on:
         description: 'Also replace the screenshots (off: texts only)'
         type: boolean
         default: true
+      screenshots-from-run:
+        description: 'Run id whose screenshot artifacts (7 days) to upload instead of shooting new ones'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
   # artifacts for review while the listing job is skipped.
   screenshots:
     name: Shoot the ${{ matrix.device }} screenshots
-    if: inputs.screenshots
+    if: inputs.screenshots && inputs.screenshots-from-run == ''
     runs-on: ubuntu-26.04
     timeout-minutes: 60
     strategy:
@@ -119,6 +124,10 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     environment: release
+    permissions:
+      contents: read
+      # Download the artifacts of another run (screenshots-from-run).
+      actions: read
     defaults:
       run:
         shell: bash
@@ -129,6 +138,19 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
+      # Only screenshots shot by this workflow on main reach the store, never a branch run's.
+      - name: Check the run the screenshots come from
+        if: inputs.screenshots-from-run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.screenshots-from-run }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "::error::screenshots-from-run is not a run id"; exit 1; }
+          source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '[.path, .head_branch, .event] | join(" ")')"
+          if [ "$source" != ".github/workflows/app-store-listing.yml main workflow_dispatch" ]; then
+            echo "::error::Run $RUN_ID is not a manual app-store-listing.yml run on main ($source)"
+            exit 1
+          fi
       # Both artifacts hold <device>/<Play code>/*.png, so they merge into one tree.
       - name: Download the screenshots
         if: inputs.screenshots
@@ -137,6 +159,8 @@ jobs:
           pattern: app-store-screenshots-*
           merge-multiple: true
           path: ${{ runner.temp }}/app-store-screenshots
+          run-id: ${{ inputs.screenshots-from-run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Check the listings against the stores' limits
         run: node tool/translate_listing.mjs --check
       - name: Update the listings

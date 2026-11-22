@@ -194,6 +194,41 @@ test('the listing updates existing locales, creates new ones and skips a locale 
   assert.equal(lines.filter((l) => l.startsWith('Updated ')).length, Object.keys(appStoreLocales).length - 1);
 });
 
+test('the listing updates a version localization that appeared after it was read', async () => {
+  const calls = [];
+  let versionReads = 0;
+  const api = async (method, path, data) => {
+    calls.push(`${method} ${path}${data?.attributes?.locale ? ` ${data.attributes.locale}` : ''}`);
+    if (path.startsWith('/v1/apps?')) return { data: [{ id: 'app' }] };
+    if (path === '/v1/apps/app/appInfos')
+      return { data: [{ id: 'info', attributes: { state: 'PREPARE_FOR_SUBMISSION' } }] };
+    if (path.startsWith('/v1/apps/app/appStoreVersions')) {
+      return {
+        data: [{ id: 'ver', attributes: { versionString: '1.4.2', appVersionState: 'PREPARE_FOR_SUBMISSION' } }],
+      };
+    }
+    if (path.startsWith('/v1/appInfos/info/')) return { data: [] };
+    if (path.startsWith('/v1/appStoreVersions/ver/')) {
+      versionReads += 1;
+      // The first read is before any app info localization exists.
+      return versionReads === 1 ? { data: [] } : { data: [{ id: 'ver-de', attributes: { locale: 'de-DE' } }] };
+    }
+    if (method === 'POST' && data.type === 'appStoreVersionLocalizations' && data.attributes.locale === 'de-DE') {
+      throw Object.assign(new Error('409 Entity with locale: de-DE already exists'), { status: 409 });
+    }
+    return { data: { id: `${data.type}-${data.attributes.locale ?? 'patched'}` } };
+  };
+  const log = console.log;
+  console.log = () => {};
+  try {
+    await listing(api);
+  } finally {
+    console.log = log;
+  }
+  assert.ok(calls.includes('POST /v1/appStoreVersionLocalizations de-DE'));
+  assert.ok(calls.includes('PATCH /v1/appStoreVersionLocalizations/ver-de'));
+});
+
 test('the screenshot sets are the required iPhone medium size, iPhone large and iPad 13"', () => {
   assert.deepEqual(Object.fromEntries(Object.entries(devices).map(([device, d]) => [device, d.displayType])), {
     iphone: 'APP_IPHONE_61',
