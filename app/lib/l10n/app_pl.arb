@@ -326,6 +326,7 @@
   "reportFlag": "Oznacz to zadanie jako błędne",
   "reportFlagMarked": "Oznaczone jako błędne. Wyślij zgłoszenie",
   "reportFlagSent": "Oznaczono jako błędne. Zgłoszenie wysłane",
+  "reportButton": "Report",
   "reportAskTitle": "Zawołaj dorosłego",
   "reportMarkedNote": "To zadanie jest oznaczone na tym urządzeniu jako błędne. Nic nie zostało wysłane.",
   "reportAskBody": "Dorosły może wysłać zgłoszenie do twórcy aplikacji. Stanie się ono publicznym zgłoszeniem na GitHub.",

@@ -2428,6 +2428,10 @@
   "@reportFlagSent": {
     "description": "Tooltip and screen reader label of the filled flag on a marked question whose report was sent."
   },
+  "reportButton": "Report",
+  "@reportButton": {
+    "description": "Label of the small button beside Hint on the practice page that marks the question as wrong and opens the report dialog. Its flag icon fills once marked. Very short, one word if possible."
+  },
   "reportAskTitle": "Ask a grown-up",
   "@reportAskTitle": {
     "description": "Report dialog (a grown-up sends a report on a wrong question or a problem). Title of the first step, which tells the child to fetch an adult before anything is sent."

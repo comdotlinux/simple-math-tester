@@ -326,6 +326,7 @@
   "reportFlag": "Marchează întrebarea ca greșită",
   "reportFlagMarked": "Marcată ca greșită. Trimite un raport",
   "reportFlagSent": "Marcat ca greșit. Raport trimis",
+  "reportButton": "Report",
   "reportAskTitle": "Cheamă un adult",
   "reportMarkedNote": "Această întrebare este marcată ca greșită pe acest dispozitiv. Nu s-a trimis nimic.",
   "reportAskBody": "Un adult poate trimite un raport dezvoltatorului aplicației. Acesta devine o problemă publică pe GitHub.",

@@ -56,14 +56,14 @@ visible in stats.
 
 ## Privacy and trust
 Works offline: fully on native, on web after one online visit. No analytics; nothing
-leaves the device except a report a grown-up chooses to send. A flag on the question
-card and on algebra and geometry history entries marks a question as wrong on the
-device only. Sending goes through one dialog: ask a grown-up first (it lists exactly
+leaves the device except a report a grown-up chooses to send. A quiet Report button
+with a flag (beside Hint while practising) and a flag on algebra and geometry history
+entries mark a question as wrong on the device only; the flag fills once marked. Sending goes through one dialog: ask a grown-up first (it lists exactly
 what is sent), a reason or category pick-list (no free text anywhere), and a grown-up
 check (type a number shown in words, new each time; a speed bump for young children,
 not security), then exactly one request. A failed send keeps the mark; it is sent
-again only from the flag, through the same check. Arithmetic questions have no
-question code the report function accepts, so they carry no flag. Settings holds an
+again only from Report or the flag, through the same check. Arithmetic questions have
+no question code the report function accepts, so they carry no Report button or flag. Settings holds an
 Impressum, a privacy entry, "Send a problem report" (the same dialog with a category)
 and the GitHub link for longer descriptions.
 
@@ -80,8 +80,11 @@ one stays on), the one-time new-kind card, a prominent Start and the sprint butt
 no question and no answer field yet. After Start it centers one problem and one
 answer field and shows nothing else: the header (daily streak, daily goal, XP with
 level, and combo), the question or figure, the answer with the pad and Check, the
-feedback with Try again / Show a hint / Next, a small Skip and the quiet Hint, the
-suspect flag, and **End** at the top, away from Check. The title, toggles, settings,
+feedback with Try again / Show a hint / Next, a small Skip and the quiet Hint and
+Report, and **End** at the top, away from Check. The question card holds only the
+question. With the system keyboard Skip, Hint and Report share a line under the
+answer and wrap where they do not fit; with the number pad they are its top row
+instead, as tall as a key, and not on the page. The title, toggles, settings,
 sprint, new-kind card, update reminder and the navigation (bottom bar or rail) wait
 before Start, so settings and My answers are two taps away (End, then the item);
 kinds change only before Start. End records nothing for the open question and
@@ -143,8 +146,10 @@ button. Adaptive navigation shell, game-style header (flame, goal ring, combo, X
 bar), question card with an operation band, a row of operation toggles (two rows when they do not fit),
 Start and End, answer field, feedback strip, hint modal, round summary card, sprint card, stats chips and result rows
 share tokens. Buttons have minimum 48px height; focus thickens their edge to 4px ink.
-The on-screen number pad (`app/lib/number_pad.dart`) has digits in two rows of five,
-then Delete and a wide Check key, all slab buttons at least 48px. It edits the same
+The on-screen number pad (`app/lib/number_pad.dart`) has, while practising (not in a
+sprint), a top row with Skip, Hint and Report sharing its width (a long label shrinks
+so the row keeps a key's height), then digits in two rows of five, then Delete and a
+wide Check key, all at least 48px. It edits the same
 text field, which keeps focus and accepts digits only. Phone-height pages dock the
 field, a compact feedback strip (which carries Next after a check) and a denser pad
 together below the page, and the question card drops its band, so the question,

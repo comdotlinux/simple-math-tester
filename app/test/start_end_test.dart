@@ -231,7 +231,7 @@ void main() {
       });
     }
 
-    testWidgets('an algebra or geometry question keeps its small flag', (
+    testWidgets('an algebra or geometry question has its Report button', (
       tester,
     ) async {
       final model = await launch(

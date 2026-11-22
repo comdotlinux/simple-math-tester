@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -368,6 +369,10 @@ void main() {
       // Practice starts as after a tap on Start; false stays before it.
       bool start = true,
       DateTime Function()? clock,
+      Brightness brightness = Brightness.light,
+      // The number pad (true) or the system keyboard (false); null keeps
+      // what the screen size picks.
+      bool? pad,
     }) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
@@ -397,12 +402,18 @@ void main() {
             data: MediaQueryData(
               size: size,
               textScaler: TextScaler.linear(scale),
+              platformBrightness: brightness,
             ),
             child: const MathTesterApp(),
           ),
         ),
       );
       await tester.pumpAndSettle();
+      if (pad != null &&
+          find.byKey(numberPadKey).evaluate().isNotEmpty != pad) {
+        await tester.tap(find.byKey(keyboardSwitchKey));
+        await tester.pumpAndSettle();
+      }
       return model;
     }
 
@@ -672,6 +683,213 @@ void main() {
       await typeNumber(tester, shownNumber(tester));
       expect(decoded(reports.bodies.single)['kind'], 'geometry');
       expect(decoded(reports.bodies.single)['reason'], 'wrongDrawing');
+    });
+
+    group('the Report button', () {
+      final pad = find.byKey(numberPadKey);
+      const actionKeys = [nextQuestionButtonKey, hintButtonKey, reportFlagKey];
+
+      double contrast(Color a, Color b) {
+        final (la, lb) = (a.computeLuminance(), b.computeLuminance());
+        return (max(la, lb) + .05) / (min(la, lb) + .05);
+      }
+
+      /// The colour drawn behind [element]: the nearest opaque fill above it.
+      Color background(Element element) {
+        Color? fill;
+        element.visitAncestorElements((ancestor) {
+          final color = switch (ancestor.widget) {
+            Material(:final color?, :final type)
+                when type != MaterialType.transparency =>
+              color,
+            DecoratedBox(decoration: BoxDecoration(:final color?)) => color,
+            ColoredBox(:final color) => color,
+            _ => null,
+          };
+          if (color == null || color.a == 0) return true;
+          fill = color;
+          return false;
+        });
+        return fill!;
+      }
+
+      // Found in #198: the flag on the card took the band's ink, near-black
+      // in the dark theme, over the icon button's own dark fill.
+      for (final brightness in Brightness.values) {
+        for (final size in const [Size(360, 640), Size(1280, 900)]) {
+          for (final usePad in [false, true]) {
+            final tag =
+                '${brightness.name}, ${size.width.toInt()}x'
+                '${size.height.toInt()}, ${usePad ? 'pad' : 'keyboard'}';
+            testWidgets('$tag: Skip, Hint, Report, the keyboard switch and '
+                'the menu reach 4.5 to 1 for text and 3 to 1 for icons', (
+              tester,
+            ) async {
+              await launch(
+                tester,
+                size: size,
+                brightness: brightness,
+                pad: usePad,
+              );
+              for (final key in [
+                ...actionKeys,
+                keyboardSwitchKey,
+                settingsButtonKey,
+              ]) {
+                final button = find.byKey(key);
+                expect(button, findsOneWidget, reason: '$key');
+                final texts = find.descendant(
+                  of: button,
+                  matching: find.byType(RichText),
+                );
+                expect(texts, findsWidgets, reason: '$key');
+                for (final element in texts.evaluate()) {
+                  final paragraph = element.renderObject! as RenderParagraph;
+                  final color = paragraph.text.style!.color!;
+                  final icon =
+                      element.findAncestorWidgetOfExactType<Icon>() != null;
+                  expect(
+                    contrast(color, background(element)),
+                    greaterThanOrEqualTo(icon ? 3 : 4.5),
+                    reason: '$key ${icon ? 'icon' : 'text'}',
+                  );
+                }
+              }
+            });
+          }
+        }
+      }
+
+      testWidgets('it carries the word, the flag and the state for a screen '
+          'reader, and fills the flag once marked', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await launch(tester, size: const Size(360, 640), pad: false);
+        expect(find.text(en.reportButton), findsOneWidget);
+        expect(
+          tester.getSemantics(find.byKey(reportFlagKey)),
+          isSemantics(
+            label: en.reportButton,
+            tooltip: en.reportFlag,
+            isButton: true,
+            hasTapAction: true,
+          ),
+        );
+        await tap(tester, reportFlagKey);
+        await tap(tester, reportNotNowKey);
+        expect(flagIcon(tester), Icons.flag);
+        expect(
+          tester.getSemantics(find.byKey(reportFlagKey)),
+          isSemantics(
+            label: en.reportButton,
+            tooltip: en.reportFlagMarked,
+            isButton: true,
+            hasTapAction: true,
+          ),
+        );
+        semantics.dispose();
+      });
+
+      testWidgets('the question card has no button of its own', (tester) async {
+        for (final problem in [equation, rectangle]) {
+          await launch(tester, problem: problem, size: const Size(360, 640));
+          final card = find.ancestor(
+            of: find.byKey(questionOnProblemsPageKey).first,
+            matching: find.byType(Card),
+          );
+          for (final type in [ButtonStyleButton, IconButton]) {
+            expect(
+              find.descendant(of: card, matching: find.byType(type)),
+              findsNothing,
+              reason: '$type',
+            );
+          }
+        }
+      });
+
+      // With the number pad the actions are its top row and not on the
+      // page; with the system keyboard they are on the page. Overflow is
+      // reported as an error, which fails the test.
+      group('fits small phones in every language', () {
+        setUpAll(() async {
+          final manifest = jsonDecode(
+            await rootBundle.loadString('FontManifest.json'),
+          ) as List;
+          for (final family in manifest.cast<Map<String, dynamic>>()) {
+            final loader = FontLoader(family['family'] as String);
+            for (final font in (family['fonts'] as List).cast<Map>()) {
+              loader.addFont(rootBundle.load(font['asset'] as String));
+            }
+            await loader.load();
+          }
+        });
+
+        /// [keys] of the actions show, each at least 48 by 48, in the pad
+        /// with [usePad] and on the page without it.
+        void expectActions(WidgetTester tester, bool usePad, Set<Key> keys) {
+          for (final key in actionKeys) {
+            final button = find.byKey(key);
+            if (!keys.contains(key)) continue;
+            expect(button, findsOneWidget, reason: '$key');
+            expect(
+              find.descendant(of: pad, matching: button),
+              usePad ? findsOneWidget : findsNothing,
+              reason: '$key',
+            );
+            final rect = tester.getRect(button);
+            expect(rect.height, greaterThanOrEqualTo(48), reason: '$key');
+            expect(rect.width, greaterThanOrEqualTo(48), reason: '$key');
+          }
+          expect(pad, usePad ? findsOneWidget : findsNothing);
+          if (usePad) {
+            for (var digit = 0; digit <= 9; digit++) {
+              expect(
+                tester.getSize(find.byKey(padDigitKey('$digit'))).height,
+                greaterThanOrEqualTo(48),
+              );
+            }
+          }
+        }
+
+        for (final locale in AppLocalizations.supportedLocales) {
+          final code = locale.toString();
+          for (final size in const [Size(320, 568), Size(360, 640)]) {
+            for (final scale in const [1.0, 2.0]) {
+              for (final usePad in [false, true]) {
+                testWidgets('$code ${size.width.toInt()}x'
+                    '${size.height.toInt()} text x$scale, '
+                    '${usePad ? 'pad' : 'keyboard'}: Skip, Hint and Report', (
+                  tester,
+                ) async {
+                  final model = await launch(
+                    tester,
+                    problem: rectangle,
+                    size: size,
+                    scale: scale,
+                    pad: usePad,
+                    progress: Progress(
+                      tier: Tier.easy,
+                      language: code,
+                      selectedOperations: {OperationType.geometry},
+                      seenKinds: _seen,
+                    ),
+                  );
+                  expectActions(tester, usePad, actionKeys.toSet());
+                  // After a wrong answer Show a hint is on the page and on
+                  // a docked phone Next is in the feedback strip; Report
+                  // stays where it was.
+                  model.setDraftInput('999');
+                  model.submitAnswer();
+                  await tester.pumpAndSettle();
+                  expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
+                  expectActions(tester, usePad, {reportFlagKey});
+                  await tap(tester, reportFlagKey);
+                  expect(find.byKey(reportDialogKey), findsOneWidget);
+                });
+              }
+            }
+          }
+        }
+      });
     });
 
     testWidgets('no flag on an arithmetic question or in a sprint', (
