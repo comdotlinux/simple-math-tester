@@ -128,7 +128,9 @@ jobs:
           unzip -q "${ipas[0]}" -d "$RUNNER_TEMP/ipa-check"
           app="$(find "$RUNNER_TEMP/ipa-check/Payload" -maxdepth 1 -name '*.app' | head -n 1)"
           codesign --verify --deep --strict "$app"
-          codesign -dv "$app" 2>&1 | grep '^Authority=' | tee "$RUNNER_TEMP/authority.txt"
+          # Authority lines appear only from -dvv up; a missing match must reach the
+          # explicit check below, not end the step silently through pipefail.
+          { codesign -dvv "$app" 2>&1 | grep '^Authority=' || true; } | tee "$RUNNER_TEMP/authority.txt"
           if ! grep -q '^Authority=Apple Distribution' "$RUNNER_TEMP/authority.txt"; then
             echo "::error::The app is not signed with an Apple Distribution certificate"
             exit 1
@@ -139,7 +141,7 @@ jobs:
             echo "::error::Bundle id is $bundle_id, expected com.linux.simplemath"
             exit 1
           fi
-          codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p -
+          codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p - || echo "No entitlements to show"
       - name: Upload to TestFlight
         if: github.ref_type == 'tag'
         env:
