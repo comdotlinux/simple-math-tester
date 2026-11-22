@@ -90,7 +90,7 @@ Docs to read for an area:
 | `solution_steps.dart`, `hint_steps.dart`, `hint_modal.dart` | Hints for every kind, as structured steps (`EquationStep`, `FigureStep` with the `FigureParts` it highlights); the hint-step view; the in-app hint modal (after a wrong answer: Try again or Show a hint) and the nudge to try first after many hints |
 | `hundredths.dart` | Parsing and formatting answers as whole hundredths |
 | `math_tester_model.dart`, `rules.dart` | Game state, draws, levels, tiers, sprint |
-| `report.dart`, `report_dialog.dart` | The one request: `ReportClient` (HTTP to `/api/report`), the flag, the report dialog and the grown-up check |
+| `report.dart`, `report_dialog.dart` | The one request: `ReportClient` (HTTP to `/api/report`), the flag and its state, the report dialog and the grown-up check |
 | `progress.dart`, `progress_store.dart` | Saved progress (schema 2) and its storage |
 | `problem_page.dart`, `number_pad.dart`, `question_text.dart`, `hud.dart` | The practice screen |
 | `results_page.dart`, `home_page.dart`, `licences_page.dart`, `legal.dart` | History, shell, licences, privacy |

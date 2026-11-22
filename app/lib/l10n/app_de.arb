@@ -326,6 +326,7 @@
   "reportFlag": "Diese Aufgabe als falsch markieren",
   "reportFlagMarked": "Als falsch markiert. Bericht senden",
   "reportFlagSent": "Als falsch markiert. Meldung gesendet",
+  "reportButton": "Report",
   "reportAskTitle": "Hol eine erwachsene Person",
   "reportMarkedNote": "Diese Aufgabe ist auf diesem Gerät als falsch markiert. Es wurde nichts gesendet.",
   "reportAskBody": "Eine erwachsene Person kann eine Meldung an die Entwicklerin oder den Entwickler der App senden. Daraus wird ein öffentliches Issue auf GitHub.",

@@ -48,6 +48,7 @@ void main() {
     double scale = 1,
     bool dense = false,
     bool next = false,
+    List<Widget>? actions,
   }) async {
     final controller = TextEditingController();
     addTearDown(controller.dispose);
@@ -79,6 +80,7 @@ void main() {
                   dense: dense,
                   next: next,
                   signedDecimal: signedDecimal,
+                  actions: actions,
                 ),
               ),
             ),
@@ -159,6 +161,44 @@ void main() {
     expect(find.byKey(padMinusKey), findsOneWidget);
     expect(find.byKey(padDecimalKey), findsOneWidget);
   });
+
+  // The page docks the pad by this height, so it must match the pad drawn.
+  for (final dense in [false, true]) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('the actions row sits above the digits, a key tall and '
+          'sharing the width, dense $dense, text $scale', (tester) async {
+        const first = Key('first');
+        const second = Key('second');
+        await pumpPad(
+          tester,
+          dense: dense,
+          scale: scale,
+          actions: [
+            TextButton(key: first, onPressed: () {}, child: const Text('A')),
+            TextButton(key: second, onPressed: () {}, child: const Text('B')),
+          ],
+        );
+        final scaler = TextScaler.linear(scale);
+        expect(
+          tester.getSize(pad).height,
+          moreOrLessEquals(
+            NumberPad.height(scaler, dense: dense, actions: true),
+          ),
+        );
+        final a = tester.getRect(find.byKey(first));
+        final b = tester.getRect(find.byKey(second));
+        final one = tester.getRect(find.byKey(padDigitKey('1')));
+        expect(
+          a.height,
+          moreOrLessEquals(NumberPad.keyHeight(scaler, dense: dense)),
+        );
+        expect(a.width, moreOrLessEquals(b.width));
+        expect(a.bottom, lessThan(one.top));
+        expect(a.left, tester.getRect(pad).left);
+        expect(b.right, tester.getRect(pad).right);
+      });
+    }
+  }
 
   testWidgets('the two keys join the third row; the pad keeps its rows', (
     tester,

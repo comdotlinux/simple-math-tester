@@ -251,8 +251,10 @@ class _ProblemPageState extends State<ProblemPage> {
     // scrolling back, so it wins over Skip.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await reveal(_skipKey);
+      // With the pad, Skip is in the pad; Try again and Show a hint are then
+      // the last controls on the page.
+      await reveal(_choicesKey);
       if (compact) {
-        await reveal(_choicesKey);
         await reveal(
           _tryAgainKey,
           ScrollPositionAlignmentPolicy.keepVisibleAtStart,
@@ -276,16 +278,6 @@ class _ProblemPageState extends State<ProblemPage> {
     final tokens = context.tokens;
     final sprinting = model.inSprint;
     final signedDecimal = model.signedDecimalInput;
-    final pad = NumberPad(
-      controller: _controller,
-      onEdited: (text) {
-        model.setDraftInput(text);
-        model.keyPressed();
-      },
-      onCheck: model.checkOrNext,
-      next: model.answerCorrect != null,
-      signedDecimal: signedDecimal,
-    );
     // Before Start the page holds the kinds, Start and the sprint; while
     // practising (or in a sprint) the question and the answer.
     final setup = model.tier != null && !model.practising && !sprinting;
@@ -316,10 +308,10 @@ class _ProblemPageState extends State<ProblemPage> {
         final phone = !side && constraints.maxHeight < 700;
         final scaler = MediaQuery.textScalerOf(context);
         final dockHeight = phone
-            ? NumberPad.height(scaler, dense: true) +
+            ? NumberPad.height(scaler, dense: true, actions: !sprinting) +
                   scaler.scale(28) * 1.2 +
                   128
-            : NumberPad.height(scaler) + 2 * 12 + 7;
+            : NumberPad.height(scaler, actions: !sprinting) + 2 * 12 + 7;
         // With the system keyboard a phone docks the field, the feedback and
         // Check without the pad, so the keyboard below never hides them.
         final keyDock =
@@ -356,6 +348,113 @@ class _ProblemPageState extends State<ProblemPage> {
         final button = tight
             ? const WidgetStatePropertyAll(Size(48, 48))
             : null;
+        // Arithmetic questions have no code the report function accepts, and
+        // a dialog would stop a running round's clock.
+        final reportable =
+            !sprinting && SuspectQuestion.of(model.current) != null;
+        // Skip (Next once checked), the quiet Hint and Report, with the same
+        // keys wherever they sit: the pad's top row while the pad shows,
+        // else a line under the answer that wraps where it does not fit.
+        List<Widget> actions({required bool inPad}) {
+          // In the pad a long label shrinks, so the row keeps a key's height.
+          const padStyle = ButtonStyle(
+            padding: WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 8),
+            ),
+          );
+          Widget label(IconData icon, String text) => FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 8,
+              children: [Icon(icon), Text(text)],
+            ),
+          );
+          Widget quiet(
+            Key? key,
+            IconData icon,
+            String text,
+            VoidCallback onPressed,
+          ) => inPad
+              ? TextButton(
+                  key: key,
+                  onPressed: onPressed,
+                  style: padStyle,
+                  child: label(icon, text),
+                )
+              : TextButton.icon(
+                  key: key,
+                  onPressed: onPressed,
+                  icon: Icon(icon),
+                  label: Text(text),
+                );
+          // Before a check, moving on skips it.
+          final skipIcon = model.answerChecked
+              ? Icons.navigate_next
+              : Icons.skip_next;
+          final skipText = model.answerChecked ? l.nextQuestion : l.skip;
+          return [
+            if (!nextInStrip)
+              Slab(
+                key: _skipKey,
+                pressable: true,
+                radius: AppTokens.radiusControl,
+                child: inPad
+                    ? OutlinedButton(
+                        key: nextQuestionButtonKey,
+                        onPressed: model.generateNextProblem,
+                        style: padStyle,
+                        child: label(skipIcon, skipText),
+                      )
+                    : OutlinedButton.icon(
+                        key: nextQuestionButtonKey,
+                        onPressed: model.generateNextProblem,
+                        style: ButtonStyle(minimumSize: button),
+                        icon: Icon(skipIcon),
+                        label: Text(skipText),
+                      ),
+              ),
+            if (!wrong)
+              quiet(hintButtonKey, Icons.lightbulb_outline, l.hint, _showHint),
+            if (reportable)
+              Builder(
+                builder: (context) {
+                  final flag = reportFlagState(context, model.current);
+                  // The tooltip says whether it is marked, and whether its
+                  // report was sent; the flag fills once marked. Merged, a
+                  // screen reader hears the word, the button and the state
+                  // together.
+                  return MergeSemantics(
+                    key: reportFlagKey,
+                    child: Tooltip(
+                      message: flag.tooltip,
+                      child: quiet(
+                        null,
+                        flag.icon,
+                        l.reportButton,
+                        flag.onPressed,
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ];
+        }
+
+        final pad = NumberPad(
+          controller: _controller,
+          onEdited: (text) {
+            model.setDraftInput(text);
+            model.keyPressed();
+          },
+          onCheck: model.checkOrNext,
+          next: model.answerCorrect != null,
+          signedDecimal: signedDecimal,
+          actions: sprinting || !showPad ? null : actions(inPad: true),
+        );
+        final pageActions = showPad || sprinting
+            ? const <Widget>[]
+            : actions(inPad: false);
         final field = _CheckMotion(
           key: _fieldKey,
           check: model.lastCheck,
@@ -601,10 +700,6 @@ class _ProblemPageState extends State<ProblemPage> {
                       child: _QuestionCard(
                         problem: model.current,
                         compact: tight,
-                        // A dialog would stop a running round's clock.
-                        flag:
-                            !sprinting &&
-                            SuspectQuestion.of(model.current) != null,
                       ),
                     ),
                     if (!compact) ...[
@@ -673,46 +768,17 @@ class _ProblemPageState extends State<ProblemPage> {
                           ],
                         ),
                       ],
-                      // A small Skip and the quiet Hint share one line, and
-                      // wrap where they do not fit.
-                      if (!nextInStrip || !wrong) ...[
+                      // With the system keyboard a small Skip, the quiet Hint
+                      // and Report share one line, and wrap where they do not
+                      // fit; with the pad they are its top row.
+                      if (pageActions.isNotEmpty) ...[
                         SizedBox(height: tight ? 12 : 16),
                         Wrap(
                           alignment: WrapAlignment.spaceBetween,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           spacing: 12,
                           runSpacing: 8,
-                          children: [
-                            if (!nextInStrip)
-                              Slab(
-                                key: _skipKey,
-                                pressable: true,
-                                radius: AppTokens.radiusControl,
-                                child: OutlinedButton.icon(
-                                  key: nextQuestionButtonKey,
-                                  onPressed: model.generateNextProblem,
-                                  style: ButtonStyle(minimumSize: button),
-                                  // Before a check, moving on skips it.
-                                  icon: Icon(
-                                    model.answerChecked
-                                        ? Icons.navigate_next
-                                        : Icons.skip_next,
-                                  ),
-                                  label: Text(
-                                    model.answerChecked
-                                        ? l.nextQuestion
-                                        : l.skip,
-                                  ),
-                                ),
-                              ),
-                            if (!wrong)
-                              TextButton.icon(
-                                key: hintButtonKey,
-                                onPressed: _showHint,
-                                icon: const Icon(Icons.lightbulb_outline),
-                                label: Text(l.hint),
-                              ),
-                          ],
+                          children: pageActions,
                         ),
                       ],
                     ],
@@ -781,6 +847,7 @@ class _ProblemPageState extends State<ProblemPage> {
                               dense: true,
                               next: pad.next,
                               signedDecimal: signedDecimal,
+                              actions: pad.actions,
                             ),
                         ],
                       )
@@ -938,18 +1005,12 @@ class _CheckMotionState extends State<_CheckMotion>
 
 Widget _flexed(bool row, Widget child) => row ? Expanded(child: child) : child;
 
-/// The hero: the operation's name on a colour band over the question, and
-/// the flag that marks it as wrong in its top corner.
+/// The hero: the operation's name on a colour band over the question.
 class _QuestionCard extends StatelessWidget {
-  const _QuestionCard({
-    required this.problem,
-    required this.compact,
-    required this.flag,
-  });
+  const _QuestionCard({required this.problem, required this.compact});
 
   final Problem problem;
   final bool compact;
-  final bool flag;
 
   @override
   Widget build(BuildContext context) {
@@ -970,90 +1031,69 @@ class _QuestionCard extends StatelessWidget {
       textAlign: TextAlign.center,
       semanticsLabel: l.mathQuestion(problem.spoken(l)),
     );
-    // Without the band the flag sits beside the question: a line of text
-    // keeps clear of it on both sides and stays centred, a figure only on
-    // the flag's side, so it keeps its width.
-    final side = flag ? 48.0 : 20.0;
     return Slab(
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: Stack(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // The question's own label already names the operation; a phone
-                // with the docked field drops the band for room.
-                if (!compact)
-                  ExcludeSemantics(
-                    child: _Band(
-                      color: tokens.operation,
-                      child: Padding(
-                        padding: EdgeInsetsDirectional.only(end: flag ? 32 : 0),
-                        child: Text(
-                          problem.kind.label(l),
-                          style: textTheme.labelMedium?.copyWith(
-                            color: tokens.onOperation,
-                          ),
-                        ),
+            // The question's own label already names the operation; a phone
+            // with the docked field drops the band for room.
+            if (!compact)
+              ExcludeSemantics(
+                child: _Band(
+                  color: tokens.operation,
+                  child: Text(
+                    problem.kind.label(l),
+                    style: textTheme.labelMedium?.copyWith(
+                      color: tokens.onOperation,
+                    ),
+                  ),
+                ),
+              ),
+            if (problem case FigureProblem(:final figure))
+              // The figure where the question text would be, with the
+              // short prompt under it; the figure reads the whole sentence.
+              Padding(
+                padding: compact
+                    ? const EdgeInsets.fromLTRB(20, 6, 20, 6)
+                    : const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                child: Column(
+                  key: questionOnProblemsPageKey,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FigureView(
+                      figure: figure,
+                      height: figureHeight(compact: compact),
+                      semanticsLabel: l.mathQuestion(problem.spoken(l)),
+                    ),
+                    SizedBox(height: compact ? 2 : 8),
+                    ExcludeSemantics(
+                      child: Text(
+                        figurePromptText(l, figure),
+                        textAlign: TextAlign.center,
+                        style: compact
+                            ? textTheme.titleLarge
+                            : textTheme.headlineMedium,
                       ),
                     ),
-                  ),
-                if (problem case FigureProblem(:final figure))
-                  // The figure where the question text would be, with the
-                  // short prompt under it; the figure reads the whole sentence.
-                  Padding(
-                    padding: compact
-                        ? EdgeInsetsDirectional.fromSTEB(20, 6, side, 6)
-                        : const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                    child: Column(
-                      key: questionOnProblemsPageKey,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        FigureView(
-                          figure: figure,
-                          height: figureHeight(compact: compact),
-                          semanticsLabel: l.mathQuestion(problem.spoken(l)),
-                        ),
-                        SizedBox(height: compact ? 2 : 8),
-                        ExcludeSemantics(
-                          child: Text(
-                            figurePromptText(l, figure),
-                            textAlign: TextAlign.center,
-                            style: compact
-                                ? textTheme.titleLarge
-                                : textTheme.headlineMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: compact
-                        ? EdgeInsets.symmetric(horizontal: side, vertical: 6)
-                        : const EdgeInsets.fromLTRB(20, 36, 20, 44),
-                    child: compact
-                        // One line that shrinks to fit rather than wrapping.
-                        ? FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: question(
-                              textTheme.displayLarge?.copyWith(fontSize: 52),
-                            ),
-                          )
-                        : question(textTheme.displayLarge),
-                  ),
-              ],
-            ),
-            if (flag)
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: ReportFlag(
-                  key: reportFlagKey,
-                  problem: problem,
-                  color: compact ? null : tokens.onOperation,
+                  ],
                 ),
+              )
+            else
+              Padding(
+                padding: compact
+                    ? const EdgeInsets.symmetric(horizontal: 20, vertical: 6)
+                    : const EdgeInsets.fromLTRB(20, 36, 20, 44),
+                child: compact
+                    // One line that shrinks to fit rather than wrapping.
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: question(
+                          textTheme.displayLarge?.copyWith(fontSize: 52),
+                        ),
+                      )
+                    : question(textTheme.displayLarge),
               ),
           ],
         ),

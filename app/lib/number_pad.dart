@@ -33,6 +33,7 @@ class NumberPad extends StatelessWidget {
     this.dense = false,
     this.next = false,
     this.signedDecimal = false,
+    this.actions,
   });
 
   final TextEditingController controller;
@@ -55,14 +56,25 @@ class NumberPad extends StatelessWidget {
   /// become such a number are ignored.
   final bool signedDecimal;
 
+  /// Buttons in a row above the digits, as tall as a key and sharing its
+  /// width equally: Skip, Hint and Report while practising, which then are
+  /// not on the page. Null leaves the row out (a sprint).
+  final List<Widget>? actions;
+
   /// Grows with the text, so a 200% digit still fits its key.
   static double keyHeight(TextScaler scaler, {bool dense = false}) =>
       max(dense ? 48 : 52, scaler.scale(28) * 1.2 + (dense ? 12 : 16));
 
   static double _gap(bool dense) => dense ? 6 : 8;
 
-  static double height(TextScaler scaler, {bool dense = false}) =>
-      3 * keyHeight(scaler, dense: dense) + 2 * _gap(dense);
+  static double height(
+    TextScaler scaler, {
+    bool dense = false,
+    bool actions = false,
+  }) {
+    final rows = actions ? 4 : 3;
+    return rows * keyHeight(scaler, dense: dense) + (rows - 1) * _gap(dense);
+  }
 
   void _edit(String? digit) {
     final text = controller.text;
@@ -162,6 +174,15 @@ class NumberPad extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       spacing: gap,
       children: [
+        if (actions case final actions?)
+          SizedBox(
+            height: keyHeight,
+            child: Row(
+              spacing: gap,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [for (final action in actions) Expanded(child: action)],
+            ),
+          ),
         row([for (var value = 1; value <= 5; value++) digit(value)]),
         row([for (var value = 6; value <= 10; value++) digit(value % 10)]),
         row([

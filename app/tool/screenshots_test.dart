@@ -841,6 +841,62 @@ void main() {
           }
         });
 
+        // Skip, Hint and Report: on the page with the system keyboard, the
+        // pad's top row with the pad; an arithmetic question, a figure and a
+        // marked question, at normal and large text.
+        testWidgets('report button screenshots $tag', (tester) async {
+          language = code;
+          final geometry = OperationType.geometry.source as GeometrySource;
+          final figure = geometry.build(
+            OperationType.geometry,
+            'trianglePerimeter',
+            [12, 5, 9],
+          )!;
+          // A shot, and one of the page scrolled to its end when it scrolls.
+          Future<void> shootBoth(String name) async {
+            await shoot(tester, name);
+            final page = tester.state<ScrollableState>(
+              find
+                  .ancestor(
+                    of: find.byKey(questionOnProblemsPageKey).first,
+                    matching: find.byType(Scrollable),
+                  )
+                  .first,
+            );
+            if (page.position.maxScrollExtent == 0) return;
+            page.position.jumpTo(page.position.maxScrollExtent);
+            await shoot(tester, '$name-end');
+          }
+
+          for (final scale in [1.0, 2.0]) {
+            for (final pad in [false, true]) {
+              final mode = pad ? 'pad' : 'keyboard';
+              for (final problem in <Problem>[
+                const ArithmeticProblem(48, 27, OperationType.plus, 75),
+                figure,
+              ]) {
+                final model = await launch(
+                  tester,
+                  size,
+                  brightness,
+                  problem: problem,
+                  scale: scale,
+                );
+                if (find.byKey(numberPadKey).evaluate().isNotEmpty != pad) {
+                  await tester.tap(find.byKey(keyboardSwitchKey));
+                  await tester.pumpAndSettle();
+                }
+                await shootBoth(
+                  '$tag-18-report-${problem.kind.name}-$mode-x$scale',
+                );
+                if (problem == figure) {
+                  model.markSuspect(problem);
+                  await shootBoth('$tag-18-report-marked-$mode-x$scale');
+                }
+              }
+            }
+          }
+        });
         testWidgets('geometry screenshots $tag', (tester) async {
           language = code;
           final geometry = OperationType.geometry.source as GeometrySource;

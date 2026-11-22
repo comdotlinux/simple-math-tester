@@ -35,33 +35,44 @@ List<(int, String)> checkNumbers(AppLocalizations l) => [
 String reportCode(SuspectQuestion code) =>
     '${code.kind} ${code.variant} [${code.params.join(', ')}] L${code.level}';
 
-/// The flag on a question card and on a history entry: marks the question
-/// on this device (which sends nothing) and opens the report dialog. Filled
-/// once the question is marked.
+/// What the flag shows for [problem]: its tooltip (which says whether the
+/// question is marked, and whether its report was sent), its icon (filled
+/// once marked) and what a tap does: it marks the question on this device
+/// (which sends nothing) and opens the report dialog.
+({String tooltip, IconData icon, VoidCallback onPressed}) reportFlagState(
+  BuildContext context,
+  Problem problem,
+) {
+  final l = AppLocalizations.of(context);
+  final mark = context.select((MathTesterModel m) => m.suspectOf(problem));
+  return (
+    tooltip: mark == null
+        ? l.reportFlag
+        : mark.sent
+        ? l.reportFlagSent
+        : l.reportFlagMarked,
+    icon: mark == null ? Icons.outlined_flag : Icons.flag,
+    onPressed: () {
+      context.read<MathTesterModel>().markSuspect(problem);
+      showReportDialog(context, problem: problem);
+    },
+  );
+}
+
+/// The flag on a history entry; the practice page has a labelled Report
+/// button with the same state instead.
 class ReportFlag extends StatelessWidget {
-  const ReportFlag({super.key, required this.problem, this.color});
+  const ReportFlag({super.key, required this.problem});
 
   final Problem problem;
 
-  /// The icon's colour on a coloured band; null takes the theme's.
-  final Color? color;
-
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final mark = context.select((MathTesterModel m) => m.suspectOf(problem));
+    final flag = reportFlagState(context, problem);
     return IconButton(
-      tooltip: mark == null
-          ? l.reportFlag
-          : mark.sent
-          ? l.reportFlagSent
-          : l.reportFlagMarked,
-      color: color,
-      icon: Icon(mark == null ? Icons.outlined_flag : Icons.flag),
-      onPressed: () {
-        context.read<MathTesterModel>().markSuspect(problem);
-        showReportDialog(context, problem: problem);
-      },
+      tooltip: flag.tooltip,
+      icon: Icon(flag.icon),
+      onPressed: flag.onPressed,
     );
   }
 }

@@ -326,6 +326,7 @@
   "reportFlag": "Signaler cette question comme fausse",
   "reportFlagMarked": "Signalée comme fausse. Envoyer un rapport",
   "reportFlagSent": "Marquée comme fausse. Signalement envoyé",
+  "reportButton": "Report",
   "reportAskTitle": "Demande à un adulte",
   "reportMarkedNote": "Cette question est marquée comme fausse sur cet appareil. Rien n’a été envoyé.",
   "reportAskBody": "Un adulte peut envoyer un signalement au développeur de l’appli. Ça devient un problème public sur GitHub.",

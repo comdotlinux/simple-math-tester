@@ -99,16 +99,31 @@ void main() {
         );
       }
 
-      testWidgets('the question, Skip, the field, the pad and Check are on '
-          'screen without overlapping at $tag', (tester) async {
+      testWidgets('the question, the field, the pad with Skip and Hint, and '
+          'Check are on screen without overlapping at $tag', (tester) async {
         await launch(tester);
         final shown = [
           find.byKey(questionOnProblemsPageKey),
-          find.byKey(nextQuestionButtonKey),
           find.byType(TextField),
           pad,
         ];
-        for (final finder in [...shown, find.byKey(checkAnswerButtonKey)]) {
+        // With the pad, Skip and Hint are its top row, not on the page.
+        final inPad = [
+          find.byKey(nextQuestionButtonKey),
+          find.byKey(hintButtonKey),
+        ];
+        for (final finder in inPad) {
+          expect(
+            find.descendant(of: pad, matching: finder),
+            findsOneWidget,
+            reason: '$finder',
+          );
+        }
+        for (final finder in [
+          ...shown,
+          ...inPad,
+          find.byKey(checkAnswerButtonKey),
+        ]) {
           expectOnScreen(tester, finder, size);
         }
         for (var i = 0; i < shown.length; i++) {
@@ -135,7 +150,8 @@ void main() {
         final position = tester.state<ScrollableState>(page).position;
         position.jumpTo(position.maxScrollExtent);
         await tester.pumpAndSettle();
-        final last = find.byKey(hintButtonKey);
+        // Skip and Hint are in the pad, so the question card is the last.
+        final last = find.byKey(questionOnProblemsPageKey);
         expectOnScreen(tester, last, size);
         expect(
           tester.getRect(last).bottom,
@@ -144,9 +160,7 @@ void main() {
         );
         expect(tester.takeException(), isNull);
 
-        // Skip from there brings the new question card back into view.
-        await tester.ensureVisible(find.byKey(nextQuestionButtonKey));
-        await tester.pumpAndSettle();
+        // Skip in the pad brings the new question card back into view.
         await tester.tap(find.byKey(nextQuestionButtonKey));
         await tester.pumpAndSettle();
         expect(find.byKey(pinnedQuestionKey), findsNothing);
