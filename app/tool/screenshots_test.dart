@@ -305,11 +305,9 @@ void main() {
           played = const Duration(minutes: 4, seconds: 30);
           round.endPractice();
           await tester.pumpAndSettle();
-          // Scrolled so the whole card shows, its buttons at the bottom.
-          await Scrollable.ensureVisible(
-            tester.element(find.byKey(roundSummaryDoneKey)),
-            alignment: 1,
-          );
+          // The card at the top, so in every language it shows whole with
+          // its buttons and no heading is cut in half.
+          await tester.ensureVisible(find.byKey(roundSummaryKey));
           await shoot(tester, '$tag-2e-round-summary');
 
           await launch(tester, size, brightness);
