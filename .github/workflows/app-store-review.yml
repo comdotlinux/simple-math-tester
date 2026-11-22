@@ -1,0 +1,88 @@
+name: Submit to App Review
+
+# Manual only: takes the TestFlight build that the v* tag run of ios-bundle.yml
+# uploaded, puts it on the App Store version of the same number (renaming the
+# version in preparation, or creating one), writes What's New and submits the
+# version for App Review, with tool/app_store.mjs. dry-run (the default) only
+# reads and lists what it would do. What's New is made like the Play notes
+# (play-release-notes.sh) from the changes since the previous tag, or since
+# notes-since; the first App Store version has none. See docs/app-store.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag whose build is in TestFlight, for example v1.4.1'
+        required: true
+        type: string
+      dry-run:
+        description: 'Only list what would be done'
+        type: boolean
+        default: true
+      notes-since:
+        description: "Optional tag What's New starts from, for example v1.4.0 (default: the tag before version)"
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Submit the build for App Review
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    # The App Store Connect key is a `release` environment secret; that
+    # environment allows only v* tags and main, so run this from main (the default).
+    environment: release
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # play-promote-changes.sh needs the tags and main's history.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Write What's New
+        env:
+          VERSION: ${{ inputs.version }}
+          NOTES_SINCE: ${{ inputs.notes-since }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_MODEL: ${{ vars.DEEPSEEK_MODEL || 'deepseek-flash' }}
+        run: |
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version '$VERSION' is not v1.2.3"
+            exit 1
+          fi
+          if ! git rev-parse -q --verify "refs/tags/$VERSION" > /dev/null; then
+            echo "::error::Tag $VERSION not found; its tag run uploads the build to TestFlight"
+            exit 1
+          fi
+          since="${NOTES_SINCE:-$(git describe --tags --abbrev=0 --match 'v*' "$VERSION^")}"
+          bash .github/play-promote-changes.sh "$VERSION" "$since" "" > "$RUNNER_TEMP/changes.md"
+          if [ ! -s "$RUNNER_TEMP/changes.md" ]; then
+            echo "::error::No changes from $since to $VERSION for What's New; set notes-since"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/changes.md"
+          bash .github/play-release-notes.sh "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP"
+          # Every listing language may get a translation; play-release-notes-languages.jq
+          # drops invalid ones, and tool/app_store.mjs falls back to English.
+          listed="$(ls play/listing | sed -n 's/\.json$//p' | grep -vx translation_sources | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          jq -n --arg english "$(cat "$RUNNER_TEMP/play-notes.txt")" --slurpfile answer "$RUNNER_TEMP/ai-answer.json" \
+            --argjson listed "$listed" -f .github/play-release-notes-languages.jq > "$RUNNER_TEMP/whats-new.json"
+      - name: Submit for App Review
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          APPSTORE_API_KEY: ${{ secrets.APPSTORE_API_KEY }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          args=("${VERSION#v}" "$RUNNER_TEMP/whats-new.json")
+          if [ "$DRY_RUN" = true ]; then args+=(--dry-run); fi
+          node tool/app_store.mjs review "${args[@]}"

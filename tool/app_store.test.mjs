@@ -14,9 +14,11 @@ import {
   listing,
   pickEditable,
   replaceScreenshots,
+  review,
   token,
   upload,
   urls,
+  whatsNewFor,
 } from './app_store.mjs';
 import { playCodes } from './translate_listing.mjs';
 
@@ -224,6 +226,47 @@ test('a refused screenshot set fails naming the type and the sets the localizati
     },
   );
 });
+test("What's New takes the language's notes, else the English ones", () => {
+  const notes = [
+    { language: 'en-US', text: '- Faster' },
+    { language: 'pl-PL', text: '- Szybciej' },
+    { language: 'pa', text: '- ਤੇਜ਼' },
+  ];
+  assert.equal(whatsNewFor(notes, 'pl'), '- Szybciej');
+  assert.equal(whatsNewFor(notes, 'pa-IN'), '- ਤੇਜ਼');
+  assert.equal(whatsNewFor(notes, 'de-DE'), '- Faster');
+  assert.equal(whatsNewFor([], 'en-US'), undefined);
+});
+
+/** A fake App Store Connect with [versions] and one valid build of 1.5.0, unless [build] is null. */
+function fakeStore({ versions, build = { id: 'b1', attributes: { version: '431' } }, draft = null, items = [] }) {
+  const writes = [];
+  const api = async (method, path, data) => {
+    if (method !== 'GET') {
+      writes.push(`${method} ${path} ${JSON.stringify(data.attributes ?? data)}`);
+      return { data: { id: `new-${data.type}`, attributes: data.attributes } };
+    }
+    if (path.startsWith('/v1/apps?')) return { data: [{ id: 'app' }] };
+    if (path.startsWith('/v1/builds?')) {
+      assert.match(path, /filter\[preReleaseVersion\.version\]=1\.5\.0&filter\[processingState\]=VALID/);
+      return { data: build ? [build] : [] };
+    }
+    if (path.startsWith('/v1/apps/app/appStoreVersions')) return { data: versions };
+    if (path.endsWith('/appStoreVersionLocalizations?limit=200')) {
+      return { data: ['en-US', 'pl'].map((locale) => ({ id: `loc-${locale}`, attributes: { locale } })) };
+    }
+    if (path.startsWith('/v1/reviewSubmissions?')) return { data: draft ? [draft] : [] };
+    if (path.startsWith('/v1/reviewSubmissions/')) return { data: items };
+    throw new Error(`unexpected ${method} ${path}`);
+  };
+  return { api, writes };
+}
+
+const version = (id, versionString, appVersionState) => ({ id, attributes: { versionString, appVersionState } });
+const notes = [
+  { language: 'en-US', text: '- Faster' },
+  { language: 'pl-PL', text: '- Szybciej' },
+];
 
 async function quietly(run) {
   const log = console.log;
@@ -236,3 +279,65 @@ async function quietly(run) {
   }
   return lines;
 }
+
+test('review attaches the build, writes What’s New and submits', async () => {
+  const { api, writes } = fakeStore({
+    versions: [version('v2', '1.5.0', 'PREPARE_FOR_SUBMISSION'), version('v1', '1.4.1', 'READY_FOR_DISTRIBUTION')],
+  });
+  const lines = await quietly(() => review(api, '1.5.0', notes, false));
+  assert.deepEqual(writes, [
+    'PATCH /v1/appStoreVersions/v2/relationships/build {"type":"builds","id":"b1"}',
+    'PATCH /v1/appStoreVersionLocalizations/loc-en-US {"whatsNew":"- Faster"}',
+    'PATCH /v1/appStoreVersionLocalizations/loc-pl {"whatsNew":"- Szybciej"}',
+    'POST /v1/reviewSubmissions {"platform":"IOS"}',
+    'POST /v1/reviewSubmissionItems {"type":"reviewSubmissionItems","relationships":{"reviewSubmission":{"data":{"type":"reviewSubmissions","id":"new-reviewSubmissions"}},"appStoreVersion":{"data":{"type":"appStoreVersions","id":"v2"}}}}',
+    'PATCH /v1/reviewSubmissions/new-reviewSubmissions {"submitted":true}',
+  ]);
+  assert.equal(lines.at(-1), '::notice::Version 1.5.0 (build 431) is submitted for App Review');
+});
+
+test('a dry run only reads and says what it would do', async () => {
+  const { api, writes } = fakeStore({
+    versions: [version('v2', '1.4.2', 'PREPARE_FOR_SUBMISSION'), version('v1', '1.4.1', 'READY_FOR_DISTRIBUTION')],
+  });
+  const lines = await quietly(() => review(api, '1.5.0', notes, true));
+  assert.deepEqual(writes, []);
+  assert.deepEqual(lines, [
+    'Would rename version 1.4.2 to 1.5.0',
+    'Would attach build 431 to version 1.5.0',
+    'Would set What\'s New of en-US: "- Faster"',
+    'Would set What\'s New of pl: "- Szybciej"',
+    'Would submit version 1.5.0 (build 431) for App Review',
+  ]);
+});
+
+test('the first version gets no What’s New; a new version is created when none is open', async () => {
+  const first = fakeStore({ versions: [version('v1', '1.5.0', 'PREPARE_FOR_SUBMISSION')] });
+  const lines = await quietly(() => review(first.api, '1.5.0', notes, false));
+  assert.ok(lines.includes("::notice::First App Store version: no What's New"));
+  assert.ok(!first.writes.some((w) => w.includes('whatsNew')));
+
+  const next = fakeStore({ versions: [version('v1', '1.4.1', 'READY_FOR_DISTRIBUTION')] });
+  await quietly(() => review(next.api, '1.5.0', notes, false));
+  assert.equal(next.writes[0], 'POST /v1/appStoreVersions {"platform":"IOS","versionString":"1.5.0"}');
+  assert.equal(next.writes[1], 'PATCH /v1/appStoreVersions/new-appStoreVersions/relationships/build {"type":"builds","id":"b1"}');
+});
+
+test('a draft submission that holds the version is submitted as it is', async () => {
+  const { api, writes } = fakeStore({
+    versions: [version('v2', '1.5.0', 'PREPARE_FOR_SUBMISSION'), version('v1', '1.4.1', 'READY_FOR_DISTRIBUTION')],
+    draft: { id: 'd1', attributes: { state: 'READY_FOR_REVIEW' } },
+    items: [{ id: 'i1', relationships: { appStoreVersion: { data: { type: 'appStoreVersions', id: 'v2' } } } }],
+  });
+  await quietly(() => review(api, '1.5.0', notes, false));
+  assert.ok(!writes.some((w) => w.startsWith('POST /v1/reviewSubmission')));
+  assert.equal(writes.at(-1), 'PATCH /v1/reviewSubmissions/d1 {"submitted":true}');
+});
+
+test('review stops without a processed build or when the version is already in review', async () => {
+  const noBuild = fakeStore({ versions: [], build: null });
+  await assert.rejects(review(noBuild.api, '1.5.0', notes, true), /No processed build of 1\.5\.0 in TestFlight/);
+  const inReview = fakeStore({ versions: [version('v2', '1.5.0', 'WAITING_FOR_REVIEW')] });
+  await assert.rejects(review(inReview.api, '1.5.0', notes, false), /Version 1\.5\.0 is WAITING_FOR_REVIEW/);
+  assert.deepEqual(inReview.writes, []);
+});

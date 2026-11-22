@@ -63,7 +63,7 @@ Merge rule: merge when every pull request check is green. For a visual change, s
 | `app/` | The Flutter app |
 | `functions/api/impressum.js` | Cloudflare Pages function for the Impressum |
 | `functions/api/report.js`, `functions/report-allowlist.json` | Pages function that turns a report code from the app into a GitHub issue; its family and language allow-list (README, "Reports from the app") |
-| `tool/` | Node tools: `translate.mjs`, `translate_listing.mjs`, `app_store.mjs` (App Store Connect API), `browser_check.mjs`, their tests |
+| `tool/` | Node tools: `translate.mjs`, `translate_listing.mjs`, `app_store.mjs` (App Store Connect API: listing, review submission), `browser_check.mjs`, their tests |
 | `play/listing/` | Store texts per language for Play and the App Store, `en-US.json` is the source |
 | `docs/play-store/` | Store screenshots |
 | `.github/workflows/` | CI, release, translation |
@@ -126,6 +126,7 @@ Publish the branch early. CI is the source of truth; run quick local checks alon
 | `ios-bundle.yml` | `v*` tags, manual | Archives and signs the IPA (automatic signing with the App Store Connect API key). A tag run uploads to TestFlight. A manual run uploads nothing. See `docs/app-store.md`. |
 | `play-promote.yml` | manual | Moves a version from internal to closed testing or production, and writes release notes |
 | `play-listing.yml` | manual | Pushes store texts and screenshots to Play |
+| `app-store-review.yml` | manual | Puts a version's TestFlight build on its App Store version, writes What's New and submits it for App Review; `dry-run` (default) only lists what it would do |
 | `app-store-listing.yml` | manual | Writes store texts and iPhone and iPad screenshots of every language to the App Store version being prepared (`tool/app_store.mjs`, `release` environment) |
 
 `main` takes changes only through pull requests with the required check green. Only admins can create `v*` tags.
@@ -145,11 +146,11 @@ Order matters. Do not skip a step.
 4. Pick the version from the commits since the last tag: any `feat` gives a minor bump, `feat!` or `BREAKING CHANGE` a major one, otherwise a patch.
 5. `git fetch origin --tags`, confirm `origin/main` is the commit you checked, then `git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
 6. Wait for the `play-bundle.yml` run of the tag: both jobs green, GitHub release exists. Wait for the `ios-bundle.yml` run of the tag too: green means the build is in TestFlight (App Store Connect processes it next).
-7. Promote: `gh workflow run play-promote.yml --ref main -f version=vX.Y.Z -f track=closed-testing`. Its last notice names the version, build number and track.
+7. Promote: `gh workflow run play-promote.yml --ref main -f version=vX.Y.Z -f track=closed-testing`. Its last notice names the version, build number and track. For the App Store, once the build is processed in TestFlight: `gh workflow run app-store-review.yml --ref main -f version=vX.Y.Z` (dry run), read its log, then again with `-f dry-run=false`.
 8. Store text or screenshots changed: `gh workflow run play-listing.yml` and `gh workflow run app-store-listing.yml`. Ask the owner first; they write to the public listings.
 9. Close the task and set the board to Done.
 
-Tagging, promoting and pushing the listing reach real users. Do them only when the owner asked for a release.
+Tagging, promoting, submitting for App Review and pushing the listings reach real users. Do them only when the owner asked for a release.
 
 ## 7. Invariants that are easy to break
 

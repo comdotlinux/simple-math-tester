@@ -3,11 +3,15 @@
 // Usage (secrets from the `release` environment, see docs/app-store.md):
 //   APPSTORE_API_KEY=... APPSTORE_KEY_ID=... APPSTORE_ISSUER_ID=... \
 //     node tool/app_store.mjs listing [screenshots dir]
+//     node tool/app_store.mjs review <version> [notes.json] [--dry-run]
 // `listing` writes every play/listing/<code>.json to the version being prepared
 // (name, subtitle, privacy URL; description, keywords, promotional text, support
 // and marketing URL). With a screenshots dir (<dir>/<device>/<Play code>/*.png,
 // device a key of `devices`) it also replaces each language's screenshots.
 // `devices <device>` prints that device's sizes as environment lines for the workflow.
+// `review` puts the TestFlight build of <version> on its App Store version,
+// writes What's New from notes.json ([{language: Play code, text}], made by
+// .github/play-release-notes-languages.jq) and submits it for App Review.
 import { createHash, sign } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
@@ -204,10 +208,16 @@ async function waitForScreenshots(api, setIds) {
   if (pending.length) console.log(`::warning::${pending.length} screenshot sets still processing; check App Store Connect`);
 }
 
-/** The app, its editable app info and the App Store version being prepared. */
-export async function findApp(api) {
+/** The app record of [bundleId]. */
+async function appRecord(api) {
   const app = (await api('GET', `/v1/apps?filter[bundleId]=${bundleId}`)).data[0];
   if (!app) throw new Error(`No app with bundle id ${bundleId} in App Store Connect`);
+  return app;
+}
+
+/** The app, its editable app info and the App Store version being prepared. */
+export async function findApp(api) {
+  const app = await appRecord(api);
   const info = pickEditable((await api('GET', `/v1/apps/${app.id}/appInfos`)).data);
   const version = pickEditable((await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=10`)).data);
   if (!info || !version) throw new Error('No App Store version in preparation: create one in App Store Connect first');
@@ -249,14 +259,124 @@ export async function listing(api, screenshots) {
   console.log('::notice::App Store listing updated; it reaches users with the next version App Review accepts');
 }
 
+/** What's New for an App Store [locale] from release notes [{language: Play code, text}]; English otherwise. */
+export function whatsNewFor(notes, locale) {
+  const byLocale = Object.fromEntries(notes.map((n) => [appStoreLocales[n.language], n.text]));
+  return byLocale[locale] ?? byLocale['en-US'];
+}
+
+/**
+ * Puts the TestFlight build of [versionString] on its App Store version, writes
+ * What's New from [notes] and submits the version for App Review. [dryRun] only
+ * reads and prints what it would do.
+ */
+export async function review(api, versionString, notes, dryRun) {
+  const act = async (what, write) => {
+    console.log(`${dryRun ? 'Would ' : ''}${what}`);
+    return dryRun ? undefined : write();
+  };
+  const app = await appRecord(api);
+  const build = (
+    await api(
+      'GET',
+      `/v1/builds?filter[app]=${app.id}&filter[preReleaseVersion.version]=${versionString}` +
+        '&filter[processingState]=VALID&filter[expired]=false&sort=-uploadedDate&limit=1',
+    )
+  ).data[0];
+  if (!build) throw new Error(`No processed build of ${versionString} in TestFlight: push tag v${versionString}, then wait for processing`);
+
+  const versions = (await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=50`)).data;
+  const open = pickEditable(versions);
+  let version = versions.find((v) => v.attributes.versionString === versionString);
+  if (version && version !== open) {
+    const state = version.attributes.appVersionState ?? version.attributes.appStoreState;
+    throw new Error(`Version ${versionString} is ${state} in App Store Connect; there is nothing to submit`);
+  }
+  if (!version && open) {
+    // App Store Connect keeps one version in preparation; it takes the new number.
+    await act(`rename version ${open.attributes.versionString} to ${versionString}`, () =>
+      api('PATCH', `/v1/appStoreVersions/${open.id}`, { type: 'appStoreVersions', id: open.id, attributes: { versionString } }),
+    );
+    version = open;
+  }
+  if (!version) {
+    version = await act(`create version ${versionString}`, async () =>
+      (
+        await api('POST', '/v1/appStoreVersions', {
+          type: 'appStoreVersions',
+          attributes: { platform: 'IOS', versionString },
+          relationships: { app: { data: { type: 'apps', id: app.id } } },
+        })
+      ).data,
+    );
+  }
+  await act(`attach build ${build.attributes.version} to version ${versionString}`, () =>
+    api('PATCH', `/v1/appStoreVersions/${version.id}/relationships/build`, { type: 'builds', id: build.id }),
+  );
+
+  // The first version of an app has no What's New.
+  if (!versions.some((v) => v.id !== version?.id)) {
+    console.log("::notice::First App Store version: no What's New");
+  } else if (!version) {
+    console.log("Would set What's New in every language of the new version");
+  } else {
+    const localizations = (await api('GET', `/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations?limit=200`)).data;
+    for (const l of localizations) {
+      const whatsNew = whatsNewFor(notes, l.attributes.locale);
+      await act(`set What's New of ${l.attributes.locale}: ${JSON.stringify(whatsNew)}`, () =>
+        api('PATCH', `/v1/appStoreVersionLocalizations/${l.id}`, { type: 'appStoreVersionLocalizations', id: l.id, attributes: { whatsNew } }),
+      );
+    }
+  }
+
+  // A draft submission (READY_FOR_REVIEW) is reused; App Store Connect allows one.
+  const draft = (
+    await api('GET', `/v1/reviewSubmissions?filter[app]=${app.id}&filter[platform]=IOS&filter[state]=READY_FOR_REVIEW`)
+  ).data[0];
+  await act(`submit version ${versionString} (build ${build.attributes.version}) for App Review`, async () => {
+    const submission =
+      draft ??
+      (
+        await api('POST', '/v1/reviewSubmissions', {
+          type: 'reviewSubmissions',
+          attributes: { platform: 'IOS' },
+          relationships: { app: { data: { type: 'apps', id: app.id } } },
+        })
+      ).data;
+    const items = draft ? (await api('GET', `/v1/reviewSubmissions/${draft.id}/items?limit=50`)).data : [];
+    if (!items.some((i) => i.relationships?.appStoreVersion?.data?.id === version.id)) {
+      await api('POST', '/v1/reviewSubmissionItems', {
+        type: 'reviewSubmissionItems',
+        relationships: {
+          reviewSubmission: { data: { type: 'reviewSubmissions', id: submission.id } },
+          appStoreVersion: { data: { type: 'appStoreVersions', id: version.id } },
+        },
+      });
+    }
+    await api('PATCH', `/v1/reviewSubmissions/${submission.id}`, {
+      type: 'reviewSubmissions',
+      id: submission.id,
+      attributes: { submitted: true },
+    });
+  });
+  if (!dryRun) console.log(`::notice::Version ${versionString} (build ${build.attributes.version}) is submitted for App Review`);
+}
+
 async function main() {
-  const [command, arg] = process.argv.slice(2);
-  if (command === 'listing') return listing(connect(process.env), arg);
-  if (command === 'devices' && devices[arg]) {
-    const { size, ratio, pixels } = devices[arg];
+  const [command, ...args] = process.argv.slice(2);
+  if (command === 'listing') return listing(connect(process.env), args[0]);
+  if (command === 'devices' && devices[args[0]]) {
+    const { size, ratio, pixels } = devices[args[0]];
     return console.log(`SCREENSHOT_SIZE=${size}\nSCREENSHOT_PIXEL_RATIO=${ratio}\nSCREENSHOT_PIXELS=${pixels}`);
   }
-  throw new Error('Usage: node tool/app_store.mjs listing [screenshots dir] | devices <device>');
+  if (command === 'review' && args[0]) {
+    const [notesFile] = args.slice(1).filter((a) => a !== '--dry-run');
+    const notes = notesFile ? JSON.parse(await readFile(notesFile, 'utf8')) : [];
+    return review(connect(process.env), args[0], notes, args.includes('--dry-run'));
+  }
+  throw new Error(
+    'Usage: node tool/app_store.mjs listing [screenshots dir] | devices <device> | review <version> [notes.json] [--dry-run]',
+  );
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
