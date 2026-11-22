@@ -3,6 +3,8 @@
 // Production environment, never in the repository. Nothing here logs.
 
 const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+// Turnstile tokens are at most 2048 characters; a longer one is never sent on.
+const MAX_TOKEN = 2048;
 
 function answer(status, body, headers = {}) {
   return new Response(body, {
@@ -25,7 +27,7 @@ export async function onRequestPost({ request, env }) {
   } catch {
     return answer(403, 'Check failed.');
   }
-  if (typeof token !== 'string' || token === '') return answer(403, 'Check failed.');
+  if (typeof token !== 'string' || token === '' || token.length > MAX_TOKEN) return answer(403, 'Check failed.');
 
   let outcome;
   try {

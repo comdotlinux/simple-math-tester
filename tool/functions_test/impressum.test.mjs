@@ -54,6 +54,13 @@ describe('POST /api/impressum', () => {
     ]);
   });
 
+  test('a token of 2048 characters is verified', async () => {
+    const calls = verifier(() => json({ success: true }));
+    const token = 'x'.repeat(2048);
+    await expectAnswer(await onRequestPost({ request: post(JSON.stringify({ token })), env: env() }), 200);
+    assert.equal(calls[0].body.response, token);
+  });
+
   test('a failed check gives 403', async () => {
     verifier(() => json({ success: false, 'error-codes': ['invalid-input-response'] }));
     await expectAnswer(await onRequestPost({ request: post(), env: env() }), 403);
@@ -68,6 +75,7 @@ describe('POST /api/impressum', () => {
     ['a missing token', JSON.stringify({})],
     ['an empty token', JSON.stringify({ token: '' })],
     ['a token that is not a string', JSON.stringify({ token: 7 })],
+    ['a token longer than 2048 characters', JSON.stringify({ token: 'x'.repeat(2049) })],
     ['an unreadable body', 'not json'],
     ['a JSON null body', 'null'],
   ]) {
