@@ -138,6 +138,19 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
+      # Only screenshots shot by this workflow on main reach the store, never a branch run's.
+      - name: Check the run the screenshots come from
+        if: inputs.screenshots-from-run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.screenshots-from-run }}
+        run: |
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || { echo "::error::screenshots-from-run is not a run id"; exit 1; }
+          source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" --jq '[.path, .head_branch, .event] | join(" ")')"
+          if [ "$source" != ".github/workflows/app-store-listing.yml main workflow_dispatch" ]; then
+            echo "::error::Run $RUN_ID is not a manual app-store-listing.yml run on main ($source)"
+            exit 1
+          fi
       # Both artifacts hold <device>/<Play code>/*.png, so they merge into one tree.
       - name: Download the screenshots
         if: inputs.screenshots
