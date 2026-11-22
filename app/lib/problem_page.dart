@@ -293,8 +293,8 @@ class _ProblemPageState extends State<ProblemPage> {
   /// Show a hint, Try again, or (beside the pad on a taller page) the field
   /// and its feedback show together; when none fits with the card, the
   /// docked phone page shows the card, the taller page the feedback.
-  /// False when there is nothing to reveal or the card is taller than the
-  /// page.
+  /// False when there is nothing to reveal, or when a card taller than the
+  /// page shows its end instead.
   Future<bool> _revealCard(bool compact, bool jump) async {
     RenderBox? box(GlobalKey key) =>
         switch (key.currentContext?.findRenderObject()) {
@@ -307,18 +307,24 @@ class _ProblemPageState extends State<ProblemPage> {
     final position = _scroll.position;
     // The offset that puts the card's top at the page's top, under End.
     final top = viewport.getOffsetToReveal(card, 0).offset;
-    // A card taller than the page shows its end, the question's words,
-    // with the question repeated over the page.
-    if (viewport.getOffsetToReveal(card, 1).offset > top) return false;
     double? target;
-    for (final key in [_choicesKey, _tryAgainKey, if (!compact) _answerKey]) {
-      final below = box(key);
-      if (below == null) continue;
-      // The offset that puts its bottom at the page's bottom.
-      final bottom = viewport.getOffsetToReveal(below, 1).offset;
-      if (bottom <= top) {
-        target = position.pixels.clamp(bottom, top);
-        break;
+    // A card taller than the page: on the docked phone page, whose dock
+    // holds the feedback, a figure shows from its top, so the child sees
+    // the figure again; otherwise the card's end shows, with the question
+    // repeated over the page.
+    if (viewport.getOffsetToReveal(card, 1).offset > top) {
+      if (!compact || _model.current is! FigureProblem) return false;
+      target = top;
+    } else {
+      for (final key in [_choicesKey, _tryAgainKey, if (!compact) _answerKey]) {
+        final below = box(key);
+        if (below == null) continue;
+        // The offset that puts its bottom at the page's bottom.
+        final bottom = viewport.getOffsetToReveal(below, 1).offset;
+        if (bottom <= top) {
+          target = position.pixels.clamp(bottom, top);
+          break;
+        }
       }
     }
     if (target == null) {
@@ -420,6 +426,9 @@ class _ProblemPageState extends State<ProblemPage> {
         // setting packs it the same way everywhere.
         final tight = compact || model.compact;
         final gap = tight ? 12.0 : 24.0;
+        // Above a pad docked below, the smaller card keeps the figure in
+        // view with the answer after a wrong answer (#200).
+        final smallCard = tight || docked && !side;
         final button = tight
             ? const WidgetStatePropertyAll(Size(48, 48))
             : null;
@@ -854,11 +863,11 @@ class _ProblemPageState extends State<ProblemPage> {
                     key: compact ? _answerKey : _cardKey,
                     child: _QuestionCard(
                       problem: model.current,
-                      compact: tight,
+                      compact: smallCard,
                     ),
                   ),
                   if (!compact) ...[
-                    SizedBox(height: tight ? 16 : 28),
+                    SizedBox(height: smallCard ? 16 : 28),
                     Column(
                       key: _answerKey,
                       crossAxisAlignment: CrossAxisAlignment.stretch,

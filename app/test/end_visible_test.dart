@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_math_tester/figure_view.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
 import 'package:simple_math_tester/main.dart';
@@ -189,6 +190,32 @@ void main() {
           }
         });
       }
+    }
+  }
+
+  // After a wrong answer the child looks at the figure again while
+  // retrying: where the screen allows it, it stays whole on screen, below
+  // End and above the dock or keyboard.
+  for (final (size, scale) in const [
+    (Size(411, 874), 1.0),
+    (Size(411, 874), 1.15),
+    (Size(411, 874), 1.3),
+  ]) {
+    for (final usePad in const [true, false]) {
+      testWidgets('the figure stays on screen after a wrong answer at '
+          '${size.width.toInt()}x${size.height.toInt()}, text $scale, '
+          '${usePad ? 'pad' : 'keyboard'}', (tester) async {
+        await launch(tester, size: size, scale: scale, usePad: usePad);
+        await answerWrong(tester, usePad);
+        final figure = find.byType(FigureView);
+        final rect = tester.getRect(figure);
+        final page = Scrollable.of(tester.element(figure));
+        final view = page.context.findRenderObject()! as RenderBox;
+        final shown = view.localToGlobal(Offset.zero) & view.size;
+        expect(shown.intersect(rect), rect, reason: '$rect in $shown');
+        final header = tester.getRect(find.byKey(endPracticeButtonKey));
+        expect(rect.top, greaterThanOrEqualTo(header.bottom));
+      });
     }
   }
 
