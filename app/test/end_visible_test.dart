@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -171,10 +172,40 @@ void main() {
           expectEndAndMenuShown(tester, size, usePad);
           await answerWrong(tester, usePad);
           expectEndAndMenuShown(tester, size, usePad);
+          // One Next only: the pad's big key, or one on the page.
+          expect(
+            find.text('Next').evaluate().length +
+                find.text('Next question').evaluate().length,
+            1,
+          );
+          if (usePad) {
+            expect(
+              find.descendant(
+                of: pad,
+                matching: find.byKey(nextQuestionButtonKey),
+              ),
+              findsOneWidget,
+            );
+          }
         });
       }
     }
   }
+
+  testWidgets('a figure prompt keeps its word and "?" together on the '
+      'smallest phone at text 2', (tester) async {
+    await launch(tester, size: const Size(320, 568), scale: 2, usePad: false);
+    final prompt = tester.renderObject<RenderParagraph>(
+      find.text('Perimeter?'),
+    );
+    final lines = prompt
+        .getBoxesForSelection(
+          const TextSelection(baseOffset: 0, extentOffset: 'Perimeter?'.length),
+        )
+        .map((box) => box.top)
+        .toSet();
+    expect(lines, hasLength(1));
+  });
 
   // Overflow is reported as an error, which fails the test.
   for (final locale in AppLocalizations.supportedLocales) {

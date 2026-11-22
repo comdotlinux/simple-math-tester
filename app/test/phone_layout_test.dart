@@ -240,21 +240,25 @@ void main() {
       ) async {
         final model = await launchAndCheck(tester, '65');
         expect(find.byKey(solutionStepsKey), findsNothing);
-        // The card's question, or the dock's copy once the choices scroll
-        // it away.
+        // The child looks at the question again while retrying (#200): the
+        // card's question stays on screen, rather than the last control;
+        // on the smallest phone the dock's copy may stand in for it.
         final pinned = find.byKey(pinnedQuestionKey);
         for (final finder in [
-          if (pinned.evaluate().isEmpty)
+          if (size.height > 568 || pinned.evaluate().isEmpty)
             find.byKey(questionOnProblemsPageKey)
           else
             pinned,
           ...mustShow('65', 'Not quite. Try another answer.').skip(1),
-          find.byKey(tryAgainButtonKey),
-          // The smallest phone with the pad has room for Try again; Show a
-          // hint is a short scroll below it.
-          if (size.height > 568) find.byKey(hintButtonKey),
         ]) {
           expectOnScreen(tester, finder, size);
+        }
+        // Try again and Show a hint are on the page, a scroll away at most.
+        for (final key in [tryAgainButtonKey, hintButtonKey]) {
+          await tester.ensureVisible(find.byKey(key));
+          await tester.pumpAndSettle();
+          expectOnScreen(tester, find.byKey(key), size);
+          expectOnScreen(tester, find.byKey(endPracticeButtonKey), size);
         }
         expect(find.byKey(nextQuestionButtonKey), findsOneWidget);
         await tester.tap(find.byKey(nextQuestionButtonKey));

@@ -213,41 +213,46 @@ class NumberPad extends StatelessWidget {
           ],
           key(
             flex: signedDecimal ? 2 : 4,
-            signedDecimal
-                // Two keys wide: a short label, shrunk rather than wrapped,
-                // so the key keeps its height.
-                ? FilledButton(
-                    key: checkAnswerButtonKey,
-                    onPressed: onCheck,
-                    style: ButtonStyle(
-                      minimumSize: keySize,
-                      padding: const WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(horizontal: 8),
+            // After a check this key is the page's one Next, so it answers
+            // to the Next key as well.
+            KeyedSubtree(
+              key: next ? nextQuestionButtonKey : null,
+              child: signedDecimal
+                  // Two keys wide: a short label, shrunk rather than wrapped,
+                  // so the key keeps its height.
+                  ? FilledButton(
+                      key: checkAnswerButtonKey,
+                      onPressed: onCheck,
+                      style: ButtonStyle(
+                        minimumSize: keySize,
+                        padding: const WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(horizontal: 8),
+                        ),
                       ),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 8,
-                        children: [
-                          checkIcon,
-                          next
-                              ? Text(l.next, semanticsLabel: l.nextQuestion)
-                              : Text(l.check, semanticsLabel: l.checkAnswer),
-                        ],
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: 8,
+                          children: [
+                            checkIcon,
+                            next
+                                ? Text(l.next, semanticsLabel: l.nextQuestion)
+                                : Text(l.check, semanticsLabel: l.checkAnswer),
+                          ],
+                        ),
                       ),
+                    )
+                  : FilledButton.icon(
+                      key: checkAnswerButtonKey,
+                      onPressed: onCheck,
+                      style: ButtonStyle(minimumSize: keySize),
+                      icon: checkIcon,
+                      label: next
+                          ? Text(l.next, semanticsLabel: l.nextQuestion)
+                          : Text(l.checkAnswer),
                     ),
-                  )
-                : FilledButton.icon(
-                    key: checkAnswerButtonKey,
-                    onPressed: onCheck,
-                    style: ButtonStyle(minimumSize: keySize),
-                    icon: checkIcon,
-                    label: next
-                        ? Text(l.next, semanticsLabel: l.nextQuestion)
-                        : Text(l.checkAnswer),
-                  ),
+            ),
           ),
         ]),
       ],

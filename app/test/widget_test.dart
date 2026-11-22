@@ -2277,7 +2277,8 @@ void main() {
       await enter(tester);
       expect(model.history.single.correct, isTrue);
       expect(fieldFocused(tester), isTrue);
-      expect(nextLabel('Next question'), findsOneWidget);
+      // With the pad its big key is the one Next (#200).
+      expect(nextLabel('Next'), findsOneWidget);
       expect(
         tester.getSemantics(find.byKey(nextQuestionButtonKey)),
         isSemantics(label: 'Next question', isButton: true),

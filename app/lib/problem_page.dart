@@ -57,6 +57,7 @@ class _ProblemPageState extends State<ProblemPage> {
   /// Try again and Show a hint after a wrong answer, which a docked phone
   /// page keeps in view, Try again first.
   final _choicesKey = GlobalKey();
+  final _cardKey = GlobalKey();
   final _tryAgainKey = GlobalKey();
   final _scroll = ScrollController();
 
@@ -273,14 +274,10 @@ class _ProblemPageState extends State<ProblemPage> {
     // scrolling back, so it wins over Skip.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await reveal(_skipKey);
-      // With the pad, Skip is in the pad; Try again and Show a hint are then
-      // the last controls on the page.
-      await reveal(_choicesKey);
-      if (compact) {
-        await reveal(
-          _tryAgainKey,
-          ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-        );
+      // After a wrong answer the child looks at the question again: the
+      // card stays in view with as much below it as fits.
+      if (model.answerCorrect == false && await _revealCard(compact, jump)) {
+        return;
       }
       await reveal(_answerKey);
       if (compact && newProblem) {
@@ -290,6 +287,60 @@ class _ProblemPageState extends State<ProblemPage> {
         );
       }
     });
+  }
+
+  /// Scrolls so the question card's top and the lowest of Try again and
+  /// Show a hint, Try again, or (beside the pad on a taller page) the field
+  /// and its feedback show together; when none fits with the card, the
+  /// docked phone page shows the card, the taller page the feedback.
+  /// False when there is nothing to reveal or the card is taller than the
+  /// page.
+  Future<bool> _revealCard(bool compact, bool jump) async {
+    RenderBox? box(GlobalKey key) =>
+        switch (key.currentContext?.findRenderObject()) {
+          final RenderBox box when box.attached => box,
+          _ => null,
+        };
+    final card = box(compact ? _answerKey : _cardKey);
+    if (card == null || !_scroll.hasClients) return false;
+    final viewport = RenderAbstractViewport.of(card);
+    final position = _scroll.position;
+    // The offset that puts the card's top at the page's top, under End.
+    final top = viewport.getOffsetToReveal(card, 0).offset;
+    // A card taller than the page shows its end, the question's words,
+    // with the question repeated over the page.
+    if (viewport.getOffsetToReveal(card, 1).offset > top) return false;
+    double? target;
+    for (final key in [_choicesKey, _tryAgainKey, if (!compact) _answerKey]) {
+      final below = box(key);
+      if (below == null) continue;
+      // The offset that puts its bottom at the page's bottom.
+      final bottom = viewport.getOffsetToReveal(below, 1).offset;
+      if (bottom <= top) {
+        target = position.pixels.clamp(bottom, top);
+        break;
+      }
+    }
+    if (target == null) {
+      final feedback = compact ? null : box(_answerKey);
+      target = feedback == null
+          ? position.pixels.clamp(
+              viewport.getOffsetToReveal(card, 1).offset,
+              top,
+            )
+          : viewport.getOffsetToReveal(feedback, 1).offset;
+    }
+    target = target.clamp(position.minScrollExtent, position.maxScrollExtent);
+    if (target != position.pixels) {
+      jump
+          ? position.jumpTo(target)
+          : await position.animateTo(
+              target,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
+    }
+    return true;
   }
 
   @override
@@ -346,9 +397,7 @@ class _ProblemPageState extends State<ProblemPage> {
             MediaQuery.sizeOf(context).shortestSide < 600 &&
             // Room above the dock for at least the pinned question.
             constraints.maxHeight -
-                    (scaler.scale(28) * 1.2 +
-                        128 +
-                        _longFeedback(context, constraints.maxWidth)) >=
+                    _keyDockHeight(context, constraints.maxWidth) >=
                 scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48;
         final docked =
             side ||
@@ -362,8 +411,9 @@ class _ProblemPageState extends State<ProblemPage> {
             : constraints.maxWidth;
         final wide = width >= 520;
         // Next sits in the feedback strip while a result shows there.
+        // With the pad its big key is the one Next after a check.
         final nextInStrip =
-            compact && !sprinting && model.answerCorrect != null;
+            compact && !sprinting && !showPad && model.answerCorrect != null;
         final wrong = !sprinting && model.answerCorrect == false;
         // The docked phone page packs its column tighter, so the question
         // and Skip fit above the dock on a short screen; the compact layout
@@ -419,7 +469,8 @@ class _ProblemPageState extends State<ProblemPage> {
               : Icons.skip_next;
           final skipText = model.answerChecked ? l.nextQuestion : l.skip;
           return [
-            if (!nextInStrip)
+            // Skip; after a check, Next where the pad's key is not it.
+            if (!nextInStrip && !(inPad && model.answerCorrect != null))
               Slab(
                 key: _skipKey,
                 pressable: true,
@@ -800,7 +851,7 @@ class _ProblemPageState extends State<ProblemPage> {
                     SizedBox(height: gap),
                   ],
                   KeyedSubtree(
-                    key: compact ? _answerKey : null,
+                    key: compact ? _answerKey : _cardKey,
                     child: _QuestionCard(
                       problem: model.current,
                       compact: tight,
@@ -1040,6 +1091,54 @@ class _ProblemPageState extends State<ProblemPage> {
     );
   }
 
+  /// The keyboard dock's height, measured as it lays out on a page [width]
+  /// wide with its tallest content, a wrong answer: the dock's padding, the
+  /// field (its text line and padding) beside Check, the gap, and the
+  /// feedback strip with Next beside the message, or under it when the
+  /// message would take more than two lines there.
+  double _keyDockHeight(BuildContext context, double width) {
+    final l = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+    TextPainter measure(String text, TextStyle? style, [double? maxWidth]) =>
+        TextPainter(
+          text: TextSpan(text: text, style: style),
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+        )..layout(maxWidth: maxWidth ?? double.infinity);
+    final field = measure('0', textTheme.headlineMedium);
+    final label = measure(l.next, textTheme.labelLarge);
+    // The strip's text room as `_AnswerFeedback` works it out: the dock's
+    // gutters, the strip's border and padding, the icon and the gaps.
+    final strip = min(width - 32, 440) - 2 * AppTokens.outlineWidth - 18;
+    final style = textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700);
+    final beside = measure(
+      l.feedbackWrong,
+      style,
+      max(0, strip - 24 - 2 * 8 - label.width - 54),
+    );
+    final double feedback;
+    if (beside.computeLineMetrics().length > 2) {
+      final under = measure(l.feedbackWrong, style, max(0, strip - 24 - 8));
+      feedback = max(24.0, under.height) + 6 + 48 + 2 * 6;
+      under.dispose();
+    } else {
+      feedback = max(48.0, beside.height) + 2 * 6;
+    }
+    final height =
+        AppTokens.outlineWidth +
+        8 +
+        field.height +
+        2 * 10 +
+        6 +
+        max(48.0, feedback) +
+        8 +
+        5;
+    field.dispose();
+    label.dispose();
+    beside.dispose();
+    return height;
+  }
+
   /// How much taller than its two lines beside Next, which the dock's
   /// estimate holds, the docked feedback strip grows for the longest
   /// message, a wrong answer, once Next moves under it (large text, a long
@@ -1206,9 +1305,8 @@ class _QuestionCard extends StatelessWidget {
                     ),
                     SizedBox(height: compact ? 2 : 8),
                     ExcludeSemantics(
-                      child: Text(
+                      child: _WholeWords(
                         figurePromptText(l, figure),
-                        textAlign: TextAlign.center,
                         style: compact
                             ? textTheme.titleLarge
                             : textTheme.headlineMedium,
@@ -1237,6 +1335,44 @@ class _QuestionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Centred [text] that wraps only between words: a word wider than the
+/// line ("Perimeter?" at large text on a small phone) shrinks the text
+/// until it fits instead of breaking inside the word.
+class _WholeWords extends StatelessWidget {
+  const _WholeWords(this.text, {required this.style});
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, box) {
+      final scaler = MediaQuery.textScalerOf(context);
+      var widest = 0.0;
+      for (final word in text.split(RegExp(r'\s+'))) {
+        final painter = TextPainter(
+          text: TextSpan(text: word, style: style),
+          textScaler: scaler,
+          textDirection: Directionality.of(context),
+        )..layout();
+        widest = max(widest, painter.width);
+        painter.dispose();
+      }
+      final size = style?.fontSize ?? 14;
+      return Text(
+        text,
+        textAlign: TextAlign.center,
+        style: style,
+        textScaler: widest <= box.maxWidth
+            ? null
+            : TextScaler.linear(
+                scaler.scale(size) / size * box.maxWidth / widest * .99,
+              ),
+      );
+    },
+  );
 }
 
 /// The question repeated over the top of a phone page whose question card
