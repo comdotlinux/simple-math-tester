@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'home_page.dart' show ContentArea;
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'legal.dart';
@@ -84,7 +85,7 @@ class ReportFlag extends StatelessWidget {
 Future<void> showReportDialog(BuildContext context, {Problem? problem}) =>
     showDialog<void>(
       context: context,
-      builder: (_) => _ReportDialog(problem: problem),
+      builder: (_) => ContentArea(child: _ReportDialog(problem: problem)),
     );
 
 enum _Step { ask, pick, check, sending, done }

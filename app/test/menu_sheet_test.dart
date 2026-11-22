@@ -149,6 +149,33 @@ void main() {
     expect(sheet, findsNothing);
   });
 
+  // Issue #237: beside the navigation rail the sheet lines up with the page
+  // column, not the whole window; a phone keeps the full-width sheet.
+  testWidgets('on a wide window the sheet sits over the page column', (
+    tester,
+  ) async {
+    await launch(tester, size: const Size(1280, 900));
+    final page = tester.getRect(find.byKey(problemsPageKey));
+    expect(page.left, greaterThan(0), reason: 'the rail is beside the page');
+    await openMenu(tester);
+    final rect = tester.getRect(find.byType(BottomSheet));
+    expect(rect.center.dx, moreOrLessEquals(page.center.dx));
+    expect(rect.width, lessThanOrEqualTo(page.width));
+
+    // A tap on the dimmed rail still closes it.
+    await tester.tapAt(Offset(page.left / 2, rect.top + 40));
+    await tester.pumpAndSettle();
+    expect(sheet, findsNothing);
+  });
+
+  testWidgets('on a phone the sheet keeps the full width', (tester) async {
+    await launch(tester);
+    await openMenu(tester);
+    final rect = tester.getRect(find.byType(BottomSheet));
+    expect(rect.left, 0);
+    expect(rect.width, 360);
+  });
+
   testWidgets('a kind changed in the menu during practice applies from the '
       'next question and shows before Start after End', (tester) async {
     final semantics = tester.ensureSemantics();

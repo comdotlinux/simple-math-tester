@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'hint_steps.dart';
+import 'home_page.dart' show ContentArea;
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'labels.dart';
@@ -17,8 +18,10 @@ import 'slab.dart';
 /// the top while the steps scroll; Next step shows one more, and the last
 /// step, which states the answer, has its own button. Close, the dimmed
 /// area, Back and Escape close it; focus stays inside while it is open.
-Future<void> showHintModal(BuildContext context) =>
-    showDialog<void>(context: context, builder: (_) => const _HintModal());
+Future<void> showHintModal(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (_) => const ContentArea(child: _HintModal()),
+);
 
 /// The gentle nudge before a hint, after many hints in a row
 /// ([MathTesterModel.takeHintNudge]): the same card over the dimmed page,
@@ -26,7 +29,10 @@ Future<void> showHintModal(BuildContext context) =>
 /// True for the hint; "I will try", the dimmed area, Back and Escape give
 /// false. Its title names the window and its message is read out on open.
 Future<bool> showHintNudge(BuildContext context) async =>
-    await showDialog<bool>(context: context, builder: (_) => const _Nudge()) ??
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => const ContentArea(child: _Nudge()),
+    ) ??
     false;
 
 class _Nudge extends StatelessWidget {
