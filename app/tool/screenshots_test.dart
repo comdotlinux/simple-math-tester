@@ -221,6 +221,8 @@ void main() {
   Future<void> check(WidgetTester tester, String answer) async {
     await tester.enterText(find.byType(TextField), answer);
     await tester.ensureVisible(find.byKey(checkAnswerButtonKey));
+    // The scroll pins the End header (a setState), so the button moves a frame later.
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(checkAnswerButtonKey));
     await tester.pumpAndSettle();
   }
