@@ -6,7 +6,8 @@ No Mac is needed: GitHub Actions macOS runners build, sign and upload.
 
 ## Secrets
 
-Set once by the owner (`gh secret set NAME`), from an App Store Connect API key
+Set once by the owner in the `release` environment (`gh secret set NAME -e release`),
+like the Android keystore and Play secrets, from an App Store Connect API key
 with the App Manager role (Users and Access, Integrations, App Store Connect API):
 
 | Secret | Value |
@@ -16,7 +17,9 @@ with the App Manager role (Users and Access, Integrations, App Store Connect API
 | `APPSTORE_ISSUER_ID` | Issuer ID |
 | `APPLE_TEAM_ID` | `296X8GK5BR` |
 
-The workflow fails with "Missing secrets: ..." when one is not set.
+Tag runs and runs on `main` use the `release` environment. A tag run fails with
+"Missing secrets in the release environment: ..." when one is not set. Runs on
+other branches get no secrets and build an unsigned app instead.
 
 ## How the IPA is built
 
@@ -27,7 +30,8 @@ Apple manages the distribution certificate and the profile in the cloud), and
 exports with `app/ios/ExportOptions.plist` (method `app-store-connect`).
 The build number is `run number * 10 + attempt`, like `play-bundle.yml`.
 
-- A manual run builds and signs the IPA, then discards it.
+- A manual run on `main` builds and signs the IPA, then discards it. On another
+  branch it builds unsigned.
 - A tag run sets the version from the tag and uploads to TestFlight with
   `xcrun altool --upload-app`.
 
