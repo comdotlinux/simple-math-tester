@@ -1,0 +1,7 @@
+# zizmor configuration (https://docs.zizmor.sh/configuration/), read by workflow-checks.yml.
+rules:
+  self-repository:
+    ignore:
+      # `uses: $/...` is newer than actionlint 1.7.12, and this workflow only runs as a
+      # manual deploy, so a change of its `uses:` line cannot be proven on a pull request.
+      - flutter-web-cloudflare-pages.yml
