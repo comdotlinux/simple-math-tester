@@ -72,7 +72,7 @@ jobs:
           bash .github/play-release-notes.sh "$RUNNER_TEMP/changes.md" "$RUNNER_TEMP"
           # Every listing language may get a translation; play-release-notes-languages.jq
           # drops invalid ones, and tool/app_store.mjs falls back to English.
-          listed="$(ls play/listing | sed -n 's/\.json$//p' | grep -vx translation_sources | jq -Rsc 'split("\n") | map(select(length > 0))')"
+          listed="$(printf '%s\n' play/listing/*.json | sed -n 's|^play/listing/||; s/\.json$//p' | grep -vx translation_sources | jq -Rsc 'split("\n") | map(select(length > 0))')"
           jq -n --arg english "$(cat "$RUNNER_TEMP/play-notes.txt")" --slurpfile answer "$RUNNER_TEMP/ai-answer.json" \
             --argjson listed "$listed" -f .github/play-release-notes-languages.jq > "$RUNNER_TEMP/whats-new.json"
       - name: Submit for App Review

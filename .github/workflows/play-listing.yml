@@ -65,6 +65,8 @@ jobs:
         run: |
           im=magick; command -v magick > /dev/null || im=convert
           out="$RUNNER_TEMP/phone-screenshots"
+          # codes.txt holds code:play pairs, one per line, without spaces.
+          # shellcheck disable=SC2013
           for pair in $(cat "$RUNNER_TEMP/codes.txt"); do
             code="${pair%%:*}" play="${pair#*:}"
             prefix="$code-"; if [ "$code" = en ]; then prefix=; fi
