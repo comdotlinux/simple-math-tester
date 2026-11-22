@@ -120,7 +120,7 @@ Publish the branch early. CI is the source of truth; run quick local checks alon
 
 | Workflow | Runs on | Does |
 |---|---|---|
-| `flutter-checks.yml` | pull requests, pushes to `main`, manual | Analyze, test, web build (the required check "Analyze, test and build web"), Linux and Chrome journeys, offline web check, Pages function tests. Deploys the web build on `main`. Android APK, iOS build, Android emulators and iOS simulator run only on manual runs. |
+| `flutter-checks.yml` | pull requests, pushes to `main`, manual | Analyze, test, web build (the required check "Analyze, test and build web"), Linux and Chrome journeys, offline web check, Pages function tests. Deploys the web build on `main`. Android APK and Android emulators run only on manual runs; the iOS build and iOS simulator (macOS runners) only on a manual run with `-f ios=true`. |
 | `translate.yml` | pushes to `main` that change `app_en.arb`, `play/listing/en-US.json` or the two translate tools, manual | Translates new and changed strings and the store listing, opens or updates one pull request from `translations/auto`, starts the Flutter checks on that branch itself |
 | `play-bundle.yml` | `v*` tags, manual | Builds and signs the bundle, checks permissions, signer and 16 KB pages. A tag run uploads to the Play internal track and creates the GitHub release. A manual run uploads nothing. |
 | `ios-bundle.yml` | `v*` tags, manual | Archives and signs the IPA (automatic signing with the App Store Connect API key). A tag run uploads to TestFlight. A manual run uploads nothing. See `docs/app-store.md`. |
@@ -137,12 +137,13 @@ Order matters. Do not skip a step.
 
 1. Every sub-issue of the task is merged. `main` is green.
 2. The Translate run for the last change to `app_en.arb` is green and its pull request is merged. Otherwise other languages ship English text.
-3. Start both pre-release checks on `main`, and wait until both are green:
+3. Start the pre-release checks on `main`, and wait until all are green:
    ```sh
    gh workflow run play-bundle.yml --ref main
    gh workflow run ios-bundle.yml --ref main
-   gh workflow run flutter-checks.yml --ref main -f environment-name=none
+   gh workflow run flutter-checks.yml --ref main -f environment-name=none -f ios=true
    ```
+   `-f ios=true` adds the unsigned iOS build and the iOS simulator journeys. Leave it out on every other manual run: macOS minutes are scarce (#223).
 4. Pick the version from the commits since the last tag: any `feat` gives a minor bump, `feat!` or `BREAKING CHANGE` a major one, otherwise a patch.
 5. `git fetch origin --tags`, confirm `origin/main` is the commit you checked, then `git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
 6. Wait for the `play-bundle.yml` run of the tag: both jobs green, GitHub release exists. Wait for the `ios-bundle.yml` run of the tag too: green means the build is in TestFlight (App Store Connect processes it next).
@@ -173,7 +174,7 @@ Tagging, promoting, submitting for App Review and pushing the listings reach rea
 - Translations can break layouts that pass in English: the every-language tests on `translations/auto` are where long labels (Malayalam, Ukrainian, German at text scale 2) first overflow. Fix the layout on `main` (wrap or scale the label), then run `gh workflow run translate.yml --ref main` so the branch picks it up.
 - `play-listing.yml` shoots every scene of `app/tool/screenshots_test.dart` in 14 languages; it needs about 27 minutes and its limit is 60. A branch run only shoots. The listing push needs the Translate pull request merged first.
 - Visual changes (practice page, pad, figures): the agent stops at green checks with light and dark screenshots; the owner looks before the merge.
-- A manual `flutter-checks.yml` run on a branch builds the phones and takes about 30 minutes. A pull request run does not.
+- A manual `flutter-checks.yml` run on a branch builds Android and runs the emulators (about 30 minutes) but uses no macOS runner unless `-f ios=true` is given. A pull request run does neither.
 - Several pull requests that touch `operations.dart`, `solution_steps.dart`, `problem_page.dart`, `progress.dart` or `app_en.arb` at once will conflict. Keep diffs local and rebase onto `origin/main` when it moves.
 - Widget tests that start with a default `Progress(tier: ...)` show the one-time new-kind card above the toggles. Pass `seenKinds: [for (final k in OperationType.values) k.name]` when the old layout is needed.
 - A shell loop that waits with `pgrep -f "<text>"` matches itself and never ends. Use `gh run watch <id> --exit-status` or `gh pr checks <pr> --watch`.
