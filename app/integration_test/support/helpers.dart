@@ -111,10 +111,11 @@ MathTesterModel modelOf(WidgetTester tester) =>
     tester.element(find.byKey(homePageKey)).read<MathTesterModel>();
 
 /// Taps [finder] after scrolling it into view; phone screens hide much of
-/// the page below the fold. Centred, not at the top edge: there it sits
-/// under the pinned End header and the tap misses (#205).
+/// the page below the fold. At the bottom edge, not the top: the pinned
+/// End header (with the question on short docked pages) covers the top,
+/// and the tap would miss (#205).
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
-  await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
+  await Scrollable.ensureVisible(tester.element(finder), alignment: 1);
   await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
