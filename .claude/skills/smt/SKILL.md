@@ -123,6 +123,7 @@ Publish the branch early. CI is the source of truth; run quick local checks alon
 | `flutter-checks.yml` | pull requests, pushes to `main`, manual | Analyze, test, web build (the required check "Analyze, test and build web"), Linux and Chrome journeys, offline web check, Pages function tests. Deploys the web build on `main`. Android APK, iOS build, Android emulators and iOS simulator run only on manual runs. |
 | `translate.yml` | pushes to `main` that change `app_en.arb`, `play/listing/en-US.json` or the two translate tools, manual | Translates new and changed strings and the store listing, opens or updates one pull request from `translations/auto`, starts the Flutter checks on that branch itself |
 | `play-bundle.yml` | `v*` tags, manual | Builds and signs the bundle, checks permissions, signer and 16 KB pages. A tag run uploads to the Play internal track and creates the GitHub release. A manual run uploads nothing. |
+| `ios-bundle.yml` | `v*` tags, manual | Archives and signs the IPA (automatic signing with the App Store Connect API key). A tag run uploads to TestFlight. A manual run uploads nothing. See `docs/app-store.md`. |
 | `play-promote.yml` | manual | Moves a version from internal to closed testing or production, and writes release notes |
 | `play-listing.yml` | manual | Pushes store texts and screenshots to Play |
 
@@ -137,11 +138,12 @@ Order matters. Do not skip a step.
 3. Start both pre-release checks on `main`, and wait until both are green:
    ```sh
    gh workflow run play-bundle.yml --ref main
+   gh workflow run ios-bundle.yml --ref main
    gh workflow run flutter-checks.yml --ref main -f environment-name=none
    ```
 4. Pick the version from the commits since the last tag: any `feat` gives a minor bump, `feat!` or `BREAKING CHANGE` a major one, otherwise a patch.
 5. `git fetch origin --tags`, confirm `origin/main` is the commit you checked, then `git tag vX.Y.Z origin/main && git push origin vX.Y.Z`.
-6. Wait for the `play-bundle.yml` run of the tag: both jobs green, GitHub release exists.
+6. Wait for the `play-bundle.yml` run of the tag: both jobs green, GitHub release exists. Wait for the `ios-bundle.yml` run of the tag too: green means the build is in TestFlight (App Store Connect processes it next).
 7. Promote: `gh workflow run play-promote.yml --ref main -f version=vX.Y.Z -f track=closed-testing`. Its last notice names the version, build number and track.
 8. Store text or screenshots changed: `gh workflow run play-listing.yml`. Ask the owner first; it writes to the public listing.
 9. Close the task and set the board to Done.

@@ -1,0 +1,129 @@
+name: iOS app bundle
+
+# Mirrors play-bundle.yml. A manual run builds and signs the IPA, then discards it.
+# Pushing a version tag (v1.2.3) builds it with that version and uploads it to
+# TestFlight. Signing is automatic: xcodebuild uses the App Store Connect API key
+# to fetch a cloud-managed distribution certificate and the provisioning profile,
+# so no certificate or profile is stored in the repository or in secrets.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.50.0'
+
+jobs:
+  ipa:
+    name: Build signed IPA and upload to TestFlight
+    runs-on: macos-26
+    timeout-minutes: 45
+    # Tag runs and runs on main use the `release` environment (only v* tags and main
+    # may deploy to it), which holds the four Apple secrets. Runs on other branches
+    # get no secrets and build unsigned.
+    environment: ${{ (github.ref_type == 'tag' || github.ref == 'refs/heads/main') && 'release' || '' }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The tag check below needs main's history.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      # The key goes where altool looks for it (AuthKey_<id>.p8), readable only by
+      # the runner user. It is never printed.
+      - name: Write the App Store Connect API key
+        id: key
+        env:
+          APPSTORE_API_KEY: ${{ secrets.APPSTORE_API_KEY }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=()
+          for name in APPSTORE_API_KEY APPSTORE_KEY_ID APPSTORE_ISSUER_ID APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -eq 4 ] && [ "$GITHUB_REF_TYPE" != tag ]; then
+            echo "::notice::No Apple secrets (runs outside the release environment get none): building unsigned"
+            echo "signing=unsigned" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing secrets in the release environment: ${missing[*]} (see docs/app-store.md)"
+            exit 1
+          fi
+          team="$(/usr/libexec/PlistBuddy -c 'Print :teamID' ios/ExportOptions.plist)"
+          if [ "$APPLE_TEAM_ID" != "$team" ]; then
+            echo "::error::APPLE_TEAM_ID does not match teamID in app/ios/ExportOptions.plist"
+            exit 1
+          fi
+          umask 077
+          dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$dir"
+          printf '%s\n' "$APPSTORE_API_KEY" > "$dir/AuthKey_$APPSTORE_KEY_ID.p8"
+          echo "key_path=$dir/AuthKey_$APPSTORE_KEY_ID.p8" >> "$GITHUB_ENV"
+          echo "signing=signed" >> "$GITHUB_OUTPUT"
+      - name: Check the version tag
+        id: tag
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::Tag '$TAG' is not v1.2.3"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag '$TAG' points to a commit that is not on main"
+            exit 1
+          fi
+          echo "version_name=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+      # Same scheme as play-bundle.yml: run number * 10 + attempt, so every tag run
+      # gets a higher build number than the one before.
+      - name: Build and sign the IPA (unsigned without the secrets)
+        env:
+          VERSION_NAME: ${{ steps.tag.outputs.version_name }}
+          SIGNING: ${{ steps.key.outputs.signing }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          build_number=$((GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))
+          args=(--build-number="$build_number")
+          if [ -n "$VERSION_NAME" ]; then
+            args+=(--build-name="$VERSION_NAME")
+          fi
+          echo "Build number $build_number ${args[*]}"
+          if [ "$SIGNING" = unsigned ]; then
+            flutter build ios --release --no-codesign "${args[@]}"
+            exit 0
+          fi
+          flutter build ios --release --config-only "${args[@]}"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key_path"
+            -authenticationKeyID "$APPSTORE_KEY_ID" -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID")
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            "${auth[@]}" archive
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist ios/ExportOptions.plist -exportPath "$RUNNER_TEMP/ipa" "${auth[@]}"
+          ls -l "$RUNNER_TEMP/ipa"
+      - name: Upload to TestFlight
+        if: github.ref_type == 'tag'
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          xcrun altool --upload-app --type ios --file "$RUNNER_TEMP"/ipa/*.ipa \
+            --apiKey "$APPSTORE_KEY_ID" --apiIssuer "$APPSTORE_ISSUER_ID"
+          echo "::notice::Uploaded to TestFlight; App Store Connect processes the build next"
