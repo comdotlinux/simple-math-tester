@@ -5,8 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:simple_math_tester/app_theme.dart';
+import 'package:simple_math_tester/home_page.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
+import 'package:simple_math_tester/l10n/app_localizations_en.dart';
 import 'package:simple_math_tester/labels.dart';
 import 'package:simple_math_tester/main.dart';
 import 'package:simple_math_tester/math_tester_model.dart';
@@ -589,4 +592,72 @@ void main() {
       }
     }
   });
+
+  // Issue #191: a translated End label pushed the top row past the edge.
+  testWidgets('a very long End label fits the top row of a small phone at '
+      'text x2.0', (tester) async {
+    const size = Size(320, 568);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final model = MathTesterModel(
+      initialProblem: const ArithmeticProblem(2, 3, OperationType.plus, 5),
+      updateReminders: false,
+      progress: Progress(tier: Tier.easy, selectedOperations: kinds),
+      ticker: () => const Stream.empty(),
+    );
+    addTearDown(model.dispose);
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: model,
+        child: MediaQuery(
+          data: const MediaQueryData(
+            size: size,
+            textScaler: TextScaler.linear(2),
+          ),
+          child: MaterialApp(
+            theme: buildAppTheme(Brightness.light, model.palette),
+            localizationsDelegates: const [
+              _LongEndDelegate(),
+              ...GlobalMaterialLocalizations.delegates,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const MyHomePage(key: homePageKey),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tap(tester, startPracticeButtonKey);
+    expect(tester.takeException(), isNull);
+    expect(find.text(_LongEnd.label), findsOneWidget);
+    final end = tester.getRect(find.byKey(endPracticeButtonKey));
+    expect(end.right, lessThanOrEqualTo(size.width));
+    expect(end.height, greaterThanOrEqualTo(48));
+    final menu = tester.getSize(find.byKey(settingsButtonKey));
+    expect(menu.shortestSide, greaterThanOrEqualTo(48));
+  });
+}
+
+/// English, with an End label far longer than any translation.
+class _LongEnd extends AppLocalizationsEn {
+  static const label =
+      'Endthepracticeroundnowandseeeverythingyoudidinthisround';
+
+  @override
+  String get endPractice => label;
+}
+
+class _LongEndDelegate extends LocalizationsDelegate<AppLocalizations> {
+  const _LongEndDelegate();
+
+  @override
+  bool isSupported(Locale locale) => true;
+
+  @override
+  Future<AppLocalizations> load(Locale locale) async => _LongEnd();
+
+  @override
+  bool shouldReload(_LongEndDelegate old) => false;
 }
