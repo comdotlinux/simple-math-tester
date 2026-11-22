@@ -5,11 +5,12 @@ name: OpenSSF Scorecard
 # env or defaults, no workflow-level write permissions, and only checkout,
 # upload-artifact, upload-sarif, scorecard-action and harden-runner steps in the job.
 on:
-  # TEMPORARY trial run on this pull request; removed before merge.
-  pull_request:
-    branches: [main]
+  # No pull_request trigger: the job can write code scanning results and sign with
+  # an OIDC token, so it runs only for main.
   push:
     branches: [main]
+  # Re-scores when branch protection changes (the Branch-Protection check).
+  branch_protection_rule:
   schedule:
     - cron: '23 6 * * 1'
   workflow_dispatch:
