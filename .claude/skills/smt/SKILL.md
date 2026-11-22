@@ -179,6 +179,11 @@ Tagging, promoting, submitting for App Review and pushing the listings reach rea
 - Several pull requests that touch `operations.dart`, `solution_steps.dart`, `problem_page.dart`, `progress.dart` or `app_en.arb` at once will conflict. Keep diffs local and rebase onto `origin/main` when it moves.
 - Widget tests that start with a default `Progress(tier: ...)` show the one-time new-kind card above the toggles. Pass `seenKinds: [for (final k in OperationType.values) k.name]` when the old layout is needed.
 - A shell loop that waits with `pgrep -f "<text>"` matches itself and never ends. Use `gh run watch <id> --exit-status` or `gh pr checks <pr> --watch`.
+- iOS signing: the App Store Connect API key must have the Admin role (cloud signing; App Manager gives "Cloud signing permission error"). `ios-bundle.yml` archives unsigned and signs at export. Check the signer with `codesign -dvv` (Authority lines appear only from `-dvv`).
+- A rerun of a tag run uses the workflow file as it was at the tag. A workflow fix needs a new tag.
+- Widget and integration tests: put `pumpAndSettle` between `ensureVisible` and `tap`. The scroll pins the End header (a setState), so the control moves one frame later.
+- Do not push to a pull request while a merge-on-green job waits for it: it restarts every check. The GraphQL rate limit (and its secondary limit) is shared by every agent and polling loop; poll with REST (`gh api repos/.../commits/<sha>/check-runs`) and merge with `gh api -X PUT repos/comdotlinux/simple-math-tester/pulls/<n>/merge -f merge_method=squash`. In zsh, `for p in $list` does not split on spaces; use an array or literal words.
+- App Store screenshots: the required slots are iPhone 6.3" (1206x2622) and iPad 13" (2048x2732); iPhone 6.9" (1290x2796) is optional. Apple copies them to each new version, so a release needs no new shoot. `app-store-listing.yml` takes about 45 minutes with screenshots; if only the upload fails, rerun with `-f screenshots-from-run=<run id>` (artifacts last 7 days), or `-f screenshots=false` for texts only.
 - No bundled font has U+25A1 or U+2192. The blank (a line on the baseline) and the arrow are drawn widgets; tests fail if those characters reach a `RichText` or a semantics label.
 
 ## 9. Before saying a task is done
