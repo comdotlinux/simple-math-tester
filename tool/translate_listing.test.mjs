@@ -23,8 +23,8 @@ test('digits of any script become Western digits', () => {
 
 test('a retry is told why the last answer was rejected', () => {
   assert.equal(
-    retryNote('shortDescription', '100 characters, Play allows 80'),
-    'Your shortDescription had 100 characters; Play allows at most 80. Write a shorter one.',
+    retryNote('shortDescription', '100 characters, the store allows 80'),
+    'Your shortDescription had 100 characters; the store allows at most 80. Write a shorter one.',
   );
   assert.equal(
     retryNote('title', '"Simple Math Tester" missing'),
@@ -58,11 +58,11 @@ test('DeepSeek is told the Portuguese variant and the Punjabi script', () => {
   assert.equal(languageName('pa'), 'Punjabi in Gurmukhi script');
 });
 
-test('a listing text must fit Play and keep the app name and digits', () => {
-  assert.deepEqual(limits, { title: 30, shortDescription: 80, fullDescription: 4000 });
+test('a listing text must fit the stores and keep the app name and digits', () => {
+  assert.deepEqual(limits, { title: 30, shortDescription: 80, fullDescription: 4000, subtitle: 30, keywords: 100 });
   assert.equal(problem('title', 'Simple Math Tester', 'Simple Math Tester'), null);
   assert.equal(problem('title', 'Simple Math Tester', 'Einfacher Mathe-Tester'), '"Simple Math Tester" missing');
-  assert.equal(problem('title', 'x', 'y'.repeat(31)), '31 characters, Play allows 30');
+  assert.equal(problem('title', 'x', 'y'.repeat(31)), '31 characters, the store allows 30');
   // Characters, not bytes: 80 Devanagari letters fit.
   assert.equal(problem('shortDescription', 'x', 'क'.repeat(80)), null);
   assert.equal(problem('shortDescription', '60 seconds', '६० सेकंद'), 'non-Western digits');
@@ -76,10 +76,10 @@ test('missing fields and fields whose English changed are stale', () => {
   const english = { title: 'A', shortDescription: 'B', fullDescription: 'C' };
   const listing = { title: 'a', shortDescription: 'b' };
   const sources = { title: hash('A'), shortDescription: hash('old B') };
-  assert.deepEqual(stale(english, listing, sources), ['shortDescription', 'fullDescription']);
+  assert.deepEqual(stale(english, listing, sources), ['shortDescription', 'fullDescription', 'subtitle', 'keywords']);
 });
 
-test('the English listing fits Play', () => {
+test('the English listing fits the stores', () => {
   const english = JSON.parse(readFileSync(new URL('../play/listing/en-US.json', import.meta.url)));
   assert.deepEqual(check('en-US.json', english, english), []);
 });

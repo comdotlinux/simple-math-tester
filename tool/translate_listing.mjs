@@ -1,9 +1,10 @@
-// Translates new and changed texts of the Play store listing
+// Translates new and changed texts of the store listing
 // (play/listing/en-US.json) into every app language with DeepSeek, and writes
-// play/listing/<Play language code>.json.
+// play/listing/<Play language code>.json. Play takes title and the two
+// descriptions; the App Store also takes subtitle and keywords (tool/app_store.mjs).
 // Usage: DEEPSEEK_API_KEY=... node tool/translate_listing.mjs [--dry-run | --check]
 // --dry-run only lists what would be translated; --check only checks every
-// listing file against Play's limits. Neither needs a key.
+// listing file against the stores' limits. Neither needs a key.
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
@@ -37,8 +38,8 @@ export const playCodes = {
   pa: 'pa',
 };
 
-// Play's limits in characters.
-export const limits = { title: 30, shortDescription: 80, fullDescription: 4000 };
+// The stores' limits in characters: Play's, then the App Store's own fields.
+export const limits = { title: 30, shortDescription: 80, fullDescription: 4000, subtitle: 30, keywords: 100 };
 const fields = Object.keys(limits);
 // Names that stay in Latin letters in every language.
 const brands = ['Simple Math Tester'];
@@ -52,7 +53,7 @@ const endpoint = 'https://api.deepseek.com/chat/completions';
 export function problem(field, source, text) {
   if (typeof text !== 'string' || text.trim() === '') return 'empty';
   const length = [...text].length;
-  if (length > limits[field]) return `${length} characters, Play allows ${limits[field]}`;
+  if (length > limits[field]) return `${length} characters, the store allows ${limits[field]}`;
   if (/(?![0-9])\p{Nd}/u.test(text)) return 'non-Western digits';
   if (digits(text) !== digits(source)) return `digits ${digits(text) || 'none'} instead of ${digits(source) || 'none'}`;
   const lost = brands.find((brand) => source.includes(brand) && !text.includes(brand));
@@ -64,7 +65,7 @@ export function problem(field, source, text) {
 export function retryNote(field, why) {
   const length = why.match(/^(\d+) characters/);
   if (length) {
-    return `Your ${field} had ${length[1]} characters; Play allows at most ${limits[field]}. Write a shorter one.`;
+    return `Your ${field} had ${length[1]} characters; the store allows at most ${limits[field]}. Write a shorter one.`;
   }
   if (why.endsWith('missing')) return `Your ${field} lost ${why.replace(/ missing$/, '')}: keep it exactly, in Latin letters.`;
   if (why === 'non-Western digits') return `Your ${field} had non-Western digits: use only Western digits 0-9.`;
@@ -87,11 +88,12 @@ export function check(name, english, listing) {
 
 async function ask(model, key, english, language, keys, rejected) {
   const system = [
-    `You translate the Google Play store listing of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
+    `You translate the Google Play and App Store listing of a free arithmetic practice app for children aged about 6 to 12 from English into ${languageName(language)} (${language}).`,
     'Parents read it. Use natural, friendly, simple words a native speaker would use in an app store, not a word-by-word translation.',
-    `Keep these names unchanged, in Latin letters: ${brands.join(', ')}, Google Play, Android.`,
+    `Keep these names unchanged, in Latin letters: ${brands.join(', ')}, Google Play, App Store, Android.`,
     'Digits are always Western 0-9; never change, add or drop a number. Keep the line breaks and the "- " list items of the English text.',
-    `Hard limits in characters: title ${limits.title}, shortDescription ${limits.shortDescription}, fullDescription ${limits.fullDescription}.`,
+    `Hard limits in characters: ${Object.entries(limits).map(([k, v]) => `${k} ${v}`).join(', ')}.`,
+    'keywords are App Store search words, separated by commas without spaces; translate them as words a parent would search for.',
     'The fields to translate are under "translate". If "yourRejectedAnswers" is there, your last answer for those fields was rejected: fix exactly the problem it names.',
     'Answer with one JSON object that maps each requested field to its translated text, nothing else.',
   ].join('\n');
@@ -140,7 +142,7 @@ async function main() {
       problems.push(...check(name, english, JSON.parse(await readFile(new URL(name, dir), 'utf8'))));
     }
     if (problems.length) throw new Error(`Listing problems:\n${problems.join('\n')}`);
-    console.log('Every listing file fits Play');
+    console.log('Every listing file fits the stores');
     return;
   }
   const own = check('en-US.json', english, english);

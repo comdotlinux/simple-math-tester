@@ -48,7 +48,9 @@ edit them there, not in Play Console. Every app language has its own listing in
   each told why the last one was rejected), and puts the files into the same
   `translations/auto` pull request as the app strings. A text that still fails
   is listed in the run log and tried again on the next run; the others are
-  kept. A new language's file appears only once all three fields passed.
+  kept. A new language's file appears only once all its fields passed.
+  The same files also hold the App Store's `subtitle` and `keywords`, which
+  Play ignores (see [app-store.md](app-store.md)).
 - After that pull request is merged, push all listings to Play by hand:
   `gh workflow run play-listing.yml` (from `main`). It replaces the title and
   both descriptions of every language in one edit; Google reviews the change.
