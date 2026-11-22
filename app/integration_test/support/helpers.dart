@@ -111,21 +111,25 @@ MathTesterModel modelOf(WidgetTester tester) =>
     tester.element(find.byKey(homePageKey)).read<MathTesterModel>();
 
 /// Taps [finder] after scrolling it into view; phone screens hide much of
-/// the page below the fold. It scrolls as a child would, until the control
-/// can take the tap: the pinned End header and the dock below the page can
-/// cover a control that is in the scroll view's bounds, and on the Android
-/// emulator an ensureVisible jump did not stay (#205).
+/// the page below the fold. At the bottom edge, not the top: the pinned
+/// End header (with the question on short docked pages) covers the top,
+/// and the tap would miss (#205).
 Future<void> tapVisible(WidgetTester tester, Finder finder) async {
-  final scrollable = Scrollable.maybeOf(tester.element(finder));
-  if (scrollable != null && finder.hitTestable().evaluate().isEmpty) {
-    final view = scrollable.context.findRenderObject()! as RenderBox;
-    final below =
-        tester.getCenter(finder).dy >
-        view.localToGlobal(view.size.center(Offset.zero)).dy;
-    await tester.scrollUntilVisible(
-      finder,
-      below ? 40 : -40,
-      scrollable: find.byWidget(scrollable.widget),
+  await Scrollable.ensureVisible(tester.element(finder), alignment: 1);
+  await tester.pumpAndSettle();
+  final el = tester.element(finder);
+  final s = Scrollable.maybeOf(el);
+  final box = el.renderObject! as RenderBox;
+  final r = box.localToGlobal(Offset.zero) & box.size;
+  final hit = tester.hitTestOnBinding(r.center);
+  if (!hit.path.any((e) => e.target == box)) {
+    final sb = s?.context.findRenderObject() as RenderBox?;
+    debugPrint(
+      'DIAG205 widget=$r view=${tester.view.physicalSize / tester.view.devicePixelRatio} '
+      'insets=${MediaQuery.of(el).viewInsets} padding=${MediaQuery.of(el).padding} '
+      'scrollable=${sb == null ? null : sb.localToGlobal(Offset.zero) & sb.size} '
+      'pixels=${s?.position.pixels} max=${s?.position.maxScrollExtent} '
+      'viewport=${s?.position.viewportDimension}',
     );
   }
   await tester.tap(finder);
