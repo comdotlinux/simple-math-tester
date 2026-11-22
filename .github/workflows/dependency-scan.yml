@@ -1,0 +1,55 @@
+name: Dependency vulnerability scan
+
+# Pull requests that change a lockfile fail on any known vulnerability in it; the
+# weekly run reports vulnerabilities published since, without blocking other work.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/pubspec.yaml'
+      - 'app/pubspec.lock'
+      - 'tool/package.json'
+      - 'tool/package-lock.json'
+      - '.github/workflows/dependency-scan.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/pubspec.yaml'
+      - 'app/pubspec.lock'
+      - 'tool/package.json'
+      - 'tool/package-lock.json'
+      - '.github/workflows/dependency-scan.yml'
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OSV_SCANNER_VERSION: '2.7.1'
+  # sha256 of osv-scanner_linux_amd64 from the release's osv-scanner_SHA256SUMS.
+  OSV_SCANNER_SHA256: 'fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8'
+
+jobs:
+  osv-scanner:
+    name: Scan pub and npm lockfiles with osv-scanner
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The release binary, checksum verified, rather than osv-scanner-action, whose
+      # Docker image is pulled by a mutable tag.
+      - name: Install osv-scanner (checksum verified)
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "$OSV_SCANNER_SHA256  $RUNNER_TEMP/osv-scanner" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/osv-scanner"
+      # Sends package names and versions (public in this repository) to api.osv.dev.
+      - name: Scan the lockfiles
+        run: |
+          "$RUNNER_TEMP/osv-scanner" scan source \
+            --lockfile=app/pubspec.lock --lockfile=tool/package-lock.json
