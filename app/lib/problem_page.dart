@@ -404,10 +404,19 @@ class _ProblemPageState extends State<ProblemPage> {
             asking &&
             phone &&
             MediaQuery.sizeOf(context).shortestSide < 600 &&
-            // Room above the dock for at least the pinned question.
+            // Room above the dock for at least the pinned question and one
+            // action button, which a tall script (Arabic, Urdu) makes
+            // taller than 48.
             constraints.maxHeight -
                     _keyDockHeight(context, constraints.maxWidth) >=
-                scaler.scale(22) * 1.25 + 2 * 6 + 2 + 48;
+                scaler.scale(22) * 1.25 +
+                    2 * 6 +
+                    2 +
+                    _buttonHeight(context, [
+                      AppLocalizations.of(context).skip,
+                      AppLocalizations.of(context).hint,
+                      AppLocalizations.of(context).reportButton,
+                    ]);
         final docked =
             side ||
             keyDock ||
@@ -1104,6 +1113,27 @@ class _ProblemPageState extends State<ProblemPage> {
     );
   }
 
+  /// The height of the tallest of the buttons labelled [texts]: the label
+  /// line or the icon, whichever is taller, in the button's padding, and at
+  /// least a touch target. A tall script (Arabic, Urdu) makes it more than 48.
+  double _buttonHeight(BuildContext context, List<String> texts) {
+    final scaler = MediaQuery.textScalerOf(context);
+    // The buttons' own style, which sets no line height, not labelLarge.
+    final style = Theme.of(context).textButtonTheme.style?.textStyle
+        ?.resolve({});
+    var height = scaler.scale(24);
+    for (final text in texts) {
+      final label = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textScaler: scaler,
+        textDirection: Directionality.of(context),
+      )..layout();
+      height = max(height, label.height);
+      label.dispose();
+    }
+    return max(48, height + 24);
+  }
+
   /// The keyboard dock's height, measured as it lays out on a page [width]
   /// wide with its tallest content, a wrong answer: the dock's padding, the
   /// field (its text line and padding) beside Check, the gap, and the
@@ -1129,13 +1159,14 @@ class _ProblemPageState extends State<ProblemPage> {
       style,
       max(0, strip - 24 - 2 * 8 - label.width - 54),
     );
+    final nextHeight = _buttonHeight(context, [l.next]);
     final double feedback;
     if (beside.computeLineMetrics().length > 2) {
       final under = measure(l.feedbackWrong, style, max(0, strip - 24 - 8));
-      feedback = max(24.0, under.height) + 6 + 48 + 2 * 6;
+      feedback = max(24.0, under.height) + 6 + nextHeight + 2 * 6;
       under.dispose();
     } else {
-      feedback = max(48.0, beside.height) + 2 * 6;
+      feedback = max(nextHeight, beside.height) + 2 * 6;
     }
     final height =
         AppTokens.outlineWidth +
