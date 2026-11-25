@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
+import 'digits.dart';
 import 'home_page.dart' show ContentArea;
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -299,7 +300,10 @@ class _ReportDialogState extends State<_ReportDialog> {
             controller: _typed,
             autofocus: true,
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              nativeDigitsToAscii,
+              FilteringTextInputFormatter.digitsOnly,
+            ],
             decoration: InputDecoration(labelText: l.reportCheckField),
             onSubmitted: (_) => _check(),
           ),
