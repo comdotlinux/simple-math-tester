@@ -5,8 +5,9 @@ name: Play store listing
 # language's title, short and full description are replaced. Google reviews
 # listing changes before users see them. See "Store listing" in
 # docs/play-store.md.
-# It also shoots the eight phone screenshots in every app language and, in the
-# same edit, replaces each listing's phone screenshots with them.
+# It also shoots the eight phone screenshots in every app language (a matrix of
+# language groups of three, one artifact each) and, in the same edit, replaces
+# each listing's phone screenshots with them.
 on:
   workflow_dispatch:
     inputs:
@@ -21,11 +22,34 @@ permissions:
 jobs:
   # No secrets and no environment: runs on any ref, so a branch run makes the
   # artifact for review while the push job is skipped.
-  screenshots:
-    name: Shoot the phone screenshots
+  plan:
+    name: Plan the language groups
     if: inputs.screenshots
     runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      groups: ${{ steps.groups.outputs.groups }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      # Groups of three languages (app:Play pairs) from translate.mjs, en first.
+      - id: groups
+        run: echo "groups=$(node tool/screenshot_groups.mjs)" >> "$GITHUB_OUTPUT"
+
+  screenshots:
+    name: Shoot phone screenshots, group ${{ matrix.group.id }}
+    needs: plan
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
+    strategy:
+      # One group failing still leaves the other groups' artifacts to look at.
+      fail-fast: false
+      matrix:
+        group: ${{ fromJSON(needs.plan.outputs.groups) }}
     defaults:
       run:
         shell: bash
@@ -42,24 +66,17 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - name: Install ImageMagick
         run: sudo apt-get update && sudo apt-get install -y imagemagick
-      # Writes app:Play language pairs, en:en-US first. The trailing `-` fills
-      # process.argv[1], which the imported modules read to decide whether to run main().
-      - name: Map app languages to Play languages
-        working-directory: .
-        run: |
-          node -e "Promise.all([import('./tool/translate.mjs'), import('./tool/translate_listing.mjs')]).then(([{ languages }, { playCodes }]) => {
-            const missing = languages.filter((l) => !playCodes[l]);
-            if (missing.length) throw new Error('No Play language code for ' + missing.join(', '));
-            console.log(['en:en-US', ...languages.map((l) => l + ':' + playCodes[l])].join(' '));
-          })" - > "$RUNNER_TEMP/codes.txt"
-          cat "$RUNNER_TEMP/codes.txt"
-      - name: Shoot every language
+      - name: Shoot the languages of the group
+        env:
+          PAIRS: ${{ matrix.group.pairs }}
         run: |
           export SCREENSHOT_DIR="$RUNNER_TEMP/raw" SCREENSHOT_SIZE=450x800 SCREENSHOT_PIXEL_RATIO=2.4
           mkdir -p "$SCREENSHOT_DIR"
-          flutter test tool/screenshots_test.dart
-          codes="$(tr ' ' '\n' < "$RUNNER_TEMP/codes.txt" | cut -d: -f1 | grep -vx en | paste -sd,)"
-          SCREENSHOT_LANGUAGES="$codes" flutter test tool/screenshots_test.dart
+          tr ' ' '\n' <<< "$PAIRS" >"$RUNNER_TEMP/codes.txt"
+          # en is shot without SCREENSHOT_LANGUAGES (its files have no prefix).
+          if grep -q '^en:' "$RUNNER_TEMP/codes.txt"; then flutter test tool/screenshots_test.dart; fi
+          codes="$(cut -d: -f1 "$RUNNER_TEMP/codes.txt" | grep -vx en | paste -sd,)"
+          if [ -n "$codes" ]; then SCREENSHOT_LANGUAGES="$codes" flutter test tool/screenshots_test.dart; fi
       # The shot-to-file table is in docs/play-store/README.md.
       - name: Convert to 1080 x 1920 PNG without alpha
         run: |
@@ -92,14 +109,14 @@ jobs:
           exit "$bad"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: phone-screenshots
+          name: phone-screenshots-${{ matrix.group.id }}
           path: ${{ runner.temp }}/phone-screenshots
           retention-days: 7
           if-no-files-found: error
 
   listing:
     name: Push the store listings to Play
-    needs: screenshots
+    needs: [plan, screenshots]
     # The Play key is a `release` environment secret, which only v* tags and main get.
     # Also runs when the screenshots job was skipped (texts only).
     if: github.ref == 'refs/heads/main' && !cancelled() && !failure()
@@ -120,7 +137,8 @@ jobs:
         if: inputs.screenshots
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: phone-screenshots
+          pattern: phone-screenshots-*
+          merge-multiple: true
           path: ${{ runner.temp }}/phone-screenshots
       - name: Check the listings against Play's limits
         run: node tool/translate_listing.mjs --check

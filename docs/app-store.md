@@ -81,10 +81,10 @@ After the Translate pull request is merged, write the listings by hand:
 environment). It writes the texts of every language to the version in "Prepare
 for Submission" (or rejected), and creates the languages that are missing.
 By default it also shoots the eight Play scenes of `app/tool/screenshots_test.dart`
-in every language for each screenshot set, in parallel jobs of about 30 minutes,
+in every language for each screenshot set, in a matrix of device x language group of three (`tool/screenshot_groups.mjs`; a new language needs no workflow edit),
 and replaces each language's screenshots with them (untick `screenshots` for
 texts only). A run on another branch only shoots; its artifacts are
-`app-store-screenshots-<device>`. Apple reviews the texts with the next version
+`app-store-screenshots-<device>-<group>` (runs before the groups made `app-store-screenshots-<device>`; `screenshots-from-run` takes both, the `app-store-screenshots-*` pattern matches them). Apple reviews the texts with the next version
 submitted.
 
 The sets are one table, `devices` in `tool/app_store.mjs`; the workflow reads
