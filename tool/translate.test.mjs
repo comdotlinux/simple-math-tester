@@ -26,6 +26,11 @@ test('a translation must keep placeholders, braces, plurals and digits', () => {
   const source = '{count, plural, =1{1 second} other{{count} seconds}}';
   assert.equal(problem(source, '{count, plural, =1{1 Sekunde} other{{count} Sekunden}}'), null);
   assert.equal(problem(source, '{count, plural, =1{1 Sekunde}}'), 'plural without other');
+  assert.equal(
+    problem(source, '{count, plural, =1{1 Sekunde} =3{3 Sekunden} other{{count} Sekunden}}'),
+    'plural case =3 (only =0, =1, =2)',
+  );
+  assert.equal(problem(source, '{count, plural, =0{keine Sekunde} =2{zwei Sekunden} other{{count} Sekunden}}'), null);
   assert.equal(problem('Score: {score}', 'Punkte: {punkte}'), 'placeholders punkte instead of score');
   assert.equal(problem('Score: {score}', 'Punkte: {score'), 'unbalanced braces');
   assert.equal(problem('Level 1', 'स्तर १'), 'non-Western digits');
