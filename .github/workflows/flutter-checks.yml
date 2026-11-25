@@ -67,7 +67,7 @@ jobs:
           bash ../.github/play-promote.test.sh
       # Settings shows the version: the web build from main takes the newest
       # release tag, as the pubspec version is never bumped.
-      # The per-language privacy pages come from the ARB files (not committed).
+      # The per-language privacy, about and Impressum pages come from the ARB files (not committed).
       - name: Generate the language pages
         run: flutter test tool/web_pages_test.dart
       - name: Build web
@@ -82,17 +82,20 @@ jobs:
       # Turnstile widget and no personal data (no postcode-like number, no e-mail).
       - name: Check the privacy and Impressum pages
         run: |
-          langs=$(cd web && find . -mindepth 2 -maxdepth 2 -name privacy.html | cut -c3-)
+          langs=$(cd web && find . -mindepth 2 -maxdepth 2 \( -name privacy.html -o -name about.html -o -name impressum.html \) | cut -c3-)
           test -n "$langs"
+          impressums="impressum.html $(echo "$langs" | grep 'impressum.html$')"
           for page in about.html privacy.html impressum.html $langs; do
             test -f "build/web/$page"
             jq -e --arg page "$page" 'any(.entries[]; .url == $page)' build/web/precache_manifest.json > /dev/null
           done
-          grep -q 'class="cf-turnstile"' build/web/impressum.html
-          if grep -nE '\b[0-9]{5}\b|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' build/web/impressum.html; then
-            echo "::error::impressum.html looks like it contains an address or e-mail"
-            exit 1
-          fi
+          for page in $impressums; do
+            grep -q 'class="cf-turnstile"' "build/web/$page"
+            if grep -nE '\b[0-9]{5}\b|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' "build/web/$page"; then
+              echo "::error::$page looks like it contains an address or e-mail"
+              exit 1
+            fi
+          done
       - name: Upload tested web build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

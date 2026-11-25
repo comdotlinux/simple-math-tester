@@ -75,8 +75,8 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     // The static pages fall back to their own cached copy (the Impressum shell
     // then shows its error line); every other address gets the app.
-    // Generated language pages (de/privacy, pt-PT/privacy.html) have their own copy.
-    const page = /^((?:[a-z]{2,3}(?:-[A-Z]{2})?\/privacy)|about|impressum|privacy)(\.html)?$/.exec(path)?.[1];
+    // Generated language pages (de/privacy, pt-PT/about.html, de/impressum) have their own copy.
+    const page = /^((?:[a-z]{2,3}(?:-[A-Z]{2})?\/)?(?:privacy|about|impressum))(\.html)?$/.exec(path)?.[1];
     event.respondWith(networkFirst(request, page ? `${page}.html` : './'));
     return;
   }
