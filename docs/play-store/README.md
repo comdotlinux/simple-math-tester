@@ -17,8 +17,8 @@ English and every app language, and replaces the phone screenshots of each listi
 same edit as the texts. Run it with `screenshots` unticked to push the texts only. The icon and feature graphic are not
 touched. The English files here are kept for reference; they are not uploaded from this folder.
 
-A run from a branch (`gh workflow run play-listing.yml --ref <branch>`) only shoots: its `phone-screenshots` artifact
-holds one folder per Play language for review, and nothing is sent to Play.
+A run from a branch (`gh workflow run play-listing.yml --ref <branch>`) only shoots: its `phone-screenshots-<group>` artifacts (language groups of three, `tool/screenshot_groups.mjs`)
+hold one folder per Play language for review, and nothing is sent to Play.
 
 The tool writes many shots; these eight are the Play ones (Play shows at most eight):
 
