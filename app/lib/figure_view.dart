@@ -139,7 +139,7 @@ class FigureView extends StatelessWidget {
               Size(constraints.maxWidth, height),
               (text) => measureLabel(text, style, scaler),
               localeName: localeName,
-              digits: digitsLanguage(localeName),
+              digits: DigitScope.of(context) ?? 'en',
             );
             return CustomPaint(
               size: Size(constraints.maxWidth, height),

@@ -50,6 +50,7 @@ class Progress {
     String? updateReminderDate,
     List<String> seenKinds = const [],
     List<SuspectQuestion> suspects = const [],
+    bool? nativeDigits,
   }) : this._(
          selectedOperations ?? arithmeticKinds,
          const [],
@@ -66,6 +67,7 @@ class Progress {
          updateReminderDate,
          seenKinds,
          suspects,
+         nativeDigits,
          const {},
          const {},
        );
@@ -86,6 +88,7 @@ class Progress {
     this.updateReminderDate,
     List<String> seenKinds,
     List<Object> suspectEntries,
+    this.nativeDigits,
     Map<String, Object?> unknownOperations,
     Map<String, Object?> extra,
   ) : selectedOperations = Set.unmodifiable(
@@ -158,6 +161,10 @@ class Progress {
   /// the first launch that offers reminders, then each reminder's day.
   final String? updateReminderDate;
 
+  /// Whether numbers show in the language's own digits; null is the
+  /// language's default ([nativeDigitsByDefault]).
+  final bool? nativeDigits;
+
   /// Names of the kinds whose new-kind card was closed or that were switched
   /// on, so the card never shows for them again. Unknown names are kept.
   final List<String> seenKinds;
@@ -213,6 +220,7 @@ class Progress {
 
   Progress withLanguage(String? language) => _copy(language: (language,));
   Progress withPalette(AppPalette palette) => _copy(palette: palette);
+  Progress withNativeDigits(bool value) => _copy(nativeDigits: value);
   Progress withUpdateReminderDate(String date) =>
       _copy(updateReminderDate: date);
   Progress withSeenKind(OperationType kind) =>
@@ -263,6 +271,7 @@ class Progress {
     String? updateReminderDate,
     List<String>? seenKinds,
     List<Object>? suspectEntries,
+    bool? nativeDigits,
   }) => Progress._(
     selected ?? selectedOperations,
     _unknownSelected,
@@ -279,6 +288,7 @@ class Progress {
     updateReminderDate ?? this.updateReminderDate,
     seenKinds ?? this.seenKinds,
     suspectEntries ?? _suspectEntries,
+    nativeDigits ?? this.nativeDigits,
     _unknownOperations,
     extra,
   );
@@ -329,6 +339,7 @@ class Progress {
     'language': ?language,
     'palette': palette.name,
     'updateReminderDate': ?updateReminderDate,
+    'nativeDigits': ?nativeDigits,
     // Left out while empty, which keeps older documents' bytes.
     if (seenKinds.isNotEmpty) 'seenKinds': seenKinds,
     if (_suspectEntries.isNotEmpty)
@@ -430,6 +441,7 @@ class Progress {
       'language',
       'palette',
       'updateReminderDate',
+      'nativeDigits',
       'seenKinds',
       'suspectQuestions',
     };
@@ -469,6 +481,7 @@ class Progress {
           else
             throw FormatException('suspectQuestions holds a non-object', entry),
       ],
+      _field<bool>(json, 'nativeDigits'),
       unknownOperations,
       {
         for (final MapEntry(:key, :value) in json.entries)

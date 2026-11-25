@@ -315,6 +315,9 @@ class MathTesterModel extends ChangeNotifier {
   String? get language => _progress.language;
   AppPalette get palette => _progress.palette;
 
+  /// The Numbers setting; null is the language's default.
+  bool? get nativeDigits => _progress.nativeDigits;
+
   /// Whether the reminder to check for updates shows: 30 days after the
   /// last one (or the first launch). Read from the clock on every call.
   bool get showUpdateReminder {
@@ -407,6 +410,12 @@ class MathTesterModel extends ChangeNotifier {
 
   void setPalette(AppPalette palette) {
     _progress = _progress.withPalette(palette);
+    _save();
+    notifyListeners();
+  }
+
+  void setNativeDigits(bool value) {
+    _progress = _progress.withNativeDigits(value);
     _save();
     notifyListeners();
   }

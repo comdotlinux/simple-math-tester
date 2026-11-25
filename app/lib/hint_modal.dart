@@ -1,7 +1,8 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digit_text.dart';
 import 'hint_steps.dart';
 import 'home_page.dart' show ContentArea;
 import 'keys.dart';

@@ -4,10 +4,11 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter/services.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digit_text.dart';
 import 'digits.dart';
 import 'figure_view.dart';
 import 'hint_modal.dart';
@@ -102,7 +103,7 @@ class _ProblemPageState extends State<ProblemPage> {
   void initState() {
     super.initState();
     _model = context.read<MathTesterModel>();
-    _controller = TextEditingController(text: _model.draftInput);
+    _controller = DigitsController(text: _model.draftInput);
     _model.addListener(_syncDraft);
     _focusedFor = _answerState;
     _model.addListener(_keepFocus);
@@ -1963,6 +1964,50 @@ Widget _settingsList(BuildContext context) {
                   ],
                 ),
               ),
+              if (zeroOfLanguage.containsKey(_languageCode(context)))
+                Padding(
+                  padding: rowPadding,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: rowSpacing,
+                    children: [
+                      Text(l.numbers, style: listTileTheme.titleTextStyle),
+                      // Each choice shows its own digits, whatever is chosen.
+                      DigitScope(
+                        language: null,
+                        child: SegmentedButton<bool>(
+                          expandedInsets: EdgeInsets.zero,
+                          showSelectedIcon: false,
+                          segments: [
+                            for (final native in [true, false])
+                              ButtonSegment(
+                                value: native,
+                                label: Text(
+                                  native
+                                      ? localDigits(
+                                          '123',
+                                          _languageCode(context),
+                                        )
+                                      : '123',
+                                  key: numbersModeKey(native: native),
+                                  maxLines: 1,
+                                  softWrap: false,
+                                ),
+                              ),
+                          ],
+                          selected: {
+                            showsNativeDigits(
+                              model.nativeDigits,
+                              _languageCode(context),
+                            ),
+                          },
+                          onSelectionChanged: (modes) =>
+                              model.setNativeDigits(modes.single),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               // Eleven choices: a dialog, not a segmented row.
               ListTile(
                 key: languageTileKey,
@@ -2059,6 +2104,10 @@ Widget _settingsList(BuildContext context) {
     ),
   );
 }
+
+/// The language code the page shows, such as `ar`.
+String _languageCode(BuildContext context) =>
+    Localizations.localeOf(context).languageCode;
 
 /// A language's name in that language, such as "Deutsch"; null for none.
 String? _languageName(String? code) =>

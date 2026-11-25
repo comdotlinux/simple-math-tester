@@ -1,9 +1,11 @@
 import 'dart:math';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digit_text.dart';
+import 'digits.dart';
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -496,21 +498,27 @@ class _ResultsPageState extends State<ResultsPage> {
     // reader reaches it as its own button.
     final read = Semantics(
       container: true,
-      label: _l.answerRowSemantics(
-        '${index + 1}',
-        attempt.problem.spoken(_l),
-        status,
-        entered,
-        expected,
-        _elapsed(attempt),
+      label: shownDigits(
+        context,
+        _l.answerRowSemantics(
+          '${index + 1}',
+          attempt.problem.spoken(_l),
+          status,
+          entered,
+          expected,
+          _elapsed(attempt),
+        ),
       ),
       child: ExcludeSemantics(
         child: said == null
             ? row
             : Tooltip(
-                message: attempt.skipped
-                    ? _l.noAnswerEntered
-                    : _l.youSaid(_entered(attempt)),
+                message: shownDigits(
+                  context,
+                  attempt.skipped
+                      ? _l.noAnswerEntered
+                      : _l.youSaid(_entered(attempt)),
+                ),
                 child: row,
               ),
       ),

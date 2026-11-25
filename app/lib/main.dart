@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digits.dart';
 import 'home_page.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -88,6 +89,7 @@ class _MathTesterAppState extends State<MathTesterApp>
     final themeLanguage =
         language ??
         WidgetsBinding.instance.platformDispatcher.locale.languageCode;
+    final nativeDigits = context.select((MathTesterModel m) => m.nativeDigits);
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
@@ -107,6 +109,13 @@ class _MathTesterAppState extends State<MathTesterApp>
       theme: buildAppTheme(Brightness.light, palette, themeLanguage),
       darkTheme: buildAppTheme(Brightness.dark, palette, themeLanguage),
       themeMode: context.select((MathTesterModel m) => m.themeMode),
+      builder: (context, child) {
+        final code = Localizations.localeOf(context).languageCode;
+        return DigitScope(
+          language: showsNativeDigits(nativeDigits, code) ? code : null,
+          child: child!,
+        );
+      },
       home: const MyHomePage(key: homePageKey),
     );
   }
