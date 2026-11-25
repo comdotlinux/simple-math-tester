@@ -3019,5 +3019,126 @@
   "menuKinds": "Question kinds",
   "@menuKinds": {
     "description": "Menu sheet: heading above the toggles that choose the kinds of questions (+, −, ×, ÷, algebra, geometry)."
+  },
+  "webNavApp": "Open the app",
+  "@webNavApp": {
+    "description": "Link in the web page navigation to the app."
+  },
+  "webNavAbout": "About",
+  "@webNavAbout": {
+    "description": "Link in the web page navigation to the About page."
+  },
+  "webAboutHeading": "About Simple Math Tester",
+  "@webAboutHeading": {
+    "description": "Heading of the About web page. Keep the product name Simple Math Tester."
+  },
+  "webAboutDescription": "A free arithmetic practice app for children, without ads. On the App Store, Google Play and the web.",
+  "@webAboutDescription": {
+    "description": "Meta description of the About web page (search result snippet). Keep App Store and Google Play."
+  },
+  "webAboutBody": "Simple Math Tester is a free arithmetic practice app for school beginners, without ads, accounts or tracking. Practise addition, subtraction, multiplication and division at your own level, then review the answers. Algebra and geometry can be switched on. Progress stays on your device, and the app works offline.",
+  "@webAboutBody": {
+    "description": "Main paragraph of the About web page."
+  },
+  "webGetTheApp": "Get the app",
+  "@webGetTheApp": {
+    "description": "Heading above the store badges on the About web page."
+  },
+  "webUseInBrowser": "Use it in the browser",
+  "@webUseInBrowser": {
+    "description": "Button on the About web page that opens the web version of the app."
+  },
+  "webGoodToKnow": "Good to know",
+  "@webGoodToKnow": {
+    "description": "Heading on the About web page above the links to the privacy policy and Impressum."
+  },
+  "webReadPrivacyImpressum": "Read the {privacy} or the {impressum}.",
+  "@webReadPrivacyImpressum": {
+    "description": "Sentence on the About web page; {privacy} and {impressum} become links (see webPrivacyLink and impressum). Keep every {placeholder} unchanged.",
+    "placeholders": {
+      "privacy": {
+        "type": "String"
+      },
+      "impressum": {
+        "type": "String"
+      }
+    }
+  },
+  "webPrivacyLink": "privacy policy",
+  "@webPrivacyLink": {
+    "description": "Link text for the privacy policy inside a sentence (lower case where the language does that)."
+  },
+  "webBadgeAppStoreAlt": "Download on the App Store",
+  "@webBadgeAppStoreAlt": {
+    "description": "Alt text of the Apple App Store badge image. Keep App Store."
+  },
+  "webBadgeGooglePlayAlt": "Get it on Google Play",
+  "@webBadgeGooglePlayAlt": {
+    "description": "Alt text of the Google Play badge image. Keep Google Play."
+  },
+  "webImpressumLegalNotice": "Simple Math Tester · legal notice",
+  "@webImpressumLegalNotice": {
+    "description": "Subtitle under the heading of the Impressum web page. Keep the product name and the dot."
+  },
+  "webImpressumProviderHeading": "Provider",
+  "@webImpressumProviderHeading": {
+    "description": "Heading of the provider section of the Impressum web page."
+  },
+  "webImpressumProviderIntro": "Information under § 5 DDG (German Digital Services Act) about who provides this app and website, and how to reach them.",
+  "@webImpressumProviderIntro": {
+    "description": "Intro of the Impressum web page. Keep § 5 DDG."
+  },
+  "webImpressumNoticeTitle": "For contacting the provider only.",
+  "@webImpressumNoticeTitle": {
+    "description": "Bold first sentence of a warning on the Impressum web page."
+  },
+  "webImpressumNoticeBody": "Do not publish, share, sell or otherwise misuse these details, for example for advertising or unsolicited mail.",
+  "@webImpressumNoticeBody": {
+    "description": "Rest of the warning on the Impressum web page."
+  },
+  "webImpressumStatus": "A short automatic check keeps bots away from the provider details.",
+  "@webImpressumStatus": {
+    "description": "Status line on the Impressum web page while the bot check (Cloudflare Turnstile) runs."
+  },
+  "webImpressumDetails": "Provider details",
+  "@webImpressumDetails": {
+    "description": "Small label above the provider details on the Impressum web page."
+  },
+  "webImpressumError": "The Impressum could not be loaded. Check the connection and try again.",
+  "@webImpressumError": {
+    "description": "Error on the Impressum web page when the details could not be loaded. Keep the word Impressum."
+  },
+  "webImpressumRetry": "Try again",
+  "@webImpressumRetry": {
+    "description": "Button on the Impressum web page that repeats the check."
+  },
+  "webImpressumAboutHeading": "About the app",
+  "@webImpressumAboutHeading": {
+    "description": "Heading of the second section of the Impressum web page."
+  },
+  "webImpressumAboutBody": "Simple Math Tester is a free arithmetic practice app for children, made as a private, non-commercial project. It has no ads, no accounts and no tracking, and your progress stays on your own device.",
+  "@webImpressumAboutBody": {
+    "description": "Paragraph of the second section of the Impressum web page."
+  },
+  "webImpressumAboutItem1": "Available on Android, iOS and the web, and works offline.",
+  "@webImpressumAboutItem1": {
+    "description": "List item on the Impressum web page. Keep Android and iOS."
+  },
+  "webImpressumAboutItem2": "Practice addition, subtraction, multiplication and division at your own level.",
+  "@webImpressumAboutItem2": {
+    "description": "List item on the Impressum web page."
+  },
+  "webImpressumWhyHeading": "Why the check?",
+  "@webImpressumWhyHeading": {
+    "description": "Heading of the third section of the Impressum web page."
+  },
+  "webImpressumWhyBody": "The provider details include a postal address and contact details. The check, Cloudflare Turnstile, keeps automated scrapers from collecting them. It runs only on this page; the app itself loads nothing from Cloudflare Turnstile. See the {privacy} for what the check processes.",
+  "@webImpressumWhyBody": {
+    "description": "Paragraph on the Impressum web page; {privacy} becomes a link (webPrivacyLink). Keep Cloudflare Turnstile. Keep every {placeholder} unchanged.",
+    "placeholders": {
+      "privacy": {
+        "type": "String"
+      }
+    }
   }
 }

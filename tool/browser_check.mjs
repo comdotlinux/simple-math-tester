@@ -200,12 +200,22 @@ try {
     check(true, `offline ${path} shows the cached About page`);
   }
 
-  for (const path of ['/de/privacy', '/de/privacy.html', '/pt-PT/privacy.html']) {
+  for (const path of ['/de/privacy', '/de/privacy.html', '/pt-PT/privacy.html', '/de/about', '/pt-PT/about.html']) {
     await page.goto(origin + path);
     await page.locator('h1').waitFor();
     check(
       (await page.locator('html').getAttribute('lang')) === path.split('/')[1],
       `offline ${path} shows the cached language privacy page`,
+    );
+  }
+
+  // The generated Impressum frame also shows its error line offline.
+  for (const path of ['/de/impressum', '/pt-PT/impressum.html']) {
+    await page.goto(origin + path);
+    await page.locator('#error').waitFor();
+    check(
+      (await page.locator('html').getAttribute('lang')) === path.split('/')[1],
+      `offline ${path} shows the cached language Impressum shell with its error line`,
     );
   }
 
