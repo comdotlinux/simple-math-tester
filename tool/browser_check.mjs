@@ -200,6 +200,15 @@ try {
     check(true, `offline ${path} shows the cached About page`);
   }
 
+  for (const path of ['/de/privacy', '/de/privacy.html', '/pt-PT/privacy.html']) {
+    await page.goto(origin + path);
+    await page.locator('h1').waitFor();
+    check(
+      (await page.locator('html').getAttribute('lang')) === path.split('/')[1],
+      `offline ${path} shows the cached language privacy page`,
+    );
+  }
+
   // Each Indian script (and Cyrillic, from Roboto) draws from the bundled
   // fonts: with any glyph missing, the web engine would fetch a Noto font
   // from fonts.gstatic.com.
