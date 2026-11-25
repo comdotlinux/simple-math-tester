@@ -430,40 +430,46 @@ class _ResultsPageState extends State<ResultsPage> {
       children: [
         Text('${index + 1}', style: muted),
         Expanded(
-          child: Text.rich(
-            TextSpan(
-              style: textTheme.titleMedium,
-              children: [
-                mathSpan(context, attempt.problem.shown(_l), null),
-                // An equation already has its "=" and a figure is a
-                // sentence, so an arrow leads to the answer; drawn, as
-                // no bundled font has "→".
-                if (attempt.problem is! ArithmeticProblem) ...[
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Icon(
-                        Icons.arrow_forward,
-                        size: textTheme.titleMedium?.fontSize,
-                        color: textTheme.titleMedium?.color,
-                        applyTextScaling: true,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: equationIsland(
+              attempt.problem,
+              Text.rich(
+                TextSpan(
+                  style: textTheme.titleMedium,
+                  children: [
+                    mathSpan(context, attempt.problem.shown(_l), null),
+                    // An equation already has its "=" and a figure is a
+                    // sentence, so an arrow leads to the answer; drawn, as
+                    // no bundled font has "→".
+                    if (attempt.problem is! ArithmeticProblem) ...[
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            Icons.arrow_forward,
+                            size: textTheme.titleMedium?.fontSize,
+                            color: textTheme.titleMedium?.color,
+                            applyTextScaling: true,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  TextSpan(text: expected),
-                ] else
-                  TextSpan(text: ' = $expected'),
-                if (said != null) TextSpan(text: '   $said', style: muted),
-              ],
-            ),
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.ellipsis,
-            // The smaller "said" part must not change the line height.
-            strutStyle: StrutStyle.fromTextStyle(
-              textTheme.titleMedium!,
-              forceStrutHeight: true,
+                      TextSpan(text: expected),
+                    ] else
+                      TextSpan(text: ' = $expected'),
+                    if (said != null) TextSpan(text: '   $said', style: muted),
+                  ],
+                ),
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
+                // The smaller "said" part must not change the line height.
+                strutStyle: StrutStyle.fromTextStyle(
+                  textTheme.titleMedium!,
+                  forceStrutHeight: true,
+                ),
+              ),
             ),
           ),
         ),
@@ -587,9 +593,12 @@ class _ResultsPageState extends State<ResultsPage> {
     BuildContext context,
     Attempt attempt,
     TextStyle? style,
-  ) => Text.rich(
-    mathSpan(context, attempt.problem.shown(_l), style),
-    semanticsLabel: attempt.problem.spoken(_l),
+  ) => equationIsland(
+    attempt.problem,
+    Text.rich(
+      mathSpan(context, attempt.problem.shown(_l), style),
+      semanticsLabel: attempt.problem.spoken(_l),
+    ),
   );
 
   String _elapsed(Attempt attempt) => attempt.skipped

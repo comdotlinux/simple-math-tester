@@ -149,7 +149,13 @@ class NumberPad extends StatelessWidget {
       ),
     );
 
-    Widget row(List<Widget> keys) => Row(spacing: gap, children: keys);
+    // The digits keep their order in a right-to-left page, as on a phone
+    // keypad; only the Check label (words) follows the page.
+    final pageDirection = Directionality.of(context);
+    Widget row(List<Widget> keys) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: Row(spacing: gap, children: keys),
+    );
     final checkIcon = Icon(
       next ? Icons.navigate_next : Icons.check_circle_outline,
       size: 28,
@@ -217,41 +223,47 @@ class NumberPad extends StatelessWidget {
             // to the Next key as well.
             KeyedSubtree(
               key: next ? nextQuestionButtonKey : null,
-              child: signedDecimal
-                  // Two keys wide: a short label, shrunk rather than wrapped,
-                  // so the key keeps its height.
-                  ? FilledButton(
-                      key: checkAnswerButtonKey,
-                      onPressed: onCheck,
-                      style: ButtonStyle(
-                        minimumSize: keySize,
-                        padding: const WidgetStatePropertyAll(
-                          EdgeInsets.symmetric(horizontal: 8),
+              child: Directionality(
+                textDirection: pageDirection,
+                child: signedDecimal
+                    // Two keys wide: a short label, shrunk rather than wrapped,
+                    // so the key keeps its height.
+                    ? FilledButton(
+                        key: checkAnswerButtonKey,
+                        onPressed: onCheck,
+                        style: ButtonStyle(
+                          minimumSize: keySize,
+                          padding: const WidgetStatePropertyAll(
+                            EdgeInsets.symmetric(horizontal: 8),
+                          ),
                         ),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          spacing: 8,
-                          children: [
-                            checkIcon,
-                            next
-                                ? Text(l.next, semanticsLabel: l.nextQuestion)
-                                : Text(l.check, semanticsLabel: l.checkAnswer),
-                          ],
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 8,
+                            children: [
+                              checkIcon,
+                              next
+                                  ? Text(l.next, semanticsLabel: l.nextQuestion)
+                                  : Text(
+                                      l.check,
+                                      semanticsLabel: l.checkAnswer,
+                                    ),
+                            ],
+                          ),
                         ),
+                      )
+                    : FilledButton.icon(
+                        key: checkAnswerButtonKey,
+                        onPressed: onCheck,
+                        style: ButtonStyle(minimumSize: keySize),
+                        icon: checkIcon,
+                        label: next
+                            ? Text(l.next, semanticsLabel: l.nextQuestion)
+                            : Text(l.checkAnswer),
                       ),
-                    )
-                  : FilledButton.icon(
-                      key: checkAnswerButtonKey,
-                      onPressed: onCheck,
-                      style: ButtonStyle(minimumSize: keySize),
-                      icon: checkIcon,
-                      label: next
-                          ? Text(l.next, semanticsLabel: l.nextQuestion)
-                          : Text(l.checkAnswer),
-                    ),
+              ),
             ),
           ),
         ]),

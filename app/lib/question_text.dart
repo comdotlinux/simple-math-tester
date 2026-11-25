@@ -48,6 +48,13 @@ TextSpan mathSpan(BuildContext context, String text, TextStyle? style) {
   return TextSpan(style: style, children: children);
 }
 
+/// [child], an equation or a sum, kept left-to-right inside a right-to-left
+/// page: the digits and signs of `3 + 4 = ?` read in one order everywhere. A
+/// figure's question is a sentence and follows the page.
+Widget equationIsland(Problem problem, Widget child) => problem is FigureProblem
+    ? child
+    : Directionality(textDirection: TextDirection.ltr, child: child);
+
 /// A thick line on the baseline about two digits wide, in the text colour:
 /// longer and lower than a minus sign, so `10 − __ = 4` reads clearly.
 class _Blank extends StatelessWidget {
