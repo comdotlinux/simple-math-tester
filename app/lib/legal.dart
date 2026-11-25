@@ -35,22 +35,30 @@ Uri get releaseNotesUrl => Uri.https(
 );
 
 /// Whether the app offers a monthly reminder to check for updates: Android
-/// only, where it opens Google Play. The web app updates itself.
+/// (opens Google Play) and iOS (opens the App Store). The web app updates
+/// itself.
 bool get updateRemindersSupported =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS);
 
-/// This app's store page, tried in order: the Play Store app, then the Play
-/// web page. An App Store link for iOS would go here too.
-final storeUrls = [
-  Uri(
-    scheme: 'market',
-    host: 'details',
-    queryParameters: {'id': 'com.linux.simplemathtester'},
-  ),
-  Uri.https('play.google.com', '/store/apps/details', {
-    'id': 'com.linux.simplemathtester',
-  }),
-];
+/// This app's store page, tried in order: the store app, then the web page.
+/// On Android Google Play, on iOS the App Store (Apple ID 6838034519).
+List<Uri> get storeUrls => defaultTargetPlatform == TargetPlatform.iOS
+    ? [
+        Uri.parse('itms-apps://apps.apple.com/app/id6838034519'),
+        Uri.https('apps.apple.com', '/app/id6838034519'),
+      ]
+    : [
+        Uri(
+          scheme: 'market',
+          host: 'details',
+          queryParameters: {'id': 'com.linux.simplemathtester'},
+        ),
+        Uri.https('play.google.com', '/store/apps/details', {
+          'id': 'com.linux.simplemathtester',
+        }),
+      ];
 
 /// Hands [uri] to the system browser, outside the app.
 Future<bool> openInBrowser(Uri uri) =>

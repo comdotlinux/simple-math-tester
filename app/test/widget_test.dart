@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/foundation.dart'
+    show debugDefaultTargetPlatformOverride, defaultTargetPlatform;
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1392,10 +1393,7 @@ void main() {
       await resumeAt(tester, model, () => now = DateTime(2026, 12, 15, 0, 1));
       expect(reminder, findsOneWidget);
       expect(find.text('Check for updates'), findsOneWidget);
-      expect(
-        find.text('See if a new version is on Google Play'),
-        findsOneWidget,
-      );
+      expect(find.text('See if a new version is available'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -1453,6 +1451,53 @@ void main() {
       expect(reminder, findsNothing);
       expect(find.text(later), findsNothing);
       expect(find.text('The browser did not open.'), findsNothing);
+    });
+
+    testWidgets('on iOS, a tap opens the App Store app', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        start: false,
+        updateReminders: true,
+        updateReminderDate: '2000-01-01',
+        openLink: (uri) async {
+          opened.add(uri);
+          return true;
+        },
+      );
+      await tester.tap(reminder);
+      await tester.pumpAndSettle();
+
+      expect(opened.map((u) => u.toString()), [
+        'itms-apps://apps.apple.com/app/id6838034519',
+      ]);
+    });
+
+    testWidgets('on iOS, without the App Store app a tap opens the web page', (
+      tester,
+    ) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final opened = <Uri>[];
+      await launch(
+        tester,
+        start: false,
+        updateReminders: true,
+        updateReminderDate: '2000-01-01',
+        openLink: (uri) async {
+          opened.add(uri);
+          return uri.scheme == 'https';
+        },
+      );
+      await tester.tap(reminder);
+      await tester.pumpAndSettle();
+
+      expect(opened.map((u) => u.toString()), [
+        'itms-apps://apps.apple.com/app/id6838034519',
+        'https://apps.apple.com/app/id6838034519',
+      ]);
     });
 
     testWidgets('without the Play Store app, a tap opens the Play web page', (
@@ -1516,23 +1561,19 @@ void main() {
     });
 
     testWidgets(
-      'reminders are on for Android only',
+      'reminders are on for Android and iOS',
       (tester) async {
         expect(
           updateRemindersSupported,
-          defaultTargetPlatform == TargetPlatform.android,
+          defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS,
         );
         final store = FakeStore({
           progressKey: Progress(updateReminderDate: '2000-01-01').encode(),
         });
         await bootstrap(store);
         await tester.pumpAndSettle();
-        expect(
-          reminder,
-          defaultTargetPlatform == TargetPlatform.android
-              ? findsOneWidget
-              : findsNothing,
-        );
+        expect(reminder, findsOneWidget);
       },
       variant: const TargetPlatformVariant({
         TargetPlatform.android,
