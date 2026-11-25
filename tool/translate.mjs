@@ -81,6 +81,9 @@ export function problem(source, translation) {
   const got = placeholders(translation).join();
   if (want !== got) return `placeholders ${got || 'none'} instead of ${want}`;
   if (/plural,/.test(source) && !/\bother\s*\{/.test(translation)) return 'plural without other';
+  // gen-l10n accepts only =0, =1 and =2 as exact plural cases.
+  const exact = translation.match(/=(?![012]\s*\{)\d+\s*\{/);
+  if (exact) return `plural case ${exact[0].replace(/\s*\{$/, '')} (only =0, =1, =2)`;
   // Digits stay Western (0-9) in every language.
   if (/(?![0-9])\p{Nd}/u.test(translation)) return 'non-Western digits';
   // No number may be changed, added or dropped.
