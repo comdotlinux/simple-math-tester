@@ -303,12 +303,22 @@ const fontFallback = [
   'NotoSansTamil',
   'NotoSansMalayalam',
   'NotoSansGurmukhi',
+  'NotoSansBengali',
+  'NotoSansGujarati',
+  'NotoSansArabic',
 ];
+
+/// Urdu is set in Nastaliq, so that family comes before Naskh Arabic. Its
+/// lines are taller than Roboto's: a fixed `height` below about 1.8 lets the
+/// marks overflow the line box.
+const urduFontFallback = ['NotoNastaliqUrdu', ...fontFallback];
 
 ThemeData buildAppTheme(
   Brightness brightness, [
   AppPalette palette = AppPalette.sunny,
+  String? language,
 ]) {
+  final fallback = language == 'ur' ? urduFontFallback : fontFallback;
   final t = AppTokens.of(palette, brightness);
   // Written out in full so no generated colour can land in the purple range.
   final scheme = ColorScheme(
@@ -380,9 +390,9 @@ ThemeData buildAppTheme(
       WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.disabled) ? disabled : enabled,
       );
-  const buttonText = TextStyle(
+  final buttonText = TextStyle(
     fontFamily: 'Roboto',
-    fontFamilyFallback: fontFallback,
+    fontFamilyFallback: fallback,
     fontSize: 17,
     fontWeight: FontWeight.w700,
   );
@@ -392,7 +402,7 @@ ThemeData buildAppTheme(
     brightness: brightness,
     colorScheme: scheme,
     fontFamily: 'Roboto',
-    fontFamilyFallback: fontFallback,
+    fontFamilyFallback: fallback,
   );
   const tabular = [FontFeature.tabularFigures()];
   return base.copyWith(
@@ -444,7 +454,7 @@ ThemeData buildAppTheme(
         )
         .apply(
           fontFamily: 'Roboto',
-          fontFamilyFallback: fontFallback,
+          fontFamilyFallback: fallback,
           bodyColor: t.ink,
           displayColor: t.ink,
         ),
@@ -453,7 +463,7 @@ ThemeData buildAppTheme(
       style: ButtonStyle(
         minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
         padding: const WidgetStatePropertyAll(buttonPadding),
-        textStyle: const WidgetStatePropertyAll(buttonText),
+        textStyle: WidgetStatePropertyAll(buttonText),
         backgroundColor: enabledOr(t.primary, t.surfaceSunken),
         foregroundColor: enabledOr(t.onPrimary, t.inkMuted),
         overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .1)),
@@ -466,7 +476,7 @@ ThemeData buildAppTheme(
       style: ButtonStyle(
         minimumSize: const WidgetStatePropertyAll(Size(48, 56)),
         padding: const WidgetStatePropertyAll(buttonPadding),
-        textStyle: const WidgetStatePropertyAll(buttonText),
+        textStyle: WidgetStatePropertyAll(buttonText),
         backgroundColor: enabledOr(t.surfaceRaised, t.surfaceSunken),
         foregroundColor: enabledOr(t.ink, t.inkMuted),
         overlayColor: WidgetStatePropertyAll(t.ink.withValues(alpha: .08)),
@@ -507,19 +517,19 @@ ThemeData buildAppTheme(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       labelStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         color: t.inkMuted,
         fontWeight: FontWeight.w500,
       ),
       floatingLabelStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         color: t.ink,
         fontWeight: FontWeight.w700,
       ),
       hintStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         color: t.inkMuted,
       ),
       border: OutlineInputBorder(
@@ -569,7 +579,7 @@ ThemeData buildAppTheme(
       titleTextStyle: buttonText,
       subtitleTextStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         fontSize: 16,
         color: t.inkMuted,
       ),
@@ -582,10 +592,10 @@ ThemeData buildAppTheme(
         padding: const WidgetStatePropertyAll(
           EdgeInsets.symmetric(horizontal: 8, vertical: 18),
         ),
-        textStyle: const WidgetStatePropertyAll(
+        textStyle: WidgetStatePropertyAll(
           TextStyle(
             fontFamily: 'Roboto',
-            fontFamilyFallback: fontFallback,
+            fontFamilyFallback: fallback,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -615,7 +625,7 @@ ThemeData buildAppTheme(
       ),
       textStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         color: t.surface,
         fontSize: 16,
       ),
@@ -637,7 +647,7 @@ ThemeData buildAppTheme(
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(
           fontFamily: 'Roboto',
-          fontFamilyFallback: fontFallback,
+          fontFamilyFallback: fallback,
           fontSize: 14,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w700
@@ -656,14 +666,14 @@ ThemeData buildAppTheme(
       unselectedIconTheme: IconThemeData(color: t.ink),
       selectedLabelTextStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         fontSize: 16,
         fontWeight: FontWeight.w700,
         color: t.ink,
       ),
       unselectedLabelTextStyle: TextStyle(
         fontFamily: 'Roboto',
-        fontFamilyFallback: fontFallback,
+        fontFamilyFallback: fallback,
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: t.ink,
