@@ -2,7 +2,7 @@
 
 The app is in English (the source) and German, Polish, Hindi, Marathi,
 Telugu, Tamil, Malayalam, French, Romanian, Ukrainian, Portuguese (Brazil and
-Portugal), Punjabi (Gurmukhi), Turkish, Gujarati and Bengali. It follows the device language, English
+Portugal), Punjabi (Gurmukhi), Turkish, Gujarati, Bengali, Arabic and Urdu. It follows the device language, English
 when that language has no translation; Settings > Language overrides it.
 
 ## Where the texts are
@@ -127,3 +127,15 @@ translates every key. Their Play listing codes `tr-TR`, `gu` and `bn-BD` are
 not yet confirmed against Play Console (issue #278).
 The same goes for their `play/listing/tr-TR.json`, `gu.json` and `bn-BD.json`,
 English copies until the Translate run replaces them.
+
+Arabic and Urdu start as `app_ar.arb` and `app_ur.arb` files holding the
+English texts with their own `languageName` and no entries in
+`translation_sources.json`, and as English copies `play/listing/ar.json` and
+`ur.json`. Their Play listing codes `ar` and `ur` are not yet confirmed
+against Play Console (issue #278). Both read right to left: the page mirrors,
+the number pad and equations stay left to right. Urdu is set in Nastaliq,
+whose lines are tall, so its text styles use a line height of
+`urduLineHeight` (1.9) instead of the tight heights of the other languages.
+The theme follows the stored language, or the device language when Settings >
+Language is "System". `app/test/ar_ur_layout_test.dart` checks both.
+

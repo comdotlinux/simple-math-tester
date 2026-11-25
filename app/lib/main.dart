@@ -56,12 +56,14 @@ class MathTesterApp extends StatefulWidget {
   State<MathTesterApp> createState() => _MathTesterAppState();
 }
 
-class _MathTesterAppState extends State<MathTesterApp> {
+class _MathTesterAppState extends State<MathTesterApp>
+    with WidgetsBindingObserver {
   late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _lifecycle = AppLifecycleListener(
       onStateChange: context.read<MathTesterModel>().handleLifecycle,
     );
@@ -69,14 +71,23 @@ class _MathTesterAppState extends State<MathTesterApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _lifecycle.dispose();
     super.dispose();
   }
+
+  // The system language, for the theme's font, follows the device.
+  @override
+  void didChangeLocales(List<Locale>? locales) => setState(() {});
 
   @override
   Widget build(BuildContext context) {
     final palette = context.select((MathTesterModel m) => m.palette);
     final language = context.select((MathTesterModel m) => m.language);
+    // Urdu gets its Nastaliq font and tall lines also as the system language.
+    final themeLanguage =
+        language ??
+        WidgetsBinding.instance.platformDispatcher.locale.languageCode;
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
@@ -93,8 +104,8 @@ class _MathTesterAppState extends State<MathTesterApp> {
         final code? => appLocale(code),
         null => null,
       },
-      theme: buildAppTheme(Brightness.light, palette, language),
-      darkTheme: buildAppTheme(Brightness.dark, palette, language),
+      theme: buildAppTheme(Brightness.light, palette, themeLanguage),
+      darkTheme: buildAppTheme(Brightness.dark, palette, themeLanguage),
       themeMode: context.select((MathTesterModel m) => m.themeMode),
       home: const MyHomePage(key: homePageKey),
     );
