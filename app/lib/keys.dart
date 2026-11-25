@@ -99,6 +99,8 @@ Key themeModeKey(Enum mode) => Key('theme-mode-${mode.name}');
 
 /// One per segment of the settings sheet's layout choice.
 Key layoutModeKey(Enum mode) => Key('layout-mode-${mode.name}');
+Key numbersModeKey({required bool native}) =>
+    Key(native ? 'numbers-native' : 'numbers-ascii');
 
 /// The settings row that opens the language choice, and one key per choice
 /// (a language code such as `de`; null is "System").

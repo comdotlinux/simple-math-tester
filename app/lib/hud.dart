@@ -1,9 +1,11 @@
 import 'dart:math';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digit_text.dart';
+import 'digits.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
 import 'math_tester_model.dart';
@@ -98,11 +100,14 @@ class Hud extends StatelessWidget {
                   Semantics(
                     container: true,
                     excludeSemantics: true,
-                    label: l.levelProgressSemantics(
-                      '$level',
-                      '$xp',
-                      '${levelEnd - xp}',
-                      '${level + 1}',
+                    label: shownDigits(
+                      context,
+                      l.levelProgressSemantics(
+                        '$level',
+                        '$xp',
+                        '${levelEnd - xp}',
+                        '${level + 1}',
+                      ),
                     ),
                     child: SizedBox(
                       // Full width on a phone, so the level fits on one line.
@@ -207,7 +212,7 @@ class _Stat extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     container: true,
     excludeSemantics: true,
-    label: label,
+    label: shownDigits(context, label),
     // The value wraps rather than overflow at large numbers and text sizes.
     child: Row(
       mainAxisSize: MainAxisSize.min,

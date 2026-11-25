@@ -136,7 +136,7 @@ class NumberPad extends StatelessWidget {
 
     // Native digit large with the 0-9 digit small above it: the pad is
     // where a child learns which is which. Taps enter the 0-9 digit.
-    final native = digitsLanguage(l.localeName);
+    final native = DigitScope.of(context) ?? 'en';
     const digitStyle = TextStyle(
       fontSize: 28,
       fontWeight: FontWeight.w700,

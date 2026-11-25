@@ -692,6 +692,10 @@
   "@themeDark": {
     "description": "Theme choice. One short word; narrow segmented button."
   },
+  "numbers": "Numbers",
+  "@numbers": {
+    "description": "Settings row title: whether numbers show in the language's own digits or as 0-9. The choices are sample digits, not words."
+  },
   "layout": "Layout",
   "@layout": {
     "description": "Settings row title: spacing of the pages."

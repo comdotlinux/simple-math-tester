@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 
 /// The code point of the digit zero (the next nine follow it) for each
 /// language code that does not write 0-9.
@@ -21,15 +22,11 @@ const zeroOfLanguage = <String, int>{
   'ml': 0x0D66,
 };
 
-/// Languages shown in their own digits unless the "Numbers" setting (#277)
-/// says 0-9.
-const _nativeDigitLanguages = {'ar', 'ur', 'bn', 'gu', 'mr'};
-
-/// The language whose digits to show for the page language [languageCode]:
-/// itself where native digits are on, else `en` (0-9). The one place #277
-/// wires its setting into.
+/// The language whose digits [languageCode] shows by default: itself where
+/// native digits are on by default, else `en` (0-9). On screen the
+/// "Numbers" setting decides, through [DigitScope].
 String digitsLanguage(String languageCode) =>
-    _nativeDigitLanguages.contains(languageCode) ? languageCode : 'en';
+    showsNativeDigits(null, languageCode) ? languageCode : 'en';
 
 /// The Arabic decimal separator, which [asciiDigits] turns into `.`.
 const _arabicDecimal = '٫';
@@ -64,3 +61,78 @@ String asciiDigits(String text) {
 final nativeDigitsToAscii = TextInputFormatter.withFunction(
   (old, edited) => edited.copyWith(text: asciiDigits(edited.text)),
 );
+
+/// Languages whose own digits show by default; the other languages in
+/// [zeroOfLanguage] show 0-9 until the child chooses otherwise.
+const nativeDigitsByDefault = {'ar', 'ur', 'bn', 'gu', 'mr'};
+
+/// Whether numbers show in [languageCode]'s own digits: the child's choice
+/// [setting], or the language's default when null.
+bool showsNativeDigits(bool? setting, String languageCode) =>
+    zeroOfLanguage.containsKey(languageCode) &&
+    (setting ?? nativeDigitsByDefault.contains(languageCode));
+
+/// The digits of the page below it: the language code whose digits the
+/// page's text shows, or null for 0-9.
+class DigitScope extends InheritedWidget {
+  const DigitScope({super.key, required this.language, required super.child});
+
+  final String? language;
+
+  static String? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<DigitScope>()?.language;
+
+  @override
+  bool updateShouldNotify(DigitScope old) => language != old.language;
+}
+
+/// [text] in the digits the page shows, for a semantics label or a tooltip.
+String shownDigits(BuildContext context, String text) {
+  final language = DigitScope.of(context);
+  return language == null ? text : localDigits(text, language);
+}
+
+/// [span] with [convert] applied to the text of every [TextSpan] in it and
+/// to its semantics label.
+InlineSpan convertDigits(InlineSpan span, String Function(String) convert) =>
+    switch (span) {
+      TextSpan(:final text, :final children) => TextSpan(
+        text: text == null ? null : convert(text),
+        children: children?.map((c) => convertDigits(c, convert)).toList(),
+        style: span.style,
+        recognizer: span.recognizer,
+        semanticsLabel: span.semanticsLabel == null
+            ? null
+            : convert(span.semanticsLabel!),
+        mouseCursor: span.mouseCursor,
+        onEnter: span.onEnter,
+        onExit: span.onExit,
+        locale: span.locale,
+        spellOut: span.spellOut,
+      ),
+      _ => span,
+    };
+
+/// A field controller whose text stays ASCII (so parsing, saving and the
+/// number pad see 0-9) but is drawn in the page's digits. Same length, so
+/// the caret and selection stay valid.
+class DigitsController extends TextEditingController {
+  DigitsController({super.text});
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final span = super.buildTextSpan(
+      context: context,
+      style: style,
+      withComposing: withComposing,
+    );
+    final language = DigitScope.of(context);
+    return language == null
+        ? span
+        : convertDigits(span, (t) => localDigits(t, language)) as TextSpan;
+  }
+}

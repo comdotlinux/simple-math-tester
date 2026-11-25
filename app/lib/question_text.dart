@@ -1,8 +1,9 @@
 import 'dart:math';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import 'app_theme.dart';
+import 'digit_text.dart';
 import 'operations.dart';
 
 /// [text] in [style], with a drawn blank (a line on the baseline, as in a

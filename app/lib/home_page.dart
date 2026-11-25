@@ -1,8 +1,9 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
 import 'celebration.dart';
+import 'digit_text.dart';
 import 'hud.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';

@@ -70,6 +70,10 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           locale: locale,
           theme: buildAppTheme(Brightness.light),
+          builder: (context, child) => DigitScope(
+            language: digitsLanguage(locale.languageCode),
+            child: child!,
+          ),
           home: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,

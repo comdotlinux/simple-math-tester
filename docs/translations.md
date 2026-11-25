@@ -10,6 +10,9 @@ when that language has no translation; Settings > Language overrides it.
 - `app/lib/l10n/app_en.arb` is the template: every text the app shows, each
   with a description for translators. Placeholders such as `{count}` and ICU
   plurals stay as they are in every language, and digits stay Western (0-9).
+  The app draws them in the language's own digits when Settings > Numbers
+  says so (default: Arabic, Urdu, Bengali, Gujarati and Marathi); `Text` from
+  `app/lib/digit_text.dart` does that, so a file that shows numbers imports it.
 - `app/lib/l10n/app_<code>.arb` holds one language. A regional variant has
   its own full file named `<language>_<COUNTRY>`: `app_pt.arb` is Brazilian
   Portuguese (for `pt`, `pt_BR` and every other Portuguese), `app_pt_PT.arb`

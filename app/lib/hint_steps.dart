@@ -1,6 +1,7 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import 'app_theme.dart';
+import 'digit_text.dart';
 import 'figure.dart';
 import 'figure_view.dart';
 import 'keys.dart';
