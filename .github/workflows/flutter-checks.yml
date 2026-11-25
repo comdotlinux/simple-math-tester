@@ -82,7 +82,7 @@ jobs:
       # Turnstile widget and no personal data (no postcode-like number, no e-mail).
       - name: Check the privacy and Impressum pages
         run: |
-          langs=$(cd web && ls -d */privacy.html 2>/dev/null)
+          langs=$(cd web && find . -mindepth 2 -maxdepth 2 -name privacy.html | cut -c3-)
           test -n "$langs"
           for page in about.html privacy.html impressum.html $langs; do
             test -f "build/web/$page"
