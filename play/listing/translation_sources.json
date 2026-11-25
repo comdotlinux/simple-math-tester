@@ -110,5 +110,19 @@
     "fullDescription": "a725a75a9e9b",
     "subtitle": "de2aa61db49f",
     "keywords": "7abec4e71b1f"
+  },
+  "ar": {
+    "title": "b01d6592a52f",
+    "shortDescription": "af9ee2976688",
+    "subtitle": "de2aa61db49f",
+    "keywords": "7abec4e71b1f",
+    "fullDescription": "a725a75a9e9b"
+  },
+  "ur": {
+    "title": "b01d6592a52f",
+    "shortDescription": "af9ee2976688",
+    "fullDescription": "a725a75a9e9b",
+    "subtitle": "de2aa61db49f",
+    "keywords": "7abec4e71b1f"
   }
 }
