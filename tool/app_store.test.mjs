@@ -53,6 +53,9 @@ test('every Play listing has an App Store locale', () => {
   assert.equal(appStoreLocales['pl-PL'], 'pl');
   assert.equal(appStoreLocales['hi-IN'], 'hi');
   assert.equal(appStoreLocales.pa, 'pa-IN');
+  assert.equal(appStoreLocales['tr-TR'], 'tr');
+  assert.equal(appStoreLocales.gu, 'gu-IN');
+  assert.equal(appStoreLocales['bn-BD'], 'bn-BD');
   assert.equal(appStoreLocales['ta-IN'], 'ta-IN');
 });
 

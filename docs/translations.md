@@ -2,7 +2,7 @@
 
 The app is in English (the source) and German, Polish, Hindi, Marathi,
 Telugu, Tamil, Malayalam, French, Romanian, Ukrainian, Portuguese (Brazil and
-Portugal) and Punjabi (Gurmukhi). It follows the device language, English
+Portugal), Punjabi (Gurmukhi), Turkish, Gujarati and Bengali. It follows the device language, English
 when that language has no translation; Settings > Language overrides it.
 
 ## Where the texts are
@@ -119,3 +119,11 @@ workflows; see "Store listing" in [play-store.md](play-store.md) and
 
 Machine translations are a start: a native speaker should read them, above
 all the privacy policy.
+
+Turkish, Gujarati and Bengali start as `app_tr.arb`, `app_gu.arb` and
+`app_bn.arb` files holding the English texts with their own `languageName`
+and no entries in `translation_sources.json`, so the next Translate run
+translates every key. Their Play listing codes `tr-TR`, `gu` and `bn-BD` are
+not yet confirmed against Play Console (issue #278).
+The same goes for their `play/listing/tr-TR.json`, `gu.json` and `bn-BD.json`,
+English copies until the Translate run replaces them.

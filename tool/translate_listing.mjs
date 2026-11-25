@@ -36,6 +36,9 @@ export const playCodes = {
   pt: 'pt-BR',
   pt_PT: 'pt-PT',
   pa: 'pa',
+  tr: 'tr-TR',
+  gu: 'gu',
+  bn: 'bn-BD',
 };
 
 // The stores' limits in characters: Play's, then the App Store's own fields.
