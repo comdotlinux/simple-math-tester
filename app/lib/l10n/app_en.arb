@@ -799,11 +799,11 @@
   },
   "updateReminderTitle": "Check for updates",
   "@updateReminderTitle": {
-    "description": "Title of the monthly reminder under the header; tapping it opens the app's Google Play page. The app checks nothing itself."
+    "description": "Title of the monthly reminder under the header; tapping it opens the app's store page (Google Play on Android, App Store on iOS). The app checks nothing itself."
   },
-  "updateReminderSubtitle": "See if a new version is on Google Play",
+  "updateReminderSubtitle": "See if a new version is available",
   "@updateReminderSubtitle": {
-    "description": "Line under the update reminder's title; tapping opens Google Play. Keep 'Google Play'."
+    "description": "Line under the update reminder's title; tapping opens the app's store page (Google Play or App Store)."
   },
   "updateReminderDismiss": "Not now",
   "@updateReminderDismiss": {
