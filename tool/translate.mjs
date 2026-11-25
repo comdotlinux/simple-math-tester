@@ -14,7 +14,24 @@ import { pathToFileURL } from 'node:url';
 
 // An ARB locale: a language code, with _COUNTRY for a regional variant (pt is
 // Brazilian Portuguese, pt_PT European).
-export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro', 'uk', 'pt', 'pt_PT', 'pa', 'tr', 'gu', 'bn'];
+export const languages = [
+  'de',
+  'pl',
+  'hi',
+  'mr',
+  'te',
+  'ta',
+  'ml',
+  'fr',
+  'ro',
+  'uk',
+  'pt',
+  'pt_PT',
+  'pa',
+  'tr',
+  'gu',
+  'bn',
+];
 
 const dir = new URL('../app/lib/l10n/', import.meta.url);
 // The English text each translation was made from, as a short hash per key,
