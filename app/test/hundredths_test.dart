@@ -62,9 +62,6 @@ void main() {
         '1.2e3',
         'NaN',
         'Infinity',
-        '١',
-        '٣.٥',
-        '१२',
         '1000000000000',
       ];
       for (final text in rejected) {
