@@ -31,6 +31,8 @@ export const languages = [
   'tr',
   'gu',
   'bn',
+  'ar',
+  'ur',
 ];
 
 const dir = new URL('../app/lib/l10n/', import.meta.url);
@@ -102,6 +104,8 @@ const promptNames = {
   pa: 'Punjabi in Gurmukhi script',
   gu: 'Gujarati',
   bn: 'Bengali (Bangla)',
+  ar: 'Arabic (Modern Standard Arabic)',
+  ur: 'Urdu',
 };
 
 /** The English name of [code] that DeepSeek is told to translate into. */

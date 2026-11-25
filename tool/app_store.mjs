@@ -45,6 +45,8 @@ export const appStoreLocales = {
   'tr-TR': 'tr',
   gu: 'gu-IN',
   'bn-BD': 'bn-BD',
+  ar: 'ar-SA',
+  ur: 'ur-PK',
 };
 
 // The screenshot sets, by device folder: App Store Connect's display type and

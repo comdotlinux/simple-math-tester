@@ -26,7 +26,8 @@ class Hud extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     final strong = textTheme.bodyMedium?.copyWith(
       fontWeight: FontWeight.w700,
-      height: 1.2,
+      // Urdu (Nastaliq) keeps the theme's tall lines.
+      height: Localizations.localeOf(context).languageCode == 'ur' ? null : 1.2,
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 

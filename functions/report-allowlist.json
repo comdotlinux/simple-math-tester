@@ -60,5 +60,5 @@
     "angleInSemicircle",
     "similarTriangles"
   ],
-  "locales": ["en", "de", "pl", "hi", "mr", "te", "ta", "ml", "fr", "ro", "uk", "pt", "pt_PT", "pa", "tr", "gu", "bn"]
+  "locales": ["en", "de", "pl", "hi", "mr", "te", "ta", "ml", "fr", "ro", "uk", "pt", "pt_PT", "pa", "tr", "gu", "bn", "ar", "ur"]
 }

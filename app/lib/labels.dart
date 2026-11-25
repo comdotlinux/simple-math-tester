@@ -217,4 +217,6 @@ const englishLanguageNames = {
   'tr': 'Turkish',
   'gu': 'Gujarati',
   'bn': 'Bengali',
+  'ar': 'Arabic',
+  'ur': 'Urdu',
 };

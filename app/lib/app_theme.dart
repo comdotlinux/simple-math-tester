@@ -313,6 +313,9 @@ const fontFallback = [
 /// marks overflow the line box.
 const urduFontFallback = ['NotoNastaliqUrdu', ...fontFallback];
 
+/// The `height` of every Urdu text style.
+const urduLineHeight = 1.9;
+
 ThemeData buildAppTheme(
   Brightness brightness, [
   AppPalette palette = AppPalette.sunny,
@@ -404,50 +407,53 @@ ThemeData buildAppTheme(
     fontFamily: 'Roboto',
     fontFamilyFallback: fallback,
   );
+  // Nastaliq stacks marks far above and below the line: a tall line box.
+  // (Null would not do: Material fills in its own, tighter default.)
+  double h(double normal) => language == 'ur' ? urduLineHeight : normal;
   const tabular = [FontFeature.tabularFigures()];
   return base.copyWith(
     scaffoldBackgroundColor: t.surface,
     textTheme: base.textTheme
         .copyWith(
           // The question: the biggest, heaviest thing on screen.
-          displayLarge: const TextStyle(
+          displayLarge: TextStyle(
             fontSize: 64,
-            height: 1.05,
+            height: h(1.05),
             fontWeight: FontWeight.w700,
             letterSpacing: -1.5,
             fontFeatures: tabular,
           ),
-          displaySmall: const TextStyle(
+          displaySmall: TextStyle(
             fontSize: 36,
-            height: 1.1,
+            height: h(1.1),
             fontWeight: FontWeight.w700,
             letterSpacing: -1,
           ),
-          headlineMedium: const TextStyle(
+          headlineMedium: TextStyle(
             fontSize: 28,
-            height: 1.2,
+            height: h(1.2),
             fontWeight: FontWeight.w700,
             letterSpacing: -.5,
             fontFeatures: tabular,
           ),
-          titleLarge: const TextStyle(
+          titleLarge: TextStyle(
             fontSize: 22,
-            height: 1.25,
+            height: h(1.25),
             fontWeight: FontWeight.w700,
           ),
-          titleMedium: const TextStyle(
+          titleMedium: TextStyle(
             fontSize: 18,
-            height: 1.3,
+            height: h(1.3),
             fontWeight: FontWeight.w700,
             fontFeatures: tabular,
           ),
-          bodyLarge: const TextStyle(fontSize: 18, height: 1.45),
-          bodyMedium: const TextStyle(fontSize: 16, height: 1.4),
+          bodyLarge: TextStyle(fontSize: 18, height: h(1.45)),
+          bodyMedium: TextStyle(fontSize: 16, height: h(1.4)),
           labelLarge: buttonText,
           // Small section labels above a value.
-          labelMedium: const TextStyle(
+          labelMedium: TextStyle(
             fontSize: 16,
-            height: 1.2,
+            height: h(1.2),
             fontWeight: FontWeight.w500,
             letterSpacing: .3,
           ),
