@@ -6,6 +6,10 @@ session. Algebra (equations with one missing number) and geometry (perimeter,
 area, sides and angles of figures drawn to scale) can be switched on; see
 [docs/question-kinds.md](docs/question-kinds.md). Supports web, Android and iOS.
 
+Get it on the [App Store](https://apps.apple.com/app/id6838034519) or
+[Google Play](https://play.google.com/store/apps/details?id=com.linux.simplemathtester),
+or use it in the browser at [math.munich-tech.de](https://math.munich-tech.de).
+
 ## Local setup
 
 Flutter and the other project tools are managed with [mise](https://mise.jdx.dev/).
