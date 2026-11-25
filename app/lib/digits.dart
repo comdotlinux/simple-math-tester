@@ -21,6 +21,16 @@ const zeroOfLanguage = <String, int>{
   'ml': 0x0D66,
 };
 
+/// Languages shown in their own digits unless the "Numbers" setting (#277)
+/// says 0-9.
+const _nativeDigitLanguages = {'ar', 'ur', 'bn', 'gu', 'mr'};
+
+/// The language whose digits to show for the page language [languageCode]:
+/// itself where native digits are on, else `en` (0-9). The one place #277
+/// wires its setting into.
+String digitsLanguage(String languageCode) =>
+    _nativeDigitLanguages.contains(languageCode) ? languageCode : 'en';
+
 /// The Arabic decimal separator, which [asciiDigits] turns into `.`.
 const _arabicDecimal = '٫';
 

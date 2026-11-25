@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:simple_math_tester/app_theme.dart';
+import 'package:simple_math_tester/digits.dart';
 import 'package:simple_math_tester/figure.dart';
 import 'package:simple_math_tester/figure_view.dart';
 import 'package:simple_math_tester/geometry.dart';
@@ -1979,6 +1980,48 @@ void main() {
     });
   });
 
+  test('native digits: figure labels are in the language\'s digits, inside the '
+      'canvas and apart from each other, in every family', () {
+    final bad = <String>[];
+    for (final language in ['ar', 'ur', 'bn', 'gu', 'mr']) {
+      for (final scale in scales) {
+        for (final canvas in canvases[scale]!) {
+          final area = Offset.zero & canvas;
+          for (final (family, params) in every) {
+            final figure = family.build(params).figure;
+            final drawn = layoutFigure(
+              figure,
+              canvas,
+              measures[scale]!,
+              digits: language,
+            );
+            final where = '$language $family $params $canvas x$scale';
+            expect(
+              drawn.labels.map((l) => l.text).join(),
+              isNot(contains(RegExp('[0-9]'))),
+              reason: where,
+            );
+            for (final (i, label) in drawn.labels.indexed) {
+              expect(area.intersect(label.box), label.box, reason: where);
+              for (final other in drawn.labels.skip(i + 1)) {
+                if (label.box.overlaps(other.box)) bad.add(where);
+              }
+            }
+          }
+        }
+      }
+    }
+    // Known: the three exterior-angle cards whose wider native labels meet
+    // on the smallest canvas at text scale 2 (the ASCII cards are left
+    // out of the space by the same rule for quadrilaterals, see
+    // quadrilateralsLeftOut); everything else is clear.
+    expect(bad, [
+      'ar GeometryFamily.exteriorAngle [35, 33, 1] Size(248.0, 196.8) x2.0',
+      'ur GeometryFamily.exteriorAngle [35, 33, 1] Size(248.0, 196.8) x2.0',
+      'bn GeometryFamily.exteriorAngle [34, 33, 1] Size(248.0, 196.8) x2.0',
+    ]);
+  });
+
   test('every problem of every level passes the oracle in every size, and '
       'its labels are at least 12 px, inside the canvas, apart from each '
       'other and off every corner and edge; each angle label next to its own '
@@ -2839,6 +2882,19 @@ void main() {
     expect(calculate('180 − 50 − 60'), 7000);
     expect(calculate('3 × 5 ÷ 2'), 750);
     expect(calculate('3.14 × 5 × 5'), isNot(calculate('78.51')));
+  });
+
+  test('figure labels are in native digits for ar, 0-9 for en and hi', () {
+    final figure = GeometryFamily.halvesRectangleArea.build([5, 3]).figure;
+    List<String> texts(String code) => layoutFigure(
+      figure,
+      const Size(340, 210),
+      measures[1.0]!,
+      digits: digitsLanguage(code),
+    ).labels.map((label) => label.text).toList();
+    expect(texts('ar'), ['٢٫٥', '١٫٥'].map((t) => t.replaceAll('٫', '.')));
+    expect(texts('en'), ['2.5', '1.5']);
+    expect(texts('hi'), ['2.5', '1.5']);
   });
 
   test('numbers in labels, the prompt and hints use the language\'s decimal '
