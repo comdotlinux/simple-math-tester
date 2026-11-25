@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import 'app_theme.dart';
+import 'digits.dart';
 import 'figure.dart';
 import 'l10n/app_localizations.dart';
 
@@ -138,6 +139,7 @@ class FigureView extends StatelessWidget {
               Size(constraints.maxWidth, height),
               (text) => measureLabel(text, style, scaler),
               localeName: localeName,
+              digits: digitsLanguage(localeName),
             );
             return CustomPaint(
               size: Size(constraints.maxWidth, height),

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:material_ui/material_ui.dart';
 
 import 'app_theme.dart';
+import 'digits.dart';
 import 'hundredths.dart';
 import 'keys.dart';
 import 'l10n/app_localizations.dart';
@@ -133,19 +134,46 @@ class NumberPad extends StatelessWidget {
       ),
     );
 
+    // Native digit large with the 0-9 digit small above it: the pad is
+    // where a child learns which is which. Taps enter the 0-9 digit.
+    final native = digitsLanguage(l.localeName);
+    const digitStyle = TextStyle(
+      fontSize: 28,
+      fontWeight: FontWeight.w700,
+      fontFeatures: [FontFeature.tabularFigures()],
+    );
     Widget digit(int value) => key(
       OutlinedButton(
         key: padDigitKey('$value'),
         onPressed: () => _edit('$value'),
         style: ButtonStyle(minimumSize: keySize, padding: noPadding),
-        child: Text(
-          '$value',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            fontFeatures: [FontFeature.tabularFigures()],
-          ),
-        ),
+        child: native == 'en'
+            ? Text('$value', style: digitStyle)
+            // Fixed to the key's height, so a tall script (Bengali, Nastaliq)
+            // is shrunk to fit instead of growing the key.
+            : SizedBox(
+                height: keyHeight,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$value',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          height: 1,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        localDigits('$value', native),
+                        style: digitStyle.copyWith(fontSize: 24),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
       ),
     );
 

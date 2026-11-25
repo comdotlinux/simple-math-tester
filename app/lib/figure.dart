@@ -3,6 +3,7 @@ import 'dart:ui' show Offset, Rect, Size;
 
 import 'package:flutter/foundation.dart';
 
+import 'digits.dart';
 import 'hundredths.dart';
 
 /// The shapes a [Figure] can be; each has its own branch in the oracle.
@@ -454,7 +455,8 @@ const arcStep = .5;
 /// Fits [figure] into [canvas]: one uniform scale for the whole figure, as
 /// large as fits with every label box inside the canvas. [measure] gives
 /// the drawn size of a label's text; numbers are written in the language
-/// [localeName]. A side label stands outside the middle of its side. An
+/// [localeName], in the digits of [digits] (a language code; `en` is 0-9,
+/// see [localDigits]). A side label stands outside the middle of its side. An
 /// angle label stands inside its angle on the line that halves it, just
 /// past the arc, where its box clears every line, tick, arc and label;
 /// otherwise just outside the corner on that line, across from the angle,
@@ -473,12 +475,13 @@ FigureLayout layoutFigure(
   Size canvas,
   Size Function(String text) measure, {
   String localeName = 'en',
+  String digits = 'en',
 }) {
   if (figure.shape != FigureShape.crossingLines &&
       figure.shape != FigureShape.aroundPoint &&
       figure.shape != FigureShape.quadrilateral &&
       figure.extension == null) {
-    return _layoutFigure(figure, canvas, measure, localeName).drawn;
+    return _layoutFigure(figure, canvas, measure, localeName, digits).drawn;
   }
   Offset Function(Offset) turnBy(int step) {
     final (c, s) = _turns[step];
@@ -536,6 +539,7 @@ FigureLayout layoutFigure(
       canvas,
       measure,
       localeName,
+      digits,
     );
     final scale = (drawn.vertices[1] - drawn.vertices[0]).distance / unit;
     // Every side long enough to see, labels apart, each angle label nearer
@@ -621,6 +625,7 @@ bool _meets(Offset a, Offset b, Rect rect) {
   Size canvas,
   Size Function(String text) measure,
   String localeName,
+  String digits,
 ) {
   final stroke = switch (figure.prompt) {
     FigurePrompt.perimeter ||
@@ -711,7 +716,7 @@ bool _meets(Offset a, Offset b, Rect rect) {
     // With y down a positive area means corners run clockwise on screen,
     // where this normal points out of the shape.
     if (twiceArea < 0) normal = -normal;
-    final text = label.text(localeName);
+    final text = localDigits(label.text(localeName), digits);
     final half = boxOf(text);
     texts.add(text);
     var at = (a + b) / 2;
@@ -792,7 +797,9 @@ bool _meets(Offset a, Offset b, Rect rect) {
     for (final (i, g) in angles.indexed)
       Offset.fromDirection(direction(g.a - g.v) + sweeps[i] / 2),
   ];
-  final halves = [for (final angle in figure.angles) boxOf(angle.text)];
+  final halves = [
+    for (final angle in figure.angles) boxOf(localDigits(angle.text, digits)),
+  ];
   final growth = [
     for (final (i, sweep) in sweeps.indexed)
       rays
@@ -1252,7 +1259,10 @@ bool _meets(Offset a, Offset b, Rect rect) {
     labels: [
       for (final (i, text) in texts.indexed) PlacedLabel(text, labelBoxes[i]),
       for (final (i, angle) in figure.angles.indexed)
-        PlacedLabel(angle.text, labelBoxes[texts.length + i]),
+        PlacedLabel(
+          localDigits(angle.text, digits),
+          labelBoxes[texts.length + i],
+        ),
     ],
     grid: figure.grid,
     gridLines: gridLines,
@@ -1264,11 +1274,11 @@ bool _meets(Offset a, Offset b, Rect rect) {
         ? null
         : Rect.fromCircle(center: place(centre), radius: radius * scale),
     total: switch (figure.total) {
-      final total? => formatHundredths(total, localeName),
+      final total? => localDigits(formatHundredths(total, localeName), digits),
       null => null,
     },
     pi: switch (figure.pi) {
-      final value? => formatHundredths(value, localeName),
+      final value? => localDigits(formatHundredths(value, localeName), digits),
       null => null,
     },
     diagonal: figure.diagonal ? (place(model[0]), place(model[2])) : null,
