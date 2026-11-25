@@ -194,6 +194,12 @@ try {
     );
   }
 
+  for (const path of ['/about', '/about.html']) {
+    await page.goto(origin + path);
+    await page.getByText('About Simple Math Tester').waitFor();
+    check(true, `offline ${path} shows the cached About page`);
+  }
+
   // Each Indian script (and Cyrillic, from Roboto) draws from the bundled
   // fonts: with any glyph missing, the web engine would fetch a Noto font
   // from fonts.gstatic.com.
