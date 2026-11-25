@@ -151,7 +151,15 @@ void main() {
     }
     final menu = tester.getRect(find.byKey(settingsButtonKey));
     final end = tester.getRect(find.byKey(endPracticeButtonKey));
-    expect(menu.center.dx, lessThan(end.center.dx), reason: 'menu left');
+    // The menu is at the start edge: left, or right in a right-to-left language.
+    final rtl =
+        Directionality.of(tester.element(find.byKey(settingsButtonKey))) ==
+        TextDirection.rtl;
+    expect(
+      rtl ? end.center.dx : menu.center.dx,
+      lessThan(rtl ? menu.center.dx : end.center.dx),
+      reason: 'menu at the start',
+    );
     // End stays far from Check.
     final check = tester.getRect(find.byKey(checkAnswerButtonKey));
     expect(check.top - end.bottom, greaterThan(48));
