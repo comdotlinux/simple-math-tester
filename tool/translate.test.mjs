@@ -201,4 +201,12 @@ test('a cut-off, unparseable or empty answer is a failed attempt', () => {
   );
   // A wrapped answer is unwrapped.
   assert.deepEqual(parseAnswer(reply('{"translate":{"a":"Eins"}}'), ['a']), { a: 'Eins' });
+  // An echoed request keeps its translations under "translate".
+  assert.deepEqual(
+    parseAnswer(
+      reply('{"notes":{"a":"x"},"translate":{"a":"Eins"},"existingTranslationsForConsistency":{"b":"Zwei"}}'),
+      ['a'],
+    ),
+    { a: 'Eins' },
+  );
 });

@@ -169,10 +169,15 @@ export function parseAnswer(body, keys) {
     return new Error(`unparseable JSON (finish_reason ${choice?.finish_reason})`);
   }
   if (typeof answer !== 'object' || answer === null) return new Error('answer is not a JSON object');
-  // The model sometimes wraps the answer, e.g. in {"translate": {...}}.
-  const values = Object.values(answer);
-  if (!keys.some((k) => k in answer) && values.length === 1 && typeof values[0] === 'object') {
-    answer = values[0] ?? {};
+  // The model sometimes wraps the answer, e.g. in {"translate": {...}}, or echoes the
+  // whole request with the translations under "translate".
+  if (!keys.some((k) => k in answer)) {
+    // "translate" first: an echoed "notes" object has the same keys.
+    const { translate, notes: _notes, existingTranslationsForConsistency: _existing, ...rest } = answer;
+    const inner = [translate, ...Object.values(rest)].find(
+      (v) => typeof v === 'object' && v !== null && keys.some((k) => k in v),
+    );
+    if (inner) answer = inner;
   }
   if (!keys.some((k) => k in answer)) {
     return new Error(
