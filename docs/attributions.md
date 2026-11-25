@@ -10,7 +10,8 @@ shown under Settings > Licences > Other attributions.
 Bundled in `app/assets/fonts/`, each with its licence file next to it:
 
 - Roboto, by Google, Apache License 2.0.
-- Noto Sans Devanagari, Telugu, Tamil, Malayalam and Gurmukhi, by the Noto
+- Noto Sans Devanagari, Telugu, Tamil, Malayalam, Gurmukhi, Bengali, Gujarati and
+  Arabic, and Noto Nastaliq Urdu, by the Noto
   Project Authors, SIL Open Font License 1.1.
 
 ## Illustrative Mathematics (test data only)

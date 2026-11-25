@@ -108,7 +108,8 @@ workflows; see "Store listing" in [play-store.md](play-store.md) and
 2. Merge it; the workflow runs and creates `app_<code>.arb`, including `languageName`,
    the language's name in itself, which the language list shows.
 3. If the language uses a script that Roboto and the bundled Noto Sans
-   fonts (Devanagari, Telugu, Tamil, Malayalam, Gurmukhi) do not cover, bundle a Noto
+   fonts (Devanagari, Telugu, Tamil, Malayalam, Gurmukhi, Bengali, Gujarati, Arabic and
+   Nastaliq for Urdu) do not cover, bundle a Noto
    Sans font for it: add the regular and bold files with their licence under
    `app/assets/fonts/`, list the family in `app/pubspec.yaml`, add it to
    `fontFallback` in `app/lib/app_theme.dart`, and add the language to the

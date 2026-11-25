@@ -76,6 +76,7 @@ class _MathTesterAppState extends State<MathTesterApp> {
   @override
   Widget build(BuildContext context) {
     final palette = context.select((MathTesterModel m) => m.palette);
+    final language = context.select((MathTesterModel m) => m.language);
     return MaterialApp(
       scrollBehavior: CustomScrollBehavior(),
       key: materialAppKey,
@@ -88,12 +89,12 @@ class _MathTesterAppState extends State<MathTesterApp> {
       ],
       // English first, so an unsupported system language falls back to it.
       supportedLocales: AppLocalizations.supportedLocales,
-      locale: switch (context.select((MathTesterModel m) => m.language)) {
+      locale: switch (language) {
         final code? => appLocale(code),
         null => null,
       },
-      theme: buildAppTheme(Brightness.light, palette),
-      darkTheme: buildAppTheme(Brightness.dark, palette),
+      theme: buildAppTheme(Brightness.light, palette, language),
+      darkTheme: buildAppTheme(Brightness.dark, palette, language),
       themeMode: context.select((MathTesterModel m) => m.themeMode),
       home: const MyHomePage(key: homePageKey),
     );

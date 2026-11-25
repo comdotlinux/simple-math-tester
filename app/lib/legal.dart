@@ -117,6 +117,26 @@ const List<({String name, String credit, String? licenseAsset})> attributions =
         licenseAsset: 'assets/fonts/NotoSansGurmukhi_LICENSE.txt',
       ),
       (
+        name: 'Noto Sans Bengali',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansBengali_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Gujarati',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansGujarati_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Sans Arabic',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoSansArabic_LICENSE.txt',
+      ),
+      (
+        name: 'Noto Nastaliq Urdu',
+        credit: 'Font by the Noto Project Authors, SIL Open Font License 1.1',
+        licenseAsset: 'assets/fonts/NotoNastaliqUrdu_LICENSE.txt',
+      ),
+      (
         name: 'Illustrative Mathematics',
         credit:
             'Equations, figure questions and their printed answers from IM 6–8 '
