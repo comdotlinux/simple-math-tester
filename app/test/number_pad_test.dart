@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:simple_math_tester/app_theme.dart';
+import 'package:simple_math_tester/digits.dart';
 import 'package:simple_math_tester/hundredths.dart';
 import 'package:simple_math_tester/keys.dart';
 import 'package:simple_math_tester/l10n/app_localizations.dart';
@@ -125,7 +126,10 @@ void main() {
     expect(find.byKey(padMinusKey), findsNothing);
     expect(find.byKey(padDecimalKey), findsNothing);
     final field = tester.widget<TextField>(find.byType(TextField));
-    expect(field.inputFormatters, [FilteringTextInputFormatter.digitsOnly]);
+    expect(field.inputFormatters, [
+      nativeDigitsToAscii,
+      FilteringTextInputFormatter.digitsOnly,
+    ]);
   });
 
   test('no arithmetic kind asks for the minus and decimal keys', () {

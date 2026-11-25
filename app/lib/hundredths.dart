@@ -6,6 +6,8 @@ library;
 
 import 'package:intl/intl.dart';
 
+import 'digits.dart';
+
 /// The minus sign the app shows, as in its subtraction sign.
 const minusSign = '−';
 
@@ -22,7 +24,7 @@ const _maxWholeDigits = 12;
 /// `−3` and `-0` (which is 0) parse; `-`, `.`, `-.`, `1e1`, `+5`, `1.2.3`
 /// and a third decimal place (`1.234`, never rounded) do not.
 int? parseHundredths(String text) {
-  final trimmed = text.trim();
+  final trimmed = asciiDigits(text).trim();
   final match = _number.firstMatch(trimmed);
   if (match == null) return null;
   final whole = match[1]!;
@@ -38,7 +40,7 @@ int? parseHundredths(String text) {
 /// Whether [text] is a number for [parseHundredths] or could still become
 /// one by typing more, such as `-`, `,` or `3.`. The answer field admits
 /// only such text.
-bool canCompleteHundredths(String text) => _number.hasMatch(text);
+bool canCompleteHundredths(String text) => _number.hasMatch(asciiDigits(text));
 
 /// [hundredths] as a number for the text form, history and saved data:
 /// a whole number as an int, others as the nearest double (`250` is `2.5`).

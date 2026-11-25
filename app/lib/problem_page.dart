@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import 'app_theme.dart';
+import 'digits.dart';
 import 'figure_view.dart';
 import 'hint_modal.dart';
 import 'home_page.dart' show ContentArea;
@@ -562,6 +563,7 @@ class _ProblemPageState extends State<ProblemPage> {
             // typed text keeps only its digits. With the minus and decimal
             // keys, an edit that could no longer become a number is refused.
             inputFormatters: [
+              nativeDigitsToAscii,
               signedDecimal
                   ? TextInputFormatter.withFunction(
                       (old, edited) =>
