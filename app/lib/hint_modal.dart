@@ -268,16 +268,17 @@ class _HintModalState extends State<_HintModal> {
                               ),
                             ),
                           ),
-                          Text.rich(
-                            mathSpan(context, switch (problem) {
-                              FigureProblem(:final figure) => figurePromptText(
-                                l,
-                                figure,
-                              ),
-                              _ => problem.shown(l),
-                            }, textTheme.titleLarge),
-                            textAlign: TextAlign.center,
-                            semanticsLabel: l.mathQuestion(problem.spoken(l)),
+                          equationIsland(
+                            problem,
+                            Text.rich(
+                              mathSpan(context, switch (problem) {
+                                FigureProblem(:final figure) =>
+                                  figurePromptText(l, figure),
+                                _ => problem.shown(l),
+                              }, textTheme.titleLarge),
+                              textAlign: TextAlign.center,
+                              semanticsLabel: l.mathQuestion(problem.spoken(l)),
+                            ),
                           ),
                         ],
                       ),

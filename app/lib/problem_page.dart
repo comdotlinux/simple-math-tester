@@ -1267,17 +1267,20 @@ class _QuestionCard extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
     // A condition line under an equation ("n is positive") in body size.
     final [line, ...notes] = problem.shown(l).split('\n');
-    Widget question(TextStyle? style) => Text.rich(
-      TextSpan(
-        children: [
-          mathSpan(context, line, style),
-          for (final note in notes)
-            mathSpan(context, '\n$note', textTheme.titleLarge),
-        ],
+    Widget question(TextStyle? style) => equationIsland(
+      problem,
+      Text.rich(
+        TextSpan(
+          children: [
+            mathSpan(context, line, style),
+            for (final note in notes)
+              mathSpan(context, '\n$note', textTheme.titleLarge),
+          ],
+        ),
+        key: questionOnProblemsPageKey,
+        textAlign: TextAlign.center,
+        semanticsLabel: l.mathQuestion(problem.spoken(l)),
       ),
-      key: questionOnProblemsPageKey,
-      textAlign: TextAlign.center,
-      semanticsLabel: l.mathQuestion(problem.spoken(l)),
     );
     return Slab(
       child: Card(
@@ -1401,14 +1404,17 @@ class _PinnedQuestion extends StatelessWidget {
   Widget build(BuildContext context) {
     // The card keeps the question's semantics.
     final question = ExcludeSemantics(
-      child: Text.rich(
-        mathSpan(
-          context,
-          problem.shown(AppLocalizations.of(context)),
-          Theme.of(context).textTheme.titleLarge,
+      child: equationIsland(
+        problem,
+        Text.rich(
+          mathSpan(
+            context,
+            problem.shown(AppLocalizations.of(context)),
+            Theme.of(context).textTheme.titleLarge,
+          ),
+          key: pinnedQuestionKey,
+          textAlign: TextAlign.center,
         ),
-        key: pinnedQuestionKey,
-        textAlign: TextAlign.center,
       ),
     );
     return !strip
