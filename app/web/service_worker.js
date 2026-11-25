@@ -75,7 +75,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     // The static pages fall back to their own cached copy (the Impressum shell
     // then shows its error line); every other address gets the app.
-    const page = /^(impressum|privacy)(\.html)?$/.exec(path)?.[1];
+    const page = /^(about|impressum|privacy)(\.html)?$/.exec(path)?.[1];
     event.respondWith(networkFirst(request, page ? `${page}.html` : './'));
     return;
   }

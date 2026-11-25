@@ -79,7 +79,7 @@ jobs:
       # Turnstile widget and no personal data (no postcode-like number, no e-mail).
       - name: Check the privacy and Impressum pages
         run: |
-          for page in privacy.html impressum.html; do
+          for page in about.html privacy.html impressum.html; do
             test -f "build/web/$page"
             jq -e --arg page "$page" 'any(.entries[]; .url == $page)' build/web/precache_manifest.json > /dev/null
           done
