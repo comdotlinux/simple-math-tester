@@ -14,7 +14,24 @@ import { pathToFileURL } from 'node:url';
 
 // An ARB locale: a language code, with _COUNTRY for a regional variant (pt is
 // Brazilian Portuguese, pt_PT European).
-export const languages = ['de', 'pl', 'hi', 'mr', 'te', 'ta', 'ml', 'fr', 'ro', 'uk', 'pt', 'pt_PT', 'pa'];
+export const languages = [
+  'de',
+  'pl',
+  'hi',
+  'mr',
+  'te',
+  'ta',
+  'ml',
+  'fr',
+  'ro',
+  'uk',
+  'pt',
+  'pt_PT',
+  'pa',
+  'tr',
+  'gu',
+  'bn',
+];
 
 const dir = new URL('../app/lib/l10n/', import.meta.url);
 // The English text each translation was made from, as a short hash per key,
@@ -83,6 +100,8 @@ const promptNames = {
   pt: 'Brazilian Portuguese (Brazil)',
   pt_PT: 'European Portuguese (Portugal)',
   pa: 'Punjabi in Gurmukhi script',
+  gu: 'Gujarati',
+  bn: 'Bengali (Bangla)',
 };
 
 /** The English name of [code] that DeepSeek is told to translate into. */

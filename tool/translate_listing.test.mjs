@@ -42,6 +42,9 @@ test('every app language has a Play listing code', () => {
   assert.equal(playCodes.pt, 'pt-BR');
   assert.equal(playCodes.pt_PT, 'pt-PT');
   assert.equal(playCodes.pa, 'pa');
+  assert.equal(playCodes.tr, 'tr-TR');
+  assert.equal(playCodes.gu, 'gu');
+  assert.equal(playCodes.bn, 'bn-BD');
 });
 
 test('DeepSeek is told the Portuguese variant and the Punjabi script', () => {

@@ -214,4 +214,7 @@ const englishLanguageNames = {
   'pt': 'Portuguese (Brazil)',
   'pt_PT': 'Portuguese (Portugal)',
   'pa': 'Punjabi',
+  'tr': 'Turkish',
+  'gu': 'Gujarati',
+  'bn': 'Bengali',
 };
