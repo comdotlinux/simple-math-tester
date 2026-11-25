@@ -101,6 +101,42 @@ void main() {
     }
   }
 
+  testWidgets('pad shows native and 0-9 digits for bn and mr, 0-9 only for '
+      'en and hi; a tap enters 0-9; no overflow at 360', (tester) async {
+    for (final (code, native) in [
+      ('bn', true),
+      ('mr', true),
+      ('en', false),
+      ('hi', false),
+    ]) {
+      final controller = await pumpPad(
+        tester,
+        locale: Locale(code),
+        width: 360,
+      );
+      final key = find.byKey(padDigitKey('5'));
+      expect(
+        find.descendant(of: key, matching: find.text('5')),
+        findsOneWidget,
+      );
+      if (native) {
+        expect(
+          find.descendant(of: key, matching: find.text(localDigits('5', code))),
+          findsOneWidget,
+          reason: code,
+        );
+      }
+      expect(
+        find.descendant(of: key, matching: find.byType(Text)),
+        findsNWidgets(native ? 2 : 1),
+        reason: code,
+      );
+      await tester.tap(key);
+      expect(controller.text, '5');
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('arithmetic-only play shows exactly today\'s keys', (
     tester,
   ) async {
