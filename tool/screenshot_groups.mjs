@@ -6,8 +6,9 @@ import { languages } from './translate.mjs';
 import { playCodes } from './translate_listing.mjs';
 
 const missing = languages.filter((l) => !playCodes[l]);
-if (missing.length) throw new Error('No Play language code for ' + missing.join(', '));
+if (missing.length) throw new Error(`No Play language code for ${missing.join(', ')}`);
 const pairs = ['en:en-US', ...languages.map((l) => `${l}:${playCodes[l]}`)];
 const groups = [];
-for (let i = 0; i < pairs.length; i += 3) groups.push({ id: groups.length + 1, pairs: pairs.slice(i, i + 3).join(' ') });
+for (let i = 0; i < pairs.length; i += 3)
+  groups.push({ id: groups.length + 1, pairs: pairs.slice(i, i + 3).join(' ') });
 console.log(JSON.stringify(groups));
