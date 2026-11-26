@@ -231,20 +231,36 @@ async function appRecord(api) {
   return app;
 }
 
-/** The app, its editable app info and the App Store version being prepared. */
-export async function findApp(api) {
+/**
+ * The app, its editable app info and the App Store version being prepared.
+ * With [newVersion] (e.g. "1.5.0"), creates that version when none is being
+ * prepared; App Store Connect then opens a new editable app info too.
+ */
+export async function findApp(api, newVersion) {
   const app = await appRecord(api);
+  const versions = async () =>
+    (await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=10`)).data;
+  let version = pickEditable(await versions());
+  if (!version && newVersion) {
+    console.log(`Creating App Store version ${newVersion}`);
+    version = (
+      await api('POST', '/v1/appStoreVersions', {
+        type: 'appStoreVersions',
+        attributes: { platform: 'IOS', versionString: newVersion },
+        relationships: { app: { data: { type: 'apps', id: app.id } } },
+      })
+    ).data;
+  }
   const info = pickEditable((await api('GET', `/v1/apps/${app.id}/appInfos`)).data);
-  const version = pickEditable(
-    (await api('GET', `/v1/apps/${app.id}/appStoreVersions?filter[platform]=IOS&limit=10`)).data,
-  );
-  if (!info || !version) throw new Error('No App Store version in preparation: create one in App Store Connect first');
+  if (!info || !version) {
+    throw new Error('No App Store version in preparation: run with a version, or create one in App Store Connect');
+  }
   return { app, info, version };
 }
 
 /** Writes every listing (and with [screenshots], the screenshots) to App Store Connect. */
-export async function listing(api, screenshots) {
-  const { info, version } = await findApp(api);
+export async function listing(api, screenshots, newVersion) {
+  const { info, version } = await findApp(api, newVersion);
   console.log(`Version ${version.attributes.versionString}`);
   const byLocale = (body) => Object.fromEntries(body.data.map((l) => [l.attributes.locale, l]));
   const infoLocalizations = byLocale(await api('GET', `/v1/appInfos/${info.id}/appInfoLocalizations?limit=200`));
@@ -412,7 +428,12 @@ export async function review(api, versionString, notes, dryRun) {
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
-  if (command === 'listing') return listing(connect(process.env), args[0]);
+  if (command === 'listing') {
+    const at = args.indexOf('--version');
+    const newVersion = at >= 0 ? args[at + 1] : undefined;
+    const [dir] = args.filter((a, i) => i !== at && i !== at + 1);
+    return listing(connect(process.env), dir, newVersion);
+  }
   if (command === 'devices' && devices[args[0]]) {
     const { size, ratio, pixels } = devices[args[0]];
     return console.log(`SCREENSHOT_SIZE=${size}\nSCREENSHOT_PIXEL_RATIO=${ratio}\nSCREENSHOT_PIXELS=${pixels}`);
@@ -423,7 +444,7 @@ async function main() {
     return review(connect(process.env), args[0], notes, args.includes('--dry-run'));
   }
   throw new Error(
-    'Usage: node tool/app_store.mjs listing [screenshots dir] | devices <device> | review <version> [notes.json] [--dry-run]',
+    'Usage: node tool/app_store.mjs listing [screenshots dir] [--version X.Y.Z] | devices <device> | review <version> [notes.json] [--dry-run]',
   );
 }
 

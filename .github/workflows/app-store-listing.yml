@@ -19,6 +19,11 @@ on:
         required: false
         type: string
         default: ''
+      version:
+        description: 'Version to create (e.g. 1.5.0) when none is in preparation in App Store Connect'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -186,7 +191,8 @@ jobs:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           SCREENSHOTS: ${{ inputs.screenshots }}
+          VERSION: ${{ inputs.version }}
         run: |
           dir=
           if [ "$SCREENSHOTS" = true ]; then dir="$RUNNER_TEMP/app-store-screenshots"; fi
-          node tool/app_store.mjs listing ${dir:+"$dir"}
+          node tool/app_store.mjs listing ${dir:+"$dir"} ${VERSION:+--version "$VERSION"}

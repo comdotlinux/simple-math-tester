@@ -11,6 +11,7 @@ import {
   appStoreTexts,
   connect,
   devices,
+  findApp,
   listing,
   pickEditable,
   replaceScreenshots,
@@ -232,6 +233,43 @@ test('the listing updates a version localization that appeared after it was read
   }
   assert.ok(calls.includes('POST /v1/appStoreVersionLocalizations de-DE'));
   assert.ok(calls.includes('PATCH /v1/appStoreVersionLocalizations/ver-de'));
+});
+
+test('with a version, the listing creates it when none is in preparation', async () => {
+  const calls = [];
+  let created = false;
+  const api = async (method, path, data) => {
+    calls.push(`${method} ${path}`);
+    if (path.startsWith('/v1/apps?')) return { data: [{ id: 'app' }] };
+    if (path.startsWith('/v1/apps/app/appStoreVersions')) {
+      return {
+        data: [{ id: 'old', attributes: { versionString: '1.4.2', appVersionState: 'READY_FOR_DISTRIBUTION' } }],
+      };
+    }
+    if (method === 'POST' && path === '/v1/appStoreVersions') {
+      created = true;
+      assert.deepEqual(data.attributes, { platform: 'IOS', versionString: '1.5.0' });
+      return { data: { id: 'new', attributes: { versionString: '1.5.0', appVersionState: 'PREPARE_FOR_SUBMISSION' } } };
+    }
+    // The editable app info appears with the new version.
+    if (path === '/v1/apps/app/appInfos') {
+      return {
+        data: [{ id: 'info', attributes: { state: created ? 'PREPARE_FOR_SUBMISSION' : 'READY_FOR_DISTRIBUTION' } }],
+      };
+    }
+    throw new Error(`unexpected ${method} ${path}`);
+  };
+  const log = console.log;
+  console.log = () => {};
+  try {
+    await assert.rejects(findApp(api), /No App Store version in preparation/);
+    assert.ok(!calls.includes('POST /v1/appStoreVersions'));
+    const { info, version } = await findApp(api, '1.5.0');
+    assert.equal(version.id, 'new');
+    assert.equal(info.id, 'info');
+  } finally {
+    console.log = log;
+  }
 });
 
 test('the screenshot sets are the required iPhone medium size, iPhone large and iPad 13"', () => {
