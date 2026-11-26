@@ -242,7 +242,9 @@ test('with a version, the listing creates it when none is in preparation', async
     calls.push(`${method} ${path}`);
     if (path.startsWith('/v1/apps?')) return { data: [{ id: 'app' }] };
     if (path.startsWith('/v1/apps/app/appStoreVersions')) {
-      return { data: [{ id: 'old', attributes: { versionString: '1.4.2', appVersionState: 'READY_FOR_DISTRIBUTION' } }] };
+      return {
+        data: [{ id: 'old', attributes: { versionString: '1.4.2', appVersionState: 'READY_FOR_DISTRIBUTION' } }],
+      };
     }
     if (method === 'POST' && path === '/v1/appStoreVersions') {
       created = true;
@@ -251,7 +253,9 @@ test('with a version, the listing creates it when none is in preparation', async
     }
     // The editable app info appears with the new version.
     if (path === '/v1/apps/app/appInfos') {
-      return { data: [{ id: 'info', attributes: { state: created ? 'PREPARE_FOR_SUBMISSION' : 'READY_FOR_DISTRIBUTION' } }] };
+      return {
+        data: [{ id: 'info', attributes: { state: created ? 'PREPARE_FOR_SUBMISSION' : 'READY_FOR_DISTRIBUTION' } }],
+      };
     }
     throw new Error(`unexpected ${method} ${path}`);
   };
